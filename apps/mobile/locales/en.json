@@ -21,10 +21,53 @@
   },
   "wardrobe": {
     "title": "Wardrobe",
-    "empty": "Your wardrobe is empty. Photograph a few garments to start."
+    "empty": "Your wardrobe is empty. Photograph a few garments to start.",
+    "all": "All",
+    "noMatch": "No items match this filter",
+    "category": {
+      "top": "Tops",
+      "bottom": "Bottoms",
+      "shoes": "Shoes",
+      "layer": "Layers",
+      "outerwear": "Outerwear",
+      "accessory": "Accessories"
+    },
+    "season": {
+      "summer": "Summer",
+      "transition": "Transition",
+      "winter": "Winter"
+    },
+    "availability": {
+      "home": "At home",
+      "laundry": "In the wash",
+      "away": "Away",
+      "lent": "Lent out"
+    },
+    "color": {
+      "navy": "Navy",
+      "white": "White",
+      "black": "Black",
+      "grey": "Grey",
+      "beige": "Beige",
+      "brown": "Brown",
+      "olive": "Olive",
+      "burgundy": "Burgundy",
+      "blue": "Blue",
+      "light_blue": "Light blue",
+      "red": "Red",
+      "green": "Green",
+      "orange": "Orange",
+      "yellow": "Yellow",
+      "pink": "Pink",
+      "cream": "Cream"
+    }
   },
   "common": {
     "loading": "Loading",
     "retry": "Retry"
+  },
+  "nav": {
+    "today": "Today",
+    "wardrobe": "Wardrobe"
   }
 }

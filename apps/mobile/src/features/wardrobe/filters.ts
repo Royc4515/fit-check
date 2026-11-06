@@ -1,0 +1,56 @@
+import type { Item } from "@fit-check/schema";
+
+/** One filter dimension. Selection is single-value per facet; facets combine with AND. */
+export const FACETS = ["season", "color", "availability"] as const;
+export type Facet = (typeof FACETS)[number];
+export type Selection = Partial<Record<Facet, string>>;
+
+/** Category order is fixed: it is the reading order of the wardrobe, not alphabetical. */
+export const CATEGORY_ORDER = ["top", "bottom", "shoes", "layer", "outerwear", "accessory"] as const;
+
+function valuesOf(item: Item, facet: Facet): string[] {
+  switch (facet) {
+    case "season":
+      return item.tags.seasons;
+    case "color":
+      return [item.tags.color_name];
+    case "availability":
+      return [item.availability];
+  }
+}
+
+/**
+ * Values present in the data, per facet, most frequent first. A facet with fewer than two values is dropped:
+ * a chip that cannot change the result is noise (today every fixture item is `home`).
+ */
+export function deriveFacets(items: Item[]): Array<{ facet: Facet; values: string[] }> {
+  return FACETS.map((facet) => {
+    const counts = new Map<string, number>();
+    for (const item of items) for (const v of valuesOf(item, facet)) counts.set(v, (counts.get(v) ?? 0) + 1);
+    const values = [...counts.entries()]
+      // Tie-break on the value so the chip order never depends on input order.
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([v]) => v);
+    return { facet, values };
+  }).filter((f) => f.values.length >= 2);
+}
+
+/** Only `active` items belong in the wardrobe; `virtual` (pre-purchase) and `archived` never show. */
+export function applyFilters(items: Item[], selection: Selection): Item[] {
+  return items.filter(
+    (item) =>
+      item.status === "active" &&
+      FACETS.every((facet) => {
+        const wanted = selection[facet];
+        return wanted === undefined || valuesOf(item, facet).includes(wanted);
+      })
+  );
+}
+
+/** Groups in CATEGORY_ORDER, items by name, empty groups omitted. */
+export function groupByCategory(items: Item[]): Array<{ category: (typeof CATEGORY_ORDER)[number]; items: Item[] }> {
+  return CATEGORY_ORDER.map((category) => ({
+    category,
+    items: items.filter((i) => i.tags.category === category).sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)),
+  })).filter((g) => g.items.length > 0);
+}

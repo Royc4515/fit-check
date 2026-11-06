@@ -78,7 +78,7 @@ Material Symbols Rounded, משקל 300, גודל 22, צבע `--ink-soft`. ורי
 שלוש ההנפשות שמותרות להיות מורגשות:
 1. shared element transition מכרטיס פריט בארון למסך הפריט: התמונה נוסעת, השאר fade. 420ms, ease-out.
 2. layout animation כשרשימה משתנה (סינון, מחיקה): פריטים זזים למקומם, 280ms.
-3. מחוות עם velocity handoff: החלקת כרטיס אישור, גרירת sheet. spring עם damping 28, stiffness 320, mass 1. שחרור ממשיך במהירות האצבע.
+3. מחוות עם velocity handoff: החלקת כרטיס אישור, גרירת sheet. spring עם damping 36, stiffness 320, mass 1 (שיכוך קריטי: בלי overshoot, מתיישב תוך כ-300ms; הערך הקודם 28 חרג ב-2% וסתר את "אסור bounce"). שחרור ממשיך במהירות האצבע.
 
 כל השאר: opacity 0→1 ו-translateY 8→0 ב-180ms ease-out. כניסת מסך רגילה: native stack ברירת מחדל.
 
