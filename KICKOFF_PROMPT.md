@@ -4,7 +4,7 @@
 
 לפני הסשן, פעם אחת:
 1. `git clone https://github.com/Royc4515/fit-check && cd fit-check && pnpm install`.
-2. פרויקט Supabase חדש (Free): `supabase link --project-ref <ref>` ואז `pnpm db:push`. להעתיק URL ו-anon key ל-`apps/mobile/.env.local` לפי `.env.example`.
+2. פרויקט Supabase כבר קיים (ref: ftjerbwrzjprfikxkukj, Frankfurt) ושתי המיגרציות כבר רצו עליו. `supabase link --project-ref ftjerbwrzjprfikxkukj`. ה-URL והמפתח הציבורי כבר ב-`.env.example`; להעתיק ל-`apps/mobile/.env.local`.
 3. חשבון Modal: `pip install modal && modal token new`, ואז לפי `worker/README.md`.
 4. מפתחות: Anthropic Console (לקשר את קרדיטי Max 5x ב-Settings > Billing ב-claude.ai), Google AI Studio (Gemini). `supabase secrets set ANTHROPIC_API_KEY=... GEMINI_API_KEY=... MODAL_WORKER_URL=... MODAL_WORKER_TOKEN=...`.
 5. בתוך Claude Code: `npx skills add skills-il/localization --skill hebrew-rtl-best-practices --agent claude-code` ו-`npx skills add emilkowalski/skills --skill animate-expo --agent claude-code`.
