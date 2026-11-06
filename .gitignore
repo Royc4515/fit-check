@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.turbo/
+.expo/
+*.log
+.env
+.env.local
+.env.*.local
+# Supabase local stack state
+supabase/.branches/
+supabase/.temp/
+# Modal / Python
+worker/.venv/
+worker/__pycache__/
+# originals of wardrobe photos never go to git
+scripts/data/photos/
+.DS_Store

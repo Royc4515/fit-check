@@ -1,0 +1,110 @@
+ID,Item Name,Category,Style/Usage,Primary Color,Formality (1-10),Season,Notes
+701,Derby/Oxford Shoes,Shoes,Formal / Shabbat,Dark Brown,9,All Year,Essential for events. Match with belt 1201/1204.
+702,Timberland Chelsea Boots,Shoes,Smart Casual / Rugged,Dark Brown,7,Winter,Classic look with jeans or chinos.
+703,Suede Chelsea Boots,Shoes,Smart Casual / Date,Grey/Taupe,6,Winter,Versatile boot for evening outings.
+704,Reebok Sneakers,Shoes,Casual / Daily,White,4,All Year,Clean basic sneaker for university/errands.
+705,O'Neill Sneakers,Shoes,Casual / Summer,Light Grey,3,Summer/Trans,Lightweight canvas shoe.
+706,Jordan Sneakers,Shoes,Streetwear / Sport,Black,2,All Year,Statement shoe or for the court.
+707,Salomon Hiking Boots,Shoes,Outdoor / Tactical,Grey/Black,1,Winter/Outdoor,For hiking or reserve duty.
+708,Comfort Slides,Shoes,Loungewear,Black,1,Home/Summer,House shoes.
+709,Birkenstock-style Mules,Shoes,Cozy Casual,Grey,2,Winter/Trans,Relaxed style for quick errands.
+710,Birkenstock Sandals,Shoes,Summer Casual,Black,1,Summer,Classic Israeli summer footwear.
+711,Adidas Samba,Shoes,Trendy / Smart Casual,White/Black,4,All Year,The 'IT' shoe. Works with almost everything.
+712,Zara Suede Slides,Shoes,Resort / Smart Casual,Camel Brown,3,Summer,Elevated sandal - great with linen.
+713,Puma Sneakers,Shoes,Retro Sport,White/Green,3,Summer/Trans,Vintage vibe with a pop of color.
+101,Quechua Hiking Shorts,Pants,Outdoor / Utility,Dark Grey,2,Summer,Technical fabric for trips.
+102,Kenneth Cole Shorts,Pants,Smart Casual,Grey/Blue,4,Summer,Dressy shorts for hot days.
+103,Kenneth Cole Shorts,Pants,Smart Casual,Beige,4,Summer,
+104,Gap Chinos,Pants,Business Casual,Stone,7,Trans/Summer,Light color for day events/brunches.
+105,Gap Chinos,Pants,Work / Study,Khaki,6,All Year,The standard everyday chino.
+106,Dark Chinos,Pants,Smart Casual,Navy Blue,7,All Year,Slimming and versatile for night.
+107,Koton Jeans,Pants,Casual,Medium Blue,5,All Year,Standard daily jeans.
+108,Tommy Hilfiger Jeans,Pants,Smart Casual / Night Out,Dark Wash,7,All Year,Clean dark denim for nicer occasions.
+109,Dark Jeans (Extra),Pants,Casual,Black/Midnight,6,All Year,
+110,Zara Light Jeans,Pants,Streetwear / Relaxed,Light Blue,5,All Year,Modern loose fit - trendy.
+111,Zara Chinos,Pants,Business Casual,Beige/Stone,6,All Year,Clean cut - slim look.
+114,American Eagle Jeans,Pants,Edgy / Smart Casual,Black,5,All Year,Comfortable fit - excellent basic.
+115,Dark Shorts,Pants,Casual,Navy Blue,4,Summer,
+116,Gap Slim Jeans,Pants,Casual / Daily,Light Blue,5,All Year,GapFlex' stretch. Light wash.
+117,Dress Trousers,Pants,Formal / Business,Dark Grey,8,All Year,Tailored look.
+118,Gap Chinos (Long),Pants,Business Casual,Beige / Khaki,6,All Year,Essential long chinos.
+119,Gap Chinos (Long),Pants,Smart Casual,Navy Blue,7,All Year,Dark long chinos.
+1101,Matchton Pyjama Pants,Pants,Sleepwear,Blue,1,Home,Flannel/Cotton for home only.
+401,Tommy Hilfiger Oxford,Shirt,Formal / Preppy,White,8,All Year,Essential for Shabbat/Dates.
+402,Calvin Klein Shirt,Shirt,Formal / Business,White,8,All Year,Cleanest look for high-stakes events.
+403,Zara Mandarin Collar,Shirt,Modern Formal,White,7,Summer/Trans,Unique collar - stands out.
+404,Zara Shirt,Shirt,Business / Office,White/Blue,7,All Year,Thin stripes for a professional look.
+405,MNG (Mango) Shirt,Shirt,Smart Casual,Light Blue,6,Summer/Day,Sophisticated day wear.
+406,Gant Seersucker,Shirt,Preppy / Resort,Blue/White,6,Summer,Untucked fit - very breathable.
+407,Wrangler Shirt,Shirt,Rugged / Workwear,Blue Denim,5,Winter/Trans,Masculine - pairs with black jeans.
+408,Golf Mandarin Collar,Shirt,Summer Chic,Light Blue,5,Summer,Thin fabric - relaxed vibe.
+409,Golf Shirt,Shirt,Formal,White,8,All Year,Festive and clean.
+410,Flannel Shirt,Shirt,Winter Casual,Blue/White,3,Winter,Wear open over a tee.
+411,Flannel Shirt,Shirt,Grunge / Casual,Black/Grey,3,Winter,
+412,Dark Thick Shirt,Shirt,Winter Smart Casual,Navy Blue,6,Winter,
+413,Polo Denim Shirt,Shirt,Smart Casual,Blue Denim,6,All Year,
+414,Tommy Hilfiger Shirt,Shirt,Preppy / Day Event,Pink/White,6,All Year,American classic - fresh pop of color.
+415,Gant Oxford Shirt,Shirt,Business Casual,White,8,All Year,Heavy - high-quality basic.
+416,Old Navy Shirt,Shirt,Casual,Blue/Grey,5,Winter/Trans,Comfortable flannel style.
+417,Tommy Hilfiger Shirt,Shirt,Business / Formal,Light Blue,8,All Year,Very elegant - work ready.
+418,Golf Mandarin Collar,Shirt,Boho / Nature,Brown/Mocha,6,Summer/Trans,Unique color - linen texture.
+419,Max Moretti Shirt,Shirt,Resort / Summer Date,Denim Blue,6,Summer,Linen fabric - breathable.
+420,Zara Overshirt,Shirt,Streetwear / Layering,Black,4,Winter/Trans,Wear open as a light jacket.
+421,American Eagle Flannel,Shirt,Winter Casual,Black/White,4,Winter,Classic pattern - great layered.
+422,Tommy Hilfiger Dress,Shirt,Formal / Evening,White,9,All Year,Non-button-down collar. Wear with suit.
+423,Polo Ralph Lauren,Shirt,Summer Smart Casual,Orange/White,6,Summer,Vertical stripes. Vibrant.
+424,Nautica Gingham,Shirt,Smart Casual,Red/White,6,All Year,Small check pattern.
+201,Levi's T-Shirt,Shirt,Casual Basic,Black,4,All Year,High-quality basic.
+203,Vans T-Shirt,Shirt,Skater / Streetwear,Charcoal,2,All Year,Grunge style with back print.
+204,Timberland T-Shirt,Shirt,Casual,Grey Melange,4,All Year,
+205,Polo Ralph Lauren T,Shirt,Preppy Casual,Navy Blue,6,All Year,Classic brand look.
+209,Gap T-Shirt,Shirt,Basic Undershirt,White,3,Summer,Clean basic.
+211,Nike T-Shirt,Shirt,Sporty,White,2,Summer,Gym or sport style.
+212,Nautica T-Shirt,Shirt,Casual,Bottle Green,4,Winter/Trans,Deep rich color.
+213,Smiley World T-Shirt,Shirt,Loungewear,Green,2,Summer,Playful graphic.
+214,Champion T-Shirt,Shirt,Streetwear,Mustard,2,Trans/Summer,Statement color.
+215,Tommy Hilfiger T-Shirt,Shirt,Casual Basic,White,4,Summer/Trans,Short Sleeve - quality basic.
+216,Tommy Hilfiger LS,Shirt,Layering,White,4,Trans/Winter,Long sleeve basic.
+217,Nike T-Shirt,Shirt,Streetwear,Beige/Khaki,3,Summer,Trendy earth tone.
+218,Gant T-Shirt,Shirt,Casual Basic,White,5,Summer,
+219,Nike Pro Shirt,Shirt,Performance/Sport,Grey,1,Sport,Training or thermal base layer.
+220,Fox Striped Shirt,Shirt,Casual Layering,Black/Grey,3,Trans,Thin stripes.
+221,Hugo Boss T-Shirt,Shirt,Casual / Statement,Red,5,Summer,Bold color - premium basic.
+222,Abercrombie T-Shirt,Shirt,Casual Basic,Brown/Taupe,4,All Year,Soft wash - earth tone.
+223,Timberland T-Shirt,Shirt,Casual Basic,Black,4,All Year,Small logo.
+301,Gant Polo,Shirt,Smart Casual / Golf,White,7,Summer/Trans,The 'Country Club' look.
+302,Gap Polo,Shirt,Smart Casual,White,6,Summer/Trans,
+303,American Eagle Polo,Shirt,Casual,White,5,Summer/Trans,Basic cut.
+901,Striped Sweater,Knit,Nautical / Preppy,Cream/Grey,5,Winter,
+902,Textured Sweater,Knit,Smart Casual,Navy Blue,6,Winter,
+903,Blue Sweater,Knit,Smart Casual,Blue/Purple,5,Winter,
+904,V-Neck Sweater,Knit,Business Casual,Grey Melange,6,Winter,Perfect over button-downs.
+905,Basic Sweater,Knit,Casual,Light Grey,5,Winter,
+906,Quarter-Zip Sweater,Knit,Preppy / Office,Mustard/Camel,5,Winter,
+907,Quarter-Zip Sweater,Knit,Preppy / Office,Light Grey,5,Winter,
+908,Quarter-Zip Sweater,Knit,Preppy / Office,Dark Grey,5,Winter,
+909,Quarter-Zip Sweater,Knit,Evening / Office,Burgundy,6,Winter,Excellent sophisticated color.
+910,Zara V-Neck,Knit,Smart Casual,Olive Green,6,Winter,Great color - pairs well with denim.
+911,Striped Sweater,Knit,Nautical,Blue/White,5,Winter,Classic style.
+912,Zara Quarter-Zip,Knit,Smart Casual,Dark Grey,6,Winter,Elegant knit.
+913,Fleece Quarter-Zip,Knit,Outdoor / Cozy,Orange,2,Winter,Bold color - for home/hiking.
+914,Nautica Quarter-Zip,Knit,Vintage / Casual,Faded Blue,3,Winter,Relaxed vibe.
+915,Quechua Quarter-Zip,Knit,Active / Hiking,Blue,2,Winter,Sport style.
+916,Nike Yoga Jacket,Sweatshirt,Athleisure,Dark Grey,2,Trans/Winter,Comfortable fabric (Dri-Fit).
+1001,Gant Hoodie,Sweatshirt,Campus / College,Red,3,Winter,Loud 'College Vibe'.
+1002,Reebok Hoodie,Sweatshirt,Sporty,Grey/Mint,2,Winter,For gym or home.
+1003,Nike Sweatshirt,Sweatshirt,Casual / Sport,Orange,2,Winter,Vivid color pop.
+1004,Black Zip-Up Hoodie,Sweatshirt,Layering,Black,3,Winter,Essential utility piece.
+1005,Gant Hoodie,Sweatshirt,Campus / Smart,Navy Blue,3,Winter,Classic logo hoodie.
+601,Kenneth Cole Coat,Coat,Formal / Business,Dark Grey,9,Winter,Most formal item. Wear with suit/slacks.
+602,Columbia Coat,Coat,Extreme Cold,Black,4,Winter,Functional warmth.
+603,The North Face Jacket,Coat,Active / Rain,Black,4,Trans/Winter,Sporty and light.
+604,Columbia Sport Jacket,Coat,Running / Hiking,Red,2,Winter/Sport,High visibility.
+605,Leather Jacket,Coat,Edgy / Night Out,Dark Brown,7,Winter/Trans,Bad Boy' classic - upgrades a white tee.
+801,The North Face Beanie,Accessories,Winter Casual,Grey,2,Winter,
+1201,Timberland Belt,Accessories,Formal / Smart,Brown/Black,8,All Year,Essential. Match belt color to shoes.
+1202,Tushi Belt,Accessories,Tactical / Outdoor,Black,3,All Year,Casual/Hiking usage.
+1203,Jack & Jones Belt,Accessories,Casual,Dark Brown,5,All Year,Matte finish. Great with jeans/chinos.
+1204,Kenneth Cole Belt,Accessories,Formal / Business,Black/Brown,9,All Year,Reversible. Use for suits and dress pants.
+1301,Casio G-Shock,Accessories,Sport / Tactical,Black,2,All Year,"Digital, rugged. Perfect for reserve duty/gym."
+1302,Swatch Watch,Accessories,Casual,Black / Skeleton,4,All Year,See-through dial. Fun casual accessory.

@@ -1,0 +1,3787 @@
+[
+  {
+    "id": "701",
+    "name": "Derby/Oxford Shoes",
+    "brand": null,
+    "tags": {
+      "category": "shoes",
+      "subcategory": "dress_shoes",
+      "color_hex": "#6B4A2B",
+      "color_name": "brown",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 9,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "formal"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Essential for events. Match with belt 1201/1204."
+  },
+  {
+    "id": "702",
+    "name": "Timberland Chelsea Boots",
+    "brand": "Timberland",
+    "tags": {
+      "category": "shoes",
+      "subcategory": "boots",
+      "color_hex": "#6B4A2B",
+      "color_name": "brown",
+      "secondary_color_hex": null,
+      "pattern": "denim",
+      "material": "denim",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 7,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual",
+        "outdoor"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Classic look with jeans or chinos."
+  },
+  {
+    "id": "703",
+    "name": "Suede Chelsea Boots",
+    "brand": null,
+    "tags": {
+      "category": "shoes",
+      "subcategory": "boots",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "suede",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 6,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Versatile boot for evening outings."
+  },
+  {
+    "id": "704",
+    "name": "Reebok Sneakers",
+    "brand": "Reebok",
+    "tags": {
+      "category": "shoes",
+      "subcategory": "sneakers",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 4,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Clean basic sneaker for university/errands."
+  },
+  {
+    "id": "705",
+    "name": "O'Neill Sneakers",
+    "brand": "O'Neill",
+    "tags": {
+      "category": "shoes",
+      "subcategory": "sneakers",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 3,
+      "seasons": [
+        "summer",
+        "transition"
+      ],
+      "temp_min_c": 14,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Lightweight canvas shoe."
+  },
+  {
+    "id": "706",
+    "name": "Jordan Sneakers",
+    "brand": "Jordan",
+    "tags": {
+      "category": "shoes",
+      "subcategory": "sneakers",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 2,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "streetwear",
+        "sport"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Statement shoe or for the court."
+  },
+  {
+    "id": "707",
+    "name": "Salomon Hiking Boots",
+    "brand": "Salomon",
+    "tags": {
+      "category": "shoes",
+      "subcategory": "boots",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 1,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "outdoor"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "For hiking or reserve duty."
+  },
+  {
+    "id": "708",
+    "name": "Comfort Slides",
+    "brand": null,
+    "tags": {
+      "category": "shoes",
+      "subcategory": "sandals",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 1,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "House shoes."
+  },
+  {
+    "id": "709",
+    "name": "Birkenstock-style Mules",
+    "brand": "Birkenstock",
+    "tags": {
+      "category": "shoes",
+      "subcategory": "sandals",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "relaxed",
+      "sleeve": "na",
+      "formality": 2,
+      "seasons": [
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 26,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Relaxed style for quick errands."
+  },
+  {
+    "id": "710",
+    "name": "Birkenstock Sandals",
+    "brand": "Birkenstock",
+    "tags": {
+      "category": "shoes",
+      "subcategory": "sandals",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 1,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Classic Israeli summer footwear."
+  },
+  {
+    "id": "711",
+    "name": "Adidas Samba",
+    "brand": "Adidas",
+    "tags": {
+      "category": "shoes",
+      "subcategory": "sneakers",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 4,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual",
+        "streetwear"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "The 'IT' shoe. Works with almost everything."
+  },
+  {
+    "id": "712",
+    "name": "Zara Suede Slides",
+    "brand": "Zara",
+    "tags": {
+      "category": "shoes",
+      "subcategory": "sandals",
+      "color_hex": "#C9B99A",
+      "color_name": "beige",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "linen",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 3,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual",
+        "resort"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Elevated sandal - great with linen."
+  },
+  {
+    "id": "713",
+    "name": "Puma Sneakers",
+    "brand": "Puma",
+    "tags": {
+      "category": "shoes",
+      "subcategory": "sneakers",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 3,
+      "seasons": [
+        "summer",
+        "transition"
+      ],
+      "temp_min_c": 14,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "streetwear",
+        "sport"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Vintage vibe with a pop of color."
+  },
+  {
+    "id": "101",
+    "name": "Quechua Hiking Shorts",
+    "brand": "Quechua",
+    "tags": {
+      "category": "bottom",
+      "subcategory": "shorts",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "synthetic",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 2,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_pants"
+      ],
+      "style_tags": [
+        "outdoor"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Technical fabric for trips."
+  },
+  {
+    "id": "102",
+    "name": "Kenneth Cole Shorts",
+    "brand": "Kenneth Cole",
+    "tags": {
+      "category": "bottom",
+      "subcategory": "shorts",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 4,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_pants"
+      ],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Dressy shorts for hot days."
+  },
+  {
+    "id": "103",
+    "name": "Kenneth Cole Shorts",
+    "brand": "Kenneth Cole",
+    "tags": {
+      "category": "bottom",
+      "subcategory": "shorts",
+      "color_hex": "#C9B99A",
+      "color_name": "beige",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 4,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_pants"
+      ],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "104",
+    "name": "Gap Chinos",
+    "brand": "Gap",
+    "tags": {
+      "category": "bottom",
+      "subcategory": "chinos",
+      "color_hex": "#C9B99A",
+      "color_name": "beige",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 7,
+      "seasons": [
+        "summer",
+        "transition"
+      ],
+      "temp_min_c": 14,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Light color for day events/brunches."
+  },
+  {
+    "id": "105",
+    "name": "Gap Chinos",
+    "brand": "Gap",
+    "tags": {
+      "category": "bottom",
+      "subcategory": "chinos",
+      "color_hex": "#C9B99A",
+      "color_name": "beige",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 6,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "The standard everyday chino."
+  },
+  {
+    "id": "106",
+    "name": "Dark Chinos",
+    "brand": null,
+    "tags": {
+      "category": "bottom",
+      "subcategory": "chinos",
+      "color_hex": "#1F2A44",
+      "color_name": "navy",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "slim",
+      "sleeve": "na",
+      "formality": 7,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Slimming and versatile for night."
+  },
+  {
+    "id": "107",
+    "name": "Koton Jeans",
+    "brand": "Koton",
+    "tags": {
+      "category": "bottom",
+      "subcategory": "jeans",
+      "color_hex": "#4A6FA5",
+      "color_name": "blue",
+      "secondary_color_hex": null,
+      "pattern": "denim",
+      "material": "denim",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 5,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Standard daily jeans."
+  },
+  {
+    "id": "108",
+    "name": "Tommy Hilfiger Jeans",
+    "brand": "Tommy Hilfiger",
+    "tags": {
+      "category": "bottom",
+      "subcategory": "jeans",
+      "color_hex": "#1F2A44",
+      "color_name": "navy",
+      "secondary_color_hex": null,
+      "pattern": "denim",
+      "material": "denim",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 7,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Clean dark denim for nicer occasions."
+  },
+  {
+    "id": "109",
+    "name": "Dark Jeans (Extra)",
+    "brand": null,
+    "tags": {
+      "category": "bottom",
+      "subcategory": "jeans",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "denim",
+      "material": "denim",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 6,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "110",
+    "name": "Zara Light Jeans",
+    "brand": "Zara",
+    "tags": {
+      "category": "bottom",
+      "subcategory": "jeans",
+      "color_hex": "#9DB9D8",
+      "color_name": "light_blue",
+      "secondary_color_hex": null,
+      "pattern": "denim",
+      "material": "denim",
+      "fit": "relaxed",
+      "sleeve": "na",
+      "formality": 5,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "streetwear"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Modern loose fit - trendy."
+  },
+  {
+    "id": "111",
+    "name": "Zara Chinos",
+    "brand": "Zara",
+    "tags": {
+      "category": "bottom",
+      "subcategory": "chinos",
+      "color_hex": "#C9B99A",
+      "color_name": "beige",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "slim",
+      "sleeve": "na",
+      "formality": 6,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Clean cut - slim look."
+  },
+  {
+    "id": "114",
+    "name": "American Eagle Jeans",
+    "brand": "American Eagle",
+    "tags": {
+      "category": "bottom",
+      "subcategory": "jeans",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "denim",
+      "material": "denim",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 5,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual",
+        "streetwear"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Comfortable fit - excellent basic."
+  },
+  {
+    "id": "115",
+    "name": "Dark Shorts",
+    "brand": null,
+    "tags": {
+      "category": "bottom",
+      "subcategory": "shorts",
+      "color_hex": "#1F2A44",
+      "color_name": "navy",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 4,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_pants"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "116",
+    "name": "Gap Slim Jeans",
+    "brand": "Gap",
+    "tags": {
+      "category": "bottom",
+      "subcategory": "jeans",
+      "color_hex": "#9DB9D8",
+      "color_name": "light_blue",
+      "secondary_color_hex": null,
+      "pattern": "denim",
+      "material": "denim",
+      "fit": "slim",
+      "sleeve": "na",
+      "formality": 5,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "GapFlex' stretch. Light wash."
+  },
+  {
+    "id": "117",
+    "name": "Dress Trousers",
+    "brand": null,
+    "tags": {
+      "category": "bottom",
+      "subcategory": "trousers",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 8,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual",
+        "formal"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Tailored look."
+  },
+  {
+    "id": "118",
+    "name": "Gap Chinos (Long)",
+    "brand": "Gap",
+    "tags": {
+      "category": "bottom",
+      "subcategory": "chinos",
+      "color_hex": "#C9B99A",
+      "color_name": "beige",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 6,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Essential long chinos."
+  },
+  {
+    "id": "119",
+    "name": "Gap Chinos (Long)",
+    "brand": "Gap",
+    "tags": {
+      "category": "bottom",
+      "subcategory": "chinos",
+      "color_hex": "#1F2A44",
+      "color_name": "navy",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 7,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Dark long chinos."
+  },
+  {
+    "id": "401",
+    "name": "Tommy Hilfiger Oxford",
+    "brand": "Tommy Hilfiger",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 8,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "preppy",
+        "formal"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Essential for Shabbat/Dates."
+  },
+  {
+    "id": "402",
+    "name": "Calvin Klein Shirt",
+    "brand": "Calvin Klein",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 8,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual",
+        "formal"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Cleanest look for high-stakes events."
+  },
+  {
+    "id": "403",
+    "name": "Zara Mandarin Collar",
+    "brand": "Zara",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 7,
+      "seasons": [
+        "summer",
+        "transition"
+      ],
+      "temp_min_c": 14,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "formal"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Unique collar - stands out."
+  },
+  {
+    "id": "404",
+    "name": "Zara Shirt",
+    "brand": "Zara",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "stripes",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 7,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Thin stripes for a professional look."
+  },
+  {
+    "id": "405",
+    "name": "MNG (Mango) Shirt",
+    "brand": "Mango",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#9DB9D8",
+      "color_name": "light_blue",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 6,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Sophisticated day wear."
+  },
+  {
+    "id": "406",
+    "name": "Gant Seersucker",
+    "brand": "Gant",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#3B5B8C",
+      "color_name": "blue",
+      "secondary_color_hex": null,
+      "pattern": "stripes",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 6,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "preppy",
+        "resort"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Untucked fit - very breathable."
+  },
+  {
+    "id": "407",
+    "name": "Wrangler Shirt",
+    "brand": "Wrangler",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#4A6FA5",
+      "color_name": "blue",
+      "secondary_color_hex": null,
+      "pattern": "denim",
+      "material": "denim",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 5,
+      "seasons": [
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 26,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual",
+        "outdoor"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Masculine - pairs with black jeans."
+  },
+  {
+    "id": "408",
+    "name": "Golf Mandarin Collar",
+    "brand": "Golf",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#9DB9D8",
+      "color_name": "light_blue",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "relaxed",
+      "sleeve": "long",
+      "formality": 5,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "resort"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Thin fabric - relaxed vibe."
+  },
+  {
+    "id": "409",
+    "name": "Golf Shirt",
+    "brand": "Golf",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 8,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "formal"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Festive and clean."
+  },
+  {
+    "id": "410",
+    "name": "Flannel Shirt",
+    "brand": null,
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#3B5B8C",
+      "color_name": "blue",
+      "secondary_color_hex": null,
+      "pattern": "check",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 3,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Wear open over a tee."
+  },
+  {
+    "id": "411",
+    "name": "Flannel Shirt",
+    "brand": null,
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "check",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 3,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "streetwear"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "412",
+    "name": "Dark Thick Shirt",
+    "brand": null,
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#1F2A44",
+      "color_name": "navy",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 6,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "413",
+    "name": "Polo Denim Shirt",
+    "brand": null,
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#4A6FA5",
+      "color_name": "blue",
+      "secondary_color_hex": null,
+      "pattern": "denim",
+      "material": "denim",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 6,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "414",
+    "name": "Tommy Hilfiger Shirt",
+    "brand": "Tommy Hilfiger",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#E3A7B0",
+      "color_name": "pink",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 6,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "preppy",
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "American classic - fresh pop of color."
+  },
+  {
+    "id": "415",
+    "name": "Gant Oxford Shirt",
+    "brand": "Gant",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 8,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Heavy - high-quality basic."
+  },
+  {
+    "id": "416",
+    "name": "Old Navy Shirt",
+    "brand": "Old Navy",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#3B5B8C",
+      "color_name": "blue",
+      "secondary_color_hex": null,
+      "pattern": "check",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 5,
+      "seasons": [
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 26,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Comfortable flannel style."
+  },
+  {
+    "id": "417",
+    "name": "Tommy Hilfiger Shirt",
+    "brand": "Tommy Hilfiger",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#9DB9D8",
+      "color_name": "light_blue",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 8,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual",
+        "formal"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Very elegant - work ready."
+  },
+  {
+    "id": "418",
+    "name": "Golf Mandarin Collar",
+    "brand": "Golf",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#6B4A2B",
+      "color_name": "brown",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "linen",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 6,
+      "seasons": [
+        "summer",
+        "transition"
+      ],
+      "temp_min_c": 14,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "outdoor",
+        "resort"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Unique color - linen texture."
+  },
+  {
+    "id": "419",
+    "name": "Max Moretti Shirt",
+    "brand": "Max Moretti",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#4A6FA5",
+      "color_name": "blue",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "linen",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 6,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "resort"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Linen fabric - breathable."
+  },
+  {
+    "id": "420",
+    "name": "Zara Overshirt",
+    "brand": "Zara",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 4,
+      "seasons": [
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 26,
+      "modesty_flags": [
+        "open_front"
+      ],
+      "style_tags": [
+        "streetwear"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Wear open as a light jacket."
+  },
+  {
+    "id": "421",
+    "name": "American Eagle Flannel",
+    "brand": "American Eagle",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "check",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 4,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Classic pattern - great layered."
+  },
+  {
+    "id": "422",
+    "name": "Tommy Hilfiger Dress",
+    "brand": "Tommy Hilfiger",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 9,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual",
+        "formal"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Non-button-down collar. Wear with suit."
+  },
+  {
+    "id": "423",
+    "name": "Polo Ralph Lauren",
+    "brand": "Polo Ralph Lauren",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#D2691E",
+      "color_name": "orange",
+      "secondary_color_hex": null,
+      "pattern": "stripes",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 6,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Vertical stripes. Vibrant."
+  },
+  {
+    "id": "424",
+    "name": "Nautica Gingham",
+    "brand": "Nautica",
+    "tags": {
+      "category": "top",
+      "subcategory": "button_down",
+      "color_hex": "#A3282E",
+      "color_name": "red",
+      "secondary_color_hex": null,
+      "pattern": "check",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 6,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Small check pattern."
+  },
+  {
+    "id": "201",
+    "name": "Levi's T-Shirt",
+    "brand": "Levi's",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 4,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "High-quality basic."
+  },
+  {
+    "id": "203",
+    "name": "Vans T-Shirt",
+    "brand": "Vans",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "print",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 2,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": [
+        "streetwear"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Grunge style with back print."
+  },
+  {
+    "id": "204",
+    "name": "Timberland T-Shirt",
+    "brand": "Timberland",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 4,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "205",
+    "name": "Polo Ralph Lauren T",
+    "brand": "Polo Ralph Lauren",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#1F2A44",
+      "color_name": "navy",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 6,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": [
+        "preppy"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Classic brand look."
+  },
+  {
+    "id": "209",
+    "name": "Gap T-Shirt",
+    "brand": "Gap",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 3,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Clean basic."
+  },
+  {
+    "id": "211",
+    "name": "Nike T-Shirt",
+    "brand": "Nike",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 2,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": [
+        "sport"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Gym or sport style."
+  },
+  {
+    "id": "212",
+    "name": "Nautica T-Shirt",
+    "brand": "Nautica",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#3F6B4A",
+      "color_name": "green",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 4,
+      "seasons": [
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 26,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Deep rich color."
+  },
+  {
+    "id": "213",
+    "name": "Smiley World T-Shirt",
+    "brand": "Smiley World",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#3F6B4A",
+      "color_name": "green",
+      "secondary_color_hex": null,
+      "pattern": "print",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 2,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Playful graphic."
+  },
+  {
+    "id": "214",
+    "name": "Champion T-Shirt",
+    "brand": "Champion",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#D4A827",
+      "color_name": "yellow",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 2,
+      "seasons": [
+        "summer",
+        "transition"
+      ],
+      "temp_min_c": 14,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": [
+        "streetwear"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Statement color."
+  },
+  {
+    "id": "215",
+    "name": "Tommy Hilfiger T-Shirt",
+    "brand": "Tommy Hilfiger",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 4,
+      "seasons": [
+        "summer",
+        "transition"
+      ],
+      "temp_min_c": 14,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Short Sleeve - quality basic."
+  },
+  {
+    "id": "216",
+    "name": "Tommy Hilfiger LS",
+    "brand": "Tommy Hilfiger",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 4,
+      "seasons": [
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 26,
+      "modesty_flags": [
+        "open_front"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Long sleeve basic."
+  },
+  {
+    "id": "217",
+    "name": "Nike T-Shirt",
+    "brand": "Nike",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#C9B99A",
+      "color_name": "beige",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 3,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": [
+        "streetwear"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Trendy earth tone."
+  },
+  {
+    "id": "218",
+    "name": "Gant T-Shirt",
+    "brand": "Gant",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 5,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "219",
+    "name": "Nike Pro Shirt",
+    "brand": "Nike",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "synthetic",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 1,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": [
+        "sport"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Training or thermal base layer."
+  },
+  {
+    "id": "220",
+    "name": "Fox Striped Shirt",
+    "brand": "Fox",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "stripes",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 3,
+      "seasons": [
+        "transition"
+      ],
+      "temp_min_c": 14,
+      "temp_max_c": 26,
+      "modesty_flags": [
+        "short_sleeve",
+        "open_front"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Thin stripes."
+  },
+  {
+    "id": "221",
+    "name": "Hugo Boss T-Shirt",
+    "brand": "Hugo Boss",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#A3282E",
+      "color_name": "red",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 5,
+      "seasons": [
+        "summer"
+      ],
+      "temp_min_c": 22,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Bold color - premium basic."
+  },
+  {
+    "id": "222",
+    "name": "Abercrombie T-Shirt",
+    "brand": "Abercrombie",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#6B4A2B",
+      "color_name": "brown",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 4,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Soft wash - earth tone."
+  },
+  {
+    "id": "223",
+    "name": "Timberland T-Shirt",
+    "brand": "Timberland",
+    "tags": {
+      "category": "top",
+      "subcategory": "tshirt",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "cotton",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 4,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Small logo."
+  },
+  {
+    "id": "301",
+    "name": "Gant Polo",
+    "brand": "Gant",
+    "tags": {
+      "category": "top",
+      "subcategory": "polo",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 7,
+      "seasons": [
+        "summer",
+        "transition"
+      ],
+      "temp_min_c": 14,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": [
+        "preppy",
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "The 'Country Club' look."
+  },
+  {
+    "id": "302",
+    "name": "Gap Polo",
+    "brand": "Gap",
+    "tags": {
+      "category": "top",
+      "subcategory": "polo",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 6,
+      "seasons": [
+        "summer",
+        "transition"
+      ],
+      "temp_min_c": 14,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "303",
+    "name": "American Eagle Polo",
+    "brand": "American Eagle",
+    "tags": {
+      "category": "top",
+      "subcategory": "polo",
+      "color_hex": "#F4F1EA",
+      "color_name": "white",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "short",
+      "formality": 5,
+      "seasons": [
+        "summer",
+        "transition"
+      ],
+      "temp_min_c": 14,
+      "temp_max_c": 40,
+      "modesty_flags": [
+        "short_sleeve"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Basic cut."
+  },
+  {
+    "id": "901",
+    "name": "Striped Sweater",
+    "brand": null,
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#EFE6D2",
+      "color_name": "cream",
+      "secondary_color_hex": null,
+      "pattern": "stripes",
+      "material": "wool",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 5,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "preppy"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "902",
+    "name": "Textured Sweater",
+    "brand": null,
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#1F2A44",
+      "color_name": "navy",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "wool",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 6,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "903",
+    "name": "Blue Sweater",
+    "brand": null,
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#3B5B8C",
+      "color_name": "blue",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "wool",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 5,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "904",
+    "name": "V-Neck Sweater",
+    "brand": null,
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "wool",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 6,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Perfect over button-downs."
+  },
+  {
+    "id": "905",
+    "name": "Basic Sweater",
+    "brand": null,
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "wool",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 5,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "906",
+    "name": "Quarter-Zip Sweater",
+    "brand": null,
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#D4A827",
+      "color_name": "yellow",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "wool",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 5,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "preppy",
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "907",
+    "name": "Quarter-Zip Sweater",
+    "brand": null,
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "wool",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 5,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "preppy",
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "908",
+    "name": "Quarter-Zip Sweater",
+    "brand": null,
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "wool",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 5,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "preppy",
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "909",
+    "name": "Quarter-Zip Sweater",
+    "brand": null,
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#6E1F2B",
+      "color_name": "burgundy",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "wool",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 6,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Excellent sophisticated color."
+  },
+  {
+    "id": "910",
+    "name": "Zara V-Neck",
+    "brand": "Zara",
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#6B6B3A",
+      "color_name": "olive",
+      "secondary_color_hex": null,
+      "pattern": "denim",
+      "material": "denim",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 6,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Great color - pairs well with denim."
+  },
+  {
+    "id": "911",
+    "name": "Striped Sweater",
+    "brand": null,
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#3B5B8C",
+      "color_name": "blue",
+      "secondary_color_hex": null,
+      "pattern": "stripes",
+      "material": "wool",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 5,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Classic style."
+  },
+  {
+    "id": "912",
+    "name": "Zara Quarter-Zip",
+    "brand": "Zara",
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "wool",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 6,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Elegant knit."
+  },
+  {
+    "id": "913",
+    "name": "Fleece Quarter-Zip",
+    "brand": null,
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#D2691E",
+      "color_name": "orange",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "synthetic",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 2,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "outdoor"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Bold color - for home/hiking."
+  },
+  {
+    "id": "914",
+    "name": "Nautica Quarter-Zip",
+    "brand": "Nautica",
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#4A6FA5",
+      "color_name": "blue",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "relaxed",
+      "sleeve": "long",
+      "formality": 3,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Relaxed vibe."
+  },
+  {
+    "id": "915",
+    "name": "Quechua Quarter-Zip",
+    "brand": "Quechua",
+    "tags": {
+      "category": "layer",
+      "subcategory": "knit",
+      "color_hex": "#3B5B8C",
+      "color_name": "blue",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 2,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "outdoor"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Sport style."
+  },
+  {
+    "id": "916",
+    "name": "Nike Yoga Jacket",
+    "brand": "Nike",
+    "tags": {
+      "category": "layer",
+      "subcategory": "sweatshirt",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "synthetic",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 2,
+      "seasons": [
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 26,
+      "modesty_flags": [],
+      "style_tags": [
+        "sport"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Comfortable fabric (Dri-Fit)."
+  },
+  {
+    "id": "1001",
+    "name": "Gant Hoodie",
+    "brand": "Gant",
+    "tags": {
+      "category": "layer",
+      "subcategory": "sweatshirt",
+      "color_hex": "#A3282E",
+      "color_name": "red",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 3,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "preppy"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Loud 'College Vibe'."
+  },
+  {
+    "id": "1002",
+    "name": "Reebok Hoodie",
+    "brand": "Reebok",
+    "tags": {
+      "category": "layer",
+      "subcategory": "sweatshirt",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 2,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "sport"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "For gym or home."
+  },
+  {
+    "id": "1003",
+    "name": "Nike Sweatshirt",
+    "brand": "Nike",
+    "tags": {
+      "category": "layer",
+      "subcategory": "sweatshirt",
+      "color_hex": "#D2691E",
+      "color_name": "orange",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 2,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "sport"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Vivid color pop."
+  },
+  {
+    "id": "1004",
+    "name": "Black Zip-Up Hoodie",
+    "brand": null,
+    "tags": {
+      "category": "layer",
+      "subcategory": "sweatshirt",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 3,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [
+        "open_front"
+      ],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Essential utility piece."
+  },
+  {
+    "id": "1005",
+    "name": "Gant Hoodie",
+    "brand": "Gant",
+    "tags": {
+      "category": "layer",
+      "subcategory": "sweatshirt",
+      "color_hex": "#1F2A44",
+      "color_name": "navy",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "long",
+      "formality": 3,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Classic logo hoodie."
+  },
+  {
+    "id": "601",
+    "name": "Kenneth Cole Coat",
+    "brand": "Kenneth Cole",
+    "tags": {
+      "category": "outerwear",
+      "subcategory": "coat",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 9,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual",
+        "formal"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Most formal item. Wear with suit/slacks."
+  },
+  {
+    "id": "602",
+    "name": "Columbia Coat",
+    "brand": "Columbia",
+    "tags": {
+      "category": "outerwear",
+      "subcategory": "coat",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 4,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Functional warmth."
+  },
+  {
+    "id": "603",
+    "name": "The North Face Jacket",
+    "brand": "The North Face",
+    "tags": {
+      "category": "outerwear",
+      "subcategory": "jacket",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 4,
+      "seasons": [
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 26,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Sporty and light."
+  },
+  {
+    "id": "604",
+    "name": "Columbia Sport Jacket",
+    "brand": "Columbia",
+    "tags": {
+      "category": "outerwear",
+      "subcategory": "jacket",
+      "color_hex": "#A3282E",
+      "color_name": "red",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 2,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "outdoor",
+        "sport"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "High visibility."
+  },
+  {
+    "id": "605",
+    "name": "Leather Jacket",
+    "brand": null,
+    "tags": {
+      "category": "outerwear",
+      "subcategory": "jacket",
+      "color_hex": "#6B4A2B",
+      "color_name": "brown",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "leather",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 7,
+      "seasons": [
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 26,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual",
+        "streetwear"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Bad Boy' classic - upgrades a white tee."
+  },
+  {
+    "id": "801",
+    "name": "The North Face Beanie",
+    "brand": "The North Face",
+    "tags": {
+      "category": "accessory",
+      "subcategory": "hat",
+      "color_hex": "#8A8780",
+      "color_name": "grey",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 2,
+      "seasons": [
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 19,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": null
+  },
+  {
+    "id": "1201",
+    "name": "Timberland Belt",
+    "brand": "Timberland",
+    "tags": {
+      "category": "accessory",
+      "subcategory": "belt",
+      "color_hex": "#6B4A2B",
+      "color_name": "brown",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 8,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual",
+        "formal"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Essential. Match belt color to shoes."
+  },
+  {
+    "id": "1202",
+    "name": "Tushi Belt",
+    "brand": "Tushi",
+    "tags": {
+      "category": "accessory",
+      "subcategory": "belt",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 3,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "outdoor"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Casual/Hiking usage."
+  },
+  {
+    "id": "1203",
+    "name": "Jack & Jones Belt",
+    "brand": "Jack & Jones",
+    "tags": {
+      "category": "accessory",
+      "subcategory": "belt",
+      "color_hex": "#6B4A2B",
+      "color_name": "brown",
+      "secondary_color_hex": null,
+      "pattern": "denim",
+      "material": "denim",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 5,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Matte finish. Great with jeans/chinos."
+  },
+  {
+    "id": "1204",
+    "name": "Kenneth Cole Belt",
+    "brand": "Kenneth Cole",
+    "tags": {
+      "category": "accessory",
+      "subcategory": "belt",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 9,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "smart_casual",
+        "formal"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Reversible. Use for suits and dress pants."
+  },
+  {
+    "id": "1301",
+    "name": "Casio G-Shock",
+    "brand": "Casio",
+    "tags": {
+      "category": "accessory",
+      "subcategory": "watch",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 2,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": [
+        "outdoor",
+        "sport"
+      ]
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "Digital, rugged. Perfect for reserve duty/gym."
+  },
+  {
+    "id": "1302",
+    "name": "Swatch Watch",
+    "brand": "Swatch",
+    "tags": {
+      "category": "accessory",
+      "subcategory": "watch",
+      "color_hex": "#1B1A17",
+      "color_name": "black",
+      "secondary_color_hex": null,
+      "pattern": "solid",
+      "material": "unknown",
+      "fit": "regular",
+      "sleeve": "na",
+      "formality": 4,
+      "seasons": [
+        "summer",
+        "transition",
+        "winter"
+      ],
+      "temp_min_c": 5,
+      "temp_max_c": 40,
+      "modesty_flags": [],
+      "style_tags": []
+    },
+    "status": "active",
+    "availability": "home",
+    "source": "sheet",
+    "price": null,
+    "currency": null,
+    "purchased_at": null,
+    "cutout_path": null,
+    "notes": "See-through dial. Fun casual accessory."
+  }
+]
