@@ -1,0 +1,38 @@
+# Supabase CLI config. Project ref is set with `supabase link --project-ref <ref>`.
+project_id = "fit-check"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+
+[db]
+port = 54322
+major_version = 15
+
+[auth]
+enabled = true
+site_url = "http://localhost:8081"
+additional_redirect_urls = ["exp://localhost:8081", "fitcheck://auth"]
+
+[auth.external.google]
+enabled = true
+client_id = "env(GOOGLE_OAUTH_CLIENT_ID)"
+secret = "env(GOOGLE_OAUTH_CLIENT_SECRET)"
+
+[storage]
+enabled = true
+file_size_limit = "20MiB"
+
+[functions.intake-separate]
+verify_jwt = true
+[functions.intake-cutout]
+verify_jwt = true
+[functions.intake-tag]
+verify_jwt = true
+[functions.generate-daily]
+verify_jwt = false   # invoked by pg_cron with the service role, not by the app
+[functions.precheck]
+verify_jwt = true
+[functions.import-sheet]
+verify_jwt = true

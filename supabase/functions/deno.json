@@ -1,0 +1,8 @@
+{
+  "imports": {
+    "@fit-check/schema": "../../packages/schema/src/index.ts",
+    "@fit-check/engine": "../../packages/engine/src/index.ts",
+    "zod": "npm:zod@3.23.8",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2"
+  }
+}

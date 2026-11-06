@@ -1,0 +1,24 @@
+{
+  "app": {
+    "name": "Fit Check"
+  },
+  "today": {
+    "title": "היום",
+    "empty": "עוד אין הצעה להיום",
+    "wearing": "לובש",
+    "swap": "החלף פריט",
+    "warmer": "יותר חם",
+    "cooler": "יותר קר",
+    "dressier": "יותר רשמי",
+    "casual": "פחות רשמי",
+    "skip": "דלג"
+  },
+  "wardrobe": {
+    "title": "ארון",
+    "empty": "הארון ריק. צלם כמה בגדים כדי להתחיל."
+  },
+  "common": {
+    "loading": "טוען",
+    "retry": "נסה שוב"
+  }
+}

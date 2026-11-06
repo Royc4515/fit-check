@@ -1,0 +1,24 @@
+{
+  "app": {
+    "name": "Fit Check"
+  },
+  "today": {
+    "title": "Today",
+    "empty": "No outfit for today yet",
+    "wearing": "Wearing it",
+    "swap": "Swap an item",
+    "warmer": "Warmer",
+    "cooler": "Cooler",
+    "dressier": "Dressier",
+    "casual": "More casual",
+    "skip": "Skip"
+  },
+  "wardrobe": {
+    "title": "Wardrobe",
+    "empty": "Your wardrobe is empty. Photograph a few garments to start."
+  },
+  "common": {
+    "loading": "Loading",
+    "retry": "Retry"
+  }
+}
