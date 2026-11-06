@@ -51,16 +51,21 @@ export function hardFilter(items: Item[], req: StylingRequest): Record<Slot, Ite
   const out: Record<Slot, Item[]> = { top: [], bottom: [], shoes: [], layer: [] };
   const needsLayer = req.weather.temp_min_c < LAYER_THRESHOLD_C;
 
+  const [lo, hi] = req.context.formality_range;
+
   for (const item of items) {
-    if (item.status !== "active" || item.availability !== "home") continue;
+    // A `virtual` item (pre-purchase check, PRD 4.5) is only admitted when it is the anchor;
+    // otherwise virtual items would leak into the daily outfit.
+    const isVirtualAnchor = item.status === "virtual" && item.id === req.anchor_item_id;
+    if ((item.status !== "active" && !isVirtualAnchor) || item.availability !== "home") continue;
     const slot = slotOf(item);
     if (!slot) continue;
     if (slot === "layer" && !needsLayer) continue;
     if (!passesWeather(item, req)) continue;
-    // Layers are judged by the context's top rule for formality only, not by subcategory
-    // whitelists, otherwise shabbat (button_down only) would forbid a sweater over it.
+    // Layers are judged on formality only, with one point of slack on both ends, not by
+    // subcategory whitelists; otherwise shabbat (button_down only) would forbid a sweater over it.
     if (slot === "layer") {
-      if (!passesFormality(item, req) && item.tags.formality < req.context.formality_range[0] - 1) continue;
+      if (item.tags.formality < lo - 1 || item.tags.formality > hi + 1) continue;
     } else {
       if (!passesFormality(item, req)) continue;
       const rule = req.context[slot];

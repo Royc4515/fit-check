@@ -1,6 +1,6 @@
 import type { CandidateOutfit, Item, Slot, StylingRequest } from "@fit-check/schema";
 import { PER_SLOT_LIMIT } from "./config";
-import { hardFilter } from "./filters";
+import { hardFilter, slotOf } from "./filters";
 import { scoreOutfit, type PairWeights } from "./scoring";
 
 /**
@@ -14,7 +14,9 @@ import { scoreOutfit, type PairWeights } from "./scoring";
 function lastWornIndex(item: Item, req: StylingRequest): number {
   // recent_wears is most-recent-first; a lower index means worn more recently.
   const idx = req.recent_wears.findIndex((w) => w.item_ids.includes(item.id));
-  return idx === -1 ? Number.POSITIVE_INFINITY : idx;
+  // don't touch / a finite sentinel, not Infinity: Infinity - Infinity is NaN, which made the
+  // sort comparator skip the id tiebreak for every never-worn pair and leak DB row order into results.
+  return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
 }
 
 function preRank(items: Item[], req: StylingRequest): Item[] {
@@ -40,13 +42,16 @@ export function generateCandidates(items: Item[], req: StylingRequest, weights: 
   let tops = preRank(bySlot.top, req);
   if (req.anchor_item_id) {
     const anchor = items.find((i) => i.id === req.anchor_item_id);
-    if (anchor) {
-      // The anchor replaces its whole slot so every candidate includes it.
-      const slot = anchor.tags.category as Slot;
+    // slotOf returns null for outerwear/accessories; an anchor there is ignored rather than
+    // silently dropped from every candidate.
+    const slot = anchor ? slotOf(anchor) : null;
+    if (anchor && slot) {
+      // The anchor replaces its whole slot so every candidate includes it, even if the hard
+      // filter would have cut it: "build around this shirt" is an explicit override.
       if (slot === "top") tops = [anchor];
       else if (slot === "bottom") bySlot.bottom = [anchor];
       else if (slot === "shoes") bySlot.shoes = [anchor];
-      else if (slot === "layer") bySlot.layer = [anchor];
+      else if (slot === "layer" && bySlot.layer.length > 0) bySlot.layer = [anchor];
     }
   }
   const bottoms = preRank(bySlot.bottom, req);

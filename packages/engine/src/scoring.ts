@@ -26,9 +26,13 @@ function hexToHsl(hex: string): { h: number; s: number; l: number } {
   return { h, s, l };
 }
 
-function isNeutral(hex: string): boolean {
-  const { s, l } = hexToHsl(hex);
-  // Low saturation (greys, navy-ish darks, creams) or very dark/very light reads as neutral.
+const NEUTRAL_NAMES: ReadonlySet<Item["tags"]["color_name"]> = new Set(["navy", "white", "black", "grey", "beige", "brown", "cream"]);
+
+function isNeutral(item: Item): boolean {
+  // Menswear neutrals are a known list, not a saturation threshold: navy (#1F2A44) has
+  // saturation 0.37 and would otherwise count as "blue" and clash with greens and reds.
+  if (NEUTRAL_NAMES.has(item.tags.color_name)) return true;
+  const { s, l } = hexToHsl(item.tags.color_hex);
   return s < 0.25 || l < 0.15 || l > 0.9;
 }
 
@@ -37,19 +41,18 @@ function isNeutral(hex: string): boolean {
  * (analogous or complementary are fine, 90-degree clashes are not).
  */
 export function colorHarmony(items: Item[]): number {
-  const hexes = items.map((i) => i.tags.color_hex);
   let total = 0;
   let pairs = 0;
-  for (let i = 0; i < hexes.length; i++) {
-    for (let j = i + 1; j < hexes.length; j++) {
+  for (let i = 0; i < items.length; i++) {
+    for (let j = i + 1; j < items.length; j++) {
       pairs++;
-      const a = hexes[i]!;
-      const b = hexes[j]!;
+      const a = items[i]!;
+      const b = items[j]!;
       if (isNeutral(a) || isNeutral(b)) {
         total += 1;
         continue;
       }
-      const dh = Math.abs(hexToHsl(a).h - hexToHsl(b).h);
+      const dh = Math.abs(hexToHsl(a.tags.color_hex).h - hexToHsl(b.tags.color_hex).h);
       const dist = Math.min(dh, 360 - dh);
       // analogous (< 40) = 1, complementary (> 150) = 0.8, clash around 90 = 0.3
       total += dist < 40 ? 1 : dist > 150 ? 0.8 : dist < 70 ? 0.6 : 0.3;
@@ -99,7 +102,10 @@ export function recencyPenalty(items: Item[], req: StylingRequest): number {
   return penalty;
 }
 
-/** Mean learned pair weight over all pairs in the outfit, 0 when nothing is known. */
+/**
+ * Mean learned pair weight over all pairs in the outfit, in -1..1. Negative means the
+ * user disliked these together; the sign must survive, so this is NOT clamped to 0.
+ */
 export function pairScore(items: Item[], weights: PairWeights): number {
   let total = 0;
   let pairs = 0;
@@ -109,7 +115,7 @@ export function pairScore(items: Item[], weights: PairWeights): number {
       total += weights.get(pairKey(items[i]!.id, items[j]!.id)) ?? 0;
     }
   }
-  return pairs === 0 ? 0 : Math.max(0, Math.min(1, total / pairs));
+  return pairs === 0 ? 0 : Math.max(-1, Math.min(1, total / pairs));
 }
 
 export function scoreOutfit(items: Item[], req: StylingRequest, weights: PairWeights): CandidateOutfit["breakdown"] & { score: number } {
@@ -120,11 +126,13 @@ export function scoreOutfit(items: Item[], req: StylingRequest, weights: PairWei
     recency_penalty: recencyPenalty(items, req),
     pair_weight: pairScore(items, weights),
   };
+  // pair_weight is -1..1; map to 0..1 so the weighted sum stays in range, and a disliked
+  // pair (negative) pulls below the 0.5 "unknown" baseline instead of being floored to 0.
   const weighted =
     breakdown.color_harmony * SCORING_WEIGHTS.color_harmony +
     breakdown.formality_consistency * SCORING_WEIGHTS.formality_consistency +
     breakdown.context_fit * SCORING_WEIGHTS.context_fit +
-    breakdown.pair_weight * SCORING_WEIGHTS.pair_weight;
+    ((breakdown.pair_weight + 1) / 2) * SCORING_WEIGHTS.pair_weight;
   // Penalty is applied after weighting so a repeated outfit drops out regardless of how good it is.
   const score = Math.max(0, Math.min(1, weighted + breakdown.recency_penalty * 0.25));
   return { ...breakdown, score };

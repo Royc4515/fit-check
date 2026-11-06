@@ -5,7 +5,7 @@ import pairWeightsJson from "../__fixtures__/pair-weights.json";
 import { DEFAULT_CONTEXT_RULES } from "./config";
 import { generateCandidates } from "./candidates";
 import { hardFilter } from "./filters";
-import { pairKey, recencyPenalty, type PairWeights } from "./scoring";
+import { colorHarmony, pairKey, recencyPenalty, type PairWeights } from "./scoring";
 
 const wardrobe: Item[] = (wardrobeJson as unknown[]).map((row) => ItemSchema.parse(row));
 const weights: PairWeights = new Map(
@@ -102,6 +102,54 @@ describe("candidates", () => {
     const out = generateCandidates(wardrobe, request({ anchor_item_id: "401" }), weights);
     expect(out.length).toBeGreaterThan(0);
     expect(out.every((c) => c.items.some((i) => i.id === "401"))).toBe(true);
+  });
+});
+
+describe("review fixes", () => {
+  it("never-worn items are ordered by id, not by input order", () => {
+    const req = request();
+    const shuffled = [...wardrobe].reverse();
+    expect(generateCandidates(shuffled, req, weights)).toEqual(generateCandidates(wardrobe, req, weights));
+  });
+
+  it("a virtual item is admitted only as the anchor", () => {
+    const virtual: Item = {
+      ...wardrobe.find((i) => i.id === "401")!,
+      id: "virtual-1",
+      name: "Virtual shirt",
+      status: "virtual",
+    };
+    const pool = [...wardrobe, virtual];
+    const asAnchor = generateCandidates(pool, request({ anchor_item_id: "virtual-1" }), weights);
+    expect(asAnchor.length).toBeGreaterThan(0);
+    expect(asAnchor.every((c) => c.items.some((i) => i.id === "virtual-1"))).toBe(true);
+    const daily = generateCandidates(pool, request(), weights);
+    expect(daily.some((c) => c.items.some((i) => i.id === "virtual-1"))).toBe(false);
+  });
+
+  it("a disliked pair scores below the same outfit with no history", () => {
+    const req = request();
+    const base = generateCandidates(wardrobe, req, weights);
+    const first = base[0]!;
+    const [a, b] = first.items.filter((i) => i.slot === "top" || i.slot === "bottom").map((i) => i.id) as [string, string];
+    const disliked: PairWeights = new Map(weights);
+    disliked.set(pairKey(a, b), -0.8);
+    const again = generateCandidates(wardrobe, req, disliked);
+    const same = again.find((c) => c.outfit_id === first.outfit_id);
+    expect(same === undefined || same.score < first.score).toBe(true);
+  });
+
+  it("an anchor on an accessory is ignored, not fatal", () => {
+    const out = generateCandidates(wardrobe, request({ anchor_item_id: "1201" }), weights);
+    expect(out.length).toBeGreaterThan(0);
+  });
+
+  it("navy counts as neutral for color harmony", () => {
+    const navy = wardrobe.find((i) => i.tags.color_name === "navy")!;
+    const red = wardrobe.find((i) => i.tags.color_name === "red")!;
+    const green = wardrobe.find((i) => i.tags.color_name === "green")!;
+    expect(colorHarmony([navy, red])).toBe(1);
+    expect(colorHarmony([red, green])).toBeLessThan(1);
   });
 });
 
