@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ScrollView, Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { TextLink } from "../components/TextLink";
 import { ActionSheet } from "../features/today/ActionSheet";
 import { getMockOutfit, MOCK_HEBREW_DATE, MOCK_TODAY, MOCK_WEATHER } from "../features/today/mock";
 import { OutfitComposition } from "../features/today/OutfitComposition";
@@ -49,7 +50,10 @@ export default function Index() {
           }}
         >
           <Animated.View style={enterStyle}>
-            <Text className="font-display text-display-xl text-ink">{t("today.title")}</Text>
+            <View className="flex-row items-baseline justify-between">
+              <Text className="font-display text-display-xl text-ink">{t("today.title")}</Text>
+              <TextLink href="/wardrobe" label={t("nav.wardrobe")} />
+            </View>
             <Text className="mt-2 font-body text-body text-ink-soft">{`${hebrew} · ${gregorian}`}</Text>
 
             {outfit ? (

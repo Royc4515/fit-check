@@ -21,10 +21,53 @@
   },
   "wardrobe": {
     "title": "ארון",
-    "empty": "הארון ריק. צלם כמה בגדים כדי להתחיל."
+    "empty": "הארון ריק. צלם כמה בגדים כדי להתחיל.",
+    "all": "הכל",
+    "noMatch": "אין פריטים שמתאימים לסינון",
+    "category": {
+      "top": "חולצות",
+      "bottom": "מכנסיים",
+      "shoes": "נעליים",
+      "layer": "שכבות",
+      "outerwear": "מעילים",
+      "accessory": "אביזרים"
+    },
+    "season": {
+      "summer": "קיץ",
+      "transition": "מעבר",
+      "winter": "חורף"
+    },
+    "availability": {
+      "home": "בבית",
+      "laundry": "בכביסה",
+      "away": "במילואים",
+      "lent": "מושאל"
+    },
+    "color": {
+      "navy": "נייבי",
+      "white": "לבן",
+      "black": "שחור",
+      "grey": "אפור",
+      "beige": "בז'",
+      "brown": "חום",
+      "olive": "זית",
+      "burgundy": "בורדו",
+      "blue": "כחול",
+      "light_blue": "תכלת",
+      "red": "אדום",
+      "green": "ירוק",
+      "orange": "כתום",
+      "yellow": "צהוב",
+      "pink": "ורוד",
+      "cream": "שמנת"
+    }
   },
   "common": {
     "loading": "טוען",
     "retry": "נסה שוב"
+  },
+  "nav": {
+    "today": "היום",
+    "wardrobe": "ארון"
   }
 }

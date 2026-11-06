@@ -8,7 +8,7 @@ export const motion = {
   stateMs: 180,
   layoutMs: 280,
   screenMs: 420,
-  spring: { damping: 28, stiffness: 320, mass: 1 },
+  spring: { damping: 36, stiffness: 320, mass: 1 },
 } as const;
 
 /** DESIGN.md sections 2-3. Only numbers the spec states; everything else derives from these. */
