@@ -11,7 +11,13 @@
     "cooler": "Cooler",
     "dressier": "Dressier",
     "casual": "More casual",
-    "skip": "Skip"
+    "skip": "Skip",
+    "weather": "{{day}} · {{range}} · {{rain}} chance of rain",
+    "context": {
+      "weekday": "Weekday"
+    },
+    "explanationMock": "A clean weekday outfit for 16 to 24 degrees. Formality is even across the pieces, and none of them was worn in the last few days.",
+    "actions": "Actions"
   },
   "wardrobe": {
     "title": "Wardrobe",
