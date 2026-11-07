@@ -35,7 +35,18 @@ export default function RootLayout() {
             headerShown: false,
             contentStyle: { backgroundColor: colors["ivory"] },
           }}
-        />
+        >
+          {/* don't touch / transparent + no native animation: the item screen runs its own shared-element
+              flight and fades its page in over the wardrobe. A default push would slide over that flight. */}
+          <Stack.Screen
+            name="item/[id]"
+            options={{
+              presentation: "transparentModal",
+              animation: "none",
+              contentStyle: { backgroundColor: "transparent" },
+            }}
+          />
+        </Stack>
       </View>
     </GestureHandlerRootView>
   );

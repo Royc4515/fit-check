@@ -34,3 +34,17 @@
 - Screenshots (web renders again, not emulator): `design/screens/2026-11-06-wardrobe*.png`; Today re-shot for the nav link.
 - Not done, on purpose: formality filter (needs a range control, not a chip), item screen and the shared-element transition, virtualization (grid renders all ~108 cells; must become a FlatList once images arrive), tests for `filters.ts` (the app has no test runner yet).
 - Note: the fixture has 108 items, PRD says 109.
+
+## 2026-11-07 (session 1: Item screen + shared-element transition)
+
+- Item screen at `apps/mobile/src/app/item/[id].tsx` (+ `features/item/`): hero on `--ivory-deep` at 60% of the screen height, name in display-xl, tags as one running line (not chips), formality and temperature range in Plex Mono, and "goes with": up to 3 engine outfits built around the item (`getMockOutfitsWith`, anchored, weather = the item's own range, filtered to outfits that really contain it).
+- Shared-element transition (DESIGN.md section 4, animation 1): the picture flies from its grid cell to the hero slot in 420ms ease-out, the ivory page fades in over the wardrobe (180ms) and the text follows 100ms later; back retraces the flight to the cell's current rect. Measured per frame in Chromium: starts on the cell rect `[276,654,116x155]`, lands on `[0,0,412x549]` at ~415ms, returns to the cell on close.
+- **Deviation from CLAUDE.md ("Motion on web behind a platform split"):** one code path on Reanimated shared values instead of `sharedTransitionTag` + Motion. `sharedTransitionTag` sits behind the `ENABLE_SHARED_ELEMENT_TRANSITIONS` static flag (native rebuild) and does not exist on web; Motion is not installed. Say if you want the two-stack version.
+- Things that bit, relevant to later animation work:
+  - Animating `left/top/width/height` never reached the DOM on web (only opacity/transform did), so the hero is laid out once at its final rect and animated with transform + opacity only (also cheaper on native).
+  - The item route mounts more than once per push, so a consume-once origin was taken by an instance that was then replaced and the survivor never flew. The origin is now keyed by item id, read without consuming, and expires after 3s (`features/item/transition.ts`).
+  - Callback refs: a cell needs one ref feeding both its local measuring and the registry the item screen uses to fly back.
+  - `ViewProps` has no `dir` in RN's types; the root layout spreads a typed object (see session notes above).
+- Verified: web (Chromium, he/en/desktop). **Not verified:** native Reanimated behaviour (measureInWindow offsets under edge-to-edge Android, the transparentModal route on a device), hardware back on Android (handler added, untested), and deep links: a static web export has no `/item/<id>` file, so a direct URL needs a rewrite to `index.html` on the Vercel project (not set up).
+- Not done on purpose: wear history (needs `wears`), edit, availability change, the item's notes (the sheet notes are raw English like "match with belt 1201"), and a "not found" screenshot.
+- Screenshots: `design/screens/2026-11-07-item*.png`; `-item-transition.png` is six frames of the flight from a screen recording.
