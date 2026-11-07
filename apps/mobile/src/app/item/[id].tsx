@@ -1,3 +1,5 @@
+import type { PairWeights } from "@fit-check/engine";
+import type { Item } from "@fit-check/schema";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,7 +16,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import { ItemDetails } from "../../features/item/ItemDetails";
 import { clearOrigin, getOrigin, measureCell, type Rect } from "../../features/item/transition";
-import { MOCK_WARDROBE } from "../../mock/wardrobe";
+import { WardrobeGate } from "../../components/WardrobeGate";
+import { useWardrobe } from "../../data/WardrobeProvider";
 import { colors, layout, motion } from "../../theme/tokens";
 
 const HERO_SCREEN_FRACTION = 0.6;
@@ -30,6 +33,12 @@ const ease = Easing.bezier(...motion.easeOut);
  * native animation, so the wardrobe stays visible underneath until the background fades in.
  */
 export default function ItemScreen() {
+  const wardrobe = useWardrobe();
+  if (wardrobe.status !== "ready") return <WardrobeGate state={wardrobe} />;
+  return <ItemContent items={wardrobe.items} pairWeights={wardrobe.pairWeights} />;
+}
+
+function ItemContent({ items, pairWeights }: { items: Item[]; pairWeights: PairWeights }) {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -37,7 +46,7 @@ export default function ItemScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { width: windowW, height: windowH } = useWindowDimensions();
 
-  const item = useMemo(() => MOCK_WARDROBE.find((i) => i.id === id), [id]);
+  const item = useMemo(() => items.find((i) => i.id === id), [items, id]);
 
   const contentW = Math.min(windowW, layout.maxContentWidth);
   const heroH = Math.round(windowH * HERO_SCREEN_FRACTION);
@@ -147,7 +156,7 @@ export default function ItemScreen() {
           <View style={{ height: heroH }} />
           <Animated.View style={[{ paddingHorizontal: layout.gutter, paddingTop: 32 }, contentStyle]}>
             {item ? (
-              <ItemDetails item={item} />
+              <ItemDetails item={item} items={items} pairWeights={pairWeights} />
             ) : (
               <Text className="font-body text-body text-ink-soft">{t("item.notFound")}</Text>
             )}

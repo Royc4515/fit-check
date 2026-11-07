@@ -1,3 +1,4 @@
+import type { Item } from "@fit-check/schema";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, Text, View, useWindowDimensions } from "react-native";
@@ -6,22 +7,29 @@ import { TextLink } from "../components/TextLink";
 import { FilterChips } from "../features/wardrobe/FilterChips";
 import { applyFilters, deriveFacets, type Facet, type Selection } from "../features/wardrobe/filters";
 import { WardrobeGrid } from "../features/wardrobe/WardrobeGrid";
-import { MOCK_WARDROBE } from "../mock/wardrobe";
+import { WardrobeGate } from "../components/WardrobeGate";
+import { useWardrobe } from "../data/WardrobeProvider";
 import { layout } from "../theme/tokens";
 
 // DESIGN.md section 3: web is the same screen, capped at 1120 with five columns.
 const WIDE_BREAKPOINT = 900;
 const MAX_WIDTH = 1120;
 
-/** "Wardrobe" (DESIGN.md section 3). Mock data; filters are local state, which is fine: only data changes, animation is on the UI thread. */
+/** "Wardrobe" (DESIGN.md section 3). Filters are local state, which is fine: only data changes, animation is on the UI thread. */
 export default function Wardrobe() {
+  const wardrobe = useWardrobe();
+  if (wardrobe.status !== "ready") return <WardrobeGate state={wardrobe} />;
+  return <WardrobeScreen all={wardrobe.items} />;
+}
+
+function WardrobeScreen({ all }: { all: Item[] }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [selection, setSelection] = useState<Selection>({});
 
-  const facets = useMemo(() => deriveFacets(MOCK_WARDROBE), []);
-  const visible = useMemo(() => applyFilters(MOCK_WARDROBE, selection), [selection]);
+  const facets = useMemo(() => deriveFacets(all), [all]);
+  const visible = useMemo(() => applyFilters(all, selection), [all, selection]);
   const columns = width >= WIDE_BREAKPOINT ? 5 : 3;
 
   const toggle = (facet: Facet, value: string) =>
