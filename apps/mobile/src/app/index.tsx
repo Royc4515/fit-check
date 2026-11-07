@@ -1,3 +1,5 @@
+import type { PairWeights } from "@fit-check/engine";
+import type { Item } from "@fit-check/schema";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, Text, View } from "react-native";
@@ -5,7 +7,10 @@ import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, w
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TextLink } from "../components/TextLink";
 import { ActionSheet } from "../features/today/ActionSheet";
-import { getMockOutfit, MOCK_HEBREW_DATE, MOCK_TODAY, MOCK_WEATHER } from "../features/today/mock";
+import { WardrobeGate } from "../components/WardrobeGate";
+import { useWardrobe } from "../data/WardrobeProvider";
+import { MOCK_HEBREW_DATE, MOCK_TODAY, MOCK_WEATHER } from "../features/today/mock";
+import { getOutfit } from "../features/today/outfit";
 import { OutfitComposition } from "../features/today/OutfitComposition";
 import { layout, motion } from "../theme/tokens";
 
@@ -13,15 +18,21 @@ import { layout, motion } from "../theme/tokens";
 const ltr = (s: string) => `⁦${s}⁩`;
 
 /**
- * "Today" (DESIGN.md section 3). Session 1: mock data from the engine, no network.
+ * "Today" (DESIGN.md section 3). The wardrobe is real (Supabase); date, weather and explanation are still mock (features/today/mock.ts).
  * Entrance is the one allowed generic motion (opacity + translateY 8, 180ms ease-out), on the UI thread.
  */
 export default function Index() {
+  const wardrobe = useWardrobe();
+  if (wardrobe.status !== "ready") return <WardrobeGate state={wardrobe} />;
+  return <Today items={wardrobe.items} pairWeights={wardrobe.pairWeights} />;
+}
+
+function Today({ items, pairWeights }: { items: Item[]; pairWeights: PairWeights }) {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
 
-  const outfit = useMemo(() => getMockOutfit(), []);
+  const outfit = useMemo(() => getOutfit(items, pairWeights), [items, pairWeights]);
 
   const locale = i18n.language === "en" ? "en" : "he";
   const gregorian = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }).format(

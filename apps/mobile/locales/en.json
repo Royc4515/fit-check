@@ -64,7 +64,8 @@
   },
   "common": {
     "loading": "Loading",
-    "retry": "Retry"
+    "retry": "Retry",
+    "loadFailed": "Could not load your wardrobe"
   },
   "nav": {
     "today": "Today",
@@ -115,5 +116,10 @@
       "mixed": "Mixed",
       "unknown": "Unknown"
     }
+  },
+  "auth": {
+    "prompt": "Sign in to see your wardrobe",
+    "google": "Continue with Google",
+    "failed": "Sign-in failed. Try again."
   }
 }

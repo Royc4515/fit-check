@@ -1,7 +1,8 @@
 import type { Item } from "@fit-check/schema";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
-import { getMockOutfitsWith } from "../today/mock";
+import type { PairWeights } from "@fit-check/engine";
+import { getOutfitsWith } from "../today/outfit";
 
 /** Wraps numbers so they stay LTR inside Hebrew text (DESIGN.md section 2: numbers always LTR). */
 const ltr = (s: string) => `⁦${s}⁩`;
@@ -24,9 +25,9 @@ function tagLine(item: Item, t: (key: string) => string): string {
 }
 
 /** Everything under the hero: name, tags, numbers, and three outfits from the engine that contain this item. */
-export function ItemDetails({ item }: { item: Item }) {
+export function ItemDetails({ item, items, pairWeights }: { item: Item; items: Item[]; pairWeights: PairWeights }) {
   const { t } = useTranslation();
-  const outfits = getMockOutfitsWith(item.id, 3);
+  const outfits = getOutfitsWith(items, pairWeights, item.id, 3);
 
   return (
     <View>
