@@ -1,8 +1,11 @@
 import type { Item } from "@fit-check/schema";
+import { useRouter } from "expo-router";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Animated, { Easing, FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { motion } from "../../theme/tokens";
+import { measureNode, registerCell, setOrigin, type ViewNode } from "../item/transition";
 import { groupByCategory } from "./filters";
 
 // DESIGN.md section 4, animation 2: items glide to their new place in 280ms ease-out when the list changes.
@@ -14,6 +17,17 @@ const exiting = FadeOut.duration(motion.stateMs);
 const HALF_GAP = 6;
 
 function Cell({ item, columns }: { item: Item; columns: number }) {
+  const router = useRouter();
+  const image = useRef<ViewNode | null>(null);
+
+  const open = async () => {
+    // Measure first, push second: the item screen needs the rect on its very first frame to start the flight
+    // from exactly where the thumbnail is. If measuring fails it just fades in, which is still correct.
+    const rect = await measureNode(image.current);
+    if (rect) setOrigin(item.id, rect);
+    router.push({ pathname: "/item/[id]", params: { id: item.id } });
+  };
+
   return (
     // don't touch / inline style, not className: NativeWind ignores className on Reanimated's Animated.View.
     <Animated.View
@@ -22,11 +36,23 @@ function Cell({ item, columns }: { item: Item; columns: number }) {
       exiting={exiting}
       style={{ width: `${100 / columns}%`, paddingHorizontal: HALF_GAP, paddingBottom: 12 }}
     >
-      {/* Same box a cutout will occupy, on ivory-deep; 2px radius because grid images are small. */}
-      <View className="rounded-sm bg-ivory-deep" style={{ width: "100%", aspectRatio: 3 / 4 }} />
-      <Text className="mt-2 font-body text-body-sm text-ink" numberOfLines={2}>
-        {item.name}
-      </Text>
+      <Pressable onPress={() => void open()} accessibilityRole="button" accessibilityLabel={item.name}>
+        {/* Same box a cutout will occupy, on ivory-deep; 2px radius because grid images are small. */}
+        <View
+          // don't touch / one callback ref feeds both the local ref (origin measuring on press) and the registry
+          // (target measuring when the item screen flies back). Attaching only one silently breaks the other.
+          ref={(node) => {
+            image.current = node;
+            registerCell(item.id, node);
+          }}
+          collapsable={false}
+          className="rounded-sm bg-ivory-deep"
+          style={{ width: "100%", aspectRatio: 3 / 4 }}
+        />
+        <Text className="mt-2 font-body text-body-sm text-ink" numberOfLines={2}>
+          {item.name}
+        </Text>
+      </Pressable>
     </Animated.View>
   );
 }

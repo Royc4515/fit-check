@@ -69,5 +69,51 @@
   "nav": {
     "today": "Today",
     "wardrobe": "Wardrobe"
+  },
+  "item": {
+    "back": "Wardrobe",
+    "notFound": "Item not found",
+    "goesWith": "Goes with",
+    "formality": "Formality {{value}} of 10",
+    "temperature": "Range {{range}}",
+    "subcategory": {
+      "button_down": "Button-down",
+      "tshirt": "T-shirt",
+      "polo": "Polo",
+      "knit": "Knit",
+      "sweatshirt": "Sweatshirt",
+      "jeans": "Jeans",
+      "chinos": "Chinos",
+      "trousers": "Trousers",
+      "shorts": "Shorts",
+      "sneakers": "Sneakers",
+      "boots": "Boots",
+      "dress_shoes": "Dress shoes",
+      "sandals": "Sandals",
+      "coat": "Coat",
+      "jacket": "Jacket",
+      "belt": "Belt",
+      "watch": "Watch",
+      "hat": "Hat"
+    },
+    "pattern": {
+      "solid": "Solid",
+      "stripes": "Stripes",
+      "check": "Check",
+      "print": "Print",
+      "melange": "Melange",
+      "denim": "Denim"
+    },
+    "material": {
+      "cotton": "Cotton",
+      "linen": "Linen",
+      "wool": "Wool",
+      "denim": "Denim",
+      "synthetic": "Synthetic",
+      "leather": "Leather",
+      "suede": "Suede",
+      "mixed": "Mixed",
+      "unknown": "Unknown"
+    }
   }
 }

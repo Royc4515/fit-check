@@ -22,18 +22,37 @@ const weights: PairWeights = new Map(
   ])
 );
 
-/**
- * The engine's top-ranked weekday outfit for the mock weather, or null when the filters leave nothing.
- * Null is a real state (empty wardrobe, extreme weather) and the screen renders the quiet empty text for it.
- */
-export function getMockOutfit(): CandidateOutfit | null {
-  const request = StylingRequestSchema.parse({
+function mockRequest(overrides: { anchor_item_id?: string; max_candidates?: number; weather?: { temp_min_c: number; temp_max_c: number; rain_probability: number } } = {}) {
+  return StylingRequestSchema.parse({
     today: MOCK_TODAY,
     context: DEFAULT_CONTEXT_RULES.weekday,
     weather: MOCK_WEATHER,
     recent_wears: [],
     anchor_item_id: null,
     max_candidates: 6,
+    ...overrides,
   });
-  return generateCandidates(MOCK_WARDROBE, request, weights)[0] ?? null;
+}
+
+/**
+ * The engine's top-ranked weekday outfit for the mock weather, or null when the filters leave nothing.
+ * Null is a real state (empty wardrobe, extreme weather) and the screen renders the quiet empty text for it.
+ */
+export function getMockOutfit(): CandidateOutfit | null {
+  return generateCandidates(MOCK_WARDROBE, mockRequest(), weights)[0] ?? null;
+}
+
+/**
+ * Up to `max` outfits built around one item, for the item screen's "goes with". Weather is set to the item's own
+ * range: asking "what goes with this coat" against today's 20 degrees would hide it from everything.
+ * Only outfits that really contain the anchor are returned, because the engine ignores anchors it has no slot
+ * for (accessories, outerwear) and would otherwise hand back unrelated outfits.
+ */
+export function getMockOutfitsWith(itemId: string, max = 3): CandidateOutfit[] {
+  const item = MOCK_WARDROBE.find((i) => i.id === itemId);
+  if (!item) return [];
+  const weather = { ...MOCK_WEATHER, temp_min_c: item.tags.temp_min_c, temp_max_c: item.tags.temp_max_c };
+  return generateCandidates(MOCK_WARDROBE, mockRequest({ anchor_item_id: itemId, max_candidates: max, weather }), weights)
+    .filter((c) => c.items.some((i) => i.id === itemId))
+    .slice(0, max);
 }
