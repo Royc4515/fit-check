@@ -1,5 +1,5 @@
 import type { PairWeights } from "@fit-check/engine";
-import type { Item } from "@fit-check/schema";
+import type { Availability, Item } from "@fit-check/schema";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,6 +19,7 @@ import { ItemDetails } from "../../features/item/ItemDetails";
 import { clearOrigin, getOrigin, measureCell, type Rect } from "../../features/item/transition";
 import { WardrobeGate } from "../../components/WardrobeGate";
 import { useWardrobe } from "../../data/WardrobeProvider";
+import { setAvailability } from "../../data/feedback";
 import { colors, layout, motion } from "../../theme/tokens";
 
 const HERO_SCREEN_FRACTION = 0.6;
@@ -37,10 +38,33 @@ export default function ItemScreen() {
   const wardrobe = useWardrobe();
   const { id } = useLocalSearchParams<{ id: string }>();
   if (wardrobe.status !== "ready") return <WardrobeGate state={wardrobe} />;
-  return <ItemContent id={id} items={wardrobe.items} pairWeights={wardrobe.pairWeights} />;
+  const { patch } = wardrobe;
+  /** Optimistic: the control moves at once; a failed write moves it back and rethrows so the screen can say so. */
+  const changeAvailability = async (itemId: string, next: Availability, prev: Availability) => {
+    const set = (a: Availability) => patch((d) => ({ ...d, items: d.items.map((i) => (i.id === itemId ? { ...i, availability: a } : i)) }));
+    set(next);
+    try {
+      // Back home from the laundry or from base means it was washed: its wear count starts over.
+      await setAvailability(itemId, next, { washed: next === "home" && (prev === "laundry" || prev === "away") });
+    } catch (error) {
+      set(prev);
+      throw error;
+    }
+  };
+  return <ItemContent id={id} items={wardrobe.items} pairWeights={wardrobe.pairWeights} onAvailability={changeAvailability} />;
 }
 
-export function ItemContent({ id, items, pairWeights }: { id: string | undefined; items: Item[]; pairWeights: PairWeights }) {
+export function ItemContent({
+  id,
+  items,
+  pairWeights,
+  onAvailability,
+}: {
+  id: string | undefined;
+  items: Item[];
+  pairWeights: PairWeights;
+  onAvailability?: (itemId: string, next: Availability, prev: Availability) => Promise<void>;
+}) {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -164,7 +188,7 @@ export function ItemContent({ id, items, pairWeights }: { id: string | undefined
           <View style={{ height: heroH }} />
           <Animated.View style={[{ paddingHorizontal: layout.gutter, paddingTop: 32 }, contentStyle]}>
             {item ? (
-              <ItemDetails item={item} items={items} pairWeights={pairWeights} />
+              <ItemDetails item={item} items={items} pairWeights={pairWeights} onAvailability={onAvailability} />
             ) : (
               <Text className="font-body text-body text-ink-soft">{t("item.notFound")}</Text>
             )}
