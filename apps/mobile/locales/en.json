@@ -240,7 +240,8 @@
       "bad_response": "Unexpected answer from the server.",
       "unknown": "Something went wrong. Try again.",
       "billing_required": "Improving needs billing in Google AI Studio. The free cutout is kept.",
-      "rate_limited": "Google is busy (free quota). Try again in a minute."
+      "rate_limited": "Google is busy (free quota). Try again in a minute.",
+      "monthly_limit": "Monthly limit for improving photos reached. The crop is kept; you can improve again next month."
     },
     "enhance": "Improve with AI",
     "enhancing": "Improving",

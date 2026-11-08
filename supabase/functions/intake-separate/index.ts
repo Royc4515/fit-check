@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { IntakeSeparateInputSchema } from "@fit-check/schema/intake.ts";
-import { detectGarments, enhanceGarment } from "../_shared/ai/gemini.ts";
-import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
+import { detectGarments, ENHANCE_MODEL, enhanceGarment } from "../_shared/ai/gemini.ts";
+import { countAiCalls, logAiCall, sumAiCost } from "../_shared/ai/log.ts";
 
 /**
  * intake-separate: finds the garments in a photo, and optionally redraws one (docs/PLAN.md stage C, steps 1-2).
@@ -24,6 +24,11 @@ import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
 const DAILY_DETECT_LIMIT = 60;
 /** Spend guard for the paid path: 20 redraws a day is at most about $0.70. */
 const DAILY_ENHANCE_LIMIT = 20;
+/**
+ * Hard monthly cap on redraws, in USD, below the $10 monthly Google Cloud credit from Google AI Pro (Roy: no real
+ * money). Counted across all users from ai_calls, because the credit belongs to the project, not to a user.
+ */
+const MONTHLY_ENHANCE_BUDGET_USD = 8;
 const MAX_BYTES = 8 * 1024 * 1024;
 
 const cors = {
@@ -91,6 +96,10 @@ async function detect(supabase: SupabaseClient, userId: string, path: string): P
 async function enhance(supabase: SupabaseClient, userId: string, cutoutPath: string, description: string): Promise<Response> {
   const mediaType = mediaOf(cutoutPath);
   if (!ownPath(userId, cutoutPath) || !mediaType || cutoutPath.includes("-enhanced")) return json(400, { ok: false, reason: "bad_input" });
+  const now = new Date();
+  const spent = await sumAiCost(ENHANCE_MODEL, new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)));
+  if (spent === null || spent >= MONTHLY_ENHANCE_BUDGET_USD) return json(200, { ok: false, reason: "monthly_limit" });
+
   const bytes = await download(supabase, "cutouts", cutoutPath);
   if (!bytes) return json(400, { ok: false, reason: "not_found" });
 

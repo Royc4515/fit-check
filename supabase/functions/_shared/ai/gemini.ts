@@ -151,8 +151,10 @@ export async function enhanceGarment(image: Uint8Array, mimeType: string, descri
     log: { ...base, latency_ms: Date.now() - started, ok: false, error: error.slice(0, 300), ...extra },
   });
 
-  const key = Deno.env.get("GEMINI_API_KEY");
-  if (!key) return fail("GEMINI_API_KEY is not set");
+  // don't touch / a separate key from a separate Google project (Roy, 2026-11-08): only that project has billing
+  // and the AI Pro credit, so detection keeps running on the free tier of the main project.
+  const key = Deno.env.get("GEMINI_IMAGE_API_KEY") ?? Deno.env.get("GEMINI_API_KEY");
+  if (!key) return fail("GEMINI_IMAGE_API_KEY is not set");
 
   let res: Response;
   try {
