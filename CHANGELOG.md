@@ -120,3 +120,8 @@
 - New building blocks: `components/editorial/{Reveal,DataStrip,SpecTable}.tsx`, `components/PressScale.tsx`.
 - Bugs found by looking: Hebrew mixed into Plex Mono again (weather line, formality line), now split into labels and mono numbers; digit-only values hugged the wrong edge in RTL because react-native-web renders text with dir="auto" (fixed by aligning the container, not the text).
 - Look at: `design/screens/2026-11-08-*-editorial*.png` (rendered from the real fixture with a sample showery day, not from a live session).
+
+## 2026-11-08 (Vercel deep links)
+
+- The web app is live at https://fit-check-app-xi.vercel.app (project `fit-check-app`, production from `main`). Verified: the sign-in cover renders in Hebrew and English, `/wardrobe` and `/location` load.
+- **Bug fixed:** deep links such as `/item/<id>` returned Vercel's 404. The SPA rewrite pointed at `/index.html`, but with `cleanUrls` on, `/index.html` itself 308-redirects to `/`, so the rewrite target never resolved. It now points at `/`; the client router reads the real URL. Takes effect on the next production deploy (merging this PR).
