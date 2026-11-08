@@ -14,6 +14,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
+import { ItemArt } from "../../components/item-art/ItemArt";
 import { ItemDetails } from "../../features/item/ItemDetails";
 import { clearOrigin, getOrigin, measureCell, type Rect } from "../../features/item/transition";
 import { WardrobeGate } from "../../components/WardrobeGate";
@@ -151,7 +152,14 @@ function ItemContent({ items, pairWeights }: { items: Item[]; pairWeights: PairW
             },
             heroStyle,
           ]}
-        />
+        >
+          {/* Inside the flying frame, so the drawing travels and scales with it. */}
+          {item ? (
+            <View style={{ flex: 1, padding: "14%" }}>
+              <ItemArt tags={item.tags} />
+            </View>
+          ) : null}
+        </Animated.View>
         <View style={{ width: "100%", maxWidth: layout.maxContentWidth, alignSelf: "center" }}>
           <View style={{ height: heroH }} />
           <Animated.View style={[{ paddingHorizontal: layout.gutter, paddingTop: 32 }, contentStyle]}>

@@ -33,6 +33,7 @@ function Today({ items, pairWeights }: { items: Item[]; pairWeights: PairWeights
   const reduceMotion = useReducedMotion();
 
   const outfit = useMemo(() => getOutfit(items, pairWeights), [items, pairWeights]);
+  const tagsById = useMemo(() => new Map(items.map((i) => [i.id, i.tags])), [items]);
 
   const locale = i18n.language === "en" ? "en" : "he";
   const gregorian = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }).format(
@@ -70,7 +71,7 @@ function Today({ items, pairWeights }: { items: Item[]; pairWeights: PairWeights
             {outfit ? (
               <>
                 <View className="mt-12">
-                  <OutfitComposition items={outfit.items} />
+                  <OutfitComposition items={outfit.items} tagsById={tagsById} />
                 </View>
                 <Text className="mt-8 font-body text-body text-ink">{t("today.explanationMock")}</Text>
                 <Text className="mt-6 font-mono text-num text-ink-soft">
