@@ -85,7 +85,10 @@ export function WardrobeView({ all, onMove }: { all: Item[]; onMove?: (ids: stri
         <View style={{ paddingHorizontal: layout.gutter }}>
           <View className="flex-row items-baseline justify-between">
             <Text className="font-display text-display-xl text-ink">{t("wardrobe.title")}</Text>
-            <TextLink href="/" label={t("nav.today")} />
+            <View className="flex-row items-baseline" style={{ gap: 20 }}>
+              <TextLink href="/intake" label={t("nav.addClothes")} />
+              <TextLink href="/" label={t("nav.today")} />
+            </View>
           </View>
           {/* A sentence, not a bare number: "108" alone read as a stray value. Numbers stay LTR inside Hebrew. */}
           <Text className="mt-2 font-body text-body-sm text-ink-soft">

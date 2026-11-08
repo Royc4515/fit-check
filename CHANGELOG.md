@@ -155,3 +155,12 @@
 - Needs: `ANTHROPIC_API_KEY` as a Supabase Edge Function secret. Until it is set the function answers `ai_failed` and Today looks exactly as before.
 - Look at: `supabase/functions/style-outfit/index.ts`, `supabase/functions/_shared/ai/anthropic.ts`, `design/screens/2026-11-08-today-stylist.png` (rendered with a fake stylist).
 - Stylist persona (`supabase/functions/_shared/ai/stylist-persona.ts`, deployed as style-outfit v3): a female personal stylist who specialises in everyday menswear and knows the religious dress code without preaching; writes to him in masculine singular and about herself in feminine; one or two sentences, up to 35 words, reason first, concrete numbers, at most two items named in Hebrew by garment and colour (never brand), no exclamation marks, emojis or AI clichés (a banned-word list), with an English-to-Hebrew garment and colour glossary, allowed styling terms, and good/bad examples. Written in Hebrew so the register carries over.
+
+## 2026-11-08 (stage C, first slice: separating garments from photos)
+
+- Edge Function `intake-separate` (deployed): takes a photo the user uploaded to the private `originals/{uid}/` bucket; Claude Haiku 5.5 (vision, structured JSON) lists the garments with a category and a precise description (max 6); Gemini `gemini-3.1-flash-lite-image` extracts each one as a product photo on white, in parallel; PNGs go to `cutouts/{uid}/intake/{photo}/{n}.png`. Every call is logged to `ai_calls` with cost (Gemini paid tier: $0.0336 per output image). Spend guard: about 40 photos per user per 24h. Nothing is written to `items` yet.
+- App: "הוספת בגדים" screen (`/intake`, linked from the Wardrobe header): pick up to 10 photos, each is downscaled to 1600px JPEG, uploaded, separated, and shown with its results; status is text, never a spinner. The screen states that this is a quality check and nothing is saved yet.
+- `expo-image-picker` and `expo-image-manipulator` added (photo permission text in app.json).
+- Needs: `GEMINI_API_KEY` (set) and billing on in Google AI Studio (image models have no free tier; paid-tier data is not used for training).
+- Next: run the 10-photo quality test, then tagging (Haiku against the frozen tag schema) and the confirm screen that saves to `items`.
+- Look at: `supabase/functions/intake-separate/index.ts`, `supabase/functions/_shared/ai/gemini.ts`, `design/screens/2026-11-08-intake.png`.
