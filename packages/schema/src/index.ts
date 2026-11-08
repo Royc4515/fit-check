@@ -4,3 +4,4 @@ export * from "./context.ts";
 export * from "./stylist.ts";
 export * from "./db.ts";
 export * from "./external.ts";
+export * from "./intake.ts";
