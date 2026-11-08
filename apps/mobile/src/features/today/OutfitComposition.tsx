@@ -20,27 +20,37 @@ const STAGGER = 32;
  * from useWindowDimensions produced a blank page. Direction comes from the flex row itself, so the
  * composition mirrors in LTR without a conditional.
  */
+/** Reading order of an outfit: top, bottom, shoes, layer. The composition and the captions share it. */
+export const SLOT_ORDER = ["top", "bottom", "shoes", "layer"] as const;
+
+/** "01".."04" for an item by reading order, so the tile corner and its caption always agree. */
+export function outfitIndex(items: CandidateOutfit["items"], id: string): string {
+  const ordered = SLOT_ORDER.flatMap((slot) => items.filter((i) => i.slot === slot));
+  return String(ordered.findIndex((i) => i.id === id) + 1).padStart(2, "0");
+}
+
 export function OutfitComposition({ items, tagsById }: Props) {
   const top = items.find((i) => i.slot === "top");
   const bottom = items.find((i) => i.slot === "bottom");
   const shoes = items.find((i) => i.slot === "shoes");
   const layer = items.find((i) => i.slot === "layer");
   const o = layout.overlap;
+  const indexOf = (piece: CandidateOutfit["items"][number]) => outfitIndex(items, piece.id);
 
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
       <View style={{ width: "58%" }}>
-        {top ? <ItemPlaceholder name={top.name} tags={tagsById.get(top.id)} style={{ width: "100%", aspectRatio: 3 / 4 }} /> : null}
+        {top ? <ItemPlaceholder index={indexOf(top)} tags={tagsById.get(top.id)} style={{ width: "100%", aspectRatio: 3 / 4 }} /> : null}
         {layer ? (
-          <ItemPlaceholder name={layer.name} tags={tagsById.get(layer.id)} style={{ width: "70%", aspectRatio: 1 / 0.85, marginTop: -o }} />
+          <ItemPlaceholder index={indexOf(layer)} tags={tagsById.get(layer.id)} style={{ width: "70%", aspectRatio: 1 / 0.85, marginTop: -o }} />
         ) : null}
       </View>
       {/* Negative marginStart pulls the end column 8px under the top so three boxes read as one outfit. */}
       <View style={{ flex: 1, marginStart: -o, paddingTop: STAGGER }}>
-        {bottom ? <ItemPlaceholder name={bottom.name} tags={tagsById.get(bottom.id)} style={{ width: "100%", aspectRatio: 1 / 1.45 }} /> : null}
+        {bottom ? <ItemPlaceholder index={indexOf(bottom)} tags={tagsById.get(bottom.id)} style={{ width: "100%", aspectRatio: 1 / 1.45 }} /> : null}
         {shoes ? (
           <ItemPlaceholder
-            name={shoes.name}
+            index={indexOf(shoes)}
             tags={tagsById.get(shoes.id)}
             style={{ width: "86%", aspectRatio: 1 / 0.7, marginTop: -o, alignSelf: "flex-end" }}
           />
