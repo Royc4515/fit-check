@@ -38,6 +38,7 @@ function Routes() {
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="index" />
         <Stack.Screen name="wardrobe" />
+        <Stack.Screen name="location" />
         {/* don't touch / transparent + no native animation: the item screen runs its own shared-element
             flight and fades its page in over the wardrobe. A default push would slide over that flight. */}
         <Stack.Screen

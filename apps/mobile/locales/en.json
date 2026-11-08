@@ -142,5 +142,20 @@
     "prompt": "Sign in to see your wardrobe",
     "google": "Continue with Google",
     "failed": "Sign-in failed. Try again."
+  },
+  "location": {
+    "title": "Location",
+    "hint": "Weather and Shabbat times follow this location.",
+    "current": "My current location",
+    "currentShort": "Current location",
+    "default": "Tel Aviv",
+    "defaultMeta": "Default",
+    "search": "Search a city",
+    "noResults": "No cities found",
+    "denied": "No location permission. You can pick a city.",
+    "selected": "Selected",
+    "back": "Today",
+    "label": "Location: {{place}}",
+    "genericCandles": "Shabbat times by coordinates (18 minutes before sunset)"
   }
 }
