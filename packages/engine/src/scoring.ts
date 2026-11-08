@@ -1,5 +1,5 @@
 import type { CandidateOutfit, Item, StylingRequest } from "@fit-check/schema";
-import { RECENCY, SCORING_WEIGHTS } from "./config";
+import { RECENCY, SCORING_WEIGHTS, SLOT_FORMALITY_WEIGHT } from "./config";
 
 /** Stage 2: scoring one combination. All signals are 0..1 except recency, which is a penalty. */
 
@@ -71,12 +71,22 @@ export function formalityConsistency(items: Item[]): number {
   return Math.max(0, 1 - sd / 3);
 }
 
-/** How close the outfit's mean formality sits to the center of the context band. */
+/**
+ * How close the outfit's slot-weighted formality sits to the center of the context band. Weighted, because a
+ * casual shoe under a formal shirt and trousers reads as formal; a plain mean let the shoe drag it down.
+ */
 export function contextFit(items: Item[], req: StylingRequest): number {
   const [lo, hi] = req.context.formality_range;
   const center = (lo + hi) / 2;
   const half = Math.max(0.5, (hi - lo) / 2);
-  const mean = items.reduce((a, i) => a + i.tags.formality, 0) / items.length;
+  let total = 0;
+  let weight = 0;
+  for (const item of items) {
+    const w = SLOT_FORMALITY_WEIGHT[item.tags.category as keyof typeof SLOT_FORMALITY_WEIGHT] ?? 0;
+    total += w * item.tags.formality;
+    weight += w;
+  }
+  const mean = weight === 0 ? center : total / weight;
   return Math.max(0, 1 - Math.abs(mean - center) / (half + 1));
 }
 
