@@ -74,3 +74,14 @@
 
 - **Bug fixed:** in the dev server (`pnpm --filter mobile web`) a full-screen red "Uncaught Error: Cannot manually set color scheme, as dark mode is type 'media'" covered the app on every load, so it looked like the app did not open. NativeWind's web stylesheet observer calls `colorScheme.set()`, which throws under its default `darkMode: "media"`. `tailwind.config.js` now sets `darkMode: "class"` (we are light-only and use no `dark:` variants, so nothing changes visually). It never appeared in my earlier checks because those ran against `expo export` builds, not the dev server; reproduced in a dev server and verified gone (no console errors, no overlay).
 - **Known, not fixed:** on native (Expo Go / Android) Hermes has no `crypto.subtle`, so supabase-js logs "WebCrypto API is not supported. Code challenge method will default to use plain instead of sha256" and uses a `plain` PKCE challenge. Sign-in still works (Supabase accepts `plain`) but it is weaker than `s256`. Needs a SHA-256 digest polyfill (expo-crypto) before this ships on a phone. On web it only appears when the page is opened from a non-secure origin such as the LAN IP; use `http://localhost:8081`.
+
+## 2026-11-08 (plan + engine v2 part 1 + item drawings)
+
+- `docs/PLAN.md`: the full plan (design, engine v2, AI stylist and modes, intake, calendar, shopping, phone), built from four research passes. Includes proposed PRD/DESIGN corrections (Hebcal geonameid 294981 for Giv'at Shmuel, current Claude/Gemini models, no `temperature` param) and the decisions still open.
+- Items are drawn as technical flats in their real colour and pattern (`components/item-art/`, react-native-svg) on all three screens. Set: `design/screens/2026-11-08-item-art-set.png`.
+- Engine fixes, each reproduced with a failing test against the real wardrobe first (`candidates.v2.test.ts`, 11 tests):
+  - **Cold start offered only T-shirts.** Pre-ranking sorted by recency then id and kept 6, so the 24 button-downs never appeared. Now ranked by fit to the context and interleaved across subcategories.
+  - **A warm date had no shoes.** Formality was checked per item; now it is the outfit's slot-weighted mean (top/bottom .35, shoes .2, layer .1) within the band, with per-slot slack for single items.
+  - **"Shorts + sweater" on a 16-24C day.** Weather was an overlap test; the base outfit now has to cover the morning and the afternoon, a layer only has to overlap, and shorts/sandals need a morning of 18C+ (the sheet rated some slides 5-40C).
+  - **Near-identical candidates.** Final set picked with MMR (lambda 0.7) instead of "not the same top+bottom".
+- Look at: run the engine on a weekday, a warm date and Shabbat; the candidates are now coherent (see the commit message for samples).
