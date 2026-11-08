@@ -2,7 +2,8 @@ import type { PairWeights } from "@fit-check/engine";
 import type { Item } from "@fit-check/schema";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TextLink } from "../components/TextLink";
@@ -35,6 +36,7 @@ export default function Index() {
 
 function Today({ items, pairWeights, day }: { items: Item[]; pairWeights: PairWeights; day: DayContext }) {
   const { t, i18n } = useTranslation();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
 
@@ -94,6 +96,15 @@ function Today({ items, pairWeights, day }: { items: Item[]; pairWeights: PairWe
                       })
                     : t("today.noWeather")}
                 </Text>
+                <Pressable onPress={() => router.push("/location")} accessibilityRole="button" className="mt-3 self-start" hitSlop={8}>
+                  <View className="border-b border-hairline pb-1">
+                    <Text className="font-body text-body-sm text-ink">
+                      {t("location.label", {
+                        place: day.place ?? (day.usesCurrentLocation ? t("location.currentShort") : t("location.default")),
+                      })}
+                    </Text>
+                  </View>
+                </Pressable>
                 {/* CC BY 4.0 attribution is a condition of both free APIs. */}
                 <Text className="mt-3 font-body text-meta text-ink-faint">{t("today.credits")}</Text>
               </>

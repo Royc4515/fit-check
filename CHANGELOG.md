@@ -93,3 +93,10 @@
 - Each source fails alone: weather falls back to a 3h cache, then a day-old one, then "no weather data" with a mild default the screen never presents as a forecast. Attribution for both APIs (CC BY 4.0) is shown under the weather line.
 - The explanation is now a true sentence built from the engine's facts (day, feels-like range, layer, rain, Shabbat), in place of the static mock text. It stays as the fallback when the AI stylist (phase B) fails validation.
 - Not verified here: Open-Meteo from this sandbox returns 429 (shared IP, as the research warned); the recorded response came through another route. Hebcal Friday/Yom Tov parsing was checked against live responses.
+
+## 2026-11-08 (choose a location)
+
+- New Location screen (tap "מיקום: ..." under the weather line on Today): the default (Giv'at Shmuel), the phone's current location (expo-location, works on Android and in the browser), or any city via Open-Meteo's free geocoder. Stored on the device, not in Supabase: "current location" only means something on the device you hold.
+- Weather, the local date and Shabbat times follow the chosen place. A chosen city is sent to Hebcal by its GeoNames id, so local customs apply (Jerusalem lights candles 40 minutes before sunset; coordinates alone get the generic 18, which the screen says when "current location" is used). The Israel holiday schedule (`i=on`) is applied only when the place is in Israel's time zone; abroad Yom Tov is two days.
+- Caches are keyed by place, so switching cities never shows the old city's weather.
+- Verified: geocoder and Hebcal (by id and by coordinates) against live responses. Not verified: the screen itself and the GPS permission flow, which need a signed-in session and a real device/browser.
