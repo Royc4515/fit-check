@@ -146,3 +146,11 @@
 
 - Each worn outfit now stores the total adjustment it was chosen under (inside `outfits.breakdown`, no migration). Engine `learnedAdjustment`: with at least 5 worn outfits in the last 30 days and a real majority (>50%) leaning the same way, that lean (capped at one step per axis) becomes every day's starting point; today's taps add on top. Totals, not taps, are stored, so a correct lean is stable and tapping against it erodes it (5 tests, 58 total).
 - Today shows "מותאם לך מהלבישות האחרונות: …" when a lean is active. `RECENT_WEARS_DAYS` 21 → 30 (freshness windows are 3 and 14 days, unaffected).
+
+## 2026-11-08 (stage B: AI stylist)
+
+- Edge Function `style-outfit` (deployed, verify_jwt on): validates `StylistInput` with zod (at most 8 engine candidates; the wardrobe never leaves the app), calls Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort medium, structured JSON output whose `chosen_outfit_id` is an enum of the offered ids, server-side refusal fallback `fallbacks: "default"`), re-validates with `StylistOutputSchema`, and logs every call to `ai_calls` with tokens and estimated cost (Sonnet 5.5 list price $2 / $10 per MTok). Spend guard: 30 calls per user per rolling 24h. Any failure returns `ai_failed` and the app keeps the engine's top pick with the template sentence (CLAUDE.md fallback).
+- App: Today asks the stylist (debounced 600ms, answers cached per day and candidate set) and shows its pick with its Hebrew sentence as the pull quote; after a swap the template text returns. `planToday` takes the stylist's `preferredId` and exposes the open `candidates`.
+- `packages/schema` imports now carry explicit `.ts` extensions (`allowImportingTsExtensions` in tsconfig.base and the app): the hosted Edge runtime does not resolve extensionless imports, which crashed the first deploy at boot.
+- Needs: `ANTHROPIC_API_KEY` as a Supabase Edge Function secret. Until it is set the function answers `ai_failed` and Today looks exactly as before.
+- Look at: `supabase/functions/style-outfit/index.ts`, `supabase/functions/_shared/ai/anthropic.ts`, `design/screens/2026-11-08-today-stylist.png` (rendered with a fake stylist).
