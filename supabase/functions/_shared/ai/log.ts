@@ -36,3 +36,17 @@ export async function countAiCalls(userId: string, task: AiLogEntry["task"], sin
     .gte("created_at", since.toISOString());
   return error ? null : count ?? 0;
 }
+
+/**
+ * Estimated USD spent on one model since `since` (from ai_calls.cost_usd), for monthly spend caps. Service role,
+ * like countAiCalls. Fails closed: null when the sum cannot be read, and the caller then treats the cap as reached.
+ */
+export async function sumAiCost(model: string, since: Date): Promise<number | null> {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return null;
+  const admin = createClient(url, key, { auth: { persistSession: false } });
+  const { data, error } = await admin.from("ai_calls").select("cost_usd").eq("model", model).gte("created_at", since.toISOString());
+  if (error) return null;
+  return (data ?? []).reduce((sum, row) => sum + Number(row.cost_usd ?? 0), 0);
+}

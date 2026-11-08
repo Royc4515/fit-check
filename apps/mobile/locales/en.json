@@ -133,7 +133,8 @@
   },
   "nav": {
     "today": "Today",
-    "wardrobe": "Wardrobe"
+    "wardrobe": "Wardrobe",
+    "addClothes": "Add clothes"
   },
   "item": {
     "back": "Wardrobe",
@@ -211,5 +212,47 @@
     "back": "Today",
     "label": "Location: {{place}}",
     "genericCandles": "Shabbat times by coordinates (18 minutes before sunset)"
+  },
+  "intake": {
+    "title": "Add clothes",
+    "intro": "Take photos of clothes or pick them from your gallery. Each garment is cropped into its own image.",
+    "tips": "Best: clothes spread on a plain surface, in daylight, up to 6 per photo.",
+    "previewOnly": "For now this is a quality check: nothing is saved to the wardrobe yet. Detection is free; improving with AI costs money and needs billing in Google.",
+    "pick": "Choose photos",
+    "skipped": "{{n}} garments could not be separated.",
+    "status": {
+      "waiting": "Waiting",
+      "uploading": "Uploading the photo",
+      "separating": "Separating the clothes, up to half a minute",
+      "done_one": "Found 1 garment",
+      "done_other": "Found {{n}} garments",
+      "cropping": "Cropping the clothes"
+    },
+    "reason": {
+      "no_garments": "No clothes found in the photo.",
+      "ai_failed": "Separation failed. Try again or retake the photo.",
+      "daily_limit": "Daily limit reached. Continue tomorrow.",
+      "too_large": "The photo is too large.",
+      "bad_input": "This photo is not supported.",
+      "not_found": "The photo did not upload. Try again.",
+      "upload": "Upload failed. Check the connection and try again.",
+      "network": "Can't reach the server. Try again.",
+      "bad_response": "Unexpected answer from the server.",
+      "unknown": "Something went wrong. Try again.",
+      "billing_required": "Improving needs billing in Google AI Studio. The free cutout is kept.",
+      "rate_limited": "Google is busy (free quota). Try again in a minute.",
+      "monthly_limit": "Monthly limit for improving photos reached. The crop is kept; you can improve again next month."
+    },
+    "enhance": "Improve with AI",
+    "enhancing": "Improving",
+    "retake": "Retake on its own",
+    "issue": {
+      "occluded": "Partly hidden",
+      "overlapping": "Overlaps another garment",
+      "cut_off": "Cut off at the edge",
+      "wrinkled": "Creased",
+      "blurry": "Blurry",
+      "dark": "Too dark"
+    }
   }
 }

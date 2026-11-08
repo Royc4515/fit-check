@@ -91,3 +91,18 @@ describe("WearRowSchema", () => {
     expect(() => WearRowSchema.parse({ id: "w", worn_on: "2026-11-08", feedback: "loved", outfit_id: null, outfits: null })).toThrow();
   });
 });
+
+describe("intake schemas", () => {
+  it("defaults a bare photo path to the free detect action", async () => {
+    const { IntakeSeparateInputSchema } = await import("./intake.ts");
+    expect(IntakeSeparateInputSchema.parse({ original_path: "u/1.jpg" })).toEqual({ action: "detect", original_path: "u/1.jpg" });
+    expect(IntakeSeparateInputSchema.parse({ action: "enhance", cutout_path: "u/c.jpg", description: "navy knit" }).action).toBe("enhance");
+  });
+
+  it("rejects an unknown issue instead of passing it to the screen", async () => {
+    const { DetectedGarmentSchema } = await import("./intake.ts");
+    const ok = { box: [0, 0, 500, 500], category: "top", description: "white tee", issues: ["wrinkled"] };
+    expect(DetectedGarmentSchema.parse(ok).issues).toEqual(["wrinkled"]);
+    expect(() => DetectedGarmentSchema.parse({ ...ok, issues: ["ugly"] })).toThrow();
+  });
+});
