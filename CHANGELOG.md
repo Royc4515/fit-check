@@ -64,3 +64,8 @@
 - **Not verified:** a successful sign-in end to end, the signed-in screens against real rows, the native OAuth round trip (`openAuthSessionAsync` + PKCE code exchange), and session persistence on a device. Everything on the path up to the Google redirect and from the database to the parsed `Item` is verified; the middle is not.
 - Known rough edge: on web, if the provider is misconfigured the browser lands on Supabase's raw JSON error page, because the redirect happens in the browser before the app can catch it.
 - Not done: the pre-existing `match_items()` service-role bug and the generated-columns idea (proposed in the earlier review, still needs your go: schema change).
+
+## 2026-11-08 (correction: sign-in flow type)
+
+- **Bug fixed:** supabase-js 2.119 defaults to the `implicit` OAuth flow (tokens in the URL hash), but `features/auth/signIn.ts` on native exchanges a PKCE `?code=`. Native sign-in would have reported "failed" on every attempt. `createClient` now sets `flowType: "pkce"`; verified in the built web app that the authorize request carries `code_challenge` (`s256`). Web was unaffected either way (`detectSessionInUrl` handles both). The native round trip is still unverified on a device.
+- **Correction to the entry above:** `config.toml`'s `additional_redirect_urls` only applies to the LOCAL Supabase stack. The hosted project's redirect allow-list is set in the dashboard (Authentication > URL Configuration), so `fitcheck://auth` is not configured there yet.

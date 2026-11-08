@@ -21,6 +21,10 @@ export const supabase = createClient(url, anon, {
     storage: isWeb ? undefined : AsyncStorage,
     persistSession: true,
     autoRefreshToken: true,
+    // don't touch / supabase-js 2.x defaults to the implicit flow, which returns tokens in the URL hash. The
+    // native sign-in (features/auth/signIn.ts) exchanges a PKCE `?code=` instead, which also keeps tokens out of
+    // URLs and browser history. Without this line native sign-in fails with "failed" on every attempt.
+    flowType: "pkce",
     // Web returns from Google with the code in the URL and supabase-js exchanges it. Native handles the
     // redirect itself in features/auth/signIn.ts, so detecting there would race it.
     detectSessionInUrl: isWeb,
