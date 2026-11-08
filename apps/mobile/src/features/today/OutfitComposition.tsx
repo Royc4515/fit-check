@@ -1,10 +1,12 @@
-import type { CandidateOutfit } from "@fit-check/schema";
+import type { CandidateOutfit, ItemTags } from "@fit-check/schema";
 import { View } from "react-native";
 import { layout } from "../../theme/tokens";
 import { ItemPlaceholder } from "./ItemPlaceholder";
 
 type Props = {
   items: CandidateOutfit["items"];
+  /** Candidates carry only what the stylist needs; the drawing needs the full tags, looked up by id. */
+  tagsById: ReadonlyMap<string, ItemTags>;
 };
 
 const STAGGER = 32;
@@ -18,7 +20,7 @@ const STAGGER = 32;
  * from useWindowDimensions produced a blank page. Direction comes from the flex row itself, so the
  * composition mirrors in LTR without a conditional.
  */
-export function OutfitComposition({ items }: Props) {
+export function OutfitComposition({ items, tagsById }: Props) {
   const top = items.find((i) => i.slot === "top");
   const bottom = items.find((i) => i.slot === "bottom");
   const shoes = items.find((i) => i.slot === "shoes");
@@ -28,17 +30,18 @@ export function OutfitComposition({ items }: Props) {
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
       <View style={{ width: "58%" }}>
-        {top ? <ItemPlaceholder name={top.name} style={{ width: "100%", aspectRatio: 3 / 4 }} /> : null}
+        {top ? <ItemPlaceholder name={top.name} tags={tagsById.get(top.id)} style={{ width: "100%", aspectRatio: 3 / 4 }} /> : null}
         {layer ? (
-          <ItemPlaceholder name={layer.name} style={{ width: "70%", aspectRatio: 1 / 0.85, marginTop: -o }} />
+          <ItemPlaceholder name={layer.name} tags={tagsById.get(layer.id)} style={{ width: "70%", aspectRatio: 1 / 0.85, marginTop: -o }} />
         ) : null}
       </View>
       {/* Negative marginStart pulls the end column 8px under the top so three boxes read as one outfit. */}
       <View style={{ flex: 1, marginStart: -o, paddingTop: STAGGER }}>
-        {bottom ? <ItemPlaceholder name={bottom.name} style={{ width: "100%", aspectRatio: 1 / 1.45 }} /> : null}
+        {bottom ? <ItemPlaceholder name={bottom.name} tags={tagsById.get(bottom.id)} style={{ width: "100%", aspectRatio: 1 / 1.45 }} /> : null}
         {shoes ? (
           <ItemPlaceholder
             name={shoes.name}
+            tags={tagsById.get(shoes.id)}
             style={{ width: "86%", aspectRatio: 1 / 0.7, marginTop: -o, alignSelf: "flex-end" }}
           />
         ) : null}

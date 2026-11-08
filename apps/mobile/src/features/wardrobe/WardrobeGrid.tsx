@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import Animated, { Easing, FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { motion } from "../../theme/tokens";
+import { ItemArt } from "../../components/item-art/ItemArt";
 import { measureNode, registerCell, setOrigin, type ViewNode } from "../item/transition";
 import { groupByCategory } from "./filters";
 
@@ -47,8 +48,10 @@ function Cell({ item, columns }: { item: Item; columns: number }) {
           }}
           collapsable={false}
           className="rounded-sm bg-ivory-deep"
-          style={{ width: "100%", aspectRatio: 3 / 4 }}
-        />
+          style={{ width: "100%", aspectRatio: 3 / 4, padding: "12%" }}
+        >
+          <ItemArt tags={item.tags} />
+        </View>
         <Text className="mt-2 font-body text-body-sm text-ink" numberOfLines={2}>
           {item.name}
         </Text>
