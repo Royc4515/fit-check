@@ -3,7 +3,8 @@
  * behind a provider it can swap without touching callers. Every implementation must
  * write a row to `ai_calls` (see `logAiCall`) whether it succeeded or not.
  */
-import type { ItemTags, StylistInput, StylistOutput } from "@fit-check/schema";
+import type { ItemTags } from "@fit-check/schema/item-tags.ts";
+import type { StylistInput, StylistOutput } from "@fit-check/schema/stylist.ts";
 
 export interface SeparateResult {
   /** One PNG (bytes) per garment found, flat-lay style. Empty array = nothing found. */

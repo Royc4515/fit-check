@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ItemSchema, StylingRequestSchema, type Item, type StylingRequest } from "@fit-check/schema";
 import wardrobeJson from "../__fixtures__/wardrobe.json";
-import { adjustRequest, NO_ADJUSTMENT } from "./adjust";
+import { adjustRequest, combineAdjustments, learnedAdjustment, NO_ADJUSTMENT, type DayAdjustment } from "./adjust";
 import { DEFAULT_CONTEXT_RULES } from "./config";
 import { generateCandidates, outfitFormality } from "./candidates";
 import { applyPairUpdates, feedbackUpdates } from "./feedback";
@@ -147,5 +147,36 @@ describe("swapOptions", () => {
   it("returns nothing for a slot the outfit does not have", () => {
     const noLayer = outfit.filter((i) => slotOf(i) !== "layer");
     expect(swapOptions(wardrobe, req, new Map(), noLayer, "layer")).toEqual([]);
+  });
+});
+
+describe("learnedAdjustment", () => {
+  const warm: DayAdjustment = { temp_steps: 1, formality_steps: 0 };
+  const none = NO_ADJUSTMENT;
+
+  it("learns nothing from fewer than five worn outfits", () => {
+    expect(learnedAdjustment([warm, warm, warm, warm])).toEqual(NO_ADJUSTMENT);
+  });
+
+  it("leans warmer when most recent outfits were worn warmer, capped at one step", () => {
+    const hot = { temp_steps: 3, formality_steps: 0 };
+    expect(learnedAdjustment([hot, hot, warm, none, warm])).toEqual({ temp_steps: 1, formality_steps: 0 });
+  });
+
+  it("needs a real majority: half is not enough", () => {
+    expect(learnedAdjustment([warm, warm, warm, none, none, none])).toEqual(NO_ADJUSTMENT);
+  });
+
+  it("learns each axis on its own", () => {
+    const casualWarm = { temp_steps: 1, formality_steps: -1 };
+    const casual = { temp_steps: 0, formality_steps: -1 };
+    expect(learnedAdjustment([casualWarm, casual, casual, casual, casualWarm])).toEqual({ temp_steps: 0, formality_steps: -1 });
+  });
+
+  it("is stable once learned: wearing under the lean without tapping keeps it", () => {
+    // Totals are stored, so untapped wears under a learned +1 still read +1.
+    const samples = [warm, warm, warm, warm, warm, warm];
+    expect(learnedAdjustment(samples)).toEqual(warm);
+    expect(combineAdjustments(learnedAdjustment(samples), { temp_steps: -1, formality_steps: 0 })).toEqual(NO_ADJUSTMENT);
   });
 });

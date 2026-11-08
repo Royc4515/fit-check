@@ -1,4 +1,4 @@
-import { applyPairUpdates, dueForLaundry, feedbackUpdates, type PairWeights } from "@fit-check/engine";
+import { applyPairUpdates, dueForLaundry, feedbackUpdates, type DayAdjustment, type PairWeights } from "@fit-check/engine";
 import type { Availability, CandidateOutfit, Item, WearFeedback } from "@fit-check/schema";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WardrobeData } from "./wardrobe";
@@ -17,8 +17,8 @@ import {
 } from "./feedback";
 
 export type FeedbackActions = {
-  wear: (outfit: CandidateOutfit, source: "daily" | "swap") => Promise<void>;
-  skip: (outfit: CandidateOutfit, source: "daily" | "swap") => Promise<void>;
+  wear: (outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment) => Promise<void>;
+  skip: (outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment) => Promise<void>;
   dislike: (record: TodayRecord) => Promise<void>;
   undo: (record: TodayRecord) => Promise<void>;
   /** Overrides the automatic laundry move: the items stay home and keep their wear count. */
@@ -147,22 +147,23 @@ export function useFeedback(args: {
 
   const actions = useMemo<FeedbackActions>(
     () => ({
-      wear: (outfit, source) =>
+      wear: (outfit, source, adjustment) =>
         run(async () => {
-          const record = await recordFeedback({ userId, date, dayType, outfit, source, feedback: "worn" });
+          const record = await recordFeedback({ userId, date, dayType, outfit, source, feedback: "worn", adjustment });
           setHistory((h) => ({
             recent: [{ date, item_ids: record.itemIds, context_key: null }, ...(h?.recent ?? [])],
             today: [...(h?.today ?? []), record],
+            samples: [{ wearId: record.wearId, adjustment }, ...(h?.samples ?? [])],
           }));
           // The wear is stored even if learning fails; the weights are a derived signal, the wear is the fact.
           await learn(record.itemIds, "worn", 1);
           // A failed laundry move is logged, not shown: the wear itself succeeded and the user can move items by hand.
           await launder(record).catch((error: unknown) => console.error("Automatic laundry failed", error));
         }),
-      skip: (outfit, source) =>
+      skip: (outfit, source, adjustment) =>
         run(async () => {
-          const record = await recordFeedback({ userId, date, dayType, outfit, source, feedback: "skipped" });
-          setHistory((h) => ({ recent: h?.recent ?? [], today: [...(h?.today ?? []), record] }));
+          const record = await recordFeedback({ userId, date, dayType, outfit, source, feedback: "skipped", adjustment });
+          setHistory((h) => ({ recent: h?.recent ?? [], today: [...(h?.today ?? []), record], samples: h?.samples ?? [] }));
         }),
       dislike: (record) =>
         run(async () => {
@@ -179,6 +180,7 @@ export function useFeedback(args: {
             return {
               recent: record.feedback === "worn" && idx >= 0 ? h.recent.filter((_, i) => i !== idx) : h.recent,
               today: h.today.filter((r) => r.wearId !== record.wearId),
+              samples: h.samples.filter((x) => x.wearId !== record.wearId),
             };
           });
           if (record.feedback !== "skipped") await learn(record.itemIds, record.feedback, -1);

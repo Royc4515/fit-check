@@ -60,7 +60,8 @@
     },
     "adjust": {
       "label": "Adjusted for today: {{parts}}",
-      "reset": "Reset"
+      "reset": "Reset",
+      "learned": "Tuned to you from recent wears: {{parts}}"
     },
     "keepHome": "Keep it home"
   },

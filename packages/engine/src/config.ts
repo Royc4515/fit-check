@@ -48,8 +48,18 @@ export const LAUNDRY_AFTER_WEARS: Partial<Record<Subcategory, number>> = {
   jeans: 6,
 };
 
-/** How far back worn outfits are read for freshness (RECENCY windows are inside this). */
-export const RECENT_WEARS_DAYS = 21;
+/**
+ * How far back worn outfits are read: freshness (RECENCY windows are inside this) and the learned personal
+ * adjustment (PERSONAL_ADJUSTMENT) both use this window.
+ */
+export const RECENT_WEARS_DAYS = 30;
+
+/**
+ * Learning "I run cold" / "I dress up" from what was worn. Each worn outfit stores the adjustment it was chosen
+ * under; when most of the recent ones lean the same way, that lean becomes the starting point for every day.
+ * Capped at one step: a handful of odd days must never push the suggestions far.
+ */
+export const PERSONAL_ADJUSTMENT = { min_samples: 5, majority: 0.5, max_steps: 1 } as const;
 
 /** Below this temperature a `layer` slot becomes mandatory; above it, forbidden. */
 export const LAYER_THRESHOLD_C = 19;
