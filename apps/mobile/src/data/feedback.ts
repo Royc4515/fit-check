@@ -1,5 +1,6 @@
 import { RECENT_WEARS_DAYS, type PairUpdate } from "@fit-check/engine";
 import { WEAR_READ_COLUMNS, WearRowSchema, type Availability, type CandidateOutfit, type StylingRequest, type WearFeedback } from "@fit-check/schema";
+import { z } from "zod";
 import { supabase } from "../lib/supabase";
 import type { DayType } from "./dayContext";
 
@@ -127,18 +128,35 @@ export async function savePairWeights(userId: string, updates: readonly PairUpda
   if (error) throw error;
 }
 
+/**
+ * `washed`: the item came back clean, so its wear count restarts (items.washed_at). Not set when the user only
+ * overrides an automatic laundry move ("השאר בבית"): that garment was not washed and its count must keep going.
+ */
+type MoveOptions = { washed?: boolean };
+
+const moveRow = (availability: Availability, { washed = false }: MoveOptions) =>
+  washed ? { availability, washed_at: new Date().toISOString() } : { availability };
+
 /** Home, laundry, away (reserve duty) or lent. Only `home` items are ever suggested. */
-export async function setAvailability(itemId: string, availability: Availability): Promise<void> {
-  const { error } = await supabase.from("items").update({ availability }).eq("id", itemId);
+export async function setAvailability(itemId: string, availability: Availability, options: MoveOptions = {}): Promise<void> {
+  const { error } = await supabase.from("items").update(moveRow(availability, options)).eq("id", itemId);
   if (error) throw error;
+}
+
+/** Worn wears per item since its last wash (SQL function wear_counts_since_wash, migration 0003; RLS applies). */
+export async function fetchWearCounts(itemIds: readonly string[]): Promise<Map<string, number>> {
+  const { data, error } = await supabase.rpc("wear_counts_since_wash", { p_item_ids: [...itemIds] });
+  if (error) throw error;
+  const parsed = z.array(z.object({ item_id: z.string(), wears: z.number().int() })).parse(data ?? []);
+  return new Map(parsed.map((r) => [r.item_id, r.wears]));
 }
 
 /**
  * Moves several items at once (packing for reserve duty, coming back). One request, so the move is all or nothing
  * from the user's side: either every packed item reads "away" or the screen reports the failure.
  */
-export async function setAvailabilityMany(itemIds: readonly string[], availability: Availability): Promise<void> {
+export async function setAvailabilityMany(itemIds: readonly string[], availability: Availability, options: MoveOptions = {}): Promise<void> {
   if (itemIds.length === 0) return;
-  const { error } = await supabase.from("items").update({ availability }).in("id", [...itemIds]);
+  const { error } = await supabase.from("items").update(moveRow(availability, options)).in("id", [...itemIds]);
   if (error) throw error;
 }

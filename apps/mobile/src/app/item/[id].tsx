@@ -44,7 +44,8 @@ export default function ItemScreen() {
     const set = (a: Availability) => patch((d) => ({ ...d, items: d.items.map((i) => (i.id === itemId ? { ...i, availability: a } : i)) }));
     set(next);
     try {
-      await setAvailability(itemId, next);
+      // Back home from the laundry or from base means it was washed: its wear count starts over.
+      await setAvailability(itemId, next, { washed: next === "home" && (prev === "laundry" || prev === "away") });
     } catch (error) {
       set(prev);
       throw error;

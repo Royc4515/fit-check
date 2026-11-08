@@ -15,7 +15,8 @@ export default function Wardrobe() {
     const before = new Map(items.filter((i) => ids.includes(i.id)).map((i) => [i.id, i.availability]));
     patch((d) => ({ ...d, items: d.items.map((i) => (before.has(i.id) ? { ...i, availability: next } : i)) }));
     try {
-      await setAvailabilityMany(ids, next);
+      // The only bulk move home is "back from base, all clean", so it resets the wear counts.
+      await setAvailabilityMany(ids, next, { washed: next === "home" });
     } catch (error) {
       patch((d) => ({ ...d, items: d.items.map((i) => ({ ...i, availability: before.get(i.id) ?? i.availability })) }));
       throw error;

@@ -11,7 +11,7 @@ import { ItemArt } from "../../components/item-art/ItemArt";
 import { ActionSheet, type Adjust } from "./ActionSheet";
 import type { DayContext } from "../../data/dayContext";
 import type { FeedbackHistory } from "../../data/feedback";
-import type { FeedbackActions } from "../../data/useFeedback";
+import type { FeedbackActions, Laundered } from "../../data/useFeedback";
 import { explainOutfit } from "./explain";
 import { planToday, type Swaps } from "./outfit";
 import { OutfitComposition, outfitIndex, SLOT_ORDER } from "./OutfitComposition";
@@ -37,6 +37,7 @@ type Props = {
   actions: FeedbackActions;
   busy: boolean;
   failed: boolean;
+  laundered?: Laundered | null;
 };
 
 /** "Warmer", or "Warmer ×2" after two taps; null when that direction was not tapped. */
@@ -49,7 +50,7 @@ const ADJUST: Record<Adjust, DayAdjustment> = {
   casual: { temp_steps: 0, formality_steps: -1 },
 };
 
-export function TodayView({ items, pairWeights, day, history, actions, busy, failed }: Props) {
+export function TodayView({ items, pairWeights, day, history, actions, busy, failed, laundered }: Props) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -109,6 +110,18 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     if (plan.kind === "worn") {
       const record = plan.record;
       lines.push({ key: "worn", text: t("today.status.worn"), links: [{ label: t("today.undo"), onPress: () => void actions.undo(record) }] });
+      if (laundered && laundered.wearId === record.wearId) {
+        const ids = laundered.itemIds;
+        const names = ids.map((id) => {
+          const sub = items.find((i) => i.id === id)?.tags.subcategory;
+          return sub ? t(`item.subcategory.${sub}`) : "";
+        });
+        lines.push({
+          key: "laundry",
+          text: t("today.status.laundry", { items: names.filter(Boolean).join(", ") }),
+          links: [{ label: t("today.keepHome"), onPress: () => void actions.keepHome(ids) }],
+        });
+      }
     }
     if (lastSkip) {
       const record = lastSkip;

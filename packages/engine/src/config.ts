@@ -32,6 +32,22 @@ export const FEEDBACK = {
  */
 export const ADJUST_STEP = { temp_c: 3, formality: 1 } as const;
 
+/**
+ * Wears before a garment goes to the wash (Roy's rules, 2026-11-08). Counted since the item's last wash.
+ * Button-downs get 3 because they are worn over an undershirt. Missing kinds (shoes, outerwear, belts) never go.
+ */
+export const LAUNDRY_AFTER_WEARS: Partial<Record<Subcategory, number>> = {
+  tshirt: 1,
+  polo: 1,
+  button_down: 3,
+  shorts: 2,
+  sweatshirt: 3,
+  knit: 4,
+  chinos: 4,
+  trousers: 4,
+  jeans: 6,
+};
+
 /** How far back worn outfits are read for freshness (RECENCY windows are inside this). */
 export const RECENT_WEARS_DAYS = 21;
 
