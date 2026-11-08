@@ -11,12 +11,21 @@ const ROW_H = 36;
 const ROW_GAP = 12;
 const PAD = 24;
 
+type Action = { label: string; onPress: () => void };
+
 /** Two secondary actions side by side. Underline is a bordered wrapper: RN cannot offset or color text-decoration. */
-function SecondaryRow({ left, right }: { left: string; right: string }) {
+function SecondaryRow({ actions, disabled }: { actions: [Action, Action]; disabled: boolean }) {
   return (
-    <View className="flex-row" style={{ height: ROW_H, gap: PAD }}>
-      {[left, right].map((label) => (
-        <Pressable key={label} className="flex-1 justify-center" accessibilityRole="button">
+    <View className="flex-row" style={{ height: ROW_H, gap: PAD, opacity: disabled ? 0.4 : 1 }}>
+      {actions.map(({ label, onPress }) => (
+        <Pressable
+          key={label}
+          className="flex-1 justify-center"
+          accessibilityRole="button"
+          accessibilityState={{ disabled }}
+          disabled={disabled}
+          onPress={onPress}
+        >
           <View className="self-start border-b border-hairline pb-1">
             <Text className="font-body text-body-sm text-ink">{label}</Text>
           </View>
@@ -26,11 +35,22 @@ function SecondaryRow({ left, right }: { left: string; right: string }) {
   );
 }
 
+export type Adjust = "warmer" | "cooler" | "dressier" | "casual";
+
+type Props = {
+  onWear: () => void;
+  onSkip: () => void;
+  onSwap: () => void;
+  onAdjust: (a: Adjust) => void;
+  /** A write is in flight: actions are dimmed and inert so one tap cannot record twice. */
+  busy: boolean;
+};
+
 /**
  * Bottom sheet with the five Today actions (wear, swap, temperature, formality, skip).
  * One shared value drives it; pan and tap are worklets, so React never re-renders mid-gesture.
  */
-export function ActionSheet() {
+export function ActionSheet({ onWear, onSkip, onSwap, onAdjust, busy }: Props) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
@@ -70,6 +90,12 @@ export function ActionSheet() {
   });
 
   const gesture = useExclusiveGestures(pan, tap);
+
+  /** Every action closes the sheet first, so its result (new outfit, swap row) is visible, not hidden behind it. */
+  const act = (fn: () => void) => () => {
+    translateY.value = withSpring(closedY, motion.spring);
+    fn();
+  };
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
 
   return (
@@ -100,15 +126,38 @@ export function ActionSheet() {
           <Pressable
             accessibilityRole="button"
             className="items-center justify-center rounded bg-accent"
-            style={{ height: PRIMARY_H }}
-            onPress={() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+            style={{ height: PRIMARY_H, opacity: busy ? 0.4 : 1 }}
+            disabled={busy}
+            accessibilityState={{ disabled: busy }}
+            onPress={act(() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onWear();
+            })}
           >
             <Text className="font-body-semibold text-body text-accent-ink">{t("today.wearing")}</Text>
           </Pressable>
           <View style={{ marginTop: PAD, gap: ROW_GAP }}>
-            <SecondaryRow left={t("today.warmer")} right={t("today.cooler")} />
-            <SecondaryRow left={t("today.dressier")} right={t("today.casual")} />
-            <SecondaryRow left={t("today.swap")} right={t("today.skip")} />
+            <SecondaryRow
+              disabled={busy}
+              actions={[
+                { label: t("today.warmer"), onPress: act(() => onAdjust("warmer")) },
+                { label: t("today.cooler"), onPress: act(() => onAdjust("cooler")) },
+              ]}
+            />
+            <SecondaryRow
+              disabled={busy}
+              actions={[
+                { label: t("today.dressier"), onPress: act(() => onAdjust("dressier")) },
+                { label: t("today.casual"), onPress: act(() => onAdjust("casual")) },
+              ]}
+            />
+            <SecondaryRow
+              disabled={busy}
+              actions={[
+                { label: t("today.swap"), onPress: act(onSwap) },
+                { label: t("today.skip"), onPress: act(onSkip) },
+              ]}
+            />
           </View>
         </View>
       </Animated.View>
