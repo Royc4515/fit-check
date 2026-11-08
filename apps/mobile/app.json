@@ -52,6 +52,13 @@
           "resizeMode": "contain",
           "backgroundColor": "#F6F2EA"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Fit Check uses the photos you choose only to add those clothes to your wardrobe.",
+          "cameraPermission": "Fit Check uses the camera only to photograph clothes for your wardrobe."
+        }
       ]
     ],
     "experiments": {
