@@ -109,3 +109,19 @@
 - Look at: `design/screens/2026-11-08-sign-in*.png`, `2026-11-08-app-icon.png`. Not verified: the icon and splash in an Android build.
 - Known waste, to fix: the cover loads the whole day context (including weather) when it only needs the Hebrew date.
 - Plan: added stage G (personal colour palette, research-backed) to `docs/PLAN.md`; it needs a migration and waits for a go.
+
+## 2026-11-08 (editorial redesign, A3)
+
+- PR #1 merged to `main`. Vercel project creation was refused for this session's Vercel connection (403); the owner creates it from the dashboard (see the session notes).
+- Screens split into a container (loads data) and a view (pure props): `features/today/TodayView.tsx`, `features/wardrobe/WardrobeView.tsx`, `ItemContent` in `app/item/[id].tsx`. This made it possible to render and photograph the signed-in screens with the real wardrobe for the first time.
+- Today: garments carry a mono index (01-04) and the names moved to a numbered caption legend (Hebrew type + name); the reason is a pull quote in the display face under an ink rule, with practical notes beneath; the weather is a three-cell data strip (feels like, rain, sky); blocks enter in reading order (180ms, 40ms apart).
+- Wardrobe: "108 items · 6 categories" instead of a bare number; section heads in the display face with a mono count and a strip of the category's real colours; captions show the Hebrew type and colour; press feedback (scale 0.97, 120ms).
+- Item: tags as a spec table on hairlines (type, colour swatch, pattern, material, seasons, formality, range); "goes with" as numbered trios of drawn garments.
+- New building blocks: `components/editorial/{Reveal,DataStrip,SpecTable}.tsx`, `components/PressScale.tsx`.
+- Bugs found by looking: Hebrew mixed into Plex Mono again (weather line, formality line), now split into labels and mono numbers; digit-only values hugged the wrong edge in RTL because react-native-web renders text with dir="auto" (fixed by aligning the container, not the text).
+- Look at: `design/screens/2026-11-08-*-editorial*.png` (rendered from the real fixture with a sample showery day, not from a live session).
+
+## 2026-11-08 (Vercel deep links)
+
+- The web app is live at https://fit-check-app-xi.vercel.app (project `fit-check-app`, production from `main`). Verified: the sign-in cover renders in Hebrew and English, `/wardrobe` and `/location` load.
+- **Bug fixed:** deep links such as `/item/<id>` returned Vercel's 404. The SPA rewrite pointed at `/index.html`, but with `cleanUrls` on, `/index.html` itself 308-redirects to `/`, so the rewrite target never resolved. It now points at `/`; the client router reads the real URL. Takes effect on the next production deploy (merging this PR).

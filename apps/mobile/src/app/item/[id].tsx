@@ -35,16 +35,16 @@ const ease = Easing.bezier(...motion.easeOut);
  */
 export default function ItemScreen() {
   const wardrobe = useWardrobe();
+  const { id } = useLocalSearchParams<{ id: string }>();
   if (wardrobe.status !== "ready") return <WardrobeGate state={wardrobe} />;
-  return <ItemContent items={wardrobe.items} pairWeights={wardrobe.pairWeights} />;
+  return <ItemContent id={id} items={wardrobe.items} pairWeights={wardrobe.pairWeights} />;
 }
 
-function ItemContent({ items, pairWeights }: { items: Item[]; pairWeights: PairWeights }) {
+export function ItemContent({ id, items, pairWeights }: { id: string | undefined; items: Item[]; pairWeights: PairWeights }) {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
-  const { id } = useLocalSearchParams<{ id: string }>();
   const { width: windowW, height: windowH } = useWindowDimensions();
 
   const item = useMemo(() => items.find((i) => i.id === id), [items, id]);
