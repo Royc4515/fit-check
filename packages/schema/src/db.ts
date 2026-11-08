@@ -115,7 +115,13 @@ export const WEAR_FEEDBACKS = ["worn", "skipped", "disliked"] as const;
 export type WearFeedback = (typeof WEAR_FEEDBACKS)[number];
 
 /** One wear with its outfit's items embedded (wears.outfit_id -> outfits -> outfit_items). */
-export const WEAR_READ_COLUMNS = "id,worn_on,feedback,outfit_id,outfits(outfit_items(item_id))";
+export const WEAR_READ_COLUMNS = "id,worn_on,feedback,outfit_id,outfits(breakdown,outfit_items(item_id))";
+
+/**
+ * The adjustment an outfit was chosen under, stored inside `outfits.breakdown` (jsonb) so learning it needed no
+ * migration. Absent on outfits from before it was recorded; those count as no adjustment.
+ */
+export const StoredAdjustmentSchema = z.object({ temp_steps: z.number().int(), formality_steps: z.number().int() });
 
 export const WearRowSchema = z.object({
   id: z.string(),
@@ -123,6 +129,12 @@ export const WearRowSchema = z.object({
   feedback: z.enum(WEAR_FEEDBACKS),
   outfit_id: z.string().nullable(),
   // null when the outfit was deleted (outfit_id is `on delete set null`); such a wear teaches nothing.
-  outfits: z.object({ outfit_items: z.array(z.object({ item_id: z.string() })) }).nullable(),
+  outfits: z
+    .object({
+      // passthrough: the score breakdown keys are the stylist's business; only `adjustment` is read here.
+      breakdown: z.object({ adjustment: StoredAdjustmentSchema.optional() }).passthrough().nullable(),
+      outfit_items: z.array(z.object({ item_id: z.string() })),
+    })
+    .nullable(),
 });
 export type WearRow = z.infer<typeof WearRowSchema>;

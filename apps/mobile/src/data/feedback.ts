@@ -1,4 +1,4 @@
-import { RECENT_WEARS_DAYS, type PairUpdate } from "@fit-check/engine";
+import { RECENT_WEARS_DAYS, type DayAdjustment, type PairUpdate } from "@fit-check/engine";
 import { WEAR_READ_COLUMNS, WearRowSchema, type Availability, type CandidateOutfit, type StylingRequest, type WearFeedback } from "@fit-check/schema";
 import { z } from "zod";
 import { supabase } from "../lib/supabase";
@@ -9,10 +9,16 @@ export type RecentWear = StylingRequest["recent_wears"][number];
 /** A piece of feedback given today, kept so it can be shown and undone. */
 export type TodayRecord = { wearId: string; outfitId: string; feedback: WearFeedback; itemIds: string[] };
 
-/** `recent`: worn outfits, most recent first (the engine's recent_wears). `today`: today's records, oldest first. */
-export type FeedbackHistory = { recent: RecentWear[]; today: TodayRecord[] };
+/** The adjustment one worn outfit was chosen under (engine learnedAdjustment's samples). */
+export type AdjustmentSample = { wearId: string; adjustment: DayAdjustment };
 
-export const EMPTY_HISTORY: FeedbackHistory = { recent: [], today: [] };
+/**
+ * `recent`: worn outfits, most recent first (the engine's recent_wears). `today`: today's records, oldest first.
+ * `samples`: the adjustment of every recent worn outfit, for learning the user's standing lean.
+ */
+export type FeedbackHistory = { recent: RecentWear[]; today: TodayRecord[]; samples: AdjustmentSample[] };
+
+export const EMPTY_HISTORY: FeedbackHistory = { recent: [], today: [], samples: [] };
 
 /** yyyy-mm-dd minus `days`, in calendar days. UTC arithmetic so no local timezone can shift the date. */
 export function daysBefore(date: string, days: number): string {
@@ -35,7 +41,7 @@ export async function fetchFeedback(today: string): Promise<FeedbackHistory> {
     .order("created_at", { ascending: false });
   if (error) throw error;
 
-  const history: FeedbackHistory = { recent: [], today: [] };
+  const history: FeedbackHistory = { recent: [], today: [], samples: [] };
   for (const raw of data ?? []) {
     const parsed = WearRowSchema.safeParse(raw);
     if (!parsed.success) {
@@ -45,7 +51,11 @@ export async function fetchFeedback(today: string): Promise<FeedbackHistory> {
     const row = parsed.data;
     if (!row.outfits || !row.outfit_id) continue;
     const itemIds = row.outfits.outfit_items.map((i) => i.item_id);
-    if (row.feedback === "worn") history.recent.push({ date: row.worn_on, item_ids: itemIds, context_key: null });
+    if (row.feedback === "worn") {
+      history.recent.push({ date: row.worn_on, item_ids: itemIds, context_key: null });
+      const adjustment = row.outfits.breakdown?.adjustment ?? { temp_steps: 0, formality_steps: 0 };
+      history.samples.push({ wearId: row.id, adjustment });
+    }
     if (row.worn_on === today) history.today.unshift({ wearId: row.id, outfitId: row.outfit_id, feedback: row.feedback, itemIds });
   }
   return history;
@@ -65,8 +75,10 @@ export async function recordFeedback(args: {
   outfit: CandidateOutfit;
   source: "daily" | "swap";
   feedback: WearFeedback;
+  /** The total adjustment (learned + today's taps) the outfit was chosen under; learning reads it back. */
+  adjustment: DayAdjustment;
 }): Promise<TodayRecord> {
-  const { userId, date, dayType, outfit, source, feedback } = args;
+  const { userId, date, dayType, outfit, source, feedback, adjustment } = args;
   const created = await supabase
     .from("outfits")
     .insert({
@@ -74,7 +86,7 @@ export async function recordFeedback(args: {
       context_type: dayType,
       created_for_date: date,
       score: Math.round(outfit.score * 1000) / 1000,
-      breakdown: outfit.breakdown,
+      breakdown: { ...outfit.breakdown, adjustment },
       source,
     })
     .select("id")
