@@ -9,7 +9,9 @@ import { TextLink } from "../components/TextLink";
 import { ActionSheet } from "../features/today/ActionSheet";
 import { WardrobeGate } from "../components/WardrobeGate";
 import { useWardrobe } from "../data/WardrobeProvider";
-import { MOCK_HEBREW_DATE, MOCK_TODAY, MOCK_WEATHER } from "../features/today/mock";
+import type { DayContext } from "../data/dayContext";
+import { useDayContext } from "../data/useDayContext";
+import { explainOutfit } from "../features/today/explain";
 import { getOutfit } from "../features/today/outfit";
 import { OutfitComposition } from "../features/today/OutfitComposition";
 import { layout, motion } from "../theme/tokens";
@@ -18,28 +20,34 @@ import { layout, motion } from "../theme/tokens";
 const ltr = (s: string) => `⁦${s}⁩`;
 
 /**
- * "Today" (DESIGN.md section 3). The wardrobe is real (Supabase); date, weather and explanation are still mock (features/today/mock.ts).
+ * "Today" (DESIGN.md section 3): the real wardrobe (Supabase), the real day (Hebcal) and the real forecast
+ * (Open-Meteo). The explanation is built from the engine's facts until the AI stylist lands (PLAN.md phase B).
  * Entrance is the one allowed generic motion (opacity + translateY 8, 180ms ease-out), on the UI thread.
  */
 export default function Index() {
   const wardrobe = useWardrobe();
+  const day = useDayContext();
   if (wardrobe.status !== "ready") return <WardrobeGate state={wardrobe} />;
-  return <Today items={wardrobe.items} pairWeights={wardrobe.pairWeights} />;
+  // The day loads in parallel with the wardrobe and never fails; until it lands, the same quiet loading line.
+  if (!day) return <WardrobeGate state={{ status: "loading" }} />;
+  return <Today items={wardrobe.items} pairWeights={wardrobe.pairWeights} day={day} />;
 }
 
-function Today({ items, pairWeights }: { items: Item[]; pairWeights: PairWeights }) {
+function Today({ items, pairWeights, day }: { items: Item[]; pairWeights: PairWeights; day: DayContext }) {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
 
-  const outfit = useMemo(() => getOutfit(items, pairWeights), [items, pairWeights]);
+  const outfit = useMemo(() => getOutfit(items, pairWeights, day), [items, pairWeights, day]);
   const tagsById = useMemo(() => new Map(items.map((i) => [i.id, i.tags])), [items]);
 
   const locale = i18n.language === "en" ? "en" : "he";
   const gregorian = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }).format(
-    new Date(`${MOCK_TODAY}T12:00:00`)
+    new Date(`${day.date}T12:00:00`)
   );
-  const hebrew = MOCK_HEBREW_DATE[locale];
+  const hebrew = day.hebrewDate?.[locale];
+  const dayLabel = day.holiday && day.dayType === "holiday" ? day.holiday[locale] : t(`today.dayType.${day.dayType}`);
+  const w = day.weather;
 
   const enter = useSharedValue(0);
   useEffect(() => {
@@ -66,21 +74,28 @@ function Today({ items, pairWeights }: { items: Item[]; pairWeights: PairWeights
               <Text className="font-display text-display-xl text-ink">{t("today.title")}</Text>
               <TextLink href="/wardrobe" label={t("nav.wardrobe")} />
             </View>
-            <Text className="mt-2 font-body text-body text-ink-soft">{`${hebrew} · ${gregorian}`}</Text>
+            <Text className="mt-2 font-body text-body text-ink-soft">{hebrew ? `${hebrew} · ${gregorian}` : gregorian}</Text>
+            {day.candleLighting ? (
+              <Text className="mt-1 font-body text-body-sm text-ink-soft">{t("today.candles", { time: ltr(day.candleLighting) })}</Text>
+            ) : null}
 
             {outfit ? (
               <>
                 <View className="mt-12">
                   <OutfitComposition items={outfit.items} tagsById={tagsById} />
                 </View>
-                <Text className="mt-8 font-body text-body text-ink">{t("today.explanationMock")}</Text>
+                <Text className="mt-8 font-body text-body text-ink">{explainOutfit(t, day, outfit, dayLabel)}</Text>
                 <Text className="mt-6 font-mono text-num text-ink-soft">
-                  {t("today.weather", {
-                    day: t("today.context.weekday"),
-                    range: ltr(`${MOCK_WEATHER.temp_min_c}–${MOCK_WEATHER.temp_max_c}°`),
-                    rain: ltr(`${Math.round(MOCK_WEATHER.rain_probability * 100)}%`),
-                  })}
+                  {w
+                    ? t("today.weatherLine", {
+                        sky: t(`today.sky.${w.sky}`),
+                        range: ltr(`${w.temp_min_c}–${w.temp_max_c}°`),
+                        rain: ltr(`${Math.round(w.rain_probability * 100)}%`),
+                      })
+                    : t("today.noWeather")}
                 </Text>
+                {/* CC BY 4.0 attribution is a condition of both free APIs. */}
+                <Text className="mt-3 font-body text-meta text-ink-faint">{t("today.credits")}</Text>
               </>
             ) : (
               <Text className="mt-12 font-body text-body text-ink-soft">{t("today.empty")}</Text>

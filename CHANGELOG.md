@@ -85,3 +85,11 @@
   - **"Shorts + sweater" on a 16-24C day.** Weather was an overlap test; the base outfit now has to cover the morning and the afternoon, a layer only has to overlap, and shorts/sandals need a morning of 18C+ (the sheet rated some slides 5-40C).
   - **Near-identical candidates.** Final set picked with MMR (lambda 0.7) instead of "not the same top+bottom".
 - Look at: run the engine on a weekday, a warm date and Shabbat; the candidates are now coherent (see the commit message for samples).
+
+## 2026-11-08 (real weather and dates)
+
+- Today now uses the real day: Israel-local date, Hebrew date and holidays from Hebcal (geonameid 293397, Tel Aviv), candle lighting on Fridays and holiday eves, and the Open-Meteo hourly forecast summarized over 07:00-19:00 (feels-like min/max, rain, wind, UV, sky). Saturdays and Yom Tov switch the engine to the Shabbat rules. `features/today/mock.ts` is gone.
+- Pure summarizer in the engine (`weather.ts`) with 6 tests on a recorded real response (`__fixtures__/open-meteo-2026-11-08.json`, a showery day: 16-21C, 63% rain). API responses are validated with zod (`packages/schema/src/external.ts`).
+- Each source fails alone: weather falls back to a 3h cache, then a day-old one, then "no weather data" with a mild default the screen never presents as a forecast. Attribution for both APIs (CC BY 4.0) is shown under the weather line.
+- The explanation is now a true sentence built from the engine's facts (day, feels-like range, layer, rain, Shabbat), in place of the static mock text. It stays as the fallback when the AI stylist (phase B) fails validation.
+- Not verified here: Open-Meteo from this sandbox returns 429 (shared IP, as the research warned); the recorded response came through another route. Hebcal Friday/Yom Tov parsing was checked against live responses.

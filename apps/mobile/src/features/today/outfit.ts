@@ -1,28 +1,34 @@
 import { DEFAULT_CONTEXT_RULES, generateCandidates, type PairWeights } from "@fit-check/engine";
 import { StylingRequestSchema, type CandidateOutfit, type Item } from "@fit-check/schema";
-import { MOCK_TODAY, MOCK_WEATHER } from "./mock";
+import type { DayType } from "../../data/dayContext";
+import { israelDate } from "../../data/dayContext";
 
 type Weather = { temp_min_c: number; temp_max_c: number; rain_probability: number };
 
-function request(overrides: { anchor_item_id?: string; max_candidates?: number; weather?: Weather } = {}) {
+export type DayInput = { date: string; weather: Weather | null; dayType: DayType };
+
+/**
+ * Used only when no forecast is available (offline, rate-limited, first launch). Mild autumn day in the coastal
+ * plain; the screen says "no weather data" whenever this is used, so the outfit is never presented as weather-aware.
+ */
+export const FALLBACK_WEATHER: Weather = { temp_min_c: 16, temp_max_c: 24, rain_probability: 0.1 };
+
+function request(day: DayInput, overrides: { anchor_item_id?: string; max_candidates?: number; weather?: Weather } = {}) {
   return StylingRequestSchema.parse({
-    today: MOCK_TODAY,
-    context: DEFAULT_CONTEXT_RULES.weekday,
-    weather: MOCK_WEATHER,
+    today: day.date,
+    // Holidays use the Shabbat rules (PRD section 7: shabbat / holiday share one row).
+    context: DEFAULT_CONTEXT_RULES[day.dayType === "weekday" ? "weekday" : day.dayType],
+    weather: day.weather ?? FALLBACK_WEATHER,
     recent_wears: [],
     anchor_item_id: null,
-    max_candidates: 6,
+    max_candidates: 8,
     ...overrides,
   });
 }
 
-/**
- * The engine's top-ranked weekday outfit, or null when the filters leave nothing (empty wardrobe, extreme
- * weather). Null is a real state and the screen renders the quiet empty text for it. The context, date and
- * weather are still mock inputs; the wardrobe and pair weights are the user's real data.
- */
-export function getOutfit(items: Item[], pairWeights: PairWeights): CandidateOutfit | null {
-  return generateCandidates(items, request(), pairWeights)[0] ?? null;
+/** The engine's top outfit for the day, or null when the filters leave nothing (a real state, shown as empty). */
+export function getOutfit(items: Item[], pairWeights: PairWeights, day: DayInput): CandidateOutfit | null {
+  return generateCandidates(items, request(day), pairWeights)[0] ?? null;
 }
 
 /**
@@ -34,8 +40,9 @@ export function getOutfit(items: Item[], pairWeights: PairWeights): CandidateOut
 export function getOutfitsWith(items: Item[], pairWeights: PairWeights, itemId: string, max = 3): CandidateOutfit[] {
   const item = items.find((i) => i.id === itemId);
   if (!item) return [];
-  const weather = { ...MOCK_WEATHER, temp_min_c: item.tags.temp_min_c, temp_max_c: item.tags.temp_max_c };
-  return generateCandidates(items, request({ anchor_item_id: itemId, max_candidates: max, weather }), pairWeights)
+  const weather = { temp_min_c: item.tags.temp_min_c, temp_max_c: item.tags.temp_max_c, rain_probability: 0 };
+  const day: DayInput = { date: israelDate().date, weather, dayType: "weekday" };
+  return generateCandidates(items, request(day, { anchor_item_id: itemId, max_candidates: max }), pairWeights)
     .filter((c) => c.items.some((i) => i.id === itemId))
     .slice(0, max);
 }

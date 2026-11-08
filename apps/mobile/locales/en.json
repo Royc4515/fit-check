@@ -12,12 +12,33 @@
     "dressier": "Dressier",
     "casual": "More casual",
     "skip": "Skip",
-    "weather": "{{day}} · {{range}} · {{rain}} chance of rain",
-    "context": {
-      "weekday": "Weekday"
+    "actions": "Actions",
+    "dayType": {
+      "weekday": "Weekday",
+      "shabbat": "Shabbat",
+      "holiday": "Holiday"
     },
-    "explanationMock": "A clean weekday outfit for 16 to 24 degrees. Formality is even across the pieces, and none of them was worn in the last few days.",
-    "actions": "Actions"
+    "sky": {
+      "clear": "Clear",
+      "cloudy": "Partly cloudy",
+      "fog": "Fog",
+      "drizzle": "Drizzle",
+      "rain": "Rain",
+      "showers": "Showers",
+      "snow": "Snow",
+      "storm": "Thunderstorm"
+    },
+    "weatherLine": "{{sky}} · {{range}} · {{rain}} rain",
+    "noWeather": "No weather data right now",
+    "candles": "Shabbat begins {{time}}",
+    "credits": "Weather: Open-Meteo · Hebrew calendar: Hebcal",
+    "explain": {
+      "base": "{{day}}, feels like {{min}} to {{max}} degrees.",
+      "noWeather": "{{day}}.",
+      "layer": "A layer for the cool morning, off by noon.",
+      "rain": "Rain is possible, take a coat or an umbrella.",
+      "shabbat": "Shabbat clothes by your rules."
+    }
   },
   "wardrobe": {
     "title": "Wardrobe",
