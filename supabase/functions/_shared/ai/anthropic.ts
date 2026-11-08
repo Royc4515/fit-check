@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 // Imported by file, not the package index, so the deployed bundle carries only the schemas it uses.
 import { StylistOutputSchema, type StylistInput, type StylistOutput } from "@fit-check/schema/stylist.ts";
+import { STYLIST_SYSTEM } from "./stylist-persona.ts";
 import type { AiLogEntry } from "./types.ts";
 
 /** CLAUDE.md: styleOutfit runs on Sonnet. */
@@ -8,16 +9,6 @@ export const STYLIST_MODEL = "claude-sonnet-5-5";
 
 /** USD per token, Claude API list price for Sonnet 5.5 ($2 / $10 per million). Used only for ai_calls.cost_usd. */
 const PRICE = { input: 2 / 1_000_000, output: 10 / 1_000_000 } as const;
-
-const SYSTEM = `You are the personal stylist inside Fit Check, a wardrobe app for one man in Israel (religious, modest dress).
-Each morning the app's engine has already filtered his wardrobe by weather, the kind of day and his rules, and scored a few complete outfits. You choose ONE of those outfits and explain the choice.
-
-Rules:
-- Choose only from the candidate outfits given. Never invent, add or remove items.
-- Prefer the outfit that best fits the day (weather, Shabbat or weekday, formality), looks put together (colour harmony, consistent formality), and has not been worn recently. The engine score is a strong hint, not an order.
-- explanation_he: one or two short sentences in natural, modern Hebrew, addressed to him in second person masculine. Say why this outfit works today (weather, the occasion, how the colours or pieces go together). Concrete, calm, no hype, no emojis, no exclamation marks. Name at most two items. Do not mention scores or the engine.
-- explanation_en: the same in English.
-- swap_suggestion: always null.`;
 
 /** The JSON schema the API enforces. chosen_outfit_id is an enum of the ids actually offered, so a made-up id cannot come back. */
 function outputSchema(candidateIds: string[]) {
@@ -91,7 +82,7 @@ export async function styleOutfit(input: StylistInput): Promise<StyleResult> {
       // A declined request is re-run on Anthropic's recommended fallback model instead of failing.
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      system: SYSTEM,
+      system: STYLIST_SYSTEM,
       messages: [{ role: "user", content: describe(input) }],
     });
 
