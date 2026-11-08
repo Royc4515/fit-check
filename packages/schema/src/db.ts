@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ItemSchema, type Item } from "./item";
+import { ItemSchema, type Item } from "./item.ts";
 
 /**
  * The only place that knows how an `items` row maps to the engine's `Item` and back. The app reads with

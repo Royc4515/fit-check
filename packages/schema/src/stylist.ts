@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { COLOR_NAMES, SUBCATEGORIES } from "./item-tags";
-import { CONTEXT_TYPES } from "./context";
+import { COLOR_NAMES, SUBCATEGORIES } from "./item-tags.ts";
+import { CONTEXT_TYPES } from "./context.ts";
 
 export const SLOTS = ["top", "bottom", "shoes", "layer"] as const;
 export type Slot = (typeof SLOTS)[number];

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SUBCATEGORIES, PATTERNS } from "./item-tags";
+import { SUBCATEGORIES, PATTERNS } from "./item-tags.ts";
 
 export const CONTEXT_TYPES = [
   "weekday",

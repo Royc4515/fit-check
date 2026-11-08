@@ -4,6 +4,7 @@ import { WardrobeGate } from "../components/WardrobeGate";
 import type { DayContext } from "../data/dayContext";
 import { useDayContext } from "../data/useDayContext";
 import { useFeedback } from "../data/useFeedback";
+import { requestStyle } from "../data/stylist";
 import type { WardrobeData } from "../data/wardrobe";
 import { useWardrobe } from "../data/WardrobeProvider";
 import { useSession } from "../features/auth/SessionProvider";
@@ -49,6 +50,7 @@ function Today(props: {
       busy={feedback.busy}
       failed={feedback.failed}
       laundered={feedback.laundered}
+      stylist={requestStyle}
     />
   );
 }
