@@ -80,9 +80,10 @@ describe("WearRowSchema", () => {
       worn_on: "2026-11-08",
       feedback: "worn",
       outfit_id: "o1",
-      outfits: { outfit_items: [{ item_id: "a" }, { item_id: "b" }] },
+      outfits: { breakdown: { score: 1, adjustment: { temp_steps: 1, formality_steps: 0 } }, outfit_items: [{ item_id: "a" }, { item_id: "b" }] },
     });
     expect(row.outfits?.outfit_items.map((i) => i.item_id)).toEqual(["a", "b"]);
+    expect(row.outfits?.breakdown?.adjustment).toEqual({ temp_steps: 1, formality_steps: 0 });
   });
 
   it("accepts a wear whose outfit was deleted, and rejects an unknown feedback", () => {

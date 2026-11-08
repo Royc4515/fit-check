@@ -1,6 +1,6 @@
-import { NO_ADJUSTMENT, swapOptions, type DayAdjustment, type PairWeights } from "@fit-check/engine";
-import type { Item, Slot } from "@fit-check/schema";
-import { useMemo, useState } from "react";
+import { combineAdjustments, learnedAdjustment, NO_ADJUSTMENT, swapOptions, type DayAdjustment, type PairWeights } from "@fit-check/engine";
+import type { Item, Slot, StylistInput, StylistOutput } from "@fit-check/schema";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -38,7 +38,12 @@ type Props = {
   busy: boolean;
   failed: boolean;
   laundered?: Laundered | null;
+  /** The AI stylist (stage B). Absent or returning null means the engine's order and template text are used. */
+  stylist?: (input: StylistInput) => Promise<StylistOutput | null>;
 };
+
+/** Waits for taps (nudges, swaps) to settle before asking the stylist, so a burst of taps costs one call. */
+const STYLIST_DEBOUNCE_MS = 600;
 
 /** "Warmer", or "Warmer ×2" after two taps; null when that direction was not tapped. */
 const adjustPart = (label: string, n: number) => (n <= 0 ? null : n === 1 ? label : `${label} ${ltr(`×${n}`)}`);
@@ -50,7 +55,7 @@ const ADJUST: Record<Adjust, DayAdjustment> = {
   casual: { temp_steps: 0, formality_steps: -1 },
 };
 
-export function TodayView({ items, pairWeights, day, history, actions, busy, failed, laundered }: Props) {
+export function TodayView({ items, pairWeights, day, history, actions, busy, failed, laundered, stylist }: Props) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -62,9 +67,57 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const [swapping, setSwapping] = useState(false);
   const [swapSlot, setSwapSlot] = useState<Slot | null>(null);
 
+  // The standing lean learned from recent wears, then today's taps on top. The total is what gets stored with a
+  // worn outfit (see engine learnedAdjustment for why the total and not the taps).
+  const learned = useMemo(() => learnedAdjustment(history.samples.map((s) => s.adjustment)), [history.samples]);
+  const effective = useMemo(() => combineAdjustments(learned, adjustment), [learned, adjustment]);
+  const locale = i18n.language === "en" ? "en" : "he";
+  const gregorian = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }).format(
+    new Date(`${day.date}T12:00:00`)
+  );
+  const dayLabel = day.holiday && day.dayType === "holiday" ? day.holiday[locale] : t(`today.dayType.${day.dayType}`);
+
+  // The engine's own order first; the stylist then picks among its open candidates (never outside them).
+  const base = useMemo(
+    () => planToday({ items, pairWeights, day, history, adjustment: effective }),
+    [items, pairWeights, day, history, effective]
+  );
+  const stylistInput = useMemo<StylistInput | null>(() => {
+    if (base.kind !== "suggestion") return null;
+    const byId = new Map(items.map((i) => [i.id, i.name]));
+    const w = day.weather;
+    return {
+      context_type: day.dayType,
+      date_label_he: `${day.date} ${day.holiday?.he ?? t(`today.dayType.${day.dayType}`, { lng: "he" })}`,
+      weather_summary: w
+        ? `${w.temp_min_c}-${w.temp_max_c}C, ${Math.round(w.rain_probability * 100)}% chance of rain, ${w.sky}`
+        : "no forecast available",
+      candidates: base.candidates.slice(0, 8),
+      recent_outfits_summary: history.recent.slice(0, 7).map((r) => `${r.date}: ${r.item_ids.map((id) => byId.get(id) ?? "?").join(", ")}`),
+    };
+  }, [base, items, day, history.recent, t]);
+  const stylistKey = stylistInput ? `${stylistInput.date_label_he}|${stylistInput.candidates.map((c) => c.outfit_id).join(",")}` : null;
+  const [styledAnswer, setStyledAnswer] = useState<{ key: string; output: StylistOutput } | null>(null);
+  useEffect(() => {
+    if (!stylist || !stylistInput || !stylistKey) return;
+    let active = true;
+    const timer = setTimeout(() => {
+      void stylist(stylistInput).then((output) => {
+        if (active && output) setStyledAnswer({ key: stylistKey, output });
+      });
+    }, STYLIST_DEBOUNCE_MS);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+    // stylistKey captures everything about the input that should trigger a new call.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stylist, stylistKey]);
+  const styled = styledAnswer && styledAnswer.key === stylistKey ? styledAnswer.output : null;
+
   const plan = useMemo(
-    () => planToday({ items, pairWeights, day, history, adjustment, swaps }),
-    [items, pairWeights, day, history, adjustment, swaps]
+    () => planToday({ items, pairWeights, day, history, adjustment: effective, swaps, preferredId: styled?.chosen_outfit_id ?? null }),
+    [items, pairWeights, day, history, effective, swaps, styled]
   );
   const outfit = plan.kind === "empty" ? null : plan.outfit;
   const tagsById = useMemo(() => new Map(items.map((i) => [i.id, i.tags])), [items]);
@@ -93,14 +146,14 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   ].filter((p): p is string => p !== null);
   const lastSkip = plan.kind === "worn" ? null : plan.lastSkip;
 
-  const locale = i18n.language === "en" ? "en" : "he";
-  const gregorian = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }).format(
-    new Date(`${day.date}T12:00:00`)
-  );
   const hebrew = day.hebrewDate?.[locale];
-  const dayLabel = day.holiday && day.dayType === "holiday" ? day.holiday[locale] : t(`today.dayType.${day.dayType}`);
   const w = day.weather;
-  const explanation = outfit ? explainOutfit(t, day, outfit, dayLabel) : null;
+  const template = outfit ? explainOutfit(t, day, outfit, dayLabel) : null;
+  // The stylist's sentence replaces the template lead only for the outfit it actually chose (not after a swap).
+  const explanation =
+    template && plan.kind === "suggestion" && plan.styled && styled
+      ? { ...template, lead: locale === "en" ? styled.explanation_en : styled.explanation_he }
+      : template;
   const pieces = outfit ? SLOT_ORDER.flatMap((slot) => outfit.items.filter((i) => i.slot === slot)) : [];
   const place = day.place ?? (day.usesCurrentLocation ? t("location.currentShort") : t("location.default"));
 
@@ -133,6 +186,15 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
           { label: t("today.undo"), onPress: () => void actions.undo(record).then(resetSwaps) },
         ],
       });
+    }
+    const learnedParts = [
+      adjustPart(t("today.warmer"), learned.temp_steps),
+      adjustPart(t("today.cooler"), -learned.temp_steps),
+      adjustPart(t("today.dressier"), learned.formality_steps),
+      adjustPart(t("today.casual"), -learned.formality_steps),
+    ].filter((p): p is string => p !== null);
+    if (learnedParts.length > 0 && plan.kind !== "worn") {
+      lines.push({ key: "learned", text: t("today.adjust.learned", { parts: learnedParts.join(" · ") }), links: [] });
     }
     if (adjustParts.length > 0) {
       lines.push({
@@ -290,8 +352,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         {plan.kind === "suggestion" ? (
           <ActionSheet
             busy={busy}
-            onWear={() => void actions.wear(plan.outfit, plan.source).then(resetSwaps)}
-            onSkip={() => void actions.skip(plan.outfit, plan.source).then(resetSwaps)}
+            onWear={() => void actions.wear(plan.outfit, plan.source, effective).then(resetSwaps)}
+            onSkip={() => void actions.skip(plan.outfit, plan.source, effective).then(resetSwaps)}
             onSwap={() => setSwapping(true)}
             onAdjust={adjust}
           />

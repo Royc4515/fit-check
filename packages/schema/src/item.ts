@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ItemTagsSchema } from "./item-tags";
+import { ItemTagsSchema } from "./item-tags.ts";
 
 export const ITEM_STATUSES = ["active", "virtual", "archived"] as const;
 export const AVAILABILITIES = ["home", "laundry", "away", "lent"] as const;

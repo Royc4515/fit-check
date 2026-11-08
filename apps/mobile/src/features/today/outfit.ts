@@ -71,7 +71,18 @@ export type Swaps = Partial<Record<Slot, string>>;
 export type TodayPlan =
   /** Already answered "wearing": show that outfit, nothing else to decide today. */
   | { kind: "worn"; outfit: CandidateOutfit; record: TodayRecord; req: StylingRequest }
-  | { kind: "suggestion"; outfit: CandidateOutfit; items: Item[]; source: "daily" | "swap"; req: StylingRequest; lastSkip: TodayRecord | null }
+  | {
+      kind: "suggestion";
+      outfit: CandidateOutfit;
+      items: Item[];
+      source: "daily" | "swap";
+      req: StylingRequest;
+      lastSkip: TodayRecord | null;
+      /** Today's still-open candidates, best first: what the AI stylist chooses from. */
+      candidates: CandidateOutfit[];
+      /** True when `outfit` is the stylist's pick (and was not swapped since), so its explanation applies. */
+      styled: boolean;
+    }
   /** Every candidate was skipped, or the filters left nothing. */
   | { kind: "empty"; lastSkip: TodayRecord | null; req: StylingRequest };
 
@@ -91,8 +102,10 @@ export function planToday(args: {
   history: FeedbackHistory;
   adjustment?: DayAdjustment;
   swaps?: Swaps;
+  /** The AI stylist's choice among `candidates`; ignored when it is no longer open (skipped, filtered out). */
+  preferredId?: string | null;
 }): TodayPlan {
-  const { items, pairWeights, day, history, adjustment = NO_ADJUSTMENT, swaps = {} } = args;
+  const { items, pairWeights, day, history, adjustment = NO_ADJUSTMENT, swaps = {}, preferredId = null } = args;
   const req = adjustRequest(request(day, { recent_wears: history.recent }), adjustment);
   const byId = new Map(items.map((i) => [i.id, i]));
 
@@ -105,9 +118,11 @@ export function planToday(args: {
 
   const answered = history.today.filter((r) => r.feedback !== "worn").map((r) => r.itemIds);
   const lastSkip = [...history.today].reverse().find((r) => r.feedback !== "worn") ?? null;
-  const next = generateCandidates(items, req, pairWeights).find(
+  const open = generateCandidates(items, req, pairWeights).filter(
     (c) => !answered.some((ids) => sameSet(ids, c.items.map((i) => i.id)))
   );
+  const preferred = preferredId ? open.find((c) => c.outfit_id === preferredId) : undefined;
+  const next = preferred ?? open[0];
   if (!next) return { kind: "empty", lastSkip, req };
 
   let picked = next.items.flatMap((i) => byId.get(i.id) ?? []);
@@ -119,7 +134,16 @@ export function planToday(args: {
     swapped = true;
   }
   const outfit = swapped ? asCandidate(picked, req, pairWeights) : next;
-  return { kind: "suggestion", outfit, items: picked, source: swapped ? "swap" : "daily", req, lastSkip };
+  return {
+    kind: "suggestion",
+    outfit,
+    items: picked,
+    source: swapped ? "swap" : "daily",
+    req,
+    lastSkip,
+    candidates: open,
+    styled: preferred !== undefined && !swapped,
+  };
 }
 
 /**
