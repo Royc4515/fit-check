@@ -141,7 +141,8 @@
   "auth": {
     "prompt": "Sign in to see your wardrobe",
     "google": "Continue with Google",
-    "failed": "Sign-in failed. Try again."
+    "failed": "Sign-in failed. Try again.",
+    "tagline": "Your wardrobe, and one outfit for every morning."
   },
   "location": {
     "title": "Location",

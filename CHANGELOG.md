@@ -100,3 +100,12 @@
 - Weather, the local date and Shabbat times follow the chosen place. A chosen city is sent to Hebcal by its GeoNames id, so local customs apply (Jerusalem lights candles 40 minutes before sunset; coordinates alone get the generic 18, which the screen says when "current location" is used). The Israel holiday schedule (`i=on`) is applied only when the place is in Israel's time zone; abroad Yom Tov is two days.
 - Caches are keyed by place, so switching cities never shows the old city's weather.
 - Verified: geocoder and Hebcal (by id and by coordinates) against live responses. Not verified: the screen itself and the GPS permission flow, which need a signed-in session and a real device/browser.
+
+## 2026-11-08 (brand: Fit Check)
+
+- Name settled: Fit Check. Mark: "FC" in Frank Ruhl Libre inside a hairline square (Totême/SSENSE restraint: ink on ivory, no colour, no gradient). Rendered from the app's own font file into `assets/`: app icon, Android adaptive foreground/background/monochrome, favicon, splash (`expo-splash-screen`, ivory, 120px).
+- Sign-in is now a cover page: monogram, the real Hebrew date (Hebcal), the wordmark, a one-line tagline, a still life of three drawn garments overlapping by 8px, then the single burgundy action. `components/brand/Monogram.tsx` and `StillLife.tsx` are reusable.
+- Fixed on the way: Hebrew set in Plex Mono fell back to a system font with wide gaps (Plex Mono has no Hebrew); Hebrew text is now always in the body font, mono only for numbers. The cover's free height is taken by the composition instead of a dead band above the button.
+- Look at: `design/screens/2026-11-08-sign-in*.png`, `2026-11-08-app-icon.png`. Not verified: the icon and splash in an Android build.
+- Known waste, to fix: the cover loads the whole day context (including weather) when it only needs the Hebrew date.
+- Plan: added stage G (personal colour palette, research-backed) to `docs/PLAN.md`; it needs a migration and waits for a go.
