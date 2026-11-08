@@ -1,4 +1,4 @@
-import type { ExtractedGarment } from "@fit-check/schema";
+import type { DetectedGarment } from "@fit-check/schema";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
@@ -7,12 +7,12 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TextLink } from "../../components/TextLink";
 import { TextAction } from "../../components/TextAction";
-import { enhanceCutout, preparePhoto, separatePhoto, uploadOriginal } from "../../data/intake";
+import { cropGarment, detectPhoto, enhanceCutout, preparePhoto, uploadOriginal } from "../../data/intake";
 import { layout } from "../../theme/tokens";
 
-type JobStatus = "waiting" | "uploading" | "separating" | "done" | "failed";
-/** A cutout plus the state of its optional AI enhancement. */
-type Garment = ExtractedGarment & { enhancing?: boolean; enhanceError?: string };
+type JobStatus = "waiting" | "uploading" | "separating" | "cropping" | "done" | "failed";
+/** A cropped garment plus the state of its optional AI redraw. */
+type Garment = DetectedGarment & { path: string; url: string; enhanced?: boolean; enhancing?: boolean; enhanceError?: string };
 type Job = { id: string; preview: string; status: JobStatus; garments: Garment[]; skipped: number; reason?: string };
 
 /** One photo at a time: predictable cost, and the user sees results arrive in the order they picked them. */
@@ -39,15 +39,16 @@ export function IntakeView({ userId }: { userId: string }) {
   const enhance = async (jobId: string, g: Garment) => {
     updateGarment(jobId, g.path, { enhancing: true, enhanceError: undefined });
     const result = await enhanceCutout(g.path, g.description);
-    if (result.ok) updateGarment(jobId, g.path, { enhancing: false, url: result.url });
+    if (result.ok) updateGarment(jobId, g.path, { enhancing: false, enhanced: true, url: result.url });
     else updateGarment(jobId, g.path, { enhancing: false, enhanceError: result.reason });
   };
 
-  const pick = async () => {
+  /** Picks photos and runs each through upload, free detection and cropping. `single` is a retake of one garment. */
+  const pick = async (single = false) => {
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      allowsMultipleSelection: true,
-      selectionLimit: MAX_PHOTOS_PER_BATCH,
+      allowsMultipleSelection: !single,
+      selectionLimit: single ? 1 : MAX_PHOTOS_PER_BATCH,
       quality: 1,
     });
     if (picked.canceled || picked.assets.length === 0) return;
@@ -62,9 +63,24 @@ export function IntakeView({ userId }: { userId: string }) {
         const prepared = await preparePhoto(asset.uri, asset.width, asset.height);
         const path = await uploadOriginal(userId, prepared, i);
         update(job.id, { status: "separating" });
-        const result = await separatePhoto(path);
-        if (result.ok) update(job.id, { status: "done", garments: result.garments, skipped: result.skipped });
-        else update(job.id, { status: "failed", reason: result.reason });
+        const result = await detectPhoto(path);
+        if (!result.ok) {
+          update(job.id, { status: "failed", reason: result.reason });
+          continue;
+        }
+        update(job.id, { status: "cropping" });
+        const photoId = path.split("/").pop()!.replace(/\.[^.]+$/, "");
+        const garments: Garment[] = [];
+        let skipped = 0;
+        for (const [n, g] of result.garments.entries()) {
+          try {
+            garments.push({ ...g, ...(await cropGarment(userId, prepared, photoId, n + 1, g)) });
+          } catch (error) {
+            console.error("Crop failed", error);
+            skipped++;
+          }
+        }
+        update(job.id, garments.length > 0 ? { status: "done", garments, skipped } : { status: "failed", reason: "upload" });
       } catch (error) {
         console.error("Intake failed", error);
         update(job.id, { status: "failed", reason: "upload" });
@@ -103,7 +119,7 @@ export function IntakeView({ userId }: { userId: string }) {
           accessibilityRole="button"
           disabled={running}
           accessibilityState={{ disabled: running }}
-          onPress={() => void pick()}
+          onPress={() => void pick(false)}
           className="mt-8 items-center justify-center rounded bg-accent"
           style={{ height: 48, opacity: running ? 0.4 : 1 }}
         >
@@ -129,14 +145,26 @@ export function IntakeView({ userId }: { userId: string }) {
                       <Text className="mt-1 font-body text-meta text-ink-faint" numberOfLines={2}>
                         {t(`wardrobe.category.${g.category}`)}
                       </Text>
-                      {g.url.endsWith("-enhanced.png") ? null : (
-                        <View className="mt-1 self-start">
-                          <TextAction
-                            label={g.enhancing ? t("intake.enhancing") : t("intake.enhance")}
-                            quiet
-                            disabled={g.enhancing}
-                            onPress={() => void enhance(job.id, g)}
-                          />
+                      {g.issues.length > 0 && !g.enhanced ? (
+                        <Text className="mt-1 font-body text-meta text-ink-soft">
+                          {g.issues.map((i) => t(`intake.issue.${i}`)).join(" · ")}
+                        </Text>
+                      ) : null}
+                      {g.enhanced ? null : (
+                        <View className="mt-1" style={{ gap: 6 }}>
+                          {g.issues.length > 0 ? (
+                            <View className="self-start">
+                              <TextAction label={t("intake.retake")} disabled={running} onPress={() => void pick(true)} />
+                            </View>
+                          ) : null}
+                          <View className="self-start">
+                            <TextAction
+                              label={g.enhancing ? t("intake.enhancing") : t("intake.enhance")}
+                              quiet
+                              disabled={g.enhancing}
+                              onPress={() => void enhance(job.id, g)}
+                            />
+                          </View>
                         </View>
                       )}
                       {g.enhanceError ? (

@@ -215,9 +215,9 @@
   },
   "intake": {
     "title": "Add clothes",
-    "intro": "Take photos of clothes or pick them from your gallery. Each garment is cut out of the original photo onto a transparent background.",
+    "intro": "Take photos of clothes or pick them from your gallery. Each garment is cropped into its own image.",
     "tips": "Best: clothes spread on a plain surface, in daylight, up to 6 per photo.",
-    "previewOnly": "For now this is a quality check: nothing is saved to the wardrobe yet.",
+    "previewOnly": "For now this is a quality check: nothing is saved to the wardrobe yet. Detection is free; improving with AI costs money and needs billing in Google.",
     "pick": "Choose photos",
     "skipped": "{{n}} garments could not be separated.",
     "status": {
@@ -225,7 +225,8 @@
       "uploading": "Uploading the photo",
       "separating": "Separating the clothes, up to half a minute",
       "done_one": "Found 1 garment",
-      "done_other": "Found {{n}} garments"
+      "done_other": "Found {{n}} garments",
+      "cropping": "Cropping the clothes"
     },
     "reason": {
       "no_garments": "No clothes found in the photo.",
@@ -242,6 +243,15 @@
       "rate_limited": "Google is busy (free quota). Try again in a minute."
     },
     "enhance": "Improve with AI",
-    "enhancing": "Improving"
+    "enhancing": "Improving",
+    "retake": "Retake on its own",
+    "issue": {
+      "occluded": "Partly hidden",
+      "overlapping": "Overlaps another garment",
+      "cut_off": "Cut off at the edge",
+      "wrinkled": "Creased",
+      "blurry": "Blurry",
+      "dark": "Too dark"
+    }
   }
 }
