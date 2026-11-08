@@ -11,14 +11,152 @@
     "cooler": "יותר קר",
     "dressier": "יותר רשמי",
     "casual": "פחות רשמי",
-    "skip": "דלג"
+    "skip": "דלג",
+    "actions": "פעולות",
+    "dayType": {
+      "weekday": "יום חול",
+      "shabbat": "שבת",
+      "holiday": "חג"
+    },
+    "sky": {
+      "clear": "בהיר",
+      "cloudy": "מעונן חלקית",
+      "fog": "ערפל",
+      "drizzle": "טפטוף",
+      "rain": "גשם",
+      "showers": "ממטרים",
+      "snow": "שלג",
+      "storm": "סופת רעמים"
+    },
+    "weatherLine": "{{sky}} · {{range}} · גשם {{rain}}",
+    "noWeather": "אין כרגע נתוני מזג אוויר",
+    "candles": "כניסת שבת {{time}}",
+    "credits": "מזג אוויר: Open-Meteo · לוח עברי: Hebcal",
+    "explain": {
+      "base": "{{day}}, מרגיש כמו {{min}} עד {{max}} מעלות.",
+      "noWeather": "{{day}}.",
+      "layer": "שכבה לבוקר הקריר, אפשר להוריד בצהריים.",
+      "rain": "יש סיכוי לגשם, כדאי מעיל או מטרייה.",
+      "shabbat": "בגדי שבת לפי הכללים שלך."
+    }
   },
   "wardrobe": {
     "title": "ארון",
-    "empty": "הארון ריק. צלם כמה בגדים כדי להתחיל."
+    "empty": "הארון ריק. צלם כמה בגדים כדי להתחיל.",
+    "all": "הכל",
+    "noMatch": "אין פריטים שמתאימים לסינון",
+    "category": {
+      "top": "חולצות",
+      "bottom": "מכנסיים",
+      "shoes": "נעליים",
+      "layer": "שכבות",
+      "outerwear": "מעילים",
+      "accessory": "אביזרים"
+    },
+    "season": {
+      "summer": "קיץ",
+      "transition": "מעבר",
+      "winter": "חורף"
+    },
+    "availability": {
+      "home": "בבית",
+      "laundry": "בכביסה",
+      "away": "במילואים",
+      "lent": "מושאל"
+    },
+    "color": {
+      "navy": "נייבי",
+      "white": "לבן",
+      "black": "שחור",
+      "grey": "אפור",
+      "beige": "בז'",
+      "brown": "חום",
+      "olive": "זית",
+      "burgundy": "בורדו",
+      "blue": "כחול",
+      "light_blue": "תכלת",
+      "red": "אדום",
+      "green": "ירוק",
+      "orange": "כתום",
+      "yellow": "צהוב",
+      "pink": "ורוד",
+      "cream": "שמנת"
+    }
   },
   "common": {
     "loading": "טוען",
-    "retry": "נסה שוב"
+    "retry": "נסה שוב",
+    "loadFailed": "לא הצלחנו לטעון את הארון"
+  },
+  "nav": {
+    "today": "היום",
+    "wardrobe": "ארון"
+  },
+  "item": {
+    "back": "ארון",
+    "notFound": "הפריט לא נמצא",
+    "goesWith": "עם מה זה הולך",
+    "formality": "פורמליות {{value}} מתוך 10",
+    "temperature": "טווח {{range}}",
+    "subcategory": {
+      "button_down": "חולצה מכופתרת",
+      "tshirt": "טי-שרט",
+      "polo": "פולו",
+      "knit": "סריג",
+      "sweatshirt": "סווטשירט",
+      "jeans": "ג'ינס",
+      "chinos": "צ'ינו",
+      "trousers": "מכנסי אלגנט",
+      "shorts": "מכנסיים קצרים",
+      "sneakers": "סניקרס",
+      "boots": "מגפיים",
+      "dress_shoes": "נעליים אלגנטיות",
+      "sandals": "סנדלים",
+      "coat": "מעיל",
+      "jacket": "ג'קט",
+      "belt": "חגורה",
+      "watch": "שעון",
+      "hat": "כובע"
+    },
+    "pattern": {
+      "solid": "חלק",
+      "stripes": "פסים",
+      "check": "משבצות",
+      "print": "הדפס",
+      "melange": "מלאנז'",
+      "denim": "ג'ינס"
+    },
+    "material": {
+      "cotton": "כותנה",
+      "linen": "פשתן",
+      "wool": "צמר",
+      "denim": "ג'ינס",
+      "synthetic": "סינתטי",
+      "leather": "עור",
+      "suede": "זמש",
+      "mixed": "מעורב",
+      "unknown": "לא ידוע"
+    }
+  },
+  "auth": {
+    "prompt": "התחבר כדי לראות את הארון שלך",
+    "google": "המשך עם Google",
+    "failed": "ההתחברות נכשלה. נסה שוב.",
+    "tagline": "הארון שלך, ואאוטפיט אחד לכל בוקר."
+  },
+  "location": {
+    "title": "מיקום",
+    "hint": "לפי המיקום נקבעים מזג האוויר וזמני השבת.",
+    "current": "המיקום הנוכחי שלי",
+    "currentShort": "מיקום נוכחי",
+    "default": "גבעת שמואל",
+    "defaultMeta": "ברירת מחדל",
+    "search": "חיפוש עיר",
+    "noResults": "לא נמצאו ערים",
+    "denied": "אין הרשאת מיקום. אפשר לבחור עיר.",
+    "selected": "נבחר",
+    "back": "היום",
+    "label": "מיקום: {{place}}",
+    "genericCandles": "זמני השבת לפי קואורדינטות (18 דקות לפני השקיעה)"
   }
 }
