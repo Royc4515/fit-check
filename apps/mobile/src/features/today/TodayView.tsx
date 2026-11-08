@@ -1,4 +1,4 @@
-import { NO_ADJUSTMENT, swapOptions, type DayAdjustment, type PairWeights } from "@fit-check/engine";
+import { combineAdjustments, learnedAdjustment, NO_ADJUSTMENT, swapOptions, type DayAdjustment, type PairWeights } from "@fit-check/engine";
 import type { Item, Slot } from "@fit-check/schema";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -62,9 +62,13 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const [swapping, setSwapping] = useState(false);
   const [swapSlot, setSwapSlot] = useState<Slot | null>(null);
 
+  // The standing lean learned from recent wears, then today's taps on top. The total is what gets stored with a
+  // worn outfit (see engine learnedAdjustment for why the total and not the taps).
+  const learned = useMemo(() => learnedAdjustment(history.samples.map((s) => s.adjustment)), [history.samples]);
+  const effective = useMemo(() => combineAdjustments(learned, adjustment), [learned, adjustment]);
   const plan = useMemo(
-    () => planToday({ items, pairWeights, day, history, adjustment, swaps }),
-    [items, pairWeights, day, history, adjustment, swaps]
+    () => planToday({ items, pairWeights, day, history, adjustment: effective, swaps }),
+    [items, pairWeights, day, history, effective, swaps]
   );
   const outfit = plan.kind === "empty" ? null : plan.outfit;
   const tagsById = useMemo(() => new Map(items.map((i) => [i.id, i.tags])), [items]);
@@ -133,6 +137,15 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
           { label: t("today.undo"), onPress: () => void actions.undo(record).then(resetSwaps) },
         ],
       });
+    }
+    const learnedParts = [
+      adjustPart(t("today.warmer"), learned.temp_steps),
+      adjustPart(t("today.cooler"), -learned.temp_steps),
+      adjustPart(t("today.dressier"), learned.formality_steps),
+      adjustPart(t("today.casual"), -learned.formality_steps),
+    ].filter((p): p is string => p !== null);
+    if (learnedParts.length > 0 && plan.kind !== "worn") {
+      lines.push({ key: "learned", text: t("today.adjust.learned", { parts: learnedParts.join(" · ") }), links: [] });
     }
     if (adjustParts.length > 0) {
       lines.push({
@@ -290,8 +303,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         {plan.kind === "suggestion" ? (
           <ActionSheet
             busy={busy}
-            onWear={() => void actions.wear(plan.outfit, plan.source).then(resetSwaps)}
-            onSkip={() => void actions.skip(plan.outfit, plan.source).then(resetSwaps)}
+            onWear={() => void actions.wear(plan.outfit, plan.source, effective).then(resetSwaps)}
+            onSkip={() => void actions.skip(plan.outfit, plan.source, effective).then(resetSwaps)}
             onSwap={() => setSwapping(true)}
             onAdjust={adjust}
           />
