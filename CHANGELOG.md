@@ -138,3 +138,4 @@
 - Tests: engine 49 (16 new: feedback, undo, adjustments, swap), schema 8 (wear row parsing). DB writes checked under RLS as the owner in a rolled-back block.
 - Not done (open decisions): automatic laundry after wearing; persisting "I run cold"; the reserve-duty "חזרתי" flow.
 - Look at: `design/screens/2026-11-08-today-{skip-feedback,swap,worn}.png`, `2026-11-08-item-availability.png`; `apps/mobile/src/data/feedback.ts`, `useFeedback.ts`, `features/today/outfit.ts` (`planToday`).
+- Reserve duty (PRD 4): "יוצא למילואים" on the Wardrobe screen turns the grid into a picker (tap to pick, 1px ink frame); "סמן כבמילואים" moves the picked items to `away` in one request. While anything is away the header shows the count with "חזרתי, הכל לכביסה" / "חזרתי, הכל נקי". Items not at home are faded in the grid and their caption says where they are. Look at `design/screens/2026-11-08-wardrobe-reserve-*.png`.
