@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { PressScale } from "../../components/PressScale";
 import Animated, { Easing, FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
-import { motion } from "../../theme/tokens";
+import { colors, motion } from "../../theme/tokens";
 import { ItemArt } from "../../components/item-art/ItemArt";
 import { measureNode, registerCell, setOrigin, type ViewNode } from "../item/transition";
 import { groupByCategory } from "./filters";
@@ -27,10 +27,16 @@ function swatches(items: Item[]): string[] {
   return [...new Set(items.map((i) => i.tags.color_hex.toUpperCase()))].sort((a, b) => lum(b) - lum(a)).slice(0, 24);
 }
 
-function Cell({ item, columns }: { item: Item; columns: number }) {
+/** When set, tapping a cell picks it instead of opening the item (reserve-duty packing). */
+type Picking = { picked: ReadonlySet<string>; toggle: (id: string) => void };
+
+function Cell({ item, columns, picking }: { item: Item; columns: number; picking?: Picking }) {
   const { t } = useTranslation();
   const router = useRouter();
   const image = useRef<ViewNode | null>(null);
+  const picked = picking?.picked.has(item.id) ?? false;
+  // Not at home is shown on the tile so the grid explains why an item never comes up on Today.
+  const where = item.availability === "home" ? null : t(`wardrobe.availability.${item.availability}`);
 
   const open = async () => {
     // Measure first, push second: the item screen needs the rect on its very first frame to start the flight
@@ -48,7 +54,12 @@ function Cell({ item, columns }: { item: Item; columns: number }) {
       exiting={exiting}
       style={{ width: `${100 / columns}%`, paddingHorizontal: HALF_GAP, paddingBottom: 12 }}
     >
-      <PressScale onPress={() => void open()} accessibilityRole="button" accessibilityLabel={item.name}>
+      <PressScale
+        onPress={() => (picking ? picking.toggle(item.id) : void open())}
+        accessibilityRole={picking ? "checkbox" : "button"}
+        accessibilityState={picking ? { checked: picked } : undefined}
+        accessibilityLabel={item.name}
+      >
         {/* Same box a cutout will occupy, on ivory-deep; 2px radius because grid images are small. */}
         <View
           // don't touch / one callback ref feeds both the local ref (origin measuring on press) and the registry
@@ -59,15 +70,18 @@ function Cell({ item, columns }: { item: Item; columns: number }) {
           }}
           collapsable={false}
           className="rounded-sm bg-ivory-deep"
-          style={{ width: "100%", aspectRatio: 3 / 4, padding: "12%" }}
+          // A picked tile gets a 1px ink frame: the selection mark is structure, not colour (accent is Today's).
+          style={{ width: "100%", aspectRatio: 3 / 4, padding: "12%", borderWidth: 1, borderColor: picked ? colors.ink : "transparent" }}
         >
-          <ItemArt tags={item.tags} />
+          <View style={{ flex: 1, opacity: where && !picking ? 0.45 : 1 }}>
+            <ItemArt tags={item.tags} />
+          </View>
         </View>
         <Text className="mt-2 font-body text-body-sm text-ink" numberOfLines={1}>
           {item.name}
         </Text>
         <Text className="font-body text-meta text-ink-faint" numberOfLines={1}>
-          {`${t(`item.subcategory.${item.tags.subcategory}`)} · ${t(`wardrobe.color.${item.tags.color_name}`)}`}
+          {where ?? `${t(`item.subcategory.${item.tags.subcategory}`)} · ${t(`wardrobe.color.${item.tags.color_name}`)}`}
         </Text>
       </PressScale>
     </Animated.View>
@@ -79,7 +93,7 @@ function Cell({ item, columns }: { item: Item; columns: number }) {
  * percentage-wide so the grid is correct on first render without measuring. Not virtualized: fine for ~110
  * placeholders, but once real images land this must become a FlatList-per-section or a flattened FlatList.
  */
-export function WardrobeGrid({ items, columns }: { items: Item[]; columns: number }) {
+export function WardrobeGrid({ items, columns, picking }: { items: Item[]; columns: number; picking?: Picking }) {
   const { t } = useTranslation();
   const groups = groupByCategory(items);
 
@@ -107,7 +121,7 @@ export function WardrobeGrid({ items, columns }: { items: Item[]; columns: numbe
           {/* Negative margin cancels the cells' outer padding so the grid edge meets the screen gutter. */}
           <View style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -HALF_GAP }}>
             {groupItems.map((item) => (
-              <Cell key={item.id} item={item} columns={columns} />
+              <Cell key={item.id} item={item} columns={columns} picking={picking} />
             ))}
           </View>
         </View>

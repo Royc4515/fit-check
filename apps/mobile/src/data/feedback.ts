@@ -132,3 +132,13 @@ export async function setAvailability(itemId: string, availability: Availability
   const { error } = await supabase.from("items").update({ availability }).eq("id", itemId);
   if (error) throw error;
 }
+
+/**
+ * Moves several items at once (packing for reserve duty, coming back). One request, so the move is all or nothing
+ * from the user's side: either every packed item reads "away" or the screen reports the failure.
+ */
+export async function setAvailabilityMany(itemIds: readonly string[], availability: Availability): Promise<void> {
+  if (itemIds.length === 0) return;
+  const { error } = await supabase.from("items").update({ availability }).in("id", [...itemIds]);
+  if (error) throw error;
+}

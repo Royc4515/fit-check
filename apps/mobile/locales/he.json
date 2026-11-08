@@ -104,7 +104,23 @@
       "pink": "ורוד",
       "cream": "שמנת"
     },
-    "summary": "{{items}} פריטים · {{groups}} קטגוריות"
+    "summary": "{{items}} פריטים · {{groups}} קטגוריות",
+    "reserve": {
+      "start": "יוצא למילואים",
+      "pickHint": "בחר מה יוצא איתך.",
+      "picked_one": "נבחר פריט אחד",
+      "picked_two": "נבחרו {{n}} פריטים",
+      "picked_other": "נבחרו {{n}} פריטים",
+      "confirm": "סמן כבמילואים",
+      "cancel": "ביטול",
+      "away_one": "פריט אחד במילואים",
+      "away_two": "{{n}} פריטים במילואים",
+      "away_other": "{{n}} פריטים במילואים",
+      "backLaundry": "חזרתי, הכל לכביסה",
+      "backHome": "חזרתי, הכל נקי",
+      "packMore": "להוסיף עוד",
+      "failed": "השינוי לא נשמר. נסה שוב."
+    }
   },
   "common": {
     "loading": "טוען",

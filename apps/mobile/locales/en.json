@@ -104,7 +104,21 @@
       "pink": "Pink",
       "cream": "Cream"
     },
-    "summary": "{{items}} items · {{groups}} categories"
+    "summary": "{{items}} items · {{groups}} categories",
+    "reserve": {
+      "start": "Leaving for reserve duty",
+      "pickHint": "Pick what goes with you.",
+      "picked_one": "1 item picked",
+      "picked_other": "{{n}} items picked",
+      "confirm": "Mark as away",
+      "cancel": "Cancel",
+      "away_one": "1 item on reserve duty",
+      "away_other": "{{n}} items on reserve duty",
+      "backLaundry": "Back, all to the laundry",
+      "backHome": "Back, all clean",
+      "packMore": "Add more",
+      "failed": "That didn't save. Try again."
+    }
   },
   "common": {
     "loading": "Loading",
