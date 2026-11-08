@@ -12,12 +12,33 @@
     "dressier": "יותר רשמי",
     "casual": "פחות רשמי",
     "skip": "דלג",
-    "weather": "{{day}} · {{range}} · סיכוי גשם {{rain}}",
-    "context": {
-      "weekday": "יום חול"
+    "actions": "פעולות",
+    "dayType": {
+      "weekday": "יום חול",
+      "shabbat": "שבת",
+      "holiday": "חג"
     },
-    "explanationMock": "שילוב נקי ליום חול בין 16 ל-24 מעלות. הפורמליות אחידה בין הפריטים, ואף אחד מהם לא נלבש בימים האחרונים.",
-    "actions": "פעולות"
+    "sky": {
+      "clear": "בהיר",
+      "cloudy": "מעונן חלקית",
+      "fog": "ערפל",
+      "drizzle": "טפטוף",
+      "rain": "גשם",
+      "showers": "ממטרים",
+      "snow": "שלג",
+      "storm": "סופת רעמים"
+    },
+    "weatherLine": "{{sky}} · {{range}} · גשם {{rain}}",
+    "noWeather": "אין כרגע נתוני מזג אוויר",
+    "candles": "כניסת שבת {{time}}",
+    "credits": "מזג אוויר: Open-Meteo · לוח עברי: Hebcal",
+    "explain": {
+      "base": "{{day}}, מרגיש כמו {{min}} עד {{max}} מעלות.",
+      "noWeather": "{{day}}.",
+      "layer": "שכבה לבוקר הקריר, אפשר להוריד בצהריים.",
+      "rain": "יש סיכוי לגשם, כדאי מעיל או מטרייה.",
+      "shabbat": "בגדי שבת לפי הכללים שלך."
+    }
   },
   "wardrobe": {
     "title": "ארון",
