@@ -110,3 +110,19 @@ export function itemToInsertRow(item: Item, userId: string): ItemInsertRow {
 export function orderPair(a: string, b: string): [string, string] {
   return a < b ? [a, b] : [b, a];
 }
+
+export const WEAR_FEEDBACKS = ["worn", "skipped", "disliked"] as const;
+export type WearFeedback = (typeof WEAR_FEEDBACKS)[number];
+
+/** One wear with its outfit's items embedded (wears.outfit_id -> outfits -> outfit_items). */
+export const WEAR_READ_COLUMNS = "id,worn_on,feedback,outfit_id,outfits(outfit_items(item_id))";
+
+export const WearRowSchema = z.object({
+  id: z.string(),
+  worn_on: z.string().date(),
+  feedback: z.enum(WEAR_FEEDBACKS),
+  outfit_id: z.string().nullable(),
+  // null when the outfit was deleted (outfit_id is `on delete set null`); such a wear teaches nothing.
+  outfits: z.object({ outfit_items: z.array(z.object({ item_id: z.string() })) }).nullable(),
+});
+export type WearRow = z.infer<typeof WearRowSchema>;

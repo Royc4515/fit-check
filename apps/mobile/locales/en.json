@@ -42,6 +42,24 @@
       "feels": "Feels like",
       "rain": "Rain",
       "sky": "Sky"
+    },
+    "swapThis": "Swap",
+    "swapClose": "Close",
+    "swapHint": "Pick an item to see alternatives.",
+    "swapDone": "Done",
+    "noAlternatives": "Nothing else fits this slot today.",
+    "allSkipped": "No more suggestions for today.",
+    "undo": "Undo",
+    "dislike": "Didn't like the combination",
+    "status": {
+      "worn": "Logged: this is what you wore today.",
+      "skipped": "You skipped the previous suggestion.",
+      "disliked": "Noted: the previous combination didn't work.",
+      "failed": "That didn't save. Try again."
+    },
+    "adjust": {
+      "label": "Adjusted for today: {{parts}}",
+      "reset": "Reset"
     }
   },
   "wardrobe": {
@@ -148,7 +166,10 @@
       "seasons": "Seasons",
       "formality": "Formality",
       "range": "Temperature range"
-    }
+    },
+    "where": "Where it is",
+    "notSuggested": "Won't be suggested until it's back home.",
+    "availabilityFailed": "That didn't save. Try again."
   },
   "auth": {
     "prompt": "Sign in to see your wardrobe",

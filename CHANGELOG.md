@@ -125,3 +125,16 @@
 
 - The web app is live at https://fit-check-app-xi.vercel.app (project `fit-check-app`, production from `main`). Verified: the sign-in cover renders in Hebrew and English, `/wardrobe` and `/location` load.
 - **Bug fixed:** deep links such as `/item/<id>` returned Vercel's 404. The SPA rewrite pointed at `/index.html`, but with `cleanUrls` on, `/index.html` itself 308-redirects to `/`, so the rewrite target never resolved. It now points at `/`; the client router reads the real URL. Takes effect on the next production deploy (merging this PR).
+
+## 2026-11-08 (A6: wear logging and feedback)
+
+- "לובש" now records the outfit: an `outfits` row, its `outfit_items`, and a `wears` row (feedback `worn`); Today then shows "נרשם: זה מה שלבשת היום" with undo, and the sheet goes away for the day. Writes go to the DB before the screen changes; a failed write says so and changes nothing.
+- "דלג" records a skip and shows the next candidate, with "לא אהבתי את השילוב" (turns the skip into `disliked`) and undo. Skipped outfits stay out of today's suggestions after a reload.
+- Learning: worn raises every pair in the outfit by 0.05, disliked lowers it by 0.1 (PRD 4), clamped, written to `pair_weights`; undo reverses it exactly. Pure engine functions `feedbackUpdates` / `applyPairUpdates`.
+- Freshness: the last 21 days of worn outfits now feed the engine's `recent_wears` (was always empty).
+- "החלף פריט": the caption rows become tappable; each shows up to three alternatives for that slot, scored as the whole outfit, inside today's filters and formality band, never two that look alike (engine `swapOptions`). A swapped outfit is recorded with source `swap`.
+- "יותר חם / קר / רשמי / פחות רשמי" nudge today's request (3C / one formality step per tap, engine `adjustRequest`), shown as "כוונון להיום" with reset. Session-only: a persistent personal offset needs a profile column (a migration, so it waits for a go).
+- Item screen: "איפה הפריט" control (בבית / בכביסה / במילואים / מושאל), optimistic with rollback; only items at home are suggested.
+- Tests: engine 49 (16 new: feedback, undo, adjustments, swap), schema 8 (wear row parsing). DB writes checked under RLS as the owner in a rolled-back block.
+- Not done (open decisions): automatic laundry after wearing; persisting "I run cold"; the reserve-duty "חזרתי" flow.
+- Look at: `design/screens/2026-11-08-today-{skip-feedback,swap,worn}.png`, `2026-11-08-item-availability.png`; `apps/mobile/src/data/feedback.ts`, `useFeedback.ts`, `features/today/outfit.ts` (`planToday`).
