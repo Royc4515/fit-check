@@ -1,9 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 // Imported by file, not the package index, so the deployed bundle carries only the schemas it uses.
 import { StylistOutputSchema, type StylistInput, type StylistOutput } from "@fit-check/schema/stylist.ts";
-import { CATEGORIES } from "@fit-check/schema/item-tags.ts";
-import { GarmentListSchema, MAX_GARMENTS_PER_PHOTO, type GarmentList } from "@fit-check/schema/intake.ts";
-import { toBase64 } from "./gemini.ts";
 import { STYLIST_SYSTEM } from "./stylist-persona.ts";
 import type { AiLogEntry } from "./types.ts";
 
@@ -116,104 +113,5 @@ function cost(usage: { input_tokens: number; output_tokens: number }) {
     input_tokens: usage.input_tokens,
     output_tokens: usage.output_tokens,
     cost_usd: Math.round((usage.input_tokens * PRICE.input + usage.output_tokens * PRICE.output) * 100_000) / 100_000,
-  };
-}
-
-/** Listing garments before extraction: a vision task with a short JSON answer, so Haiku. */
-export const LIST_MODEL = "claude-haiku-5-5";
-const LIST_PRICE = { input: 0.1 / 1_000_000, output: 0.5 / 1_000_000 } as const;
-
-const LIST_SYSTEM = `You look at one photo from a man's wardrobe app and list the separate garments in it that could be added to his wardrobe.
-- Include tops, trousers, shoes, knits, jackets and accessories that are clearly visible and mostly complete.
-- Skip anything mostly hidden, cut off by the frame, or not clothing. Skip the person's face, skin and body.
-- One entry per physical garment. A pair of shoes is one entry.
-- description: in English, specific enough for an image editor to find exactly that garment and nothing else: colour, type, and one or two distinguishing details (collar, pattern, logo position, where it lies in the photo).
-- At most ${MAX_GARMENTS_PER_PHOTO}. If there is no garment, return an empty list.`;
-
-export type ListResult = { output: GarmentList | null; log: AiLogEntry };
-
-/**
- * Lists the garments in a photo (step 1 of separateGarments). Never throws; failure modes as styleOutfit: missing
- * key, API error, refusal, truncation, invalid JSON, schema mismatch.
- */
-export async function listGarments(image: Uint8Array, mediaType: "image/jpeg" | "image/png" | "image/webp"): Promise<ListResult> {
-  const started = Date.now();
-  const base = { provider: "anthropic" as const, model: LIST_MODEL, task: "separate" as const };
-  const fail = (error: string, usage?: { input_tokens: number; output_tokens: number }): ListResult => ({
-    output: null,
-    log: { ...base, latency_ms: Date.now() - started, ok: false, error, images: 1, ...(usage ? listCost(usage) : {}) },
-  });
-  const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!apiKey) return fail("ANTHROPIC_API_KEY is not set");
-  const client = new Anthropic({ apiKey, maxRetries: 1, timeout: 45_000 });
-
-  try {
-    const response = await client.messages.create({
-      model: LIST_MODEL,
-      max_tokens: 3000,
-      output_config: {
-        effort: "low",
-        format: {
-          type: "json_schema",
-          schema: {
-            type: "object",
-            properties: {
-              garments: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    category: { type: "string", enum: [...CATEGORIES] },
-                    description: { type: "string" },
-                  },
-                  required: ["category", "description"],
-                  additionalProperties: false,
-                },
-              },
-            },
-            required: ["garments"],
-            additionalProperties: false,
-          },
-        },
-      },
-      system: LIST_SYSTEM,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: mediaType, data: toBase64(image) } },
-            { type: "text", text: "List the garments in this photo." },
-          ],
-        },
-      ],
-    });
-    const usage = { input_tokens: response.usage.input_tokens, output_tokens: response.usage.output_tokens };
-    if (response.stop_reason === "refusal") return fail("refusal", usage);
-    if (response.stop_reason === "max_tokens") return fail("max_tokens", usage);
-    const text = response.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
-    let json: unknown;
-    try {
-      json = JSON.parse(text);
-    } catch {
-      return fail("invalid JSON", usage);
-    }
-    // The schema caps the list; a longer answer is trimmed rather than rejected (the first garments are still good).
-    const trimmed = json && typeof json === "object" && Array.isArray((json as { garments?: unknown }).garments)
-      ? { garments: (json as { garments: unknown[] }).garments.slice(0, MAX_GARMENTS_PER_PHOTO) }
-      : json;
-    const parsed = GarmentListSchema.safeParse(trimmed);
-    if (!parsed.success) return fail(`schema: ${parsed.error.issues[0]?.message ?? "invalid"}`, usage);
-    return { output: parsed.data, log: { ...base, latency_ms: Date.now() - started, ok: true, images: 1, ...listCost(usage) } };
-  } catch (error) {
-    if (error instanceof Anthropic.APIError) return fail(`API ${error.status}: ${error.message}`.slice(0, 300));
-    return fail(`network: ${String(error)}`.slice(0, 300));
-  }
-}
-
-function listCost(usage: { input_tokens: number; output_tokens: number }) {
-  return {
-    input_tokens: usage.input_tokens,
-    output_tokens: usage.output_tokens,
-    cost_usd: Math.round((usage.input_tokens * LIST_PRICE.input + usage.output_tokens * LIST_PRICE.output) * 100_000) / 100_000,
   };
 }

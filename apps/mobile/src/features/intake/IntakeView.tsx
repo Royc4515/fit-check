@@ -6,11 +6,14 @@ import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TextLink } from "../../components/TextLink";
-import { preparePhoto, separatePhoto, uploadOriginal } from "../../data/intake";
+import { TextAction } from "../../components/TextAction";
+import { enhanceCutout, preparePhoto, separatePhoto, uploadOriginal } from "../../data/intake";
 import { layout } from "../../theme/tokens";
 
 type JobStatus = "waiting" | "uploading" | "separating" | "done" | "failed";
-type Job = { id: string; preview: string; status: JobStatus; garments: ExtractedGarment[]; skipped: number; reason?: string };
+/** A cutout plus the state of its optional AI enhancement. */
+type Garment = ExtractedGarment & { enhancing?: boolean; enhanceError?: string };
+type Job = { id: string; preview: string; status: JobStatus; garments: Garment[]; skipped: number; reason?: string };
 
 /** One photo at a time: predictable cost, and the user sees results arrive in the order they picked them. */
 const MAX_PHOTOS_PER_BATCH = 10;
@@ -27,6 +30,18 @@ export function IntakeView({ userId }: { userId: string }) {
   const [running, setRunning] = useState(false);
 
   const update = (id: string, patch: Partial<Job>) => setJobs((all) => all.map((j) => (j.id === id ? { ...j, ...patch } : j)));
+  const updateGarment = (jobId: string, path: string, patch: Partial<Garment>) =>
+    setJobs((all) =>
+      all.map((j) => (j.id === jobId ? { ...j, garments: j.garments.map((g) => (g.path === path ? { ...g, ...patch } : g)) } : j))
+    );
+
+  /** Paid redraw of one cutout, only on request. On success the tile shows the new image; the cutout stays stored. */
+  const enhance = async (jobId: string, g: Garment) => {
+    updateGarment(jobId, g.path, { enhancing: true, enhanceError: undefined });
+    const result = await enhanceCutout(g.path, g.description);
+    if (result.ok) updateGarment(jobId, g.path, { enhancing: false, url: result.url });
+    else updateGarment(jobId, g.path, { enhancing: false, enhanceError: result.reason });
+  };
 
   const pick = async () => {
     const picked = await ImagePicker.launchImageLibraryAsync({
@@ -114,6 +129,21 @@ export function IntakeView({ userId }: { userId: string }) {
                       <Text className="mt-1 font-body text-meta text-ink-faint" numberOfLines={2}>
                         {t(`wardrobe.category.${g.category}`)}
                       </Text>
+                      {g.url.endsWith("-enhanced.png") ? null : (
+                        <View className="mt-1 self-start">
+                          <TextAction
+                            label={g.enhancing ? t("intake.enhancing") : t("intake.enhance")}
+                            quiet
+                            disabled={g.enhancing}
+                            onPress={() => void enhance(job.id, g)}
+                          />
+                        </View>
+                      )}
+                      {g.enhanceError ? (
+                        <Text className="mt-1 font-body text-meta text-ink-faint">
+                          {t(`intake.reason.${g.enhanceError}`, { defaultValue: t("intake.reason.unknown") })}
+                        </Text>
+                      ) : null}
                     </View>
                   ))}
                 </View>

@@ -215,7 +215,7 @@
   },
   "intake": {
     "title": "Add clothes",
-    "intro": "Take photos of clothes or pick them from your gallery. Each garment in a photo becomes its own clean image.",
+    "intro": "Take photos of clothes or pick them from your gallery. Each garment is cut out of the original photo onto a transparent background.",
     "tips": "Best: clothes spread on a plain surface, in daylight, up to 6 per photo.",
     "previewOnly": "For now this is a quality check: nothing is saved to the wardrobe yet.",
     "pick": "Choose photos",
@@ -237,7 +237,11 @@
       "upload": "Upload failed. Check the connection and try again.",
       "network": "Can't reach the server. Try again.",
       "bad_response": "Unexpected answer from the server.",
-      "unknown": "Something went wrong. Try again."
-    }
+      "unknown": "Something went wrong. Try again.",
+      "billing_required": "Improving needs billing in Google AI Studio. The free cutout is kept.",
+      "rate_limited": "Google is busy (free quota). Try again in a minute."
+    },
+    "enhance": "Improve with AI",
+    "enhancing": "Improving"
   }
 }
