@@ -28,7 +28,6 @@
       "snow": "Snow",
       "storm": "Thunderstorm"
     },
-    "weatherLine": "{{sky}} · {{range}} · {{rain}} rain",
     "noWeather": "No weather data right now",
     "candles": "Shabbat begins {{time}}",
     "credits": "Weather: Open-Meteo · Hebrew calendar: Hebcal",
@@ -38,6 +37,11 @@
       "layer": "A layer for the cool morning, off by noon.",
       "rain": "Rain is possible, take a coat or an umbrella.",
       "shabbat": "Shabbat clothes by your rules."
+    },
+    "data": {
+      "feels": "Feels like",
+      "rain": "Rain",
+      "sky": "Sky"
     }
   },
   "wardrobe": {
@@ -81,7 +85,8 @@
       "yellow": "Yellow",
       "pink": "Pink",
       "cream": "Cream"
-    }
+    },
+    "summary": "{{items}} items · {{groups}} categories"
   },
   "common": {
     "loading": "Loading",
@@ -96,8 +101,6 @@
     "back": "Wardrobe",
     "notFound": "Item not found",
     "goesWith": "Goes with",
-    "formality": "Formality {{value}} of 10",
-    "temperature": "Range {{range}}",
     "subcategory": {
       "button_down": "Button-down",
       "tshirt": "T-shirt",
@@ -136,6 +139,15 @@
       "suede": "Suede",
       "mixed": "Mixed",
       "unknown": "Unknown"
+    },
+    "spec": {
+      "type": "Type",
+      "color": "Colour",
+      "pattern": "Pattern",
+      "material": "Material",
+      "seasons": "Seasons",
+      "formality": "Formality",
+      "range": "Temperature range"
     }
   },
   "auth": {
