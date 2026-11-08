@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { authenticate } from "../_shared/auth.ts";
+import { adminClient, authenticate } from "../_shared/auth.ts";
 import { IntakeSeparateInputSchema } from "@fit-check/schema/intake.ts";
 import { detectGarments, ENHANCE_MODEL, enhanceGarment } from "../_shared/ai/gemini.ts";
 import { countAiCalls, logAiCall, sumAiCost } from "../_shared/ai/log.ts";
@@ -50,7 +50,10 @@ Deno.serve(async (req) => {
 
   const auth = await authenticate(req);
   if (!auth.ok) return json(401, { ok: false, reason: "unauthorized", detail: auth.detail });
-  const { userId, supabase } = auth;
+  const { userId } = auth;
+  // Service role: the user's token is never forwarded (see _shared/auth.ts); ownPath() below keeps every read and
+  // write inside this user's folder instead of RLS.
+  const supabase = adminClient();
 
   let body: unknown;
   try {
@@ -72,6 +75,7 @@ Deno.serve(async (req) => {
 
 async function download(supabase: SupabaseClient, bucket: string, path: string): Promise<Uint8Array | null> {
   const { data, error } = await supabase.storage.from(bucket).download(path);
+  if (error) console.error("download failed", bucket, error.message);
   return error || !data ? null : new Uint8Array(await data.arrayBuffer());
 }
 
@@ -84,7 +88,10 @@ async function detect(supabase: SupabaseClient, userId: string, path: string): P
 
   const result = await detectGarments(bytes, mediaType);
   await logAiCall(userId, result.log);
-  if (!result.garments) return json(200, { ok: false, reason: result.log.error?.startsWith("HTTP 429") ? "rate_limited" : "ai_failed" });
+  if (!result.garments) {
+    console.error("detect failed", result.log.error);
+    return json(200, { ok: false, reason: result.log.error?.startsWith("HTTP 429") ? "rate_limited" : "ai_failed" });
+  }
   if (result.garments.length === 0) return json(200, { ok: false, reason: "no_garments" });
   return json(200, { ok: true, garments: result.garments });
 }
@@ -101,7 +108,10 @@ async function enhance(supabase: SupabaseClient, userId: string, cutoutPath: str
 
   const result = await enhanceGarment(bytes, mediaType, description);
   await logAiCall(userId, result.log);
-  if (!result.png) return json(200, { ok: false, reason: result.billingRequired ? "billing_required" : "ai_failed" });
+  if (!result.png) {
+    console.error("enhance failed", result.log.error);
+    return json(200, { ok: false, reason: result.billingRequired ? "billing_required" : "ai_failed" });
+  }
 
   const out = cutoutPath.replace(/\.[^.]+$/, "-enhanced.png");
   // upsert off: the cutouts policy grants insert only; a second redraw of the same crop is refused, not overwritten.

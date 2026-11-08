@@ -1,36 +1,47 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createLocalJWKSet, jwtVerify } from "jose";
 
-export type AuthResult = { ok: true; userId: string; supabase: SupabaseClient } | { ok: false; detail: string };
+export type AuthResult = { ok: true; userId: string } | { ok: false; detail: string };
 
 /**
- * Identifies the signed-in caller of an Edge Function and returns a Supabase client that acts as them (RLS applies).
+ * Identifies the signed-in caller of an Edge Function by verifying their JWT locally against the project's signing
+ * keys (SUPABASE_JWKS, ES256), with the issuer and audience Supabase Auth sets. No network call.
  *
- * getClaims(token) verifies the JWT against the project's signing keys (JWKS) without a round trip to the Auth
- * server; getUser(token) is the fallback. don't touch / both need the token passed explicitly: with no argument they
- * look for a stored session, which a server never has, and every call came back 401 (2026-11-08).
- * Failure details are logged (never the token) so the next 401 explains itself in the function logs.
+ * don't touch / local on purpose (2026-11-08): from inside the Edge runtime, every request to Supabase that carried
+ * the user's real token (getUser, getClaims, storage as the user) came back as an HTML page, while the same calls
+ * without it worked. So the token is checked here and never forwarded; data access goes through `adminClient()`
+ * with explicit ownership checks in each function.
+ * Failure details are logged (never the token) so a 401 explains itself in the function logs.
  */
 export async function authenticate(req: Request): Promise<AuthResult> {
   const url = Deno.env.get("SUPABASE_URL");
-  const anon = Deno.env.get("SUPABASE_ANON_KEY");
-  const header = req.headers.get("authorization") ?? "";
-  const token = header.replace(/^Bearer\s+/i, "").trim();
-  if (!url || !anon) return { ok: false, detail: "server env missing" };
-  if (!token) return { ok: false, detail: "no bearer token" };
+  const jwksRaw = Deno.env.get("SUPABASE_JWKS");
+  const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (!url || !jwksRaw) return fail("server env missing");
+  if (!token.startsWith("eyJ")) return fail("no user token");
 
-  const supabase = createClient(url, anon, {
-    global: { headers: { authorization: `Bearer ${token}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  try {
+    const jwks = createLocalJWKSet(JSON.parse(jwksRaw));
+    const { payload } = await jwtVerify(token, jwks, { issuer: `${url}/auth/v1`, audience: "authenticated" });
+    if (typeof payload.sub !== "string" || payload.sub.length === 0) return fail("token has no subject");
+    return { ok: true, userId: payload.sub };
+  } catch (error) {
+    return fail(error instanceof Error ? `${error.name}: ${error.message}` : String(error));
+  }
+}
 
-  const claims = await supabase.auth.getClaims(token);
-  const sub = claims.data?.claims?.sub;
-  if (typeof sub === "string" && sub.length > 0) return { ok: true, userId: sub, supabase };
-
-  const user = await supabase.auth.getUser(token);
-  if (user.data.user) return { ok: true, userId: user.data.user.id, supabase };
-
-  const detail = `claims: ${claims.error?.message ?? "no sub"}; user: ${user.error?.message ?? "no user"}`;
+function fail(detail: string): AuthResult {
   console.error("authenticate failed", detail);
   return { ok: false, detail };
+}
+
+/**
+ * Service-role client for storage and tables. Bypasses RLS, so every caller must check that the paths and rows it
+ * touches belong to the authenticated user (see ownPath in intake-separate).
+ */
+export function adminClient(): SupabaseClient {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing");
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
