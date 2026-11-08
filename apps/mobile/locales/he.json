@@ -28,7 +28,6 @@
       "snow": "שלג",
       "storm": "סופת רעמים"
     },
-    "weatherLine": "{{sky}} · {{range}} · גשם {{rain}}",
     "noWeather": "אין כרגע נתוני מזג אוויר",
     "candles": "כניסת שבת {{time}}",
     "credits": "מזג אוויר: Open-Meteo · לוח עברי: Hebcal",
@@ -38,6 +37,11 @@
       "layer": "שכבה לבוקר הקריר, אפשר להוריד בצהריים.",
       "rain": "יש סיכוי לגשם, כדאי מעיל או מטרייה.",
       "shabbat": "בגדי שבת לפי הכללים שלך."
+    },
+    "data": {
+      "feels": "מרגיש כמו",
+      "rain": "גשם",
+      "sky": "שמיים"
     }
   },
   "wardrobe": {
@@ -81,7 +85,8 @@
       "yellow": "צהוב",
       "pink": "ורוד",
       "cream": "שמנת"
-    }
+    },
+    "summary": "{{items}} פריטים · {{groups}} קטגוריות"
   },
   "common": {
     "loading": "טוען",
@@ -96,8 +101,6 @@
     "back": "ארון",
     "notFound": "הפריט לא נמצא",
     "goesWith": "עם מה זה הולך",
-    "formality": "פורמליות {{value}} מתוך 10",
-    "temperature": "טווח {{range}}",
     "subcategory": {
       "button_down": "חולצה מכופתרת",
       "tshirt": "טי-שרט",
@@ -136,6 +139,15 @@
       "suede": "זמש",
       "mixed": "מעורב",
       "unknown": "לא ידוע"
+    },
+    "spec": {
+      "type": "סוג",
+      "color": "צבע",
+      "pattern": "דוגמה",
+      "material": "בד",
+      "seasons": "עונות",
+      "formality": "רשמיות",
+      "range": "טווח טמפרטורה"
     }
   },
   "auth": {
