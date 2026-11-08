@@ -26,6 +26,15 @@ export const FEEDBACK = {
   learning_window_days: 90,
 } as const;
 
+/**
+ * One tap on "warmer"/"cooler" or "dressier"/"more casual" moves today's request by this much. Warmer means the
+ * user wants warmer clothes, so the day is treated as colder, not the other way round.
+ */
+export const ADJUST_STEP = { temp_c: 3, formality: 1 } as const;
+
+/** How far back worn outfits are read for freshness (RECENCY windows are inside this). */
+export const RECENT_WEARS_DAYS = 21;
+
 /** Below this temperature a `layer` slot becomes mandatory; above it, forbidden. */
 export const LAYER_THRESHOLD_C = 19;
 

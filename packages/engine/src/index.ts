@@ -3,3 +3,6 @@ export * from "./filters";
 export * from "./scoring";
 export * from "./candidates";
 export * from "./weather";
+export * from "./feedback";
+export * from "./adjust";
+export * from "./swap";

@@ -1,8 +1,8 @@
 import type { PairWeights } from "@fit-check/engine";
-import type { Item } from "@fit-check/schema";
-import { useMemo } from "react";
+import { AVAILABILITIES, type Availability, type Item } from "@fit-check/schema";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { SpecTable } from "../../components/editorial/SpecTable";
 import { ItemArt } from "../../components/item-art/ItemArt";
 import { getOutfitsWith } from "../today/outfit";
@@ -19,8 +19,63 @@ function Num({ children }: { children: string }) {
  * Everything under the hero: the name, the tags as a spec sheet, and up to three engine outfits that contain this
  * item, each drawn as a small trio so "goes with" is something you see, not a list of names.
  */
-export function ItemDetails({ item, items, pairWeights }: { item: Item; items: Item[]; pairWeights: PairWeights }) {
+/**
+ * Where the item is: home, laundry, away (reserve duty), lent. Only `home` items are ever suggested, so this is the
+ * laundry switch. The current state is ink with the underline; the others are faint, like an index.
+ */
+function AvailabilityControl({
+  value,
+  onChange,
+}: {
+  value: Availability;
+  onChange?: (next: Availability) => void;
+}) {
   const { t } = useTranslation();
+  return (
+    <View className="flex-row flex-wrap" style={{ columnGap: 16, rowGap: 8 }} accessibilityRole="radiogroup">
+      {AVAILABILITIES.map((a) => {
+        const selected = a === value;
+        return (
+          <Pressable
+            key={a}
+            accessibilityRole="radio"
+            accessibilityState={{ selected, disabled: !onChange }}
+            disabled={!onChange || selected}
+            onPress={() => onChange?.(a)}
+            hitSlop={8}
+          >
+            <View className={selected ? "border-b border-ink pb-1" : "pb-1"} style={selected ? undefined : { borderBottomWidth: 1, borderColor: "transparent" }}>
+              <Text className={`font-body text-body ${selected ? "text-ink" : "text-ink-faint"}`}>{t(`wardrobe.availability.${a}`)}</Text>
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+export function ItemDetails({
+  item,
+  items,
+  pairWeights,
+  onAvailability,
+}: {
+  item: Item;
+  items: Item[];
+  pairWeights: PairWeights;
+  onAvailability?: (itemId: string, next: Availability, prev: Availability) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const [failed, setFailed] = useState(false);
+  const changeAvailability = onAvailability
+    ? (next: Availability) => {
+        setFailed(false);
+        onAvailability(item.id, next, item.availability).catch((error: unknown) => {
+          console.error("Availability update failed", error);
+          setFailed(true);
+        });
+      }
+    : undefined;
   const outfits = useMemo(() => getOutfitsWith(items, pairWeights, item.id, 3), [items, pairWeights, item.id]);
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const { tags } = item;
@@ -48,6 +103,15 @@ export function ItemDetails({ item, items, pairWeights }: { item: Item; items: I
     <View>
       <Text className="font-display text-display-xl text-ink">{item.name}</Text>
       {item.brand ? <Text className="mt-1 font-body text-body-sm text-ink-soft">{item.brand}</Text> : null}
+
+      <View className="mt-8">
+        <Text className="font-body text-meta text-ink-faint">{t("item.where")}</Text>
+        <View className="mt-2">
+          <AvailabilityControl value={item.availability} onChange={changeAvailability} />
+        </View>
+        {item.availability !== "home" ? <Text className="mt-2 font-body text-body-sm text-ink-soft">{t("item.notSuggested")}</Text> : null}
+        {failed ? <Text className="mt-2 font-body text-body-sm text-ink-soft">{t("item.availabilityFailed")}</Text> : null}
+      </View>
 
       <View className="mt-8">
         <SpecTable rows={rows} />

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import wardrobeJson from "../../engine/__fixtures__/wardrobe.json";
 import { ItemSchema, type Item } from "./item";
-import { itemFromRow, itemToInsertRow, orderPair } from "./db";
+import { itemFromRow, itemToInsertRow, orderPair, WearRowSchema } from "./db";
 
 const wardrobe: Item[] = (wardrobeJson as unknown[]).map((row) => ItemSchema.parse(row));
 const USER = "00000000-0000-4000-8000-000000000001";
@@ -70,5 +70,23 @@ describe("orderPair", () => {
     const b = "ffffffff-0000-4000-8000-000000000000";
     expect(orderPair(a, b)).toEqual([a, b]);
     expect(orderPair(b, a)).toEqual([a, b]);
+  });
+});
+
+describe("WearRowSchema", () => {
+  it("reads a wear with its embedded outfit items", () => {
+    const row = WearRowSchema.parse({
+      id: "w1",
+      worn_on: "2026-11-08",
+      feedback: "worn",
+      outfit_id: "o1",
+      outfits: { outfit_items: [{ item_id: "a" }, { item_id: "b" }] },
+    });
+    expect(row.outfits?.outfit_items.map((i) => i.item_id)).toEqual(["a", "b"]);
+  });
+
+  it("accepts a wear whose outfit was deleted, and rejects an unknown feedback", () => {
+    expect(WearRowSchema.parse({ id: "w", worn_on: "2026-11-08", feedback: "skipped", outfit_id: null, outfits: null }).outfits).toBeNull();
+    expect(() => WearRowSchema.parse({ id: "w", worn_on: "2026-11-08", feedback: "loved", outfit_id: null, outfits: null })).toThrow();
   });
 });
