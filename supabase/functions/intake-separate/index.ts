@@ -52,7 +52,10 @@ Deno.serve(async (req) => {
   const auth = req.headers.get("authorization");
   if (!url || !anon || !auth) return json(401, { ok: false, reason: "unauthorized" });
   const supabase = createClient(url, anon, { global: { headers: { authorization: auth } }, auth: { persistSession: false } });
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  // don't touch / the token must be passed explicitly: on the server getUser() with no argument looks for a stored
+  // session (there is none) and ignores the Authorization header, so every signed-in call came back 401.
+  const token = auth.replace(/^Bearer\s+/i, "");
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
   if (userError || !userData.user) return json(401, { ok: false, reason: "unauthorized" });
   const userId = userData.user.id;
 
