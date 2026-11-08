@@ -31,7 +31,28 @@
       "expo-font",
       "expo-image",
       "expo-localization",
-      ["expo-notifications", { "color": "#7A1F2B" }]
+      [
+        "expo-notifications",
+        {
+          "color": "#7A1F2B"
+        }
+      ],
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Fit Check uses your location only to get the weather and Shabbat times where you are."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120,
+          "resizeMode": "contain",
+          "backgroundColor": "#F6F2EA"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

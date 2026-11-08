@@ -11,14 +11,152 @@
     "cooler": "Cooler",
     "dressier": "Dressier",
     "casual": "More casual",
-    "skip": "Skip"
+    "skip": "Skip",
+    "actions": "Actions",
+    "dayType": {
+      "weekday": "Weekday",
+      "shabbat": "Shabbat",
+      "holiday": "Holiday"
+    },
+    "sky": {
+      "clear": "Clear",
+      "cloudy": "Partly cloudy",
+      "fog": "Fog",
+      "drizzle": "Drizzle",
+      "rain": "Rain",
+      "showers": "Showers",
+      "snow": "Snow",
+      "storm": "Thunderstorm"
+    },
+    "weatherLine": "{{sky}} · {{range}} · {{rain}} rain",
+    "noWeather": "No weather data right now",
+    "candles": "Shabbat begins {{time}}",
+    "credits": "Weather: Open-Meteo · Hebrew calendar: Hebcal",
+    "explain": {
+      "base": "{{day}}, feels like {{min}} to {{max}} degrees.",
+      "noWeather": "{{day}}.",
+      "layer": "A layer for the cool morning, off by noon.",
+      "rain": "Rain is possible, take a coat or an umbrella.",
+      "shabbat": "Shabbat clothes by your rules."
+    }
   },
   "wardrobe": {
     "title": "Wardrobe",
-    "empty": "Your wardrobe is empty. Photograph a few garments to start."
+    "empty": "Your wardrobe is empty. Photograph a few garments to start.",
+    "all": "All",
+    "noMatch": "No items match this filter",
+    "category": {
+      "top": "Tops",
+      "bottom": "Bottoms",
+      "shoes": "Shoes",
+      "layer": "Layers",
+      "outerwear": "Outerwear",
+      "accessory": "Accessories"
+    },
+    "season": {
+      "summer": "Summer",
+      "transition": "Transition",
+      "winter": "Winter"
+    },
+    "availability": {
+      "home": "At home",
+      "laundry": "In the wash",
+      "away": "Away",
+      "lent": "Lent out"
+    },
+    "color": {
+      "navy": "Navy",
+      "white": "White",
+      "black": "Black",
+      "grey": "Grey",
+      "beige": "Beige",
+      "brown": "Brown",
+      "olive": "Olive",
+      "burgundy": "Burgundy",
+      "blue": "Blue",
+      "light_blue": "Light blue",
+      "red": "Red",
+      "green": "Green",
+      "orange": "Orange",
+      "yellow": "Yellow",
+      "pink": "Pink",
+      "cream": "Cream"
+    }
   },
   "common": {
     "loading": "Loading",
-    "retry": "Retry"
+    "retry": "Retry",
+    "loadFailed": "Could not load your wardrobe"
+  },
+  "nav": {
+    "today": "Today",
+    "wardrobe": "Wardrobe"
+  },
+  "item": {
+    "back": "Wardrobe",
+    "notFound": "Item not found",
+    "goesWith": "Goes with",
+    "formality": "Formality {{value}} of 10",
+    "temperature": "Range {{range}}",
+    "subcategory": {
+      "button_down": "Button-down",
+      "tshirt": "T-shirt",
+      "polo": "Polo",
+      "knit": "Knit",
+      "sweatshirt": "Sweatshirt",
+      "jeans": "Jeans",
+      "chinos": "Chinos",
+      "trousers": "Trousers",
+      "shorts": "Shorts",
+      "sneakers": "Sneakers",
+      "boots": "Boots",
+      "dress_shoes": "Dress shoes",
+      "sandals": "Sandals",
+      "coat": "Coat",
+      "jacket": "Jacket",
+      "belt": "Belt",
+      "watch": "Watch",
+      "hat": "Hat"
+    },
+    "pattern": {
+      "solid": "Solid",
+      "stripes": "Stripes",
+      "check": "Check",
+      "print": "Print",
+      "melange": "Melange",
+      "denim": "Denim"
+    },
+    "material": {
+      "cotton": "Cotton",
+      "linen": "Linen",
+      "wool": "Wool",
+      "denim": "Denim",
+      "synthetic": "Synthetic",
+      "leather": "Leather",
+      "suede": "Suede",
+      "mixed": "Mixed",
+      "unknown": "Unknown"
+    }
+  },
+  "auth": {
+    "prompt": "Sign in to see your wardrobe",
+    "google": "Continue with Google",
+    "failed": "Sign-in failed. Try again.",
+    "tagline": "Your wardrobe, and one outfit for every morning."
+  },
+  "location": {
+    "title": "Location",
+    "hint": "Weather and Shabbat times follow this location.",
+    "current": "My current location",
+    "currentShort": "Current location",
+    "default": "Tel Aviv",
+    "defaultMeta": "Default",
+    "search": "Search a city",
+    "noResults": "No cities found",
+    "denied": "No location permission. You can pick a city.",
+    "selected": "Selected",
+    "back": "Today",
+    "label": "Location: {{place}}",
+    "genericCandles": "Shabbat times by coordinates (18 minutes before sunset)"
   }
 }

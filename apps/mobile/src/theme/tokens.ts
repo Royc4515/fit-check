@@ -8,5 +8,16 @@ export const motion = {
   stateMs: 180,
   layoutMs: 280,
   screenMs: 420,
-  spring: { damping: 28, stiffness: 320, mass: 1 },
+  spring: { damping: 36, stiffness: 320, mass: 1 },
+} as const;
+
+/** DESIGN.md sections 2-3. Only numbers the spec states; everything else derives from these. */
+export const layout = {
+  gutter: 20,
+  /** Visible part of the collapsed action sheet (DESIGN.md section 3: "עולה 56px מהקצה"). */
+  sheetPeek: 56,
+  /** Overlap between staggered outfit pieces. */
+  overlap: 8,
+  /** DESIGN.md section 3: web content is capped and centered, same screen as mobile. */
+  maxContentWidth: 560,
 } as const;
