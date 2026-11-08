@@ -36,7 +36,7 @@ function Today(props: {
   day: DayContext;
 }) {
   const { userId, items, pairWeights, patch, day } = props;
-  const feedback = useFeedback({ userId, date: day.date, dayType: day.dayType, pairWeights, patch });
+  const feedback = useFeedback({ userId, date: day.date, dayType: day.dayType, items, pairWeights, patch });
   // Wait for today's answers so an outfit already marked worn never flashes as a fresh suggestion.
   if (!feedback.history) return <WardrobeGate state={{ status: "loading" }} />;
   return (
@@ -48,6 +48,7 @@ function Today(props: {
       actions={feedback.actions}
       busy={feedback.busy}
       failed={feedback.failed}
+      laundered={feedback.laundered}
     />
   );
 }

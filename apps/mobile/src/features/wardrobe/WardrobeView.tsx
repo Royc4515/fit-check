@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TextAction } from "../../components/TextAction";
 import { TextLink } from "../../components/TextLink";
 import { FilterChips } from "./FilterChips";
-import { applyFilters, deriveFacets, type Facet, type Selection } from "./filters";
+import { applyFilters, deriveFacets, isReserveItem, type Facet, type Selection } from "./filters";
 import { WardrobeGrid } from "./WardrobeGrid";
 import { layout } from "../../theme/tokens";
 
@@ -28,6 +28,7 @@ export function WardrobeView({ all, onMove }: { all: Item[]; onMove?: (ids: stri
   const [packing, setPacking] = useState(false);
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  const [packAll, setPackAll] = useState(false);
   const [failed, setFailed] = useState(false);
   const away = useMemo(() => all.filter((i) => i.availability === "away").map((i) => i.id), [all]);
 
@@ -52,6 +53,7 @@ export function WardrobeView({ all, onMove }: { all: Item[]; onMove?: (ids: stri
     });
   const stopPacking = () => {
     setPacking(false);
+    setPackAll(false);
     setPicked(new Set());
   };
   const insets = useSafeAreaInsets();
@@ -59,7 +61,10 @@ export function WardrobeView({ all, onMove }: { all: Item[]; onMove?: (ids: stri
   const [selection, setSelection] = useState<Selection>({});
 
   const facets = useMemo(() => deriveFacets(all), [all]);
-  const visible = useMemo(() => applyFilters(all, selection), [all, selection]);
+  const visible = useMemo(() => {
+    const filtered = applyFilters(all, selection);
+    return packing && !packAll ? filtered.filter(isReserveItem) : filtered;
+  }, [all, selection, packing, packAll]);
   const columns = width >= WIDE_BREAKPOINT ? 5 : 3;
   const groupCount = useMemo(() => new Set(visible.map((i) => i.tags.category)).size, [visible]);
 
@@ -93,11 +98,17 @@ export function WardrobeView({ all, onMove }: { all: Item[]; onMove?: (ids: stri
                   <Text className="font-body text-body-sm text-ink-soft">
                     {picked.size > 0 ? t("wardrobe.reserve.picked", { count: picked.size, n: ltr(picked.size) }) : t("wardrobe.reserve.pickHint")}
                   </Text>
+                  <Text className="font-body text-body-sm text-ink-soft">{t("wardrobe.reserve.notInWardrobe")}</Text>
                   <View className="flex-row flex-wrap" style={{ columnGap: 16, rowGap: 8 }}>
                     <TextAction
                       label={t("wardrobe.reserve.confirm")}
                       disabled={busy || picked.size === 0}
                       onPress={() => run([...picked], "away", stopPacking)}
+                    />
+                    <TextAction
+                      label={packAll ? t("wardrobe.reserve.showUsual") : t("wardrobe.reserve.showAll")}
+                      quiet
+                      onPress={() => setPackAll((v) => !v)}
                     />
                     <TextAction label={t("wardrobe.reserve.cancel")} quiet disabled={busy} onPress={stopPacking} />
                   </View>

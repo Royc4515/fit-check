@@ -55,12 +55,14 @@
       "worn": "Logged: this is what you wore today.",
       "skipped": "You skipped the previous suggestion.",
       "disliked": "Noted: the previous combination didn't work.",
-      "failed": "That didn't save. Try again."
+      "failed": "That didn't save. Try again.",
+      "laundry": "Moved to the laundry: {{items}}."
     },
     "adjust": {
       "label": "Adjusted for today: {{parts}}",
       "reset": "Reset"
-    }
+    },
+    "keepHome": "Keep it home"
   },
   "wardrobe": {
     "title": "Wardrobe",
@@ -107,7 +109,7 @@
     "summary": "{{items}} items · {{groups}} categories",
     "reserve": {
       "start": "Leaving for reserve duty",
-      "pickHint": "Pick what goes with you.",
+      "pickHint": "Pick what goes with you. Showing T-shirts, sportswear and slides.",
       "picked_one": "1 item picked",
       "picked_other": "{{n}} items picked",
       "confirm": "Mark as away",
@@ -117,7 +119,10 @@
       "backLaundry": "Back, all to the laundry",
       "backHome": "Back, all clean",
       "packMore": "Add more",
-      "failed": "That didn't save. Try again."
+      "failed": "That didn't save. Try again.",
+      "notInWardrobe": "Not in the wardrobe, don't forget: uniform · army boots · pyjamas.",
+      "showAll": "Show the whole wardrobe",
+      "showUsual": "Only the usual"
     }
   },
   "common": {

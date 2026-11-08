@@ -54,3 +54,13 @@ export function groupByCategory(items: Item[]): Array<{ category: (typeof CATEGO
     items: items.filter((i) => i.tags.category === category).sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)),
   })).filter((g) => g.items.length > 0);
 }
+
+/**
+ * What usually goes to reserve duty (Roy, 2026-11-08): T-shirts, sportswear, slides. The picker shows these first;
+ * the rest of the wardrobe is one tap away. Uniform, army boots and pyjamas are not wardrobe items (not in the
+ * tag schema) and appear as a reminder line instead.
+ */
+export function isReserveItem(item: Item): boolean {
+  const { subcategory, style_tags } = item.tags;
+  return subcategory === "tshirt" || subcategory === "sandals" || style_tags.includes("sport");
+}

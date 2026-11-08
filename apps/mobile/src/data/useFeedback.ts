@@ -1,5 +1,5 @@
-import { applyPairUpdates, feedbackUpdates, type PairWeights } from "@fit-check/engine";
-import type { CandidateOutfit, WearFeedback } from "@fit-check/schema";
+import { applyPairUpdates, dueForLaundry, feedbackUpdates, type PairWeights } from "@fit-check/engine";
+import type { Availability, CandidateOutfit, Item, WearFeedback } from "@fit-check/schema";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WardrobeData } from "./wardrobe";
 import type { DayType } from "./dayContext";
@@ -8,8 +8,10 @@ import {
   deleteFeedback,
   EMPTY_HISTORY,
   fetchFeedback,
+  fetchWearCounts,
   recordFeedback,
   savePairWeights,
+  setAvailabilityMany,
   type FeedbackHistory,
   type TodayRecord,
 } from "./feedback";
@@ -19,7 +21,12 @@ export type FeedbackActions = {
   skip: (outfit: CandidateOutfit, source: "daily" | "swap") => Promise<void>;
   dislike: (record: TodayRecord) => Promise<void>;
   undo: (record: TodayRecord) => Promise<void>;
+  /** Overrides the automatic laundry move: the items stay home and keep their wear count. */
+  keepHome: (itemIds: string[]) => Promise<void>;
 };
+
+/** Items the last "wearing" sent to the laundry, so Today can name them and offer to keep them home. */
+export type Laundered = { wearId: string; itemIds: string[] };
 
 export type FeedbackState = {
   /** null until the first load lands; Today waits for it so a worn outfit never flashes as a fresh suggestion. */
@@ -27,6 +34,7 @@ export type FeedbackState = {
   busy: boolean;
   /** The last action failed; the screen says so and nothing changed. */
   failed: boolean;
+  laundered: Laundered | null;
   actions: FeedbackActions;
 };
 
@@ -43,10 +51,16 @@ export function useFeedback(args: {
   userId: string;
   date: string;
   dayType: DayType;
+  items: Item[];
   pairWeights: PairWeights;
   patch: (fn: (data: WardrobeData) => WardrobeData) => void;
 }): FeedbackState {
-  const { userId, date, dayType, pairWeights, patch } = args;
+  const { userId, date, dayType, items, pairWeights, patch } = args;
+  const [laundered, setLaundered] = useState<Laundered | null>(null);
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
   // Stored with the date it belongs to, so a new day reads as "not loaded" without resetting state in an effect.
   const [loaded, setLoaded] = useState<{ date: string; history: FeedbackHistory } | null>(null);
   const history = loaded?.date === date ? loaded.history : null;
@@ -96,6 +110,28 @@ export function useFeedback(args: {
     [userId, patch]
   );
 
+  const move = useCallback(
+    async (ids: string[], next: Availability) => {
+      if (ids.length === 0) return;
+      await setAvailabilityMany(ids, next);
+      const set = new Set(ids);
+      patch((d) => ({ ...d, items: d.items.map((i) => (set.has(i.id) ? { ...i, availability: next } : i)) }));
+    },
+    [patch]
+  );
+
+  /** After a wear: whatever reached its wash count goes to the laundry (engine dueForLaundry, config per kind). */
+  const launder = useCallback(
+    async (record: TodayRecord) => {
+      const counts = await fetchWearCounts(record.itemIds);
+      const worn = itemsRef.current.filter((i) => record.itemIds.includes(i.id));
+      const due = dueForLaundry(worn, counts).map((i) => i.id);
+      await move(due, "laundry");
+      setLaundered(due.length > 0 ? { wearId: record.wearId, itemIds: due } : null);
+    },
+    [move]
+  );
+
   const run = useCallback(async (fn: () => Promise<void>) => {
     setBusy(true);
     setFailed(false);
@@ -120,6 +156,8 @@ export function useFeedback(args: {
           }));
           // The wear is stored even if learning fails; the weights are a derived signal, the wear is the fact.
           await learn(record.itemIds, "worn", 1);
+          // A failed laundry move is logged, not shown: the wear itself succeeded and the user can move items by hand.
+          await launder(record).catch((error: unknown) => console.error("Automatic laundry failed", error));
         }),
       skip: (outfit, source) =>
         run(async () => {
@@ -144,10 +182,20 @@ export function useFeedback(args: {
             };
           });
           if (record.feedback !== "skipped") await learn(record.itemIds, record.feedback, -1);
+          // Undoing the wear undoes its laundry move too; the wash count is right again because the wear is gone.
+          if (laundered?.wearId === record.wearId) {
+            await move(laundered.itemIds, "home");
+            setLaundered(null);
+          }
+        }),
+      keepHome: (itemIds) =>
+        run(async () => {
+          await move(itemIds, "home");
+          setLaundered(null);
         }),
     }),
-    [run, learn, setHistory, userId, date, dayType]
+    [run, learn, launder, move, laundered, setHistory, userId, date, dayType]
   );
 
-  return { history, busy, failed, actions };
+  return { history, busy, failed, laundered, actions };
 }
