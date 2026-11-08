@@ -2,7 +2,7 @@
   "version": "5",
   "specifiers": {
     "npm:@anthropic-ai/sdk@1.6.0": "1.6.0_zod@3.23.8",
-    "npm:@supabase/supabase-js@2": "2.119.0",
+    "npm:@supabase/supabase-js@2.119.0": "2.119.0",
     "npm:zod@3.23.8": "3.23.8"
   },
   "npm": {
@@ -106,7 +106,7 @@
   "workspace": {
     "dependencies": [
       "npm:@anthropic-ai/sdk@1.6.0",
-      "npm:@supabase/supabase-js@2",
+      "npm:@supabase/supabase-js@2.119.0",
       "npm:zod@3.23.8"
     ]
   }

@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { authenticate } from "../_shared/auth.ts";
 import { IntakeSeparateInputSchema } from "@fit-check/schema/intake.ts";
 import { detectGarments, ENHANCE_MODEL, enhanceGarment } from "../_shared/ai/gemini.ts";
 import { countAiCalls, logAiCall, sumAiCost } from "../_shared/ai/log.ts";
@@ -47,17 +48,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json(405, { ok: false, reason: "method" });
 
-  const url = Deno.env.get("SUPABASE_URL");
-  const anon = Deno.env.get("SUPABASE_ANON_KEY");
-  const auth = req.headers.get("authorization");
-  if (!url || !anon || !auth) return json(401, { ok: false, reason: "unauthorized" });
-  const supabase = createClient(url, anon, { global: { headers: { authorization: auth } }, auth: { persistSession: false } });
-  // don't touch / the token must be passed explicitly: on the server getUser() with no argument looks for a stored
-  // session (there is none) and ignores the Authorization header, so every signed-in call came back 401.
-  const token = auth.replace(/^Bearer\s+/i, "");
-  const { data: userData, error: userError } = await supabase.auth.getUser(token);
-  if (userError || !userData.user) return json(401, { ok: false, reason: "unauthorized" });
-  const userId = userData.user.id;
+  const auth = await authenticate(req);
+  if (!auth.ok) return json(401, { ok: false, reason: "unauthorized", detail: auth.detail });
+  const { userId, supabase } = auth;
 
   let body: unknown;
   try {

@@ -174,3 +174,4 @@
 
 - `style-outfit` and `intake-separate` called `supabase.auth.getUser()` without the token. On the server that reads a stored session (none) and ignores the Authorization header, so every real call came back 401 before reaching Claude or Gemini (photos uploaded, nothing detected, no stylist sentence, no `ai_calls` rows). Both now pass the bearer token: `getUser(token)`. Redeployed both.
 - A temporary `env-check` diagnostic (lists env var names only) was deployed and then replaced by a 410 stub; it can be deleted from the Supabase dashboard.
+- Still 401 after passing the token. Both functions now share `supabase/functions/_shared/auth.ts`: `getClaims(token)` (JWKS, no Auth round trip) with `getUser(token)` as fallback, and on failure the 401 body and function log carry the reason (never the token). `@supabase/supabase-js` pinned to 2.119.0 in the functions import map. intake-separate redeployed; style-outfit follows once a real call confirms the fix.
