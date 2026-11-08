@@ -5,26 +5,15 @@ import { CATEGORIES } from "./item-tags.ts";
 export const MAX_GARMENTS_PER_PHOTO = 6;
 
 /**
- * What the vision model reports before extraction: one entry per garment it can see well enough to isolate.
- * `description` is written for the image model ("navy crew-neck knit sweater with ribbed cuffs"), so it must be
- * specific enough to pick that garment out of the photo and nothing else.
+ * Input of the intake-separate Edge Function, two actions:
+ * - separate (default): a photo the user already uploaded to `originals/{uid}/...`; free segmentation.
+ * - enhance: one cutout from a previous separate, redrawn as a product photo by the paid image model.
  */
-export const GarmentListSchema = z.object({
-  garments: z
-    .array(
-      z.object({
-        category: z.enum(CATEGORIES),
-        description: z.string().min(5).max(400),
-      })
-    )
-    .max(MAX_GARMENTS_PER_PHOTO),
-});
-export type GarmentList = z.infer<typeof GarmentListSchema>;
-
-/** Input of the intake-separate Edge Function: a photo the user already uploaded to `originals/{uid}/...`. */
-export const IntakeSeparateInputSchema = z.object({
-  original_path: z.string().min(3).max(300),
-});
+export const IntakeSeparateInputSchema = z.union([
+  z.object({ action: z.literal("separate").default("separate"), original_path: z.string().min(3).max(300) }),
+  z.object({ action: z.literal("enhance"), cutout_path: z.string().min(3).max(300), description: z.string().min(2).max(400) }),
+]);
+export type IntakeSeparateInput = z.infer<typeof IntakeSeparateInputSchema>;
 
 /** One extracted garment, stored in the public `cutouts` bucket. */
 export const ExtractedGarmentSchema = z.object({
@@ -40,3 +29,9 @@ export const IntakeSeparateResultSchema = z.union([
   z.object({ ok: z.literal(false), reason: z.string() }),
 ]);
 export type IntakeSeparateResult = z.infer<typeof IntakeSeparateResultSchema>;
+
+export const IntakeEnhanceResultSchema = z.union([
+  z.object({ ok: z.literal(true), path: z.string(), url: z.string().url() }),
+  z.object({ ok: z.literal(false), reason: z.string() }),
+]);
+export type IntakeEnhanceResult = z.infer<typeof IntakeEnhanceResultSchema>;

@@ -1,4 +1,4 @@
-import { IntakeSeparateResultSchema, type IntakeSeparateResult } from "@fit-check/schema";
+import { IntakeEnhanceResultSchema, IntakeSeparateResultSchema, type IntakeEnhanceResult, type IntakeSeparateResult } from "@fit-check/schema";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
@@ -37,7 +37,7 @@ export async function uploadOriginal(userId: string, uri: string, index: number)
  */
 export async function separatePhoto(originalPath: string): Promise<IntakeSeparateResult> {
   try {
-    const { data, error } = await supabase.functions.invoke("intake-separate", { body: { original_path: originalPath } });
+    const { data, error } = await supabase.functions.invoke("intake-separate", { body: { action: "separate", original_path: originalPath } });
     if (error) {
       if (error instanceof FunctionsHttpError) {
         const parsed = IntakeSeparateResultSchema.safeParse(await error.context.json().catch(() => null));
@@ -46,6 +46,29 @@ export async function separatePhoto(originalPath: string): Promise<IntakeSeparat
       return { ok: false, reason: "network" };
     }
     const parsed = IntakeSeparateResultSchema.safeParse(data);
+    return parsed.success ? parsed.data : { ok: false, reason: "bad_response" };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+/**
+ * Optional, paid: redraws one cutout as a clean product photo. Returns reason "billing_required" while the Gemini
+ * project is on the free tier; the free cutout is then kept as it is. Never throws.
+ */
+export async function enhanceCutout(cutoutPath: string, description: string): Promise<IntakeEnhanceResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke("intake-separate", {
+      body: { action: "enhance", cutout_path: cutoutPath, description },
+    });
+    if (error) {
+      if (error instanceof FunctionsHttpError) {
+        const parsed = IntakeEnhanceResultSchema.safeParse(await error.context.json().catch(() => null));
+        if (parsed.success) return parsed.data;
+      }
+      return { ok: false, reason: "network" };
+    }
+    const parsed = IntakeEnhanceResultSchema.safeParse(data);
     return parsed.success ? parsed.data : { ok: false, reason: "bad_response" };
   } catch {
     return { ok: false, reason: "network" };
