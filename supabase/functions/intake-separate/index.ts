@@ -90,7 +90,7 @@ async function detect(supabase: SupabaseClient, userId: string, path: string): P
   await logAiCall(userId, result.log);
   if (!result.garments) {
     console.error("detect failed", result.log.error);
-    return json(200, { ok: false, reason: result.log.error?.startsWith("HTTP 429") ? "rate_limited" : "ai_failed" });
+    return json(200, { ok: false, reason: /^HTTP (429|500|503)/.test(result.log.error ?? "") ? "rate_limited" : "ai_failed" });
   }
   if (result.garments.length === 0) return json(200, { ok: false, reason: "no_garments" });
   return json(200, { ok: true, garments: result.garments });
