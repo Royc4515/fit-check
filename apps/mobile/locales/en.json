@@ -186,11 +186,18 @@
       "material": "Material",
       "seasons": "Seasons",
       "formality": "Formality",
-      "range": "Temperature range"
+      "range": "Temperature range",
+      "fit": "Fit"
     },
     "where": "Where it is",
     "notSuggested": "Won't be suggested until it's back home.",
-    "availabilityFailed": "That didn't save. Try again."
+    "availabilityFailed": "That didn't save. Try again.",
+    "fit": {
+      "slim": "Slim",
+      "regular": "Regular",
+      "relaxed": "Relaxed",
+      "oversized": "Oversized"
+    }
   },
   "auth": {
     "prompt": "Sign in to see your wardrobe",
@@ -215,9 +222,11 @@
   },
   "intake": {
     "title": "Add clothes",
-    "intro": "Take photos of clothes or pick them from your gallery. Each garment is cropped into its own image.",
-    "tips": "Best: clothes spread on a plain surface, in daylight, up to 6 per photo.",
-    "previewOnly": "For now this is a quality check: nothing is saved to the wardrobe yet. Detection is free; improving with AI costs money and needs billing in Google.",
+    "intro": "Photograph clothes or pick photos. Each garment is identified (type, colour, pattern, fabric), and you confirm or fix it before it enters the wardrobe.",
+    "tips": {
+      "single": "One garment per photo: laid flat on a plain, contrasting surface, in daylight, the whole garment in frame. This is the most accurate.",
+      "several": "Several garments per photo: up to 6, not on top of each other. If one is hidden, shoot it again alone."
+    },
     "pick": "Choose photos",
     "skipped": "{{n}} garments could not be separated.",
     "status": {
@@ -253,6 +262,25 @@
       "wrinkled": "Creased",
       "blurry": "Blurry",
       "dark": "Too dark"
+    },
+    "mode": {
+      "single": "One garment",
+      "several": "Several garments"
+    },
+    "lowRes": "Low-resolution photo, so fabric and shade will be rough. Use the original camera photo, not a screenshot or a WhatsApp copy.",
+    "review": {
+      "tagging": "Identifying type, colour and fabric",
+      "unsure": "worth checking",
+      "name": "Item name",
+      "label": "From the label: {{text}}",
+      "save": "Save to wardrobe",
+      "saving": "Saving",
+      "saved": "Saved to the wardrobe.",
+      "saveFailed": "Saving failed. Try again.",
+      "retryTag": "Identify again",
+      "labelPhoto": "Photograph the label",
+      "labelling": "Reading the label",
+      "skip": "Skip"
     }
   }
 }
