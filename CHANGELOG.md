@@ -212,3 +212,9 @@
 - App: each garment is tagged (from the crop) and cut out in parallel; the review shows the cutout when ready; the item saves
   the cutout and thumb (a redraw still wins if the user asked for one).
 - Not deployed to Modal yet: the sandbox cannot reach Modal's gRPC API. Steps in worker/README.md.
+
+## 2026-11-09 - Show the real photo, not the drawing
+- Roy: items saved from photos showed the generic drawing. The image was saved (items.cutout_path) but every view drew ItemArt.
+- ItemArt takes `cutoutPath`: with a path it shows the stored image (public cutouts bucket), else the drawing (sheet items).
+  Wired in the wardrobe grid, item page, "goes with", Today composition and swap options.
+- Look at: design/screens/2026-11-09-wardrobe-photo.png (Tsumi Mandarin Collar).

@@ -74,7 +74,7 @@ function Cell({ item, columns, picking }: { item: Item; columns: number; picking
           style={{ width: "100%", aspectRatio: 3 / 4, padding: "12%", borderWidth: 1, borderColor: picked ? colors.ink : "transparent" }}
         >
           <View style={{ flex: 1, opacity: where && !picking ? 0.45 : 1 }}>
-            <ItemArt tags={item.tags} />
+            <ItemArt tags={item.tags} cutoutPath={item.cutout_path} />
           </View>
         </View>
         <Text className="mt-2 font-body text-body-sm text-ink" numberOfLines={1}>

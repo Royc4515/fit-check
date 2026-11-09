@@ -1,12 +1,12 @@
-import type { CandidateOutfit, ItemTags } from "@fit-check/schema";
+import type { CandidateOutfit, Item } from "@fit-check/schema";
 import { View } from "react-native";
 import { layout } from "../../theme/tokens";
 import { ItemPlaceholder } from "./ItemPlaceholder";
 
 type Props = {
   items: CandidateOutfit["items"];
-  /** Candidates carry only what the stylist needs; the drawing needs the full tags, looked up by id. */
-  tagsById: ReadonlyMap<string, ItemTags>;
+  /** Candidates carry only what the stylist needs; the picture needs the full item (tags, photo), looked up by id. */
+  itemById: ReadonlyMap<string, Item>;
 };
 
 const STAGGER = 32;
@@ -29,7 +29,7 @@ export function outfitIndex(items: CandidateOutfit["items"], id: string): string
   return String(ordered.findIndex((i) => i.id === id) + 1).padStart(2, "0");
 }
 
-export function OutfitComposition({ items, tagsById }: Props) {
+export function OutfitComposition({ items, itemById }: Props) {
   const top = items.find((i) => i.slot === "top");
   const bottom = items.find((i) => i.slot === "bottom");
   const shoes = items.find((i) => i.slot === "shoes");
@@ -40,18 +40,18 @@ export function OutfitComposition({ items, tagsById }: Props) {
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
       <View style={{ width: "58%" }}>
-        {top ? <ItemPlaceholder index={indexOf(top)} tags={tagsById.get(top.id)} style={{ width: "100%", aspectRatio: 3 / 4 }} /> : null}
+        {top ? <ItemPlaceholder index={indexOf(top)} tags={itemById.get(top.id)?.tags} cutoutPath={itemById.get(top.id)?.cutout_path} style={{ width: "100%", aspectRatio: 3 / 4 }} /> : null}
         {layer ? (
-          <ItemPlaceholder index={indexOf(layer)} tags={tagsById.get(layer.id)} style={{ width: "70%", aspectRatio: 1 / 0.85, marginTop: -o }} />
+          <ItemPlaceholder index={indexOf(layer)} tags={itemById.get(layer.id)?.tags} cutoutPath={itemById.get(layer.id)?.cutout_path} style={{ width: "70%", aspectRatio: 1 / 0.85, marginTop: -o }} />
         ) : null}
       </View>
       {/* Negative marginStart pulls the end column 8px under the top so three boxes read as one outfit. */}
       <View style={{ flex: 1, marginStart: -o, paddingTop: STAGGER }}>
-        {bottom ? <ItemPlaceholder index={indexOf(bottom)} tags={tagsById.get(bottom.id)} style={{ width: "100%", aspectRatio: 1 / 1.45 }} /> : null}
+        {bottom ? <ItemPlaceholder index={indexOf(bottom)} tags={itemById.get(bottom.id)?.tags} cutoutPath={itemById.get(bottom.id)?.cutout_path} style={{ width: "100%", aspectRatio: 1 / 1.45 }} /> : null}
         {shoes ? (
           <ItemPlaceholder
             index={indexOf(shoes)}
-            tags={tagsById.get(shoes.id)}
+            tags={itemById.get(shoes.id)?.tags} cutoutPath={itemById.get(shoes.id)?.cutout_path}
             style={{ width: "86%", aspectRatio: 1 / 0.7, marginTop: -o, alignSelf: "flex-end" }}
           />
         ) : null}

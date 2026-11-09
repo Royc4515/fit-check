@@ -120,7 +120,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     [items, pairWeights, day, history, effective, swaps, styled]
   );
   const outfit = plan.kind === "empty" ? null : plan.outfit;
-  const tagsById = useMemo(() => new Map(items.map((i) => [i.id, i.tags])), [items]);
+  const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const options = useMemo(
     () => (plan.kind === "suggestion" && swapSlot ? swapOptions(items, plan.req, pairWeights, plan.items, swapSlot) : []),
     [plan, swapSlot, items, pairWeights]
@@ -244,7 +244,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
             <>
               <Reveal index={1}>
                 <View className="mt-12">
-                  <OutfitComposition items={outfit.items} tagsById={tagsById} />
+                  <OutfitComposition items={outfit.items} itemById={itemById} />
                 </View>
                 {/* Numbered captions: the names leave the frames and become a legend, like a magazine spread. */}
                 <View className="mt-6 border-t border-hairline">
@@ -281,7 +281,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
                                 style={{ flex: 1 }}
                               >
                                 <View className="rounded-sm bg-ivory-deep" style={{ width: "100%", aspectRatio: 4 / 5, padding: 8 }}>
-                                  <ItemArt tags={o.tags} />
+                                  <ItemArt tags={o.tags} cutoutPath={o.cutout_path} />
                                 </View>
                                 <Text className="mt-1 font-body text-meta text-ink-soft" numberOfLines={2}>
                                   {o.name}
