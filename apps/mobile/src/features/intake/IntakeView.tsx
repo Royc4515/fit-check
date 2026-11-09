@@ -14,6 +14,7 @@ import {
   enhanceCutout,
   MIN_USEFUL_EDGE,
   preparePhoto,
+  removeBackground,
   saveGarment,
   tagCutout,
   uploadLabel,
@@ -31,6 +32,9 @@ type Garment = DetectedGarment &
     path: string;
     /** Set after a redraw; saved as the item's image instead of the crop. */
     enhancedPath?: string;
+    /** Background-removed PNG and its thumbnail, when the worker is available. */
+    cutoutPath?: string;
+    thumbPath?: string;
     model?: string;
   };
 type Job = { id: string; preview: string; status: JobStatus; garments: Garment[]; skipped: number; lowRes: boolean; reason?: string };
@@ -105,6 +109,14 @@ export function IntakeView({ userId }: { userId: string }) {
     }
   };
 
+  /** Background removal; on any failure the garment simply keeps its crop. */
+  const cut = async (jobId: string, path: string) => {
+    updateGarment(jobId, path, { cutting: true });
+    const result = await removeBackground(path);
+    if (result.ok) updateGarment(jobId, path, { cutting: false, cutoutPath: result.path, thumbPath: result.thumb_path, url: result.url });
+    else updateGarment(jobId, path, { cutting: false });
+  };
+
   /** Paid redraw, on request only, described from the confirmed tags (not detection's guess). */
   const enhance = async (jobId: string, path: string) => {
     const g = findGarment(jobId, path);
@@ -137,7 +149,9 @@ export function IntakeView({ userId }: { userId: string }) {
     try {
       await saveGarment({
         userId,
-        cutoutPath: g.enhancedPath ?? g.path,
+        cutoutPath: g.enhancedPath ?? g.cutoutPath ?? g.path,
+        sourcePath: g.path,
+        thumbPath: g.enhancedPath ? null : (g.thumbPath ?? null),
         name: g.draft.name.trim() || g.proposal?.name || "Item",
         brand: g.draft.brand,
         tags: g.draft.tags,
@@ -211,8 +225,9 @@ export function IntakeView({ userId }: { userId: string }) {
           continue;
         }
         update(job.id, { status: "done", garments: found.garments, skipped: found.skipped });
-        // One at a time: the user starts reviewing the first garment while the rest are still being tagged.
-        for (const g of found.garments) await tag(job.id, g);
+        // One at a time: the user starts reviewing the first garment while the rest are still being processed.
+        // Tagging reads the crop, not the cutout: a transparent PNG loses the light the colour is judged against.
+        for (const g of found.garments) await Promise.all([tag(job.id, g), cut(job.id, g.path)]);
       } catch (error) {
         console.error("Intake failed", error);
         update(job.id, { status: "failed", reason: "upload" });

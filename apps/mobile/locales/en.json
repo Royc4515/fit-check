@@ -280,7 +280,8 @@
       "retryTag": "Identify again",
       "labelPhoto": "Photograph the label",
       "labelling": "Reading the label",
-      "skip": "Skip"
+      "skip": "Skip",
+      "cutting": "Removing the background"
     }
   }
 }
