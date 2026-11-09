@@ -25,11 +25,17 @@ export type DetectedGarment = z.infer<typeof DetectedGarmentSchema>;
 
 /**
  * Input of the intake-separate Edge Function, two actions:
- * - detect (default): a photo the user already uploaded to `originals/{uid}/...`; free garment detection.
+ * - detect (default): a photo the user already uploaded to `originals/{uid}/...`; garment detection. With `single`,
+ *   only the main garment (front, centre) comes back.
  * - enhance: one cropped garment the app uploaded to `cutouts/{uid}/...`, redrawn by the paid image model.
  */
 export const IntakeSeparateInputSchema = z.union([
-  z.object({ action: z.literal("detect").default("detect"), original_path: z.string().min(3).max(300) }),
+  z.object({
+    action: z.literal("detect").default("detect"),
+    original_path: z.string().min(3).max(300),
+    // One-garment mode: return only the main garment and ignore what hangs behind or around it.
+    single: z.boolean().optional(),
+  }),
   z.object({ action: z.literal("enhance"), cutout_path: z.string().min(3).max(300), description: z.string().min(2).max(400) }),
 ]);
 export type IntakeSeparateInput = z.infer<typeof IntakeSeparateInputSchema>;

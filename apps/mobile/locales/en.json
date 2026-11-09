@@ -224,7 +224,7 @@
     "title": "Add clothes",
     "intro": "Photograph clothes or pick photos. Each garment is identified (type, colour, pattern, fabric), and you confirm or fix it before it enters the wardrobe.",
     "tips": {
-      "single": "One garment per photo: laid flat on a plain, contrasting surface, in daylight, the whole garment in frame. This is the most accurate.",
+      "single": "One garment per photo: only the garment in front is taken, even with clothes hanging behind it. Most accurate: laid flat on a plain surface, in daylight, the whole garment in frame.",
       "several": "Several garments per photo: up to 6, not on top of each other. If one is hidden, shoot it again alone."
     },
     "pick": "Choose photos",

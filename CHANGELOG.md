@@ -196,3 +196,10 @@
   review per garment (chips per field, the tagger's value first, "worth checking" on uncertain fields), care-label photo,
   redraw from the confirmed tags, save to items (+ tag_corrections), wardrobe reload.
 - Look at: design/screens/2026-11-09-intake-review.png, intake-modes.png; ai_calls rows with task 'tag'.
+
+## 2026-11-09 - Intake: "one garment" means the one in front
+- Roy's closet photo of a brown shirt came back as two garments (the black shirt hanging behind it as "outerwear").
+- "One garment" mode now runs detection with `single: true`: a dedicated prompt returns only the main garment (front,
+  centre), ignoring clothes behind or around it, and the app crops to it. Falls back to the whole frame if detection fails.
+- The tagger is told to tag only the front garment and ignore other clothes' colours.
+- Look at: one-garment photo taken in the closet; ai_calls shows one 'separate' and one 'tag' row per photo.
