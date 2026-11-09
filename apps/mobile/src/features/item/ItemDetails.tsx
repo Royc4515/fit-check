@@ -133,7 +133,7 @@ export function ItemDetails({
                       const full = byId.get(o.id);
                       return (
                         <View key={o.id} className="rounded-sm bg-ivory-deep" style={{ width: 64, height: 80, padding: 8 }}>
-                          {full ? <ItemArt tags={full.tags} /> : null}
+                          {full ? <ItemArt tags={full.tags} cutoutPath={full.cutout_path} /> : null}
                         </View>
                       );
                     })}

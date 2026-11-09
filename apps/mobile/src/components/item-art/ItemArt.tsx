@@ -1,5 +1,7 @@
 import type { ItemTags } from "@fit-check/schema";
+import { Image } from "expo-image";
 import { useId } from "react";
+import { supabase } from "../../lib/supabase";
 import Svg, { Circle, ClipPath, Defs, G, Line, Path, Pattern, Rect } from "react-native-svg";
 import { SHAPES } from "./shapes";
 
@@ -16,13 +18,31 @@ function luminance(hex: string): number {
   return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
 }
 
-type Props = { tags: ItemTags };
+type Props = {
+  tags: ItemTags;
+  /** Path in the public `cutouts` bucket. When set, the real photo is shown instead of the drawing. */
+  cutoutPath?: string | null;
+};
+
+/** Public URL of a stored garment image (the cutouts bucket is public, served from the CDN). */
+export function cutoutUrl(path: string): string {
+  return supabase.storage.from("cutouts").getPublicUrl(path).data.publicUrl;
+}
 
 /**
  * The item drawn as a technical flat in its real colour and pattern. Fills its parent; the parent owns the frame
  * (ivory-deep ground, aspect ratio), exactly where a photo cutout will go later.
  */
-export function ItemArt({ tags }: Props) {
+export function ItemArt({ tags, cutoutPath }: Props) {
+  if (cutoutPath) {
+    // don't touch / Roy, 2026-11-09: items added from photos showed the drawing instead of the photo he saved.
+    // The drawing is only for items that have no image (the sheet import).
+    return <Image source={{ uri: cutoutUrl(cutoutPath) }} contentFit="contain" style={{ width: "100%", height: "100%" }} accessibilityIgnoresInvertColors />;
+  }
+  return <ItemDrawing tags={tags} />;
+}
+
+function ItemDrawing({ tags }: { tags: ItemTags }) {
   // don't touch / SVG ids are global on web: two shirts on one screen with the same pattern id would share (and
   // overwrite) each other's fill. useId gives a per-instance id; its colons are invalid inside url(#...).
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
