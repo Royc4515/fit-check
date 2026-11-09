@@ -169,3 +169,37 @@
 - Correction, same day: segmentation masks dropped. Research showed `gemini-2.5-flash` masks are being retired (its requests move to 3.5 Flash-Lite on 2026-12-01, and Gemini 3.x has no masks), and the imagescript build crashed the Edge runtime (WORKER_ERROR). Now: `gemini-3.8-flash` (free tier) returns per garment a box, category, description and issues (occluded, overlapping, cut_off, wrinkled, blurry, dark); the app crops the real photo with expo-image-manipulator and uploads the crops itself. Garments with issues offer "צלם שוב לבד" first, then "שיפור עם AI" (paid redraw that completes hidden parts; billing_required while there is no billing). The tag-based drawing stays only as the last resort (Roy).
 - Open spec question: background removal. Modal needs a card even for its free credits; the $0 option is an MIT model (BiRefNet-lite / BEN2 ONNX) running on the device. CLAUDE.md still says "Cutouts come from the Modal worker" and needs Roy's decision before changing.
 - Paid redraw uses its own key, `GEMINI_IMAGE_API_KEY`, from a second Google project with billing and the AI Pro credit, so detection stays on the free tier of the main project. Hard cap: $8 of redraws per calendar month (UTC), summed from `ai_calls`; above it the function answers "monthly_limit".
+
+## 2026-11-08 (fix: every signed-in AI call was 401)
+
+- `style-outfit` and `intake-separate` called `supabase.auth.getUser()` without the token. On the server that reads a stored session (none) and ignores the Authorization header, so every real call came back 401 before reaching Claude or Gemini (photos uploaded, nothing detected, no stylist sentence, no `ai_calls` rows). Both now pass the bearer token: `getUser(token)`. Redeployed both.
+- A temporary `env-check` diagnostic (lists env var names only) was deployed and then replaced by a 410 stub; it can be deleted from the Supabase dashboard.
+- Still 401 after passing the token. Both functions now share `supabase/functions/_shared/auth.ts`: `getClaims(token)` (JWKS, no Auth round trip) with `getUser(token)` as fallback, and on failure the 401 body and function log carry the reason (never the token). `@supabase/supabase-js` pinned to 2.119.0 in the functions import map. intake-separate redeployed; style-outfit follows once a real call confirms the fix.
+- Root cause found with a temporary diagnostic: from inside the Edge runtime, every Supabase request that carried the user's real token (getUser, getClaims, storage as the user) came back as an HTML page, while the same requests without it returned JSON. `_shared/auth.ts` now verifies the JWT locally against `SUPABASE_JWKS` (ES256, issuer `{url}/auth/v1`, audience `authenticated`) with `jose` and never forwards the token; intake-separate reads and writes storage with the service role, kept to the user's folder by `ownPath()`. 2 Deno tests (valid token; wrong issuer, wrong audience, foreign key, no token). intake-separate redeployed; style-outfit next.
+
+## 2026-11-09 - Intake: auth works, retry when Gemini is overloaded
+- Intake auth confirmed working on a real photo (local JWT check). The first real detection failed with Google 503 "high demand".
+- detectGarments now tries gemini-3.8-flash twice, then gemini-3.5-flash-lite (both free tier); 429/500/503 show "Google is busy, try again" instead of a generic error. ai_calls records which model answered.
+- Look at: ai_calls.model on the next intake.
+
+## 2026-11-09 - Intake: real tagging, review screen, saving to the wardrobe
+- Why: Roy saw wrong type (sweater as shirt), shade and fabric. Causes found: no tagging step existed (only detection's
+  6 coarse labels), the redraw was described from detection's guess (melange tailored trousers drawn as olive chinos),
+  detection had fallen back to the weak free model, and the test photos were ~200 px (crops 45-130 px).
+- intake-tag (new, deployed): Claude tags a crop with the full frozen ItemTags, using a fabric/type/colour guide, the
+  owner's wardrobe names, his last 15 corrections, and an optional care-label photo (composition settles wool vs cotton).
+  Default model Haiku 5.5: on the real crops Sonnet 5.5 was no more accurate and 15x the cost (0.1 vs 1.7 cents).
+- Migration 0004_tag_corrections: proposed vs saved per confirmed garment, with the changed fields; feeds the prompt.
+- Detection: paid gemini-3.8-flash first (4 s, ~0.2 cents a photo, verified), free key as fallback, low thinking.
+  The $8/month Google cap now covers paid detection and redraws together.
+- App: "one garment" mode (whole frame, no detection) as default, "several garments" mode, low-resolution warning,
+  review per garment (chips per field, the tagger's value first, "worth checking" on uncertain fields), care-label photo,
+  redraw from the confirmed tags, save to items (+ tag_corrections), wardrobe reload.
+- Look at: design/screens/2026-11-09-intake-review.png, intake-modes.png; ai_calls rows with task 'tag'.
+
+## 2026-11-09 - Intake: "one garment" means the one in front
+- Roy's closet photo of a brown shirt came back as two garments (the black shirt hanging behind it as "outerwear").
+- "One garment" mode now runs detection with `single: true`: a dedicated prompt returns only the main garment (front,
+  centre), ignoring clothes behind or around it, and the app crops to it. Falls back to the whole frame if detection fails.
+- The tagger is told to tag only the front garment and ignore other clothes' colours.
+- Look at: one-garment photo taken in the closet; ai_calls shows one 'separate' and one 'tag' row per photo.

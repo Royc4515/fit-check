@@ -11,14 +11,28 @@ import type { AiLogEntry } from "./types.ts";
 
 /**
  * Two Gemini models, by cost (Roy, 2026-11-08: no real money by default; retake first, generation on request):
- * - DETECT_MODEL finds each garment: a box, a category, a description and what is wrong with the shot. Free tier,
- *   so detection costs $0. The app crops the real photo itself; nothing is regenerated.
+ * - DETECT_MODEL finds each garment: a box, a rough category, a description and what is wrong with the shot. Paid
+ *   key first for capacity (under a cent a photo), free key as fallback. The app crops the real photo itself, and
+ *   intake-tag (Claude) decides the real type, fabric and colour; detection's category is only a hint.
  * - ENHANCE_MODEL redraws one cropped garment as a clean product photo. No free tier ($0.0336 per image), so it
  *   only runs when the user asks, and answers billing_required while the project has no billing.
  * don't touch / not gemini-2.5-flash: its segmentation masks are being retired (requests move to 3.5 Flash-Lite on
  * 2026-12-01) and 3.x has no masks at all, so the pipeline relies on boxes only.
  */
 export const DETECT_MODEL = "gemini-3.8-flash";
+/**
+ * Detection attempts, in order; the next one runs when the one before answers 429/500/503 or times out.
+ * don't touch / paid first (Roy, 2026-11-09, ~0.5 cent a photo): the free tier answered 503 "high demand" on his
+ * first real photos and the weak Flash-Lite fallback then mis-boxed garments. Paid requests get priority capacity.
+ */
+const DETECT_ATTEMPTS = [
+  { model: DETECT_MODEL, keyEnv: "GEMINI_IMAGE_API_KEY", paid: true },
+  { model: DETECT_MODEL, keyEnv: "GEMINI_API_KEY", paid: false },
+  { model: "gemini-3.5-flash-lite", keyEnv: "GEMINI_API_KEY", paid: false },
+] as const;
+/** USD per token for paid gemini-3.8-flash, introductory until 2026-12-31 ($0.75 / $3.75 per million; doubles after). */
+const DETECT_PRICE = { input: 0.75 / 1e6, output: 3.75 / 1e6 } as const;
+const RETRYABLE = new Set([429, 500, 503]);
 export const ENHANCE_MODEL = "gemini-3.1-flash-lite-image";
 
 /** USD, Gemini API paid tier (2026-11): $0.25 per 1M input tokens, $0.0336 per 1024px output image. */
@@ -35,6 +49,20 @@ const DETECT_PROMPT = [
   '"issues": a list with any of "occluded" (partly hidden by something), "overlapping" (lies on or under another garment),',
   '"cut_off" (cut by the photo edge), "wrinkled" (heavily creased), "blurry", "dark" (badly lit). Empty list if the garment is clearly shown.',
   `At most ${MAX_GARMENTS_PER_PHOTO} entries, most complete garments first. If there is no garment, output an empty list.`,
+].join(" ");
+
+/**
+ * One-garment mode. don't touch / Roy, 2026-11-09: a shirt photographed in the closet came back with the black
+ * shirt hanging behind it; "one garment" means the one in front, never the background.
+ */
+const DETECT_SINGLE_PROMPT = [
+  "This photo is meant to show ONE garment that a man wants to add to his wardrobe. Find that main garment: the one in front,",
+  "most visible and closest to the centre. Ignore every other garment, even if fully visible: clothes hanging behind it,",
+  "other items in a closet, on a bed, on hangers or at the edges of the photo.",
+  'Output a JSON list with exactly one entry: "box_2d" ([ymin, xmin, ymax, xmax], normalised to 0-1000, tight around the main garment only),',
+  '"label" (exactly one of: top, bottom, shoes, layer, outerwear, accessory), "description" (colour and type in English), and',
+  '"issues" (any of "occluded", "overlapping", "cut_off", "wrinkled", "blurry", "dark"; empty if the garment is clearly shown).',
+  "If there is no garment, output an empty list.",
 ].join(" ");
 
 function enhancePrompt(description: string): string {
@@ -70,38 +98,58 @@ const usableBox = ([ymin, xmin, ymax, xmax]: [number, number, number, number]) =
 export type DetectResult = { garments: DetectedGarment[] | null; log: AiLogEntry };
 
 /**
- * Finds the garments in a photo (step 1 of separateGarments). Never throws.
+ * Finds the garments in a photo (step 1 of separateGarments). Never throws. `allowPaid` false (monthly budget spent)
+ * skips the paid key and runs on the free tier only. `single` returns only the main garment (one-garment mode).
  * Failure modes: missing key, HTTP error (including free-tier rate limits, 429), safety block, or an answer that is
  * not the expected JSON. Entries that fail validation are dropped individually, not the whole answer.
  */
-export async function detectGarments(image: Uint8Array, mimeType: string): Promise<DetectResult> {
+export async function detectGarments(image: Uint8Array, mimeType: string, allowPaid: boolean, single = false): Promise<DetectResult> {
   const started = Date.now();
-  const base = { provider: "google" as const, model: DETECT_MODEL, task: "separate" as const, images: 1 };
+  const base: { provider: "google"; model: string; task: "separate"; images: number } = { provider: "google", model: DETECT_MODEL, task: "separate", images: 1 };
   const fail = (error: string, extra: Partial<AiLogEntry> = {}): DetectResult => ({
     garments: null,
     log: { ...base, latency_ms: Date.now() - started, ok: false, error: error.slice(0, 300), ...extra },
   });
-  const key = Deno.env.get("GEMINI_API_KEY");
-  if (!key) return fail("GEMINI_API_KEY is not set");
-
-  let res: Response;
-  try {
-    res = await fetch(endpoint(DETECT_MODEL), {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ inline_data: { mime_type: mimeType, data: toBase64(image) } }, { text: DETECT_PROMPT }] }],
-        generationConfig: { responseMimeType: "application/json" },
-      }),
-      signal: AbortSignal.timeout(90_000),
-    });
-  } catch (error) {
-    return fail(`network: ${String(error)}`);
+  const request = JSON.stringify({
+    contents: [{ role: "user", parts: [{ inline_data: { mime_type: mimeType, data: toBase64(image) } }, { text: single ? DETECT_SINGLE_PROMPT : DETECT_PROMPT }] }],
+    // Boxes need looking, not reasoning; low thinking keeps a photo under ~15 s instead of a minute.
+    generationConfig: { responseMimeType: "application/json", thinkingConfig: { thinkingLevel: "low" } },
+  });
+  let res: Response | null = null;
+  let paid = false;
+  let lastError = "no key set";
+  attempts: for (const attempt of DETECT_ATTEMPTS) {
+    const key = Deno.env.get(attempt.keyEnv);
+    if (!key || (attempt.paid && !allowPaid)) continue;
+    try {
+      const r = await fetch(endpoint(attempt.model), {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": key },
+        body: request,
+        signal: AbortSignal.timeout(45_000),
+      });
+      if (r.ok) {
+        base.model = attempt.model;
+        paid = attempt.paid;
+        res = r;
+        break attempts;
+      }
+      lastError = `HTTP ${r.status} (${attempt.model}${attempt.paid ? ", paid" : ""}): ${(await r.text()).slice(0, 200)}`;
+      console.error("detect attempt failed", lastError);
+      if (!RETRYABLE.has(r.status)) break attempts;
+    } catch (error) {
+      lastError = `network (${attempt.model}): ${String(error)}`;
+      console.error("detect attempt failed", lastError);
+    }
   }
-  if (!res.ok) return fail(`HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res) return fail(lastError);
 
   const body = (await res.json()) as GeminiResponse;
-  const usage = { input_tokens: body.usageMetadata?.promptTokenCount ?? 0, output_tokens: body.usageMetadata?.candidatesTokenCount ?? 0 };
+  const usage = {
+    input_tokens: body.usageMetadata?.promptTokenCount ?? 0,
+    // Thinking tokens are billed as output.
+    output_tokens: (body.usageMetadata?.candidatesTokenCount ?? 0) + (body.usageMetadata?.thoughtsTokenCount ?? 0),
+  };
   if (body.promptFeedback?.blockReason) return fail(`blocked: ${body.promptFeedback.blockReason}`, usage);
   const text = (body.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? "").join("");
   let raw: unknown;
@@ -123,15 +171,16 @@ export async function detectGarments(image: Uint8Array, mimeType: string): Promi
       description: (parsed.data.description ?? parsed.data.label).slice(0, 400),
       issues: toIssues(parsed.data.issues),
     });
-    if (garments.length === MAX_GARMENTS_PER_PHOTO) break;
+    if (garments.length === (single ? 1 : MAX_GARMENTS_PER_PHOTO)) break;
   }
-  // Free tier: no charge. cost_usd stays 0 so ai_calls shows the free path is in use.
-  return { garments, log: { ...base, latency_ms: Date.now() - started, ok: true, cost_usd: 0, ...usage } };
+  // Free tier logs 0, so ai_calls shows which path answered.
+  const cost = paid ? Math.round((usage.input_tokens * DETECT_PRICE.input + usage.output_tokens * DETECT_PRICE.output) * 100_000) / 100_000 : 0;
+  return { garments, log: { ...base, latency_ms: Date.now() - started, ok: true, cost_usd: cost, ...usage } };
 }
 
 type GeminiResponse = {
   candidates?: Array<{ content?: { parts?: Array<{ text?: string; inlineData?: { mimeType?: string; data?: string } }> }; finishReason?: string }>;
-  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
   promptFeedback?: { blockReason?: string };
 };
 

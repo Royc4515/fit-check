@@ -34,6 +34,7 @@ export async function countAiCalls(userId: string, task: AiLogEntry["task"], sin
     .eq("user_id", userId)
     .eq("task", task)
     .gte("created_at", since.toISOString());
+  if (error) console.error("countAiCalls failed", error.message);
   return error ? null : count ?? 0;
 }
 
