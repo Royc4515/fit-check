@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
 
   return input.action === "enhance"
     ? await enhance(supabase, userId, input.cutout_path, input.description)
-    : await detect(supabase, userId, input.original_path);
+    : await detect(supabase, userId, input.original_path, input.single ?? false);
 });
 
 async function download(supabase: SupabaseClient, bucket: string, path: string): Promise<Uint8Array | null> {
@@ -89,7 +89,7 @@ async function download(supabase: SupabaseClient, bucket: string, path: string):
   return error || !data ? null : new Uint8Array(await data.arrayBuffer());
 }
 
-async function detect(supabase: SupabaseClient, userId: string, path: string): Promise<Response> {
+async function detect(supabase: SupabaseClient, userId: string, path: string, single: boolean): Promise<Response> {
   const mediaType = mediaOf(path);
   if (!ownPath(userId, path) || !mediaType) return json(400, { ok: false, reason: "bad_input" });
   const bytes = await download(supabase, "originals", path);
@@ -97,7 +97,7 @@ async function detect(supabase: SupabaseClient, userId: string, path: string): P
   if (bytes.length > MAX_BYTES) return json(413, { ok: false, reason: "too_large" });
 
   const spent = await monthlyGoogleSpend();
-  const result = await detectGarments(bytes, mediaType, spent !== null && spent < MONTHLY_GOOGLE_BUDGET_USD);
+  const result = await detectGarments(bytes, mediaType, spent !== null && spent < MONTHLY_GOOGLE_BUDGET_USD, single);
   await logAiCall(userId, result.log);
   if (!result.garments) {
     console.error("detect failed", result.log.error);

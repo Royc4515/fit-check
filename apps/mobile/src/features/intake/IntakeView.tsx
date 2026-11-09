@@ -68,7 +68,7 @@ function ModeChip({ value, mode, onPick }: { value: Mode; mode: Mode; onPick: (m
 
 /**
  * "Add clothes" (stage C): photos in, confirmed wardrobe items out.
- * Per photo: upload, then either detection and crops (several garments) or the whole frame (single garment).
+ * Per photo: upload, then detection and crops: every garment (several) or only the main one in front (single).
  * Per garment: Claude proposes type, colour, pattern, fabric and fit; the user corrects with one tap per field,
  * may add a care-label photo for the real composition, and saves. Corrections are stored and teach the tagger.
  * Status is text, never a spinner (DESIGN.md section 1).
@@ -152,23 +152,27 @@ export function IntakeView({ userId }: { userId: string }) {
     }
   };
 
-  /** Crops (or takes whole) the garments of one uploaded photo. */
-  const garmentsOf = async (photo: PreparedPhoto, path: string, whole: boolean, jobId: string): Promise<{ garments: Garment[]; skipped: number } | null> => {
+  /**
+   * Crops the garments of one uploaded photo. `single`: only the main garment, so clothes hanging behind it stay
+   * out (Roy, 2026-11-09: a shirt shot in the closet came back twice with the black shirt behind it). If one-garment
+   * detection fails, the whole frame is used rather than losing the photo.
+   */
+  const garmentsOf = async (photo: PreparedPhoto, path: string, single: boolean, jobId: string): Promise<{ garments: Garment[]; skipped: number } | null> => {
     const photoId = path.split("/").pop()!.replace(/\.[^.]+$/, "");
-    if (whole) {
-      const crop = await wholePhotoGarment(userId, photo, photoId);
-      return { garments: [{ box: [0, 0, 1000, 1000], category: "top", description: "", issues: [], ...crop }], skipped: 0 };
-    }
     update(jobId, { status: "separating" });
-    const result = await detectPhoto(path);
-    if (!result.ok) {
-      update(jobId, { status: "failed", reason: result.reason });
+    const result = await detectPhoto(path, single);
+    if (!result.ok || result.garments.length === 0) {
+      if (single) {
+        const crop = await wholePhotoGarment(userId, photo, photoId);
+        return { garments: [{ box: [0, 0, 1000, 1000], category: "top", description: "", issues: [], ...crop }], skipped: 0 };
+      }
+      update(jobId, { status: "failed", reason: result.ok ? "no_garments" : result.reason });
       return null;
     }
     update(jobId, { status: "cropping" });
     const garments: Garment[] = [];
     let skipped = 0;
-    for (const [n, g] of result.garments.entries()) {
+    for (const [n, g] of (single ? result.garments.slice(0, 1) : result.garments).entries()) {
       try {
         garments.push({ ...g, ...(await cropGarment(userId, photo, photoId, n + 1, g)) });
       } catch (error) {
@@ -181,7 +185,7 @@ export function IntakeView({ userId }: { userId: string }) {
 
   /** Runs each picked photo through upload, separation and tagging. `retake` is one photo of one garment. */
   const pick = async (retake = false) => {
-    const whole = retake || mode === "single";
+    const single = retake || mode === "single";
     const assets = await pickImages(retake ? 1 : MAX_PHOTOS_PER_BATCH);
     if (assets.length === 0) return;
     const batch: Job[] = assets.map((a, i) => ({
@@ -200,7 +204,7 @@ export function IntakeView({ userId }: { userId: string }) {
         update(job.id, { status: "uploading" });
         const photo = await preparePhoto(asset.uri, asset.width, asset.height);
         const path = await uploadOriginal(userId, photo, i);
-        const found = await garmentsOf(photo, path, whole, job.id);
+        const found = await garmentsOf(photo, path, single, job.id);
         if (!found) continue;
         if (found.garments.length === 0) {
           update(job.id, { status: "failed", reason: "upload" });

@@ -51,6 +51,20 @@ const DETECT_PROMPT = [
   `At most ${MAX_GARMENTS_PER_PHOTO} entries, most complete garments first. If there is no garment, output an empty list.`,
 ].join(" ");
 
+/**
+ * One-garment mode. don't touch / Roy, 2026-11-09: a shirt photographed in the closet came back with the black
+ * shirt hanging behind it; "one garment" means the one in front, never the background.
+ */
+const DETECT_SINGLE_PROMPT = [
+  "This photo is meant to show ONE garment that a man wants to add to his wardrobe. Find that main garment: the one in front,",
+  "most visible and closest to the centre. Ignore every other garment, even if fully visible: clothes hanging behind it,",
+  "other items in a closet, on a bed, on hangers or at the edges of the photo.",
+  'Output a JSON list with exactly one entry: "box_2d" ([ymin, xmin, ymax, xmax], normalised to 0-1000, tight around the main garment only),',
+  '"label" (exactly one of: top, bottom, shoes, layer, outerwear, accessory), "description" (colour and type in English), and',
+  '"issues" (any of "occluded", "overlapping", "cut_off", "wrinkled", "blurry", "dark"; empty if the garment is clearly shown).',
+  "If there is no garment, output an empty list.",
+].join(" ");
+
 function enhancePrompt(description: string): string {
   return [
     `This is a photo of one garment: ${description}. Parts of it may be hidden, creased, or overlapped by other clothes.`,
@@ -85,11 +99,11 @@ export type DetectResult = { garments: DetectedGarment[] | null; log: AiLogEntry
 
 /**
  * Finds the garments in a photo (step 1 of separateGarments). Never throws. `allowPaid` false (monthly budget spent)
- * skips the paid key and runs on the free tier only.
+ * skips the paid key and runs on the free tier only. `single` returns only the main garment (one-garment mode).
  * Failure modes: missing key, HTTP error (including free-tier rate limits, 429), safety block, or an answer that is
  * not the expected JSON. Entries that fail validation are dropped individually, not the whole answer.
  */
-export async function detectGarments(image: Uint8Array, mimeType: string, allowPaid: boolean): Promise<DetectResult> {
+export async function detectGarments(image: Uint8Array, mimeType: string, allowPaid: boolean, single = false): Promise<DetectResult> {
   const started = Date.now();
   const base: { provider: "google"; model: string; task: "separate"; images: number } = { provider: "google", model: DETECT_MODEL, task: "separate", images: 1 };
   const fail = (error: string, extra: Partial<AiLogEntry> = {}): DetectResult => ({
@@ -97,7 +111,7 @@ export async function detectGarments(image: Uint8Array, mimeType: string, allowP
     log: { ...base, latency_ms: Date.now() - started, ok: false, error: error.slice(0, 300), ...extra },
   });
   const request = JSON.stringify({
-    contents: [{ role: "user", parts: [{ inline_data: { mime_type: mimeType, data: toBase64(image) } }, { text: DETECT_PROMPT }] }],
+    contents: [{ role: "user", parts: [{ inline_data: { mime_type: mimeType, data: toBase64(image) } }, { text: single ? DETECT_SINGLE_PROMPT : DETECT_PROMPT }] }],
     // Boxes need looking, not reasoning; low thinking keeps a photo under ~15 s instead of a minute.
     generationConfig: { responseMimeType: "application/json", thinkingConfig: { thinkingLevel: "low" } },
   });
@@ -157,7 +171,7 @@ export async function detectGarments(image: Uint8Array, mimeType: string, allowP
       description: (parsed.data.description ?? parsed.data.label).slice(0, 400),
       issues: toIssues(parsed.data.issues),
     });
-    if (garments.length === MAX_GARMENTS_PER_PHOTO) break;
+    if (garments.length === (single ? 1 : MAX_GARMENTS_PER_PHOTO)) break;
   }
   // Free tier logs 0, so ai_calls shows which path answered.
   const cost = paid ? Math.round((usage.input_tokens * DETECT_PRICE.input + usage.output_tokens * DETECT_PRICE.output) * 100_000) / 100_000 : 0;

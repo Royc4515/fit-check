@@ -114,9 +114,9 @@ async function invoke<T extends { ok: boolean }>(
   }
 }
 
-/** Free detection: boxes, categories, descriptions and problems for one uploaded photo. Never throws. */
-export function detectPhoto(originalPath: string): Promise<IntakeDetectResult> {
-  return invoke({ action: "detect", original_path: originalPath }, IntakeDetectResultSchema) as Promise<IntakeDetectResult>;
+/** Detection: boxes, categories, descriptions and problems for one uploaded photo. `single`: the main garment only. Never throws. */
+export function detectPhoto(originalPath: string, single = false): Promise<IntakeDetectResult> {
+  return invoke({ action: "detect", original_path: originalPath, single }, IntakeDetectResultSchema) as Promise<IntakeDetectResult>;
 }
 
 /**

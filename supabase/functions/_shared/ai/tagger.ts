@@ -32,6 +32,8 @@ const UNCERTAIN_FIELDS = ["subcategory", "color", "pattern", "material", "fit"] 
  */
 const SYSTEM = `You tag one men's garment from a photo for a personal wardrobe app. The owner will review every field, so be precise and say where the photo cannot settle a field.
 
+The photo may also show other clothes (hanging behind it in a closet, on a bed, at the edges). Tag only the main garment: the one in front and closest to the centre. Ignore the others completely, including their colours.
+
 Subcategory (pick the garment type, not the slot):
 - knit: anything knitted from yarn: crew/V-neck sweaters, cardigans, knitted polos with long sleeves, quarter-zips in knit. Visible knit stitches or ribbed cuffs/hem.
 - sweatshirt: cut-and-sewn jersey or fleece-backed cotton: crewneck sweatshirts, hoodies, zip hoodies. Smooth face, no knit stitches.
