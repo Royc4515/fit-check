@@ -1,9 +1,88 @@
+import { IntakeCutoutInputSchema } from "@fit-check/schema/intake.ts";
+import { adminClient, authenticate } from "../_shared/auth.ts";
+import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
+import { cutout } from "../_shared/ai/modal.ts";
+
 /**
- * intake-cutout: STUB. Returns 501 until wired. See PRD section 4 for the flow this function owns.
+ * intake-cutout: removes the background of one cropped garment (PRD section 4, step 3).
+ *
+ * Input (POST JSON, IntakeCutoutInputSchema): `cutout_path` of a crop the app uploaded to `cutouts/{uid}/...`.
+ * Sends it to the Modal worker (BiRefNet) and stores `<crop>-cutout.png` (transparent, trimmed) and
+ * `<crop>-thumb.png` (400 px) next to it. Cost is Modal GPU seconds against the free monthly credit.
+ *
+ * Responses: 200 { ok: true, path, url, thumb_path } | 200 { ok: false, reason } with reason "not_configured"
+ * (worker not deployed yet; the app keeps the crop) or "ai_failed" | 400 bad_input / not_found | 401 | 429.
  */
-Deno.serve(() =>
-  new Response(JSON.stringify({ error: "not implemented", function: "intake-cutout" }), {
-    status: 501,
-    headers: { "content-type": "application/json" },
-  })
-);
+
+/** A generous day of adding clothes; each call is about a second of T4 time. */
+const DAILY_CUTOUT_LIMIT = 120;
+const MAX_BYTES = 8 * 1024 * 1024;
+
+const cors = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
+  "access-control-allow-methods": "POST, OPTIONS",
+};
+const json = (status: number, body: unknown) =>
+  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...cors } });
+
+const MEDIA: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" };
+const mediaOf = (path: string) => MEDIA[path.split(".").pop()?.toLowerCase() ?? ""];
+const ownPath = (userId: string, path: string) => path.startsWith(`${userId}/`) && !path.includes("..");
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return json(405, { ok: false, reason: "method" });
+
+  const auth = await authenticate(req);
+  if (!auth.ok) return json(401, { ok: false, reason: "unauthorized" });
+  const { userId } = auth;
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return json(400, { ok: false, reason: "bad_input" });
+  }
+  const parsed = IntakeCutoutInputSchema.safeParse(body);
+  if (!parsed.success) return json(400, { ok: false, reason: "bad_input" });
+  const path = parsed.data.cutout_path;
+  const mediaType = mediaOf(path);
+  // Only the app's own crops: never a previous cutout, redraw or label photo.
+  if (!ownPath(userId, path) || !mediaType || /-(cutout|thumb|enhanced|label)/.test(path)) {
+    return json(400, { ok: false, reason: "bad_input" });
+  }
+
+  const used = await countAiCalls(userId, "cutout", new Date(Date.now() - 24 * 3600 * 1000));
+  if (used === null || used >= DAILY_CUTOUT_LIMIT) return json(429, { ok: false, reason: "daily_limit" });
+
+  // Service role (see _shared/auth.ts); ownPath() above keeps reads and writes in this user's folder.
+  const supabase = adminClient();
+  const { data, error } = await supabase.storage.from("cutouts").download(path);
+  if (error || !data) return json(400, { ok: false, reason: "not_found" });
+  const bytes = new Uint8Array(await data.arrayBuffer());
+  if (bytes.length > MAX_BYTES) return json(413, { ok: false, reason: "too_large" });
+
+  const result = await cutout(bytes, mediaType);
+  // Not configured is not an AI call; logging it would count against the daily cap for nothing.
+  if (!result.ok && result.notConfigured) return json(200, { ok: false, reason: "not_configured" });
+  await logAiCall(userId, result.log);
+  if (!result.ok) {
+    console.error("cutout failed", result.log.error);
+    return json(200, { ok: false, reason: "ai_failed" });
+  }
+
+  const stem = path.replace(/\.[^.]+$/, "");
+  const outPath = `${stem}-cutout.png`;
+  const thumbPath = `${stem}-thumb.png`;
+  // upsert: re-running the same crop (a retry after a timeout) replaces its cutout instead of failing.
+  const [a, b] = await Promise.all([
+    supabase.storage.from("cutouts").upload(outPath, result.cutout, { contentType: "image/png", upsert: true }),
+    supabase.storage.from("cutouts").upload(thumbPath, result.thumb, { contentType: "image/png", upsert: true }),
+  ]);
+  if (a.error || b.error) {
+    console.error("cutout upload failed", a.error?.message ?? b.error?.message);
+    return json(200, { ok: false, reason: "ai_failed" });
+  }
+  return json(200, { ok: true, path: outPath, thumb_path: thumbPath, url: supabase.storage.from("cutouts").getPublicUrl(outPath).data.publicUrl });
+});

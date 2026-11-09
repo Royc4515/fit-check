@@ -24,6 +24,8 @@ export type ReviewState = {
   enhancing?: boolean;
   enhanceError?: string;
   tagging?: boolean;
+  /** Background removal in progress; the crop is shown meanwhile. */
+  cutting?: boolean;
   tagError?: string;
   proposal?: TagProposal;
   draft?: Draft;
@@ -131,6 +133,7 @@ export function GarmentReview({ garment: g, busy, onChange, onSave, onSkip, onEn
               {g.tagging ? t("intake.review.tagging") : g.tagError ? t(`intake.reason.${g.tagError}`, { defaultValue: t("intake.reason.unknown") }) : ""}
             </Text>
           )}
+          {g.cutting ? <Text className="mt-2 font-body text-meta text-ink-faint">{t("intake.review.cutting")}</Text> : null}
           {g.issues.length > 0 && !g.enhanced ? (
             <Text className="mt-2 font-body text-meta text-ink-soft">{g.issues.map((i) => t(`intake.issue.${i}`)).join(" · ")}</Text>
           ) : null}
