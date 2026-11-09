@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient, authenticate } from "../_shared/auth.ts";
 import { IntakeSeparateInputSchema } from "@fit-check/schema/intake.ts";
-import { detectGarments, ENHANCE_MODEL, enhanceGarment } from "../_shared/ai/gemini.ts";
+import { DETECT_MODEL, detectGarments, ENHANCE_MODEL, enhanceGarment } from "../_shared/ai/gemini.ts";
 import { countAiCalls, logAiCall, sumAiCost } from "../_shared/ai/log.ts";
 
 /**
@@ -9,15 +9,16 @@ import { countAiCalls, logAiCall, sumAiCost } from "../_shared/ai/log.ts";
  *
  * Two actions (POST JSON, validated by IntakeSeparateInputSchema):
  * - detect { original_path }: a photo the user uploaded to the private `originals/{uid}/...`. Gemini 3.8 Flash
- *   (free tier) returns per garment a box, a category, a description and the problems with the shot (hidden,
- *   overlapping, cut off, creased, blurry, dark). Costs $0. The app crops the real photo itself and uploads the
+ *   (paid key first, free as fallback) returns per garment a box, a rough category, a description and the problems
+ *   with the shot (hidden, overlapping, cut off, creased, blurry, dark). Under a cent per photo. The app crops the real photo itself and uploads the
  *   crops; doing it here needed an image library that crashed the Edge runtime at boot.
  * - enhance { cutout_path, description }: on request only, the paid image model redraws one crop the app uploaded
  *   to `cutouts/{uid}/...` as a complete, clean product photo (`...-enhanced.png`). While the project has no
  *   billing it answers reason "billing_required" and the crop stays as it is.
  * Nothing is written to `items`; the user confirms and tags on the next screen.
  *
- * Auth: the caller's Supabase JWT. Storage reads and writes run as that user, so RLS keeps everyone in their folder.
+ * Auth: the caller's Supabase JWT, verified locally (_shared/auth.ts). Storage runs as the service role; ownPath()
+ * keeps every read and write inside the caller's folder.
  * Responses: 200 { ok: true, ... } | 200 { ok: false, reason } | 400 bad_input / not_found | 401 | 413 | 429.
  */
 
@@ -26,10 +27,19 @@ const DAILY_DETECT_LIMIT = 60;
 /** Spend guard for the paid path: 20 redraws a day is at most about $0.70. */
 const DAILY_ENHANCE_LIMIT = 20;
 /**
- * Hard monthly cap on redraws, in USD, below the $10 monthly Google Cloud credit from Google AI Pro (Roy: no real
- * money). Counted across all users from ai_calls, because the credit belongs to the project, not to a user.
+ * Hard monthly cap on paid Google calls (redraws and paid detection together), in USD, below the $10 monthly
+ * Google Cloud credit from Google AI Pro (Roy: no real money). Counted across all users from ai_calls, because the
+ * credit belongs to the project, not to a user. Past it, detection drops to the free tier and redraws stop.
  */
-const MONTHLY_ENHANCE_BUDGET_USD = 8;
+const MONTHLY_GOOGLE_BUDGET_USD = 8;
+
+/** Paid Google spend since the 1st of this month (UTC); null when it cannot be read, which callers treat as spent. */
+async function monthlyGoogleSpend(): Promise<number | null> {
+  const now = new Date();
+  const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const [enhance, detect] = await Promise.all([sumAiCost(ENHANCE_MODEL, since), sumAiCost(DETECT_MODEL, since)]);
+  return enhance === null || detect === null ? null : enhance + detect;
+}
 const MAX_BYTES = 8 * 1024 * 1024;
 
 const cors = {
@@ -86,7 +96,8 @@ async function detect(supabase: SupabaseClient, userId: string, path: string): P
   if (!bytes) return json(400, { ok: false, reason: "not_found" });
   if (bytes.length > MAX_BYTES) return json(413, { ok: false, reason: "too_large" });
 
-  const result = await detectGarments(bytes, mediaType);
+  const spent = await monthlyGoogleSpend();
+  const result = await detectGarments(bytes, mediaType, spent !== null && spent < MONTHLY_GOOGLE_BUDGET_USD);
   await logAiCall(userId, result.log);
   if (!result.garments) {
     console.error("detect failed", result.log.error);
@@ -99,9 +110,8 @@ async function detect(supabase: SupabaseClient, userId: string, path: string): P
 async function enhance(supabase: SupabaseClient, userId: string, cutoutPath: string, description: string): Promise<Response> {
   const mediaType = mediaOf(cutoutPath);
   if (!ownPath(userId, cutoutPath) || !mediaType || cutoutPath.includes("-enhanced")) return json(400, { ok: false, reason: "bad_input" });
-  const now = new Date();
-  const spent = await sumAiCost(ENHANCE_MODEL, new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)));
-  if (spent === null || spent >= MONTHLY_ENHANCE_BUDGET_USD) return json(200, { ok: false, reason: "monthly_limit" });
+  const spent = await monthlyGoogleSpend();
+  if (spent === null || spent >= MONTHLY_GOOGLE_BUDGET_USD) return json(200, { ok: false, reason: "monthly_limit" });
 
   const bytes = await download(supabase, "cutouts", cutoutPath);
   if (!bytes) return json(400, { ok: false, reason: "not_found" });

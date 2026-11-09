@@ -1,86 +1,214 @@
 import type { DetectedGarment } from "@fit-check/schema";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TextLink } from "../../components/TextLink";
-import { TextAction } from "../../components/TextAction";
-import { cropGarment, detectPhoto, enhanceCutout, preparePhoto, uploadOriginal } from "../../data/intake";
+import { useWardrobe } from "../../data/WardrobeProvider";
+import {
+  cropGarment,
+  describeForRedraw,
+  detectPhoto,
+  enhanceCutout,
+  MIN_USEFUL_EDGE,
+  preparePhoto,
+  saveGarment,
+  tagCutout,
+  uploadLabel,
+  uploadOriginal,
+  wholePhotoGarment,
+  type PreparedPhoto,
+} from "../../data/intake";
 import { layout } from "../../theme/tokens";
+import { GarmentReview, type Draft, type ReviewState } from "./GarmentReview";
 
 type JobStatus = "waiting" | "uploading" | "separating" | "cropping" | "done" | "failed";
-/** A cropped garment plus the state of its optional AI redraw. */
-type Garment = DetectedGarment & { path: string; url: string; enhanced?: boolean; enhancing?: boolean; enhanceError?: string };
-type Job = { id: string; preview: string; status: JobStatus; garments: Garment[]; skipped: number; reason?: string };
+/** A garment from a photo: its crop, the tagger's proposal and the user's edits, and where it is in the flow. */
+type Garment = DetectedGarment &
+  ReviewState & {
+    path: string;
+    /** Set after a redraw; saved as the item's image instead of the crop. */
+    enhancedPath?: string;
+    model?: string;
+  };
+type Job = { id: string; preview: string; status: JobStatus; garments: Garment[]; skipped: number; lowRes: boolean; reason?: string };
+type Mode = "several" | "single";
 
 /** One photo at a time: predictable cost, and the user sees results arrive in the order they picked them. */
 const MAX_PHOTOS_PER_BATCH = 10;
 
+/** Picks photos from the library; empty when cancelled. */
+async function pickImages(limit: number) {
+  const picked = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    allowsMultipleSelection: limit > 1,
+    selectionLimit: limit,
+    quality: 1,
+  });
+  return picked.canceled ? [] : picked.assets.slice(0, limit);
+}
+
+function ModeChip({ value, mode, onPick }: { value: Mode; mode: Mode; onPick: (m: Mode) => void }) {
+  const { t } = useTranslation();
+  const selected = mode === value;
+  return (
+    <Pressable
+      onPress={() => onPick(value)}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      className={`justify-center rounded border px-3 ${selected ? "border-ink bg-ink" : "border-hairline"}`}
+      style={{ minHeight: 36 }}
+    >
+      <Text className={`font-body text-body-sm ${selected ? "text-ivory" : "text-ink-soft"}`}>{t(`intake.mode.${value}`)}</Text>
+    </Pressable>
+  );
+}
+
 /**
- * "Add clothes" (stage C, first slice): pick photos, each is uploaded and split into one clean image per garment.
- * Results are a preview only: saving to the wardrobe (tagging, confirmation) is the next slice, and the screen says so.
+ * "Add clothes" (stage C): photos in, confirmed wardrobe items out.
+ * Per photo: upload, then either detection and crops (several garments) or the whole frame (single garment).
+ * Per garment: Claude proposes type, colour, pattern, fabric and fit; the user corrects with one tap per field,
+ * may add a care-label photo for the real composition, and saves. Corrections are stored and teach the tagger.
  * Status is text, never a spinner (DESIGN.md section 1).
  */
 export function IntakeView({ userId }: { userId: string }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const wardrobe = useWardrobe();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [running, setRunning] = useState(false);
+  const [mode, setMode] = useState<Mode>("single");
+  // Callbacks run after awaits; reading jobs through a ref avoids acting on a stale render's copy.
+  const jobsRef = useRef<Job[]>([]);
+  useEffect(() => {
+    jobsRef.current = jobs;
+  }, [jobs]);
 
   const update = (id: string, patch: Partial<Job>) => setJobs((all) => all.map((j) => (j.id === id ? { ...j, ...patch } : j)));
   const updateGarment = (jobId: string, path: string, patch: Partial<Garment>) =>
     setJobs((all) =>
       all.map((j) => (j.id === jobId ? { ...j, garments: j.garments.map((g) => (g.path === path ? { ...g, ...patch } : g)) } : j))
     );
+  const findGarment = (jobId: string, path: string) => jobsRef.current.find((j) => j.id === jobId)?.garments.find((g) => g.path === path);
 
-  /** Paid redraw of one cutout, only on request. On success the tile shows the new image; the cutout stays stored. */
-  const enhance = async (jobId: string, g: Garment) => {
-    updateGarment(jobId, g.path, { enhancing: true, enhanceError: undefined });
-    const result = await enhanceCutout(g.path, g.description);
-    if (result.ok) updateGarment(jobId, g.path, { enhancing: false, enhanced: true, url: result.url });
-    else updateGarment(jobId, g.path, { enhancing: false, enhanceError: result.reason });
+  /** Asks the tagger for one garment; on success the proposal becomes the editable draft. */
+  const tag = async (jobId: string, g: Pick<Garment, "path" | "description">, labelPath?: string) => {
+    updateGarment(jobId, g.path, labelPath ? { labelling: true } : { tagging: true, tagError: undefined });
+    const result = await tagCutout(g.path, g.description, labelPath);
+    if (result.ok) {
+      const draft: Draft = { name: result.proposal.name, brand: result.proposal.brand, tags: result.proposal.tags };
+      updateGarment(jobId, g.path, { tagging: false, labelling: false, proposal: result.proposal, model: result.model, draft });
+    } else {
+      updateGarment(jobId, g.path, labelPath ? { labelling: false, tagError: result.reason } : { tagging: false, tagError: result.reason });
+    }
   };
 
-  /** Picks photos and runs each through upload, free detection and cropping. `single` is a retake of one garment. */
-  const pick = async (single = false) => {
-    const picked = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsMultipleSelection: !single,
-      selectionLimit: single ? 1 : MAX_PHOTOS_PER_BATCH,
-      quality: 1,
-    });
-    if (picked.canceled || picked.assets.length === 0) return;
-    const assets = picked.assets.slice(0, MAX_PHOTOS_PER_BATCH);
-    const batch: Job[] = assets.map((a, i) => ({ id: `${Date.now()}-${i}`, preview: a.uri, status: "waiting", garments: [], skipped: 0 }));
+  /** Paid redraw, on request only, described from the confirmed tags (not detection's guess). */
+  const enhance = async (jobId: string, path: string) => {
+    const g = findGarment(jobId, path);
+    if (!g?.draft) return;
+    updateGarment(jobId, path, { enhancing: true, enhanceError: undefined });
+    const result = await enhanceCutout(path, describeForRedraw(g.draft.tags));
+    if (result.ok) updateGarment(jobId, path, { enhancing: false, enhanced: true, url: result.url, enhancedPath: result.path });
+    else updateGarment(jobId, path, { enhancing: false, enhanceError: result.reason });
+  };
+
+  /** A photo of the garment's care label: the composition on it settles wool versus cotton. */
+  const addLabel = async (jobId: string, path: string) => {
+    const [asset] = await pickImages(1);
+    const g = findGarment(jobId, path);
+    if (!asset || !g) return;
+    try {
+      const photo = await preparePhoto(asset.uri, asset.width, asset.height);
+      const labelPath = await uploadLabel(userId, photo, path);
+      await tag(jobId, g, labelPath);
+    } catch (error) {
+      console.error("Label upload failed", error);
+      updateGarment(jobId, path, { labelling: false, tagError: "upload" });
+    }
+  };
+
+  const save = async (jobId: string, path: string) => {
+    const g = findGarment(jobId, path);
+    if (!g?.draft) return;
+    updateGarment(jobId, path, { saving: true, saveError: false });
+    try {
+      await saveGarment({
+        userId,
+        cutoutPath: g.enhancedPath ?? g.path,
+        name: g.draft.name.trim() || g.proposal?.name || "Item",
+        brand: g.draft.brand,
+        tags: g.draft.tags,
+        proposal: g.proposal ?? null,
+        model: g.model ?? null,
+      });
+      updateGarment(jobId, path, { saving: false, saved: true });
+      if (wardrobe.status === "ready") wardrobe.reload();
+    } catch (error) {
+      console.error("Save failed", error);
+      updateGarment(jobId, path, { saving: false, saveError: true });
+    }
+  };
+
+  /** Crops (or takes whole) the garments of one uploaded photo. */
+  const garmentsOf = async (photo: PreparedPhoto, path: string, whole: boolean, jobId: string): Promise<{ garments: Garment[]; skipped: number } | null> => {
+    const photoId = path.split("/").pop()!.replace(/\.[^.]+$/, "");
+    if (whole) {
+      const crop = await wholePhotoGarment(userId, photo, photoId);
+      return { garments: [{ box: [0, 0, 1000, 1000], category: "top", description: "", issues: [], ...crop }], skipped: 0 };
+    }
+    update(jobId, { status: "separating" });
+    const result = await detectPhoto(path);
+    if (!result.ok) {
+      update(jobId, { status: "failed", reason: result.reason });
+      return null;
+    }
+    update(jobId, { status: "cropping" });
+    const garments: Garment[] = [];
+    let skipped = 0;
+    for (const [n, g] of result.garments.entries()) {
+      try {
+        garments.push({ ...g, ...(await cropGarment(userId, photo, photoId, n + 1, g)) });
+      } catch (error) {
+        console.error("Crop failed", error);
+        skipped++;
+      }
+    }
+    return { garments, skipped };
+  };
+
+  /** Runs each picked photo through upload, separation and tagging. `retake` is one photo of one garment. */
+  const pick = async (retake = false) => {
+    const whole = retake || mode === "single";
+    const assets = await pickImages(retake ? 1 : MAX_PHOTOS_PER_BATCH);
+    if (assets.length === 0) return;
+    const batch: Job[] = assets.map((a, i) => ({
+      id: `${Date.now()}-${i}`,
+      preview: a.uri,
+      status: "waiting",
+      garments: [],
+      skipped: 0,
+      lowRes: Math.max(a.width, a.height) > 0 && Math.max(a.width, a.height) < MIN_USEFUL_EDGE,
+    }));
     setJobs((all) => [...batch, ...all]);
     setRunning(true);
     for (const [i, asset] of assets.entries()) {
       const job = batch[i]!;
       try {
         update(job.id, { status: "uploading" });
-        const prepared = await preparePhoto(asset.uri, asset.width, asset.height);
-        const path = await uploadOriginal(userId, prepared, i);
-        update(job.id, { status: "separating" });
-        const result = await detectPhoto(path);
-        if (!result.ok) {
-          update(job.id, { status: "failed", reason: result.reason });
+        const photo = await preparePhoto(asset.uri, asset.width, asset.height);
+        const path = await uploadOriginal(userId, photo, i);
+        const found = await garmentsOf(photo, path, whole, job.id);
+        if (!found) continue;
+        if (found.garments.length === 0) {
+          update(job.id, { status: "failed", reason: "upload" });
           continue;
         }
-        update(job.id, { status: "cropping" });
-        const photoId = path.split("/").pop()!.replace(/\.[^.]+$/, "");
-        const garments: Garment[] = [];
-        let skipped = 0;
-        for (const [n, g] of result.garments.entries()) {
-          try {
-            garments.push({ ...g, ...(await cropGarment(userId, prepared, photoId, n + 1, g)) });
-          } catch (error) {
-            console.error("Crop failed", error);
-            skipped++;
-          }
-        }
-        update(job.id, garments.length > 0 ? { status: "done", garments, skipped } : { status: "failed", reason: "upload" });
+        update(job.id, { status: "done", garments: found.garments, skipped: found.skipped });
+        // One at a time: the user starts reviewing the first garment while the rest are still being tagged.
+        for (const g of found.garments) await tag(job.id, g);
       } catch (error) {
         console.error("Intake failed", error);
         update(job.id, { status: "failed", reason: "upload" });
@@ -112,8 +240,12 @@ export function IntakeView({ userId }: { userId: string }) {
           <TextLink href="/wardrobe" label={t("nav.wardrobe")} />
         </View>
         <Text className="mt-3 font-body text-body text-ink-soft">{t("intake.intro")}</Text>
-        <Text className="mt-2 font-body text-body-sm text-ink-soft">{t("intake.tips")}</Text>
-        <Text className="mt-2 font-body text-body-sm text-ink-faint">{t("intake.previewOnly")}</Text>
+
+        <View className="mt-6 flex-row" style={{ gap: 8 }}>
+          <ModeChip value="single" mode={mode} onPick={setMode} />
+          <ModeChip value="several" mode={mode} onPick={setMode} />
+        </View>
+        <Text className="mt-3 font-body text-body-sm text-ink-soft">{t(`intake.tips.${mode}`)}</Text>
 
         <Pressable
           accessibilityRole="button"
@@ -131,51 +263,25 @@ export function IntakeView({ userId }: { userId: string }) {
             <View key={job.id} className="border-t border-hairline pt-4">
               <View className="flex-row items-center" style={{ gap: 12 }}>
                 <Image source={{ uri: job.preview }} contentFit="cover" style={{ width: 56, height: 70, borderRadius: 2 }} />
-                <Text className="font-body text-body-sm text-ink-soft" style={{ flexShrink: 1 }}>
-                  {statusText(job)}
-                </Text>
-              </View>
-              {job.garments.length > 0 ? (
-                <View className="mt-4 flex-row flex-wrap" style={{ gap: 12 }}>
-                  {job.garments.map((g) => (
-                    <View key={g.path} style={{ width: "30%" }}>
-                      <View className="rounded-sm bg-ivory-deep" style={{ width: "100%", aspectRatio: 3 / 4, overflow: "hidden" }}>
-                        <Image source={{ uri: g.url }} contentFit="contain" style={{ width: "100%", height: "100%" }} />
-                      </View>
-                      <Text className="mt-1 font-body text-meta text-ink-faint" numberOfLines={2}>
-                        {t(`wardrobe.category.${g.category}`)}
-                      </Text>
-                      {g.issues.length > 0 && !g.enhanced ? (
-                        <Text className="mt-1 font-body text-meta text-ink-soft">
-                          {g.issues.map((i) => t(`intake.issue.${i}`)).join(" · ")}
-                        </Text>
-                      ) : null}
-                      {g.enhanced ? null : (
-                        <View className="mt-1" style={{ gap: 6 }}>
-                          {g.issues.length > 0 ? (
-                            <View className="self-start">
-                              <TextAction label={t("intake.retake")} disabled={running} onPress={() => void pick(true)} />
-                            </View>
-                          ) : null}
-                          <View className="self-start">
-                            <TextAction
-                              label={g.enhancing ? t("intake.enhancing") : t("intake.enhance")}
-                              quiet
-                              disabled={g.enhancing}
-                              onPress={() => void enhance(job.id, g)}
-                            />
-                          </View>
-                        </View>
-                      )}
-                      {g.enhanceError ? (
-                        <Text className="mt-1 font-body text-meta text-ink-faint">
-                          {t(`intake.reason.${g.enhanceError}`, { defaultValue: t("intake.reason.unknown") })}
-                        </Text>
-                      ) : null}
-                    </View>
-                  ))}
+                <View style={{ flexShrink: 1 }}>
+                  <Text className="font-body text-body-sm text-ink-soft">{statusText(job)}</Text>
+                  {job.lowRes ? <Text className="mt-1 font-body text-meta text-ink-soft">{t("intake.lowRes")}</Text> : null}
                 </View>
-              ) : null}
+              </View>
+              {job.garments.map((g) => (
+                <GarmentReview
+                  key={g.path}
+                  garment={g}
+                  busy={false}
+                  onChange={(draft) => updateGarment(job.id, g.path, { draft })}
+                  onSave={() => void save(job.id, g.path)}
+                  onSkip={() => updateGarment(job.id, g.path, { skipped: true })}
+                  onEnhance={() => void enhance(job.id, g.path)}
+                  onLabel={() => void addLabel(job.id, g.path)}
+                  onRetryTag={() => void tag(job.id, g)}
+                  onRetake={() => void pick(true)}
+                />
+              ))}
               {job.skipped > 0 ? (
                 <Text className="mt-2 font-body text-meta text-ink-faint">{t("intake.skipped", { n: `⁦${job.skipped}⁩` })}</Text>
               ) : null}

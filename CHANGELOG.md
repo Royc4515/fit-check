@@ -181,3 +181,18 @@
 - Intake auth confirmed working on a real photo (local JWT check). The first real detection failed with Google 503 "high demand".
 - detectGarments now tries gemini-3.8-flash twice, then gemini-3.5-flash-lite (both free tier); 429/500/503 show "Google is busy, try again" instead of a generic error. ai_calls records which model answered.
 - Look at: ai_calls.model on the next intake.
+
+## 2026-11-09 - Intake: real tagging, review screen, saving to the wardrobe
+- Why: Roy saw wrong type (sweater as shirt), shade and fabric. Causes found: no tagging step existed (only detection's
+  6 coarse labels), the redraw was described from detection's guess (melange tailored trousers drawn as olive chinos),
+  detection had fallen back to the weak free model, and the test photos were ~200 px (crops 45-130 px).
+- intake-tag (new, deployed): Claude tags a crop with the full frozen ItemTags, using a fabric/type/colour guide, the
+  owner's wardrobe names, his last 15 corrections, and an optional care-label photo (composition settles wool vs cotton).
+  Default model Haiku 5.5: on the real crops Sonnet 5.5 was no more accurate and 15x the cost (0.1 vs 1.7 cents).
+- Migration 0004_tag_corrections: proposed vs saved per confirmed garment, with the changed fields; feeds the prompt.
+- Detection: paid gemini-3.8-flash first (4 s, ~0.2 cents a photo, verified), free key as fallback, low thinking.
+  The $8/month Google cap now covers paid detection and redraws together.
+- App: "one garment" mode (whole frame, no detection) as default, "several garments" mode, low-resolution warning,
+  review per garment (chips per field, the tagger's value first, "worth checking" on uncertain fields), care-label photo,
+  redraw from the confirmed tags, save to items (+ tag_corrections), wardrobe reload.
+- Look at: design/screens/2026-11-09-intake-review.png, intake-modes.png; ai_calls rows with task 'tag'.
