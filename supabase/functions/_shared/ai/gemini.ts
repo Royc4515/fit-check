@@ -19,6 +19,13 @@ import type { AiLogEntry } from "./types.ts";
  * 2026-12-01) and 3.x has no masks at all, so the pipeline relies on boxes only.
  */
 export const DETECT_MODEL = "gemini-3.8-flash";
+/**
+ * Tried in order when the one before answers 503/429/500. Both are free tier.
+ * don't touch / 2026-11-08: Roy's first real photo failed with "503 model is currently experiencing high demand";
+ * a single model on the free tier is not reliable enough to be the only path.
+ */
+const DETECT_MODELS = [DETECT_MODEL, "gemini-3.5-flash-lite"] as const;
+const RETRYABLE = new Set([429, 500, 503]);
 export const ENHANCE_MODEL = "gemini-3.1-flash-lite-image";
 
 /** USD, Gemini API paid tier (2026-11): $0.25 per 1M input tokens, $0.0336 per 1024px output image. */
@@ -76,7 +83,7 @@ export type DetectResult = { garments: DetectedGarment[] | null; log: AiLogEntry
  */
 export async function detectGarments(image: Uint8Array, mimeType: string): Promise<DetectResult> {
   const started = Date.now();
-  const base = { provider: "google" as const, model: DETECT_MODEL, task: "separate" as const, images: 1 };
+  const base: { provider: "google"; model: string; task: "separate"; images: number } = { provider: "google", model: DETECT_MODEL, task: "separate", images: 1 };
   const fail = (error: string, extra: Partial<AiLogEntry> = {}): DetectResult => ({
     garments: null,
     log: { ...base, latency_ms: Date.now() - started, ok: false, error: error.slice(0, 300), ...extra },
@@ -84,21 +91,37 @@ export async function detectGarments(image: Uint8Array, mimeType: string): Promi
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) return fail("GEMINI_API_KEY is not set");
 
-  let res: Response;
-  try {
-    res = await fetch(endpoint(DETECT_MODEL), {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ inline_data: { mime_type: mimeType, data: toBase64(image) } }, { text: DETECT_PROMPT }] }],
-        generationConfig: { responseMimeType: "application/json" },
-      }),
-      signal: AbortSignal.timeout(90_000),
-    });
-  } catch (error) {
-    return fail(`network: ${String(error)}`);
+  const request = JSON.stringify({
+    contents: [{ role: "user", parts: [{ inline_data: { mime_type: mimeType, data: toBase64(image) } }, { text: DETECT_PROMPT }] }],
+    generationConfig: { responseMimeType: "application/json" },
+  });
+  let res: Response | null = null;
+  let lastError = "no attempt";
+  // Each model gets two tries a second apart; a demand spike usually clears that fast, and if not, the next model.
+  attempts: for (const model of DETECT_MODELS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1200));
+      try {
+        const r = await fetch(endpoint(model), {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-goog-api-key": key },
+          body: request,
+          signal: AbortSignal.timeout(60_000),
+        });
+        if (r.ok) {
+          base.model = model;
+          res = r;
+          break attempts;
+        }
+        lastError = `HTTP ${r.status} (${model}): ${(await r.text()).slice(0, 200)}`;
+        console.error("detect attempt failed", lastError);
+        if (!RETRYABLE.has(r.status)) break attempts;
+      } catch (error) {
+        lastError = `network (${model}): ${String(error)}`;
+      }
+    }
   }
-  if (!res.ok) return fail(`HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res) return fail(lastError);
 
   const body = (await res.json()) as GeminiResponse;
   const usage = { input_tokens: body.usageMetadata?.promptTokenCount ?? 0, output_tokens: body.usageMetadata?.candidatesTokenCount ?? 0 };
