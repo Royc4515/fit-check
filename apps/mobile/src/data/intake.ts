@@ -156,10 +156,15 @@ export function reviewValues(name: string, tags: ItemTags): Record<ReviewField, 
  * The redraw prompt's garment description, from the confirmed tags rather than detection's guess: a wrong
  * description makes the image model draw the wrong cloth (melange tailored trousers came back as olive chinos).
  */
-export function describeForRedraw(tags: ItemTags): string {
+export function describeForRedraw(tags: ItemTags, name?: string): string {
   const pattern = tags.pattern === "solid" ? "" : `${tags.pattern} `;
   const material = tags.material === "unknown" || tags.material === "mixed" ? "" : `${tags.material} `;
-  return `${tags.color_name.replace("_", " ")} ${pattern}${material}${tags.subcategory.replace("_", " ")} (main colour ${tags.color_hex})`;
+  const sleeve = tags.sleeve === "na" ? "" : `, ${tags.sleeve === "sleeveless" ? "sleeveless" : `${tags.sleeve} sleeves`}`;
+  const base = `${tags.color_name.replace("_", " ")} ${pattern}${material}${tags.subcategory.replace("_", " ")}${sleeve} (main colour ${tags.color_hex})`;
+  // The name the user saw and maybe corrected (Roy, 2026-11-10): it carries the brand and his own word for the cut,
+  // e.g. "Zara Mandarin Collar", which the tags alone cannot express. Capped so the input stays within 400 chars.
+  const clean = name?.trim().slice(0, 120);
+  return clean ? `"${clean}": ${base}` : base;
 }
 
 /**

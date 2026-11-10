@@ -194,7 +194,8 @@
       "seasons": "Seasons",
       "formality": "Formality",
       "range": "Temperature range",
-      "fit": "Fit"
+      "fit": "Fit",
+      "sleeve": "Sleeve"
     },
     "where": "Where it is",
     "notSuggested": "Won't be suggested until it's back home.",
@@ -225,6 +226,11 @@
         "replacing": "Replacing the photo failed. Try again.",
         "removing": "Removing failed. Try again."
       }
+    },
+    "sleeve": {
+      "short": "Short",
+      "long": "Long",
+      "sleeveless": "Sleeveless"
     }
   },
   "auth": {
@@ -310,6 +316,15 @@
       "labelling": "Reading the label",
       "skip": "Skip",
       "cutting": "Removing the background"
+    },
+    "duplicate": {
+      "title": "This garment looks like one already in the wardrobe: {{name}}",
+      "new": "New",
+      "existing": "In wardrobe",
+      "same": "Same garment, skip",
+      "replace": "Same garment, use this photo",
+      "different": "It's a different garment",
+      "replaced": "The photo of {{name}} was updated in the wardrobe."
     }
   }
 }
