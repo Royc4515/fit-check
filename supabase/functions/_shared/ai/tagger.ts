@@ -37,7 +37,8 @@ The photo may also show other clothes (hanging behind it in a closet, on a bed, 
 Subcategory (pick the garment type, not the slot):
 - knit: anything knitted from yarn: crew/V-neck sweaters, cardigans, knitted polos with long sleeves, quarter-zips in knit. Visible knit stitches or ribbed cuffs/hem.
 - sweatshirt: cut-and-sewn jersey or fleece-backed cotton: crewneck sweatshirts, hoodies, zip hoodies. Smooth face, no knit stitches.
-- button_down: any woven shirt with a buttoned placket, including mandarin/band collar, oxford, flannel, linen and overshirts worn as shirts.
+- button_down: a woven shirt with a buttoned placket worn as the shirt itself, tucked or untucked: oxford, poplin, dress shirts, mandarin/band collar, linen, light flannel.
+- overshirt: a heavier shirt-cut piece meant to be worn open over a T-shirt: thick flannel or brushed check, corduroy, twill or denim shacket, shirt-jacket with chest flap pockets, quilted or padded shirt. Heavier and boxier than a button_down; if it would also pass as a light shirt, choose button_down and put "subcategory" in uncertain.
 - polo: short-sleeved pique or jersey with a 2-3 button placket.
 - tshirt: jersey tee, any neckline.
 - chinos: casual cotton twill trousers, slanted front pockets, no pressed crease, slightly sheeny diagonal weave.
@@ -67,9 +68,9 @@ Other fields:
 - fit: from the cut you can see (slim, regular, relaxed, oversized). Usually regular.
 - sleeve: na for anything without sleeves (trousers, shoes, accessories). For tops, knits and jackets look at where the sleeve ends: short if it ends above the elbow, long if it reaches the wrist, including long sleeves rolled up to the elbow (the extra fabric of the roll shows). sleeveless only for tanks and vests. If the sleeve end is hidden or out of frame, answer short and put "sleeve" in uncertain (the owner's default, 2026-11-10).
 - Leg length: shorts end above the knee; anything reaching the ankle is a long trouser type (jeans, chinos, trousers). If the leg end is out of frame, choose the long type and put "subcategory" in uncertain.
-- formality, 1-10: gym kit 1, hoodie or sandals 2, sweatshirt 3, t-shirt or sneakers 4, polo or casual knit 5, casual button-down 6, chinos, oxford or fine knit 7, tailored trousers or dress shoes 8, suit pieces 9.
-- seasons and temp_min_c/temp_max_c (the outdoor temperatures it suits, Celsius): t-shirt or linen 20 to 40; polo 18 to 35; button-down 14 to 32; cotton knit or sweatshirt 10 to 22; wool knit 0 to 17; jacket 5 to 18; coat -5 to 12; trousers by cloth weight.
-- modesty_flags: short_sleeve for short sleeves, short_pants for shorts, open_front for garments worn open (cardigans, unbuttoned overshirts). Else empty.
+- formality, 1-10: gym kit 1, hoodie or sandals 2, sweatshirt 3, t-shirt or sneakers 4, polo or casual knit or overshirt 5, casual button-down 6, chinos, oxford or fine knit 7, tailored trousers or dress shoes 8, suit pieces 9.
+- seasons and temp_min_c/temp_max_c (the outdoor temperatures it suits, Celsius): t-shirt or linen 20 to 40; polo 18 to 35; button-down 14 to 32; overshirt 12 to 24; cotton knit or sweatshirt 10 to 22; wool knit 0 to 17; jacket 5 to 18; coat -5 to 12; trousers by cloth weight.
+- modesty_flags: short_sleeve for short sleeves, short_pants for shorts, open_front for garments worn open (cardigans, overshirts). Else empty.
 - style_tags: zero to three of the allowed values.
 
 name: English, in the wardrobe's existing style "Brand Type" (e.g. "Gap Chinos", "Zara Mandarin Collar", "Nike Sweatshirt"). Without a visible brand use colour and type ("Navy Wool Sweater"). brand: only when a logo or label shows it, else null.

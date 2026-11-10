@@ -1,15 +1,44 @@
-import type { Item } from "@fit-check/schema";
+import type { Item, Subcategory } from "@fit-check/schema";
 
 /** One filter dimension. Selection is single-value per facet; facets combine with AND. */
-export const FACETS = ["season", "color", "availability"] as const;
+export const FACETS = ["type", "season", "color", "availability"] as const;
 export type Facet = (typeof FACETS)[number];
 export type Selection = Partial<Record<Facet, string>>;
+
+/**
+ * Garment types for the type filter (Roy, 2026-11-10: shirts, T-shirts and overshirts apart). Coarser than the 19
+ * subcategories so the row stays short: jeans, chinos and trousers are one "trousers" chip. Listed in reading order.
+ */
+export const TYPE_OF: Record<Subcategory, string> = {
+  button_down: "shirts",
+  tshirt: "tshirts",
+  polo: "polos",
+  overshirt: "overshirts",
+  knit: "knitwear",
+  sweatshirt: "knitwear",
+  jeans: "trousers",
+  chinos: "trousers",
+  trousers: "trousers",
+  shorts: "shorts",
+  sneakers: "shoes",
+  boots: "shoes",
+  dress_shoes: "shoes",
+  sandals: "shoes",
+  coat: "outerwear",
+  jacket: "outerwear",
+  belt: "accessories",
+  watch: "accessories",
+  hat: "accessories",
+};
+const TYPE_ORDER = [...new Set(Object.values(TYPE_OF))];
 
 /** Category order is fixed: it is the reading order of the wardrobe, not alphabetical. */
 export const CATEGORY_ORDER = ["top", "bottom", "shoes", "layer", "outerwear", "accessory"] as const;
 
 function valuesOf(item: Item, facet: Facet): string[] {
   switch (facet) {
+    case "type":
+      return [TYPE_OF[item.tags.subcategory]];
     case "season":
       return item.tags.seasons;
     case "color":
@@ -27,10 +56,14 @@ export function deriveFacets(items: Item[]): Array<{ facet: Facet; values: strin
   return FACETS.map((facet) => {
     const counts = new Map<string, number>();
     for (const item of items) for (const v of valuesOf(item, facet)) counts.set(v, (counts.get(v) ?? 0) + 1);
-    const values = [...counts.entries()]
-      // Tie-break on the value so the chip order never depends on input order.
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([v]) => v);
+    // Types keep their reading order (shirts before trousers before shoes); other facets go most frequent first.
+    const values =
+      facet === "type"
+        ? TYPE_ORDER.filter((v) => counts.has(v))
+        : [...counts.entries()]
+            // Tie-break on the value so the chip order never depends on input order.
+            .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+            .map(([v]) => v);
     return { facet, values };
   }).filter((f) => f.values.length >= 2);
 }
