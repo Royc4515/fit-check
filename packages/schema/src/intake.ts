@@ -81,7 +81,7 @@ export const TagProposalSchema = z.object({
   brand: z.string().max(60).nullable(),
   tags: ItemTagsSchema,
   label_composition: z.string().max(120).nullable(),
-  uncertain: z.array(z.enum(["subcategory", "color", "pattern", "material", "fit"])),
+  uncertain: z.array(z.enum(["subcategory", "color", "pattern", "material", "fit", "sleeve"])),
 });
 export type TagProposal = z.infer<typeof TagProposalSchema>;
 

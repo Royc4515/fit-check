@@ -195,7 +195,8 @@
       "formality": "Formality",
       "range": "Temperature range",
       "fit": "Fit",
-      "sleeve": "Sleeve"
+      "sleeve": "Sleeve",
+      "leg": "Leg length"
     },
     "where": "Where it is",
     "notSuggested": "Won't be suggested until it's back home.",
@@ -231,6 +232,10 @@
       "short": "Short",
       "long": "Long",
       "sleeveless": "Sleeveless"
+    },
+    "leg": {
+      "long": "Long",
+      "short": "Short"
     }
   },
   "auth": {
