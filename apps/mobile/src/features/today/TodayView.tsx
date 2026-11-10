@@ -55,6 +55,9 @@ const ADJUST: Record<Adjust, DayAdjustment> = {
   casual: { temp_steps: 0, formality_steps: -1 },
 };
 
+/** An outfit needs one of each; layers and outerwear are optional. */
+const REQUIRED_SLOTS = ["top", "bottom", "shoes"] as const;
+
 export function TodayView({ items, pairWeights, day, history, actions, busy, failed, laundered, stylist }: Props) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -120,6 +123,14 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     [items, pairWeights, day, history, effective, swaps, styled]
   );
   const outfit = plan.kind === "empty" ? null : plan.outfit;
+  /**
+   * Slots the wardrobe has nothing in at all. Roy, 2026-11-10: after the spreadsheet items were deleted the
+   * wardrobe held shirts and coats only, and "no suggestion today" did not say why or what to do.
+   */
+  const missing = useMemo(
+    () => REQUIRED_SLOTS.filter((slot) => !items.some((i) => i.status === "active" && i.tags.category === slot)),
+    [items]
+  );
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const options = useMemo(
     () => (plan.kind === "suggestion" && swapSlot ? swapOptions(items, plan.req, pairWeights, plan.items, swapSlot) : []),
@@ -344,7 +355,14 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
             </>
           ) : (
             <View className="mt-12">
-              <Text className="font-body text-body text-ink-soft">{lastSkip ? t("today.allSkipped") : t("today.empty")}</Text>
+              <Text className="font-body text-body text-ink-soft">
+                {lastSkip ? t("today.allSkipped") : missing.length > 0 ? t("today.missing", { what: missing.map((m) => t(`today.missingSlot.${m}`)).join(t("today.and")) }) : t("today.empty")}
+              </Text>
+              {!lastSkip && missing.length > 0 ? (
+                <View className="mt-4 self-start">
+                  <TextLink href="/intake" label={t("nav.addClothes")} />
+                </View>
+              ) : null}
               {statusLines()}
             </View>
           )}

@@ -235,3 +235,9 @@
   restores the loaded model instead of reloading 1 GB (the first real call took 112 s). Needs a `modal deploy`.
 - Existing photo items: one-off `cutout-backfill` function (code-guarded, expires 2026-11-10 23:00 UTC) cuts out
   every photo item that has no `-cutout.png` yet; retired after the run.
+
+## 2026-11-10 - Spreadsheet items deleted; Today says what is missing
+- At Roy's request, deleted the 108 items imported from the spreadsheet (their pair weights cascaded). The wardrobe now
+  holds only the 41 items added from photos; tag_corrections and ai_calls are kept.
+- Today: when the wardrobe has no tops, bottoms or shoes at all, the empty state names what is missing and links to
+  "add clothes" instead of the generic "no suggestion today". Screenshot: design/screens/2026-11-10-today-missing.png.

@@ -63,7 +63,14 @@
       "reset": "Reset",
       "learned": "Tuned to you from recent wears: {{parts}}"
     },
-    "keepHome": "Keep it home"
+    "keepHome": "Keep it home",
+    "missing": "To build an outfit the wardrobe still needs {{what}}. Photograph them to get a suggestion.",
+    "missingSlot": {
+      "top": "tops",
+      "bottom": "trousers",
+      "shoes": "shoes"
+    },
+    "and": " and "
   },
   "wardrobe": {
     "title": "Wardrobe",
