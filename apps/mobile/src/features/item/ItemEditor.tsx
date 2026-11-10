@@ -17,7 +17,7 @@ import { describeForRedraw, enhanceCutout, preparePhoto, removeBackground, sourc
 import { colors } from "../../theme/tokens";
 import { Chip, Row } from "../intake/GarmentReview";
 import { COLOR_HEX } from "../intake/palette";
-import { hasSleeves, normalizeTags, SLEEVE_CHOICES } from "../intake/tagRules";
+import { hasSleeves, isBottom, LEG_CHOICES, legOf, normalizeTags, SLEEVE_CHOICES, subcategoryForLeg } from "../intake/tagRules";
 
 export type ItemEdits = {
   save: (itemId: string, edit: { name: string; brand: string | null; tags: ItemTags }) => Promise<void>;
@@ -165,9 +165,20 @@ export function ItemEditor({ item, edits, onClose, onRemoved }: { item: Item; ed
           unsure={false}
           values={SLEEVE_CHOICES}
           proposed={item.tags.sleeve !== "na" ? item.tags.sleeve : undefined}
-          selected={tags.sleeve === "na" ? "long" : tags.sleeve}
+          selected={tags.sleeve === "na" ? "short" : tags.sleeve}
           label={(v) => t(`item.sleeve.${v}`)}
           onPick={(v) => patch({ sleeve: v })}
+        />
+      ) : null}
+      {isBottom(tags) ? (
+        <Row
+          title={t("item.spec.leg")}
+          unsure={false}
+          values={LEG_CHOICES}
+          proposed={isBottom(item.tags) ? legOf(item.tags) : undefined}
+          selected={legOf(tags)}
+          label={(v) => t(`item.leg.${v}`)}
+          onPick={(v) => patch({ subcategory: subcategoryForLeg(v, tags, item.tags.subcategory) })}
         />
       ) : null}
       <Row

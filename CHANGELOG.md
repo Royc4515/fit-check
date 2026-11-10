@@ -262,3 +262,11 @@
   sleeve "na" and the short_sleeve / short_pants modesty flags consistent with manual edits. Shown on the item page.
 - The AI redraw description now starts with the item's current name (brand and the user's own words), plus sleeve length.
 - Screens: design/screens/2026-11-10-intake-duplicate.png, 2026-11-10-intake-review-sleeve.png.
+
+## 2026-11-10 - Sleeve and leg length: detect, default short, always choosable
+- Tagger: explicit rule for sleeve length (ends above the elbow = short; reaches the wrist, or rolled-up long sleeves =
+  long); when the end is hidden it answers short and flags `sleeve` as uncertain. Leg length rule for shorts vs long
+  trousers. `uncertain` may now include `sleeve`. intake-tag redeployed.
+- App: the sleeve row shows "worth checking" when uncertain; a garment that gains sleeves defaults to short. New
+  "leg length" row (long/short) for bottoms in the review and the item editor; short maps to `shorts`, long restores the
+  garment's long type (or chinos).

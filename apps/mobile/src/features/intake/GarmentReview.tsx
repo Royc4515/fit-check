@@ -15,7 +15,7 @@ import { TextAction } from "../../components/TextAction";
 import { cutoutUrl } from "../../components/item-art/ItemArt";
 import { colors } from "../../theme/tokens";
 import { COLOR_HEX } from "./palette";
-import { hasSleeves, normalizeTags, SLEEVE_CHOICES } from "./tagRules";
+import { hasSleeves, isBottom, LEG_CHOICES, legOf, normalizeTags, SLEEVE_CHOICES, subcategoryForLeg } from "./tagRules";
 
 export type Draft = { name: string; brand: string | null; tags: ItemTags };
 
@@ -253,12 +253,23 @@ export function GarmentReview({
           {hasSleeves(d.tags) ? (
             <Row
               title={t("item.spec.sleeve")}
-              unsure={false}
+              unsure={unsure.has("sleeve")}
               values={SLEEVE_CHOICES}
               proposed={g.proposal && hasSleeves(g.proposal.tags) && g.proposal.tags.sleeve !== "na" ? g.proposal.tags.sleeve : undefined}
-              selected={d.tags.sleeve === "na" ? "long" : d.tags.sleeve}
+              selected={d.tags.sleeve === "na" ? "short" : d.tags.sleeve}
               label={(v) => t(`item.sleeve.${v}`)}
               onPick={(v) => setTags({ sleeve: v })}
+            />
+          ) : null}
+          {isBottom(d.tags) ? (
+            <Row
+              title={t("item.spec.leg")}
+              unsure={unsure.has("subcategory")}
+              values={LEG_CHOICES}
+              proposed={g.proposal && isBottom(g.proposal.tags) ? legOf(g.proposal.tags) : undefined}
+              selected={legOf(d.tags)}
+              label={(v) => t(`item.leg.${v}`)}
+              onPick={(v) => setTags({ subcategory: subcategoryForLeg(v, d.tags, g.proposal?.tags.subcategory) })}
             />
           ) : null}
           <Row
