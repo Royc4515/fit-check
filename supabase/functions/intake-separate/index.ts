@@ -123,8 +123,8 @@ async function enhance(supabase: SupabaseClient, userId: string, cutoutPath: str
     return json(200, { ok: false, reason: result.billingRequired ? "billing_required" : "ai_failed" });
   }
 
-  const out = cutoutPath.replace(/\.[^.]+$/, "-enhanced.png");
-  // upsert off: the cutouts policy grants insert only; a second redraw of the same crop is refused, not overwritten.
+  // A new name per redraw: an item can be redrawn again later from the item page, and each result is kept.
+  const out = cutoutPath.replace(/\.[^.]+$/, `-enhanced-${Date.now()}.png`);
   const upload = await supabase.storage.from("cutouts").upload(out, result.png, { contentType: "image/png", upsert: false });
   if (upload.error) return json(200, { ok: false, reason: "ai_failed" });
   return json(200, { ok: true, path: out, url: supabase.storage.from("cutouts").getPublicUrl(out).data.publicUrl });

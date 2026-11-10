@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
 import { SpecTable } from "../../components/editorial/SpecTable";
 import { ItemArt } from "../../components/item-art/ItemArt";
+import { TextAction } from "../../components/TextAction";
+import { ItemEditor, type ItemEdits } from "./ItemEditor";
 import { getOutfitsWith } from "../today/outfit";
 
 /** Wraps numbers so they stay LTR inside Hebrew text (DESIGN.md section 2: numbers always LTR). */
@@ -59,13 +61,19 @@ export function ItemDetails({
   items,
   pairWeights,
   onAvailability,
+  edits,
+  onRemoved,
 }: {
   item: Item;
   items: Item[];
   pairWeights: PairWeights;
   onAvailability?: (itemId: string, next: Availability, prev: Availability) => Promise<void>;
+  /** Absent in read-only contexts (the design harness); the edit link is then hidden. */
+  edits?: ItemEdits;
+  onRemoved?: () => void;
 }) {
   const { t } = useTranslation();
+  const [editing, setEditing] = useState(false);
   const [failed, setFailed] = useState(false);
   const changeAvailability = onAvailability
     ? (next: Availability) => {
@@ -99,10 +107,19 @@ export function ItemDetails({
     { label: t("item.spec.range"), value: <Num>{`${tags.temp_min_c}–${tags.temp_max_c}°`}</Num> },
   ];
 
+  if (editing && edits) {
+    return <ItemEditor item={item} edits={edits} onClose={() => setEditing(false)} onRemoved={() => onRemoved?.()} />;
+  }
+
   return (
     <View>
       <Text className="font-display text-display-xl text-ink">{item.name}</Text>
       {item.brand ? <Text className="mt-1 font-body text-body-sm text-ink-soft">{item.brand}</Text> : null}
+      {edits ? (
+        <View className="mt-3 self-start">
+          <TextAction label={t("item.edit.open")} onPress={() => setEditing(true)} />
+        </View>
+      ) : null}
 
       <View className="mt-8">
         <Text className="font-body text-meta text-ink-faint">{t("item.where")}</Text>

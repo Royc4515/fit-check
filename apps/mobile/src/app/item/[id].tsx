@@ -16,6 +16,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import { ItemArt } from "../../components/item-art/ItemArt";
 import { ItemDetails } from "../../features/item/ItemDetails";
+import type { ItemEdits } from "../../features/item/ItemEditor";
+import { useSession } from "../../features/auth/SessionProvider";
+import { archiveItem, setItemImage, updateItemDetails } from "../../data/items";
 import { clearOrigin, getOrigin, measureCell, type Rect } from "../../features/item/transition";
 import { WardrobeGate } from "../../components/WardrobeGate";
 import { useWardrobe } from "../../data/WardrobeProvider";
@@ -36,9 +39,31 @@ const ease = Easing.bezier(...motion.easeOut);
  */
 export default function ItemScreen() {
   const wardrobe = useWardrobe();
+  const session = useSession();
   const { id } = useLocalSearchParams<{ id: string }>();
   if (wardrobe.status !== "ready") return <WardrobeGate state={wardrobe} />;
   const { patch } = wardrobe;
+  const update = (itemId: string, fn: (i: Item) => Item) =>
+    patch((d) => ({ ...d, items: d.items.map((i) => (i.id === itemId ? fn(i) : i)) }));
+  /** Writes first, then the local copy: an edit that did not save must not look saved. */
+  const edits: ItemEdits | undefined =
+    session.status === "signedIn"
+      ? {
+          userId: session.session.user.id,
+          save: async (itemId, e) => {
+            await updateItemDetails(itemId, e);
+            update(itemId, (i) => ({ ...i, name: e.name, brand: e.brand, tags: e.tags }));
+          },
+          setImage: async (itemId, cutoutPath, thumbPath) => {
+            await setItemImage(itemId, cutoutPath, thumbPath);
+            update(itemId, (i) => ({ ...i, cutout_path: cutoutPath }));
+          },
+          archive: async (itemId) => {
+            await archiveItem(itemId);
+            update(itemId, (i) => ({ ...i, status: "archived" }));
+          },
+        }
+      : undefined;
   /** Optimistic: the control moves at once; a failed write moves it back and rethrows so the screen can say so. */
   const changeAvailability = async (itemId: string, next: Availability, prev: Availability) => {
     const set = (a: Availability) => patch((d) => ({ ...d, items: d.items.map((i) => (i.id === itemId ? { ...i, availability: a } : i)) }));
@@ -51,7 +76,7 @@ export default function ItemScreen() {
       throw error;
     }
   };
-  return <ItemContent id={id} items={wardrobe.items} pairWeights={wardrobe.pairWeights} onAvailability={changeAvailability} />;
+  return <ItemContent id={id} items={wardrobe.items} pairWeights={wardrobe.pairWeights} onAvailability={changeAvailability} edits={edits} />;
 }
 
 export function ItemContent({
@@ -59,11 +84,13 @@ export function ItemContent({
   items,
   pairWeights,
   onAvailability,
+  edits,
 }: {
   id: string | undefined;
   items: Item[];
   pairWeights: PairWeights;
   onAvailability?: (itemId: string, next: Availability, prev: Availability) => Promise<void>;
+  edits?: ItemEdits;
 }) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -188,7 +215,7 @@ export function ItemContent({
           <View style={{ height: heroH }} />
           <Animated.View style={[{ paddingHorizontal: layout.gutter, paddingTop: 32 }, contentStyle]}>
             {item ? (
-              <ItemDetails item={item} items={items} pairWeights={pairWeights} onAvailability={onAvailability} />
+              <ItemDetails item={item} items={items} pairWeights={pairWeights} onAvailability={onAvailability} edits={edits} onRemoved={() => void close()} />
             ) : (
               <Text className="font-body text-body text-ink-soft">{t("item.notFound")}</Text>
             )}
