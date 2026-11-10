@@ -13,10 +13,12 @@ const CutoutResponseSchema = z.object({
   width: z.number().int().positive(),
   height: z.number().int().positive(),
   gpu_seconds: z.number().nonnegative(),
+  // Optional: workers deployed before SAM 2 (2026-11-10) do not send it.
+  isolated: z.boolean().optional(),
 });
 
 export type CutoutResult =
-  | { ok: true; cutout: Uint8Array; thumb: Uint8Array; log: AiLogEntry }
+  | { ok: true; cutout: Uint8Array; thumb: Uint8Array; /** null: a worker deployed before SAM 2 answered. */ isolated: boolean | null; log: AiLogEntry }
   | { ok: false; notConfigured: boolean; log: AiLogEntry };
 
 function fromBase64(b64: string): Uint8Array {
@@ -29,14 +31,15 @@ function fromBase64(b64: string): Uint8Array {
 /**
  * cutout: background removal for one garment photo on the Modal worker (BiRefNet, worker/app.py). Never throws.
  *
- * Inputs: the crop's bytes and media type. Needs MODAL_CUTOUT_URL and MODAL_WORKER_TOKEN in the function env;
- * without them it answers `notConfigured` so the app keeps the plain crop. Failure modes: network error or timeout
- * (a cold start downloads the model once, so the first call can take a minute), non-200 from the worker, or an
- * answer that fails the schema. The cost logged is wall time x 8 CPU cores, an upper bound on the billed time.
+ * Inputs: the crop's bytes and media type, and `isolate`: whether the worker should also drop other garments
+ * around the front one (SAM 2). True for real photos; false for AI redraws, which only ever show one garment.
+ * Needs MODAL_CUTOUT_URL and MODAL_WORKER_TOKEN in the function env; without them it answers `notConfigured` so
+ * the app keeps the plain crop. Failure modes: network error or timeout (a cold start loads the models, so the first
+ * call can take a minute), non-200 from the worker, or an answer that fails the schema. The cost logged is wall time x 8 CPU cores, an upper bound on the billed time.
  */
-export async function cutout(image: Uint8Array, mediaType: string): Promise<CutoutResult> {
+export async function cutout(image: Uint8Array, mediaType: string, isolate: boolean): Promise<CutoutResult> {
   const started = Date.now();
-  const base = { provider: "modal" as const, model: "birefnet-general", task: "cutout" as const, images: 1 };
+  const base = { provider: "modal" as const, model: isolate ? "birefnet-general+sam2.1-small" : "birefnet-general", task: "cutout" as const, images: 1 };
   const url = Deno.env.get("MODAL_CUTOUT_URL");
   const token = Deno.env.get("MODAL_WORKER_TOKEN");
   const fail = (error: string, notConfigured = false): CutoutResult => ({
@@ -48,7 +51,7 @@ export async function cutout(image: Uint8Array, mediaType: string): Promise<Cuto
 
   let res: Response;
   try {
-    res = await fetch(url, {
+    res = await fetch(`${url}?isolate=${isolate ? 1 : 0}`, {
       method: "POST",
       headers: { authorization: `Bearer ${token}`, "content-type": mediaType },
       // A Blob, not the raw Uint8Array: fetch types only accept ArrayBuffer-backed bodies.
@@ -70,6 +73,7 @@ export async function cutout(image: Uint8Array, mediaType: string): Promise<Cuto
     ok: true,
     cutout: fromBase64(parsed.data.cutout_png_b64),
     thumb: fromBase64(parsed.data.thumb_png_b64),
+    isolated: parsed.data.isolated ?? null,
     log: { ...base, latency_ms: latency, ok: true, cost_usd: Math.round((latency / 1000) * WORKER_PER_SECOND * 100_000) / 100_000 },
   };
 }

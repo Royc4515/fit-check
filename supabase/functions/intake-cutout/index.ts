@@ -14,7 +14,7 @@ import { cutout } from "../_shared/ai/modal.ts";
  * (worker not deployed yet; the app keeps the crop) or "ai_failed" | 400 bad_input / not_found | 401 | 429.
  */
 
-/** A generous day of adding clothes; each call is about a second of T4 time. */
+/** A generous day of adding clothes; each call is 10-25 s of CPU time against the free Modal credit. */
 const DAILY_CUTOUT_LIMIT = 400;
 const MAX_BYTES = 8 * 1024 * 1024;
 
@@ -63,7 +63,8 @@ Deno.serve(async (req) => {
   const bytes = new Uint8Array(await data.arrayBuffer());
   if (bytes.length > MAX_BYTES) return json(413, { ok: false, reason: "too_large" });
 
-  const result = await cutout(bytes, mediaType);
+  // A redraw shows one garment on white; SAM would only add time (and a small risk of trimming it).
+  const result = await cutout(bytes, mediaType, !/-enhanced/.test(path));
   // Not configured is not an AI call; logging it would count against the daily cap for nothing.
   if (!result.ok && result.notConfigured) return json(200, { ok: false, reason: "not_configured" });
   await logAiCall(userId, result.log);
