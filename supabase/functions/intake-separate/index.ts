@@ -22,10 +22,13 @@ import { countAiCalls, logAiCall, sumAiCost } from "../_shared/ai/log.ts";
  * Responses: 200 { ok: true, ... } | 200 { ok: false, reason } | 400 bad_input / not_found | 401 | 413 | 429.
  */
 
-/** Free-tier guard: well under Google's free daily quota, and a generous day of adding clothes. */
-const DAILY_DETECT_LIMIT = 60;
-/** Spend guard for the paid path: 20 redraws a day is at most about $0.70. */
-const DAILY_ENHANCE_LIMIT = 20;
+/**
+ * Runaway-loop guards only; the money guard is MONTHLY_GOOGLE_BUDGET_USD below. Raised 2026-11-10 when Roy hit
+ * the old 80/day while uploading his whole wardrobe at about $1.55 a day.
+ */
+const DAILY_DETECT_LIMIT = 200;
+/** 60 redraws a day is at most about $2; the monthly cap still stops spending at $8. */
+const DAILY_ENHANCE_LIMIT = 60;
 /**
  * Hard monthly cap on paid Google calls (redraws and paid detection together), in USD, below the $10 monthly
  * Google Cloud credit from Google AI Pro (Roy: no real money). Counted across all users from ai_calls, because the
