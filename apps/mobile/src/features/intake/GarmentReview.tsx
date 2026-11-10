@@ -51,7 +51,7 @@ type Props = {
 /** Which uncertain flag belongs to which row: the tagger reports "color", the row edits color_name. */
 const UNCERTAIN_KEY = { subcategory: "subcategory", color_name: "color", pattern: "pattern", material: "material", fit: "fit" } as const;
 
-function Chip({ label, selected, swatch, onPress }: { label: string; selected: boolean; swatch?: string; onPress: () => void }) {
+export function Chip({ label, selected, swatch, onPress }: { label: string; selected: boolean; swatch?: string; onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}
@@ -68,7 +68,7 @@ function Chip({ label, selected, swatch, onPress }: { label: string; selected: b
   );
 }
 
-function Row<T extends string>(props: {
+export function Row<T extends string>(props: {
   title: string;
   unsure: boolean;
   values: readonly T[];

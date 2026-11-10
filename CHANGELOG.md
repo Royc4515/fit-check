@@ -218,3 +218,36 @@
 - ItemArt takes `cutoutPath`: with a path it shows the stored image (public cutouts bucket), else the drawing (sheet items).
   Wired in the wardrobe grid, item page, "goes with", Today composition and swap options.
 - Look at: design/screens/2026-11-09-wardrobe-photo.png (Tsumi Mandarin Collar).
+
+## 2026-11-10 - Cutout worker on CPU (no card needed)
+- Modal requires a payment method for any GPU function; Roy wants no card on file. Cutter now runs on 8 CPU cores
+  (debian_slim + onnxruntime CPU), about 10-20 s a photo, still free within the $30/month credit. Embedder moved to CPU too.
+- intake-cutout timeout 100 s -> 140 s (cold start on CPU), cost estimate per CPU core-second. Redeployed.
+- How to go back to a T4 is in the comment above `cutout_image` in worker/app.py.
+- Bake the BiRefNet weights into the cutout image at build time. Downloading them at container start (~3 min at
+  ~5.5 MB/s, repeated by every parallel container) hit the container timeout, so the first deploy never answered.
+
+## 2026-11-10 - Cutout fixes: AI redraws, speed, existing photos
+- AI redraw: the slow cutout of the original no longer replaces the redraw on screen; the redraw itself is now cut out
+  (it comes on white), and saving prefers redraw-cutout > redraw > original cutout > crop. intake-cutout accepts
+  `-enhanced` paths (redeployed).
+- Speed: Cutter uses Modal memory snapshots (`enable_memory_snapshot`, `@enter(snap=True)`), so a sleeping worker
+  restores the loaded model instead of reloading 1 GB (the first real call took 112 s). Needs a `modal deploy`.
+- Existing photo items: one-off `cutout-backfill` function (code-guarded, expires 2026-11-10 23:00 UTC) cuts out
+  every photo item that has no `-cutout.png` yet; retired after the run.
+
+## 2026-11-10 - Spreadsheet items deleted; Today says what is missing
+- At Roy's request, deleted the 108 items imported from the spreadsheet (their pair weights cascaded). The wardrobe now
+  holds only the 41 items added from photos; tag_corrections and ai_calls are kept.
+- Today: when the wardrobe has no tops, bottoms or shoes at all, the empty state names what is missing and links to
+  "add clothes" instead of the generic "no suggestion today". Screenshot: design/screens/2026-11-10-today-missing.png.
+
+## 2026-11-10 - Edit items after they are added
+- Item page: "עריכה" opens an editor (features/item/ItemEditor.tsx): name, brand, type, colour, pattern, fabric, fit,
+  seasons (at least one) and formality 1-10, saved together; the hot columns stay in step with `tags` (data/items.ts).
+- Image actions: "החלפת תמונה" (new photo, background removed) and "שיפור עם AI" (redraw from the original crop, never
+  from an earlier redraw, then cut out). Each redraw now gets its own file (`-enhanced-<ts>.png`) so an item can be
+  redrawn again; intake-separate redeployed.
+- "הסר מהארון": two taps; archives the item (status `archived`) so wear history stays and it is never listed or
+  suggested again.
+- Screens: design/screens/2026-11-10-item-view.png, 2026-11-10-item-edit.png.
