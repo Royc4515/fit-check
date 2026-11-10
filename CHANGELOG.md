@@ -218,3 +218,9 @@
 - ItemArt takes `cutoutPath`: with a path it shows the stored image (public cutouts bucket), else the drawing (sheet items).
   Wired in the wardrobe grid, item page, "goes with", Today composition and swap options.
 - Look at: design/screens/2026-11-09-wardrobe-photo.png (Tsumi Mandarin Collar).
+
+## 2026-11-10 - Cutout worker on CPU (no card needed)
+- Modal requires a payment method for any GPU function; Roy wants no card on file. Cutter now runs on 8 CPU cores
+  (debian_slim + onnxruntime CPU), about 10-20 s a photo, still free within the $30/month credit. Embedder moved to CPU too.
+- intake-cutout timeout 100 s -> 140 s (cold start on CPU), cost estimate per CPU core-second. Redeployed.
+- How to go back to a T4 is in the comment above `cutout_image` in worker/app.py.

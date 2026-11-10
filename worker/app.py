@@ -6,7 +6,8 @@ Endpoints, called only from Supabase Edge Functions with a bearer token (WORKER_
   POST embed   (png body)      -> {"embedding": [512 floats], "model_version": "fashion-clip-2"}   (not wired yet)
 
 Why Modal: Edge Functions cannot run these models; Modal gives a GPU container that scales to zero, billed per
-second against the free $30/month Starter credit. A cutout is about a second of T4 time ($0.000164/s).
+second against the free $30/month Starter credit. Runs on 8 CPU cores (no GPU: that needs a card on file), about
+10-20 s a photo, a fraction of a cent.
 
 Deploy:  modal deploy worker/app.py
 Secrets: modal secret create fit-check-worker WORKER_TOKEN=<random>   (the same value goes to Supabase as
@@ -25,11 +26,13 @@ MODEL_CACHE = "/models"
 # Longest edge the worker accepts; the app already sends 1600 px or less. Bigger only costs time, not quality.
 MAX_EDGE = 2048
 
-# don't touch / CUDA + cuDNN base image: onnxruntime-gpu needs both at runtime and debian_slim has neither, which
-# makes rembg fall back to the CPU silently (about 20 s a photo instead of about 1 s).
+# CPU, not GPU (Roy, 2026-11-10): Modal asks for a payment method before any GPU function runs, and Roy wants no
+# card on file. BiRefNet on 8 CPU cores takes roughly 10-20 s a photo, which hides behind tagging in the app and stays
+# well inside the free $30/month credit. To move to a T4 later: base image nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+# (add_python="3.11"), onnxruntime-gpu instead of onnxruntime, gpu="T4" on the class, CUDAExecutionProvider first.
 cutout_image = (
-    modal.Image.from_registry("nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04", add_python="3.11")
-    .pip_install("rembg==2.0.61", "onnxruntime-gpu==1.20.1", "pillow==11.0.0", "fastapi[standard]==0.115.6")
+    modal.Image.debian_slim(python_version="3.11")
+    .pip_install("rembg==2.0.61", "onnxruntime==1.20.1", "pillow==11.0.0", "fastapi[standard]==0.115.6")
     # BiRefNet weights are fetched on the first run and cached in the volume below.
     .env({"U2NET_HOME": MODEL_CACHE})
 )
@@ -70,14 +73,14 @@ def _png_b64(img) -> str:  # type: ignore[no-untyped-def]
 
 # scaledown_window: a batch of photos arrives a few seconds apart, so one warm container serves the whole batch;
 # two minutes idle then scales to zero (no cost while unused).
-@app.cls(image=cutout_image, gpu="T4", volumes={MODEL_CACHE: volume}, secrets=[secret], scaledown_window=120, timeout=120)
+@app.cls(image=cutout_image, cpu=8.0, memory=6144, volumes={MODEL_CACHE: volume}, secrets=[secret], scaledown_window=120, timeout=180)
 class Cutter:
     @modal.enter()
     def load(self) -> None:
         from rembg import new_session
 
         # birefnet-general is the quality model; "u2net" is faster but leaves halos on knits and loses sleeves.
-        self.session = new_session("birefnet-general", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
+        self.session = new_session("birefnet-general", providers=["CPUExecutionProvider"])
         volume.commit()
 
     @modal.fastapi_endpoint(method="POST")
@@ -114,13 +117,14 @@ class Cutter:
         }
 
 
-@app.cls(image=embed_image, gpu="T4", volumes={MODEL_CACHE: volume}, secrets=[secret], scaledown_window=120)
+# CPU for the same reason as Cutter; not called yet, so speed does not matter.
+@app.cls(image=embed_image, cpu=2.0, volumes={MODEL_CACHE: volume}, secrets=[secret], scaledown_window=120)
 class Embedder:
     @modal.enter()
     def load(self) -> None:
         from transformers import CLIPModel, CLIPProcessor
 
-        self.clip = CLIPModel.from_pretrained(FASHION_CLIP, cache_dir=MODEL_CACHE).eval().to("cuda")
+        self.clip = CLIPModel.from_pretrained(FASHION_CLIP, cache_dir=MODEL_CACHE).eval()
         self.processor = CLIPProcessor.from_pretrained(FASHION_CLIP, cache_dir=MODEL_CACHE)
         volume.commit()
 
@@ -133,7 +137,7 @@ class Embedder:
         _check_token(request.headers.get("authorization"))
         img = Image.open(io.BytesIO(await request.body())).convert("RGB")
         with torch.no_grad():
-            inputs = self.processor(images=img, return_tensors="pt").to("cuda")
+            inputs = self.processor(images=img, return_tensors="pt")
             feats = self.clip.get_image_features(**inputs)
             feats = feats / feats.norm(dim=-1, keepdim=True)
         return {"embedding": feats[0].tolist(), "model_version": MODEL_VERSION}
