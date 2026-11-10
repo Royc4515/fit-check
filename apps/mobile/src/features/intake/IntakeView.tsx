@@ -22,6 +22,7 @@ import {
   wholePhotoGarment,
   type PreparedPhoto,
 } from "../../data/intake";
+import { setItemImage } from "../../data/items";
 import { layout } from "../../theme/tokens";
 import { GarmentReview, type Draft, type ReviewState } from "./GarmentReview";
 
@@ -106,7 +107,16 @@ export function IntakeView({ userId }: { userId: string }) {
     const result = await tagCutout(g.path, g.description, labelPath);
     if (result.ok) {
       const draft: Draft = { name: result.proposal.name, brand: result.proposal.brand, tags: result.proposal.tags };
-      updateGarment(jobId, g.path, { tagging: false, labelling: false, proposal: result.proposal, model: result.model, draft });
+      // A label re-tag keeps the user's earlier answer to the duplicate question instead of asking again.
+      const duplicate = labelPath ? undefined : (result.duplicate ?? null);
+      updateGarment(jobId, g.path, {
+        tagging: false,
+        labelling: false,
+        proposal: result.proposal,
+        model: result.model,
+        draft,
+        ...(duplicate === undefined ? {} : { duplicate }),
+      });
     } else {
       updateGarment(jobId, g.path, labelPath ? { labelling: false, tagError: result.reason } : { tagging: false, tagError: result.reason });
     }
@@ -128,7 +138,7 @@ export function IntakeView({ userId }: { userId: string }) {
     const g = findGarment(jobId, path);
     if (!g?.draft) return;
     updateGarment(jobId, path, { enhancing: true, enhanceError: undefined });
-    const result = await enhanceCutout(path, describeForRedraw(g.draft.tags));
+    const result = await enhanceCutout(path, describeForRedraw(g.draft.tags, g.draft.name));
     if (!result.ok) return updateGarment(jobId, path, { enhancing: false, enhanceError: result.reason });
     updateGarment(jobId, path, { enhancing: false, enhanced: true, url: result.url, enhancedPath: result.path, cutting: true });
     // The redraw comes on white; cut it out too so it sits on the same transparent ground as every other item.
@@ -176,6 +186,23 @@ export function IntakeView({ userId }: { userId: string }) {
       if (wardrobe.status === "ready") wardrobe.reload();
     } catch (error) {
       console.error("Save failed", error);
+      updateGarment(jobId, path, { saving: false, saveError: true });
+    }
+  };
+
+  /** "Same garment, but use this photo": the existing item gets the new image; nothing new is added. */
+  const replaceExisting = async (jobId: string, path: string) => {
+    const g = findGarment(jobId, path);
+    if (!g?.duplicate) return;
+    updateGarment(jobId, path, { saving: true, saveError: false });
+    try {
+      const image = g.enhancedCutoutPath ?? g.enhancedPath ?? g.cutoutPath ?? g.path;
+      const thumb = g.enhancedPath ? (g.enhancedThumbPath ?? null) : (g.thumbPath ?? null);
+      await setItemImage(g.duplicate.item_id, image, thumb);
+      updateGarment(jobId, path, { saving: false, replaced: true });
+      if (wardrobe.status === "ready") wardrobe.reload();
+    } catch (error) {
+      console.error("Replace image failed", error);
       updateGarment(jobId, path, { saving: false, saveError: true });
     }
   };
@@ -313,6 +340,8 @@ export function IntakeView({ userId }: { userId: string }) {
                   onLabel={() => void addLabel(job.id, g.path)}
                   onRetryTag={() => void tag(job.id, g)}
                   onRetake={() => void pick(true)}
+                  onNotDuplicate={() => updateGarment(job.id, g.path, { duplicate: null })}
+                  onReplaceExisting={() => void replaceExisting(job.id, g.path)}
                 />
               ))}
               {job.skipped > 0 ? (

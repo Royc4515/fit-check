@@ -12,8 +12,10 @@ import { Image } from "expo-image";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { TextAction } from "../../components/TextAction";
+import { cutoutUrl } from "../../components/item-art/ItemArt";
 import { colors } from "../../theme/tokens";
 import { COLOR_HEX } from "./palette";
+import { hasSleeves, normalizeTags, SLEEVE_CHOICES } from "./tagRules";
 
 export type Draft = { name: string; brand: string | null; tags: ItemTags };
 
@@ -32,6 +34,10 @@ export type ReviewState = {
   labelling?: boolean;
   saving?: boolean;
   saved?: boolean;
+  /** A wardrobe item the checker thinks is this same garment, until the user answers. */
+  duplicate?: { item_id: string; name: string; image_path: string } | null;
+  /** The user chose to put this photo on the existing item instead of adding a new one. */
+  replaced?: boolean;
   saveError?: boolean;
   skipped?: boolean;
 };
@@ -46,6 +52,9 @@ type Props = {
   onLabel: () => void;
   onRetryTag: () => void;
   onRetake: () => void;
+  /** Answers to the duplicate notice: not the same garment / skip this one / use this photo on the existing item. */
+  onNotDuplicate: () => void;
+  onReplaceExisting: () => void;
 };
 
 /** Which uncertain flag belongs to which row: the tagger reports "color", the row edits color_name. */
@@ -99,13 +108,69 @@ export function Row<T extends string>(props: {
  * Review of one garment before it enters the wardrobe: the tagger's proposal as chips, one tap to change any field.
  * Fields the tagger was unsure of are marked, so the eye goes there first. Nothing is saved until "save".
  */
-export function GarmentReview({ garment: g, busy, onChange, onSave, onSkip, onEnhance, onLabel, onRetryTag, onRetake }: Props) {
+export function GarmentReview({
+  garment: g,
+  busy,
+  onChange,
+  onSave,
+  onSkip,
+  onEnhance,
+  onLabel,
+  onRetryTag,
+  onRetake,
+  onNotDuplicate,
+  onReplaceExisting,
+}: Props) {
   const { t, i18n } = useTranslation();
   const d = g.draft;
   const unsure = new Set(g.proposal?.uncertain ?? []);
-  const setTags = (patch: Partial<ItemTags>) => d && onChange({ ...d, tags: { ...d.tags, ...patch } });
+  const setTags = (patch: Partial<ItemTags>) => d && onChange({ ...d, tags: normalizeTags({ ...d.tags, ...patch }) });
 
   if (g.skipped) return null;
+
+  if (g.replaced) {
+    return (
+      <View className="mt-6 flex-row items-center" style={{ gap: 14 }}>
+        <View className="rounded-sm bg-ivory-deep" style={{ width: 56, aspectRatio: 3 / 4, overflow: "hidden" }}>
+          <Image source={{ uri: g.url }} contentFit="contain" style={{ width: "100%", height: "100%" }} />
+        </View>
+        <Text className="font-body text-body-sm text-ink" style={{ flexShrink: 1 }}>{t("intake.duplicate.replaced", { name: g.duplicate?.name ?? "" })}</Text>
+      </View>
+    );
+  }
+
+  // Asked before anything else: reviewing tags for a garment that is already in the wardrobe is wasted effort.
+  if (g.duplicate && !g.saved) {
+    return (
+      <View className="mt-6 border-s-2 border-ink ps-4">
+        <Text className="font-body text-body text-ink">{t("intake.duplicate.title", { name: g.duplicate.name })}</Text>
+        <View className="mt-3 flex-row" style={{ gap: 12 }}>
+          {[g.url, cutoutUrl(g.duplicate.image_path)].map((uri, n) => (
+            <View key={n} style={{ width: 96 }}>
+              <View className="rounded-sm bg-ivory-deep" style={{ width: "100%", aspectRatio: 3 / 4, overflow: "hidden" }}>
+                <Image source={{ uri }} contentFit="contain" style={{ width: "100%", height: "100%" }} />
+              </View>
+              <Text className="mt-1 font-body text-meta text-ink-faint">{n === 0 ? t("intake.duplicate.new") : t("intake.duplicate.existing")}</Text>
+            </View>
+          ))}
+        </View>
+        <View className="mt-4 flex-row flex-wrap items-center" style={{ columnGap: 18, rowGap: 12 }}>
+          <Pressable
+            accessibilityRole="button"
+            disabled={busy || g.saving}
+            onPress={onSkip}
+            className="items-center justify-center rounded border border-ink px-5"
+            style={{ height: 40 }}
+          >
+            <Text className="font-body-semibold text-body-sm text-ink">{t("intake.duplicate.same")}</Text>
+          </Pressable>
+          <TextAction label={g.saving ? t("intake.review.saving") : t("intake.duplicate.replace")} disabled={busy || g.saving} onPress={onReplaceExisting} />
+          <TextAction label={t("intake.duplicate.different")} quiet disabled={busy} onPress={onNotDuplicate} />
+        </View>
+        {g.saveError ? <Text className="mt-2 font-body text-meta text-ink-soft">{t("intake.review.saveFailed")}</Text> : null}
+      </View>
+    );
+  }
 
   return (
     <View className="mt-6">
@@ -185,6 +250,17 @@ export function GarmentReview({ garment: g, busy, onChange, onSave, onSkip, onEn
             label={(v) => t(`item.material.${v}`)}
             onPick={(v) => setTags({ material: v })}
           />
+          {hasSleeves(d.tags) ? (
+            <Row
+              title={t("item.spec.sleeve")}
+              unsure={false}
+              values={SLEEVE_CHOICES}
+              proposed={g.proposal && hasSleeves(g.proposal.tags) && g.proposal.tags.sleeve !== "na" ? g.proposal.tags.sleeve : undefined}
+              selected={d.tags.sleeve === "na" ? "long" : d.tags.sleeve}
+              label={(v) => t(`item.sleeve.${v}`)}
+              onPick={(v) => setTags({ sleeve: v })}
+            />
+          ) : null}
           <Row
             title={t("item.spec.fit")}
             unsure={unsure.has(UNCERTAIN_KEY.fit)}
