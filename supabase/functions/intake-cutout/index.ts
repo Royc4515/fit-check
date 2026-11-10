@@ -15,7 +15,7 @@ import { cutout } from "../_shared/ai/modal.ts";
  */
 
 /** A generous day of adding clothes; each call is about a second of T4 time. */
-const DAILY_CUTOUT_LIMIT = 120;
+const DAILY_CUTOUT_LIMIT = 400;
 const MAX_BYTES = 8 * 1024 * 1024;
 
 const cors = {

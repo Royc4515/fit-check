@@ -18,7 +18,7 @@ import { findDuplicate, MAX_CANDIDATES, type Candidate } from "../_shared/ai/dup
  */
 
 /** A generous day of adding clothes: two calls per garment (tags, duplicate check), a fraction of a cent each. */
-const DAILY_TAG_LIMIT = 160;
+const DAILY_TAG_LIMIT = 400;
 /** Latest corrections fed back as examples: enough to show a pattern, few enough to keep the prompt short. */
 const MAX_CORRECTIONS = 15;
 const MAX_BYTES = 8 * 1024 * 1024;
