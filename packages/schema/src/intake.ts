@@ -86,7 +86,13 @@ export const TagProposalSchema = z.object({
 export type TagProposal = z.infer<typeof TagProposalSchema>;
 
 export const IntakeTagResultSchema = z.union([
-  z.object({ ok: z.literal(true), proposal: TagProposalSchema, model: z.string() }),
+  z.object({
+    ok: z.literal(true),
+    proposal: TagProposalSchema,
+    model: z.string(),
+    /** A wardrobe item that is the same physical garment (high confidence only), or null. */
+    duplicate: z.object({ item_id: z.string(), name: z.string(), image_path: z.string() }).nullable().optional(),
+  }),
   z.object({ ok: z.literal(false), reason: z.string() }),
 ]);
 export type IntakeTagResult = z.infer<typeof IntakeTagResultSchema>;

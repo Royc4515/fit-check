@@ -5,7 +5,6 @@ import {
   PATTERNS,
   SEASONS,
   SUBCATEGORIES,
-  SUBCATEGORY_TO_CATEGORY,
   type Item,
   type ItemTags,
 } from "@fit-check/schema";
@@ -18,6 +17,7 @@ import { describeForRedraw, enhanceCutout, preparePhoto, removeBackground, sourc
 import { colors } from "../../theme/tokens";
 import { Chip, Row } from "../intake/GarmentReview";
 import { COLOR_HEX } from "../intake/palette";
+import { hasSleeves, normalizeTags, SLEEVE_CHOICES } from "../intake/tagRules";
 
 export type ItemEdits = {
   save: (itemId: string, edit: { name: string; brand: string | null; tags: ItemTags }) => Promise<void>;
@@ -41,7 +41,7 @@ export function ItemEditor({ item, edits, onClose, onRemoved }: { item: Item; ed
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const patch = (p: Partial<ItemTags>) => setTags((cur) => ({ ...cur, ...p }));
+  const patch = (p: Partial<ItemTags>) => setTags((cur) => normalizeTags({ ...cur, ...p }));
   const align = { textAlign: i18n.language === "en" ? "left" : "right" } as const;
 
   const run = async (kind: Exclude<Busy, null>, work: () => Promise<void>) => {
@@ -68,7 +68,7 @@ export function ItemEditor({ item, edits, onClose, onRemoved }: { item: Item; ed
     run("enhancing", async () => {
       const source = sourceCropPath(item.cutout_path);
       if (!source) throw new Error("no source photo");
-      const drawn = await enhanceCutout(source, describeForRedraw(tags));
+      const drawn = await enhanceCutout(source, describeForRedraw(tags, name));
       if (!drawn.ok) throw new Error(drawn.reason);
       const cut = await removeBackground(drawn.path);
       await edits.setImage(item.id, cut.ok ? cut.path : drawn.path, cut.ok ? cut.thumb_path : null);
@@ -129,7 +129,7 @@ export function ItemEditor({ item, edits, onClose, onRemoved }: { item: Item; ed
         proposed={item.tags.subcategory}
         selected={tags.subcategory}
         label={(v) => t(`item.subcategory.${v}`)}
-        onPick={(v) => patch({ subcategory: v, category: SUBCATEGORY_TO_CATEGORY[v] })}
+        onPick={(v) => patch({ subcategory: v })}
       />
       <Row
         title={t("item.spec.color")}
@@ -159,6 +159,17 @@ export function ItemEditor({ item, edits, onClose, onRemoved }: { item: Item; ed
         label={(v) => t(`item.material.${v}`)}
         onPick={(v) => patch({ material: v })}
       />
+      {hasSleeves(tags) ? (
+        <Row
+          title={t("item.spec.sleeve")}
+          unsure={false}
+          values={SLEEVE_CHOICES}
+          proposed={item.tags.sleeve !== "na" ? item.tags.sleeve : undefined}
+          selected={tags.sleeve === "na" ? "long" : tags.sleeve}
+          label={(v) => t(`item.sleeve.${v}`)}
+          onPick={(v) => patch({ sleeve: v })}
+        />
+      ) : null}
       <Row
         title={t("item.spec.fit")}
         unsure={false}

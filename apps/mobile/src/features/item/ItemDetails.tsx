@@ -100,6 +100,7 @@ export function ItemDetails({
       ),
     },
     { label: t("item.spec.pattern"), value: t(`item.pattern.${tags.pattern}`) },
+    ...(tags.sleeve === "na" ? [] : [{ label: t("item.spec.sleeve"), value: t(`item.sleeve.${tags.sleeve}`) }]),
     // "Unknown" material carries no information (half the sheet import); the row is dropped instead.
     ...(tags.material === "unknown" ? [] : [{ label: t("item.spec.material"), value: t(`item.material.${tags.material}`) }]),
     { label: t("item.spec.seasons"), value: tags.seasons.map((s) => t(`wardrobe.season.${s}`)).join(", ") },
