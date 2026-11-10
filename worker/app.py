@@ -23,6 +23,8 @@ import time
 import modal
 
 MODEL_CACHE = "/models"
+# Inside the cutout image, not the volume: volumes are not mounted during image builds.
+BAKED_MODELS = "/opt/u2net"
 # Longest edge the worker accepts; the app already sends 1600 px or less. Bigger only costs time, not quality.
 MAX_EDGE = 2048
 
@@ -33,8 +35,11 @@ MAX_EDGE = 2048
 cutout_image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install("rembg==2.0.61", "onnxruntime==1.20.1", "pillow==11.0.0", "fastapi[standard]==0.115.6")
-    # BiRefNet weights are fetched on the first run and cached in the volume below.
-    .env({"U2NET_HOME": MODEL_CACHE})
+    # don't touch / the BiRefNet weights (973 MB) are downloaded once at image build and baked into the image.
+    # Fetching them at container start (the first version) took ~3 min at ~5.5 MB/s, every new container repeated
+    # it in parallel, and it ran into the container timeout, so the first deploy never answered (2026-11-10).
+    .env({"U2NET_HOME": BAKED_MODELS})
+    .run_commands("python -c \"from rembg import new_session; new_session('birefnet-general')\"")
 )
 # Separate image so the cutout container does not pay torch's size on every cold start.
 embed_image = modal.Image.debian_slim(python_version="3.11").pip_install(
@@ -73,7 +78,7 @@ def _png_b64(img) -> str:  # type: ignore[no-untyped-def]
 
 # scaledown_window: a batch of photos arrives a few seconds apart, so one warm container serves the whole batch;
 # two minutes idle then scales to zero (no cost while unused).
-@app.cls(image=cutout_image, cpu=8.0, memory=6144, volumes={MODEL_CACHE: volume}, secrets=[secret], scaledown_window=120, timeout=180)
+@app.cls(image=cutout_image, cpu=8.0, memory=6144, secrets=[secret], scaledown_window=120, timeout=180)
 class Cutter:
     @modal.enter()
     def load(self) -> None:
@@ -81,7 +86,6 @@ class Cutter:
 
         # birefnet-general is the quality model; "u2net" is faster but leaves halos on knits and loses sleeves.
         self.session = new_session("birefnet-general", providers=["CPUExecutionProvider"])
-        volume.commit()
 
     @modal.fastapi_endpoint(method="POST")
     async def cutout(self, request: Request) -> dict:

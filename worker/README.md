@@ -23,4 +23,4 @@ modal deploy worker/app.py
 - `MODAL_WORKER_TOKEN` = the same WORKER_TOKEN value
 
 Until both are set, `intake-cutout` answers `not_configured` and the app keeps the plain crop.
-The first call after deploy downloads BiRefNet (about 900 MB) into the `fit-check-models` volume: allow a minute.
+The BiRefNet weights (973 MB) are downloaded once while `modal deploy` builds the image, so the first deploy takes a few minutes and containers then start fast.

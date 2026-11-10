@@ -224,3 +224,5 @@
   (debian_slim + onnxruntime CPU), about 10-20 s a photo, still free within the $30/month credit. Embedder moved to CPU too.
 - intake-cutout timeout 100 s -> 140 s (cold start on CPU), cost estimate per CPU core-second. Redeployed.
 - How to go back to a T4 is in the comment above `cutout_image` in worker/app.py.
+- Bake the BiRefNet weights into the cutout image at build time. Downloading them at container start (~3 min at
+  ~5.5 MB/s, repeated by every parallel container) hit the container timeout, so the first deploy never answered.
