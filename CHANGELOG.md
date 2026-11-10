@@ -241,3 +241,13 @@
   holds only the 41 items added from photos; tag_corrections and ai_calls are kept.
 - Today: when the wardrobe has no tops, bottoms or shoes at all, the empty state names what is missing and links to
   "add clothes" instead of the generic "no suggestion today". Screenshot: design/screens/2026-11-10-today-missing.png.
+
+## 2026-11-10 - Edit items after they are added
+- Item page: "עריכה" opens an editor (features/item/ItemEditor.tsx): name, brand, type, colour, pattern, fabric, fit,
+  seasons (at least one) and formality 1-10, saved together; the hot columns stay in step with `tags` (data/items.ts).
+- Image actions: "החלפת תמונה" (new photo, background removed) and "שיפור עם AI" (redraw from the original crop, never
+  from an earlier redraw, then cut out). Each redraw now gets its own file (`-enhanced-<ts>.png`) so an item can be
+  redrawn again; intake-separate redeployed.
+- "הסר מהארון": two taps; archives the item (status `archived`) so wear history stays and it is never listed or
+  suggested again.
+- Screens: design/screens/2026-11-10-item-view.png, 2026-11-10-item-edit.png.

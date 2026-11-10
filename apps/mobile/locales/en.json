@@ -204,6 +204,27 @@
       "regular": "Regular",
       "relaxed": "Relaxed",
       "oversized": "Oversized"
+    },
+    "edit": {
+      "open": "Edit",
+      "name": "Item name",
+      "brand": "Brand",
+      "save": "Save changes",
+      "saving": "Saving",
+      "cancel": "Cancel",
+      "image": "Image",
+      "replacePhoto": "Replace photo",
+      "replacing": "Uploading and removing background",
+      "enhancing": "Improving and removing background",
+      "remove": "Remove from wardrobe",
+      "removeConfirm": "Sure? Tap again to remove",
+      "removing": "Removing",
+      "failed": {
+        "saving": "Saving failed. Try again.",
+        "enhancing": "Improving failed. Try again later.",
+        "replacing": "Replacing the photo failed. Try again.",
+        "removing": "Removing failed. Try again."
+      }
     }
   },
   "auth": {
