@@ -78,9 +78,11 @@ def _png_b64(img) -> str:  # type: ignore[no-untyped-def]
 
 # scaledown_window: a batch of photos arrives a few seconds apart, so one warm container serves the whole batch;
 # two minutes idle then scales to zero (no cost while unused).
-@app.cls(image=cutout_image, cpu=8.0, memory=6144, secrets=[secret], scaledown_window=120, timeout=180)
+# enable_memory_snapshot: Modal snapshots the container after load() and restores it on the next cold start, so a
+# sleeping worker answers in seconds instead of re-reading 1 GB of weights (the first real call took 112 s).
+@app.cls(image=cutout_image, cpu=8.0, memory=6144, secrets=[secret], scaledown_window=120, timeout=180, enable_memory_snapshot=True)
 class Cutter:
-    @modal.enter()
+    @modal.enter(snap=True)
     def load(self) -> None:
         from rembg import new_session
 
