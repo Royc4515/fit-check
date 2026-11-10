@@ -276,3 +276,11 @@
 - Roy hit `daily_limit` mid-upload (80 Google calls in 24 h). Spend was fine: Google $1.55/24 h, $1.76 this month of the $8 cap; Claude $0.19; Modal $0.18.
 - Daily caps raised to runaway guards only: detect 200, enhance 60, tag 400, cutout 400. The money guard stays the monthly $8 Google cap in `intake-separate`.
 - Deployed: intake-separate v19, intake-cutout v6, intake-tag v7.
+
+## 2026-11-10 (front garment only)
+
+- Cutouts of closet photos kept the shirt hanging behind (BiRefNet keeps every garment it sees). The worker now also runs SAM 2.1 small, prompted with points on the centre of the crop, and keeps BiRefNet's alpha only inside SAM's garment. Guards: if SAM's mask covers under 30% of the foreground it is ignored; pieces under 15% of the biggest are dropped (a second shoe survives). AI redraws skip it (`isolate=0`).
+- Tested locally on Roy's 21 photo items: dark and white garments behind are removed; a white shirt with a pink one pressed right behind it can still keep a pink edge (SAM reads them as one).
+- Needs `modal deploy worker/app.py` (image grows by CPU torch + SAM; memory 6 GB -> 8 GB). intake-cutout v7 is already deployed and works with the old worker too.
+- Fixed: a cutout that finished after "save" never reached the item, so items kept the uncut redraw on white. The app now updates the saved item when a late cutout lands; 17 items fixed in the data.
+- Temporary `cutout-backfill` function deployed to re-cut the 21 photo items once the worker is up; retire to 410 after.

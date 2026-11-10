@@ -34,6 +34,8 @@ export type ReviewState = {
   labelling?: boolean;
   saving?: boolean;
   saved?: boolean;
+  /** Set on save, so a cutout that finishes later can still update the saved item. */
+  itemId?: string;
   /** A wardrobe item the checker thinks is this same garment, until the user answers. */
   duplicate?: { item_id: string; name: string; image_path: string } | null;
   /** The user chose to put this photo on the existing item instead of adding a new one. */

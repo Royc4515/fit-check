@@ -122,6 +122,29 @@ export function IntakeView({ userId }: { userId: string }) {
     }
   };
 
+  /** The image an item should show: a redraw (cut out if possible) over the original's cutout, over the plain crop. */
+  const imageOf = (g: Garment) => ({
+    cutoutPath: g.enhancedCutoutPath ?? g.enhancedPath ?? g.cutoutPath ?? g.path,
+    thumbPath: g.enhancedPath ? (g.enhancedThumbPath ?? null) : (g.thumbPath ?? null),
+  });
+
+  /**
+   * don't touch / a cutout can land after "save" (Roy saves while it runs, 2026-11-10: ten items kept the uncut redraw
+   * on white). When it does, the saved item (or the duplicate it replaced) gets the better image.
+   */
+  const syncSaved = async (jobId: string, path: string) => {
+    const g = findGarment(jobId, path);
+    const itemId = g?.itemId ?? (g?.replaced ? g.duplicate?.item_id : undefined);
+    if (!g || !itemId) return;
+    const { cutoutPath, thumbPath } = imageOf(g);
+    try {
+      await setItemImage(itemId, cutoutPath, thumbPath);
+      if (wardrobe.status === "ready") wardrobe.reload();
+    } catch (error) {
+      console.error("Late image update failed", error);
+    }
+  };
+
   /** Background removal; on any failure the garment simply keeps its crop. */
   const cut = async (jobId: string, path: string) => {
     updateGarment(jobId, path, { cutting: true });
@@ -131,6 +154,7 @@ export function IntakeView({ userId }: { userId: string }) {
     // replaced it on screen. If a redraw exists, keep the original's cutout as data only.
     const redrawn = findGarment(jobId, path)?.enhanced;
     updateGarment(jobId, path, { cutting: false, cutoutPath: result.path, thumbPath: result.thumb_path, ...(redrawn ? {} : { url: result.url }) });
+    if (!redrawn) await syncSaved(jobId, path);
   };
 
   /** Paid redraw, on request only, described from the confirmed tags (not detection's guess). */
@@ -148,6 +172,7 @@ export function IntakeView({ userId }: { userId: string }) {
       path,
       cut.ok ? { cutting: false, url: cut.url, enhancedCutoutPath: cut.path, enhancedThumbPath: cut.thumb_path } : { cutting: false }
     );
+    if (cut.ok) await syncSaved(jobId, path);
   };
 
   /** A photo of the garment's care label: the composition on it settles wool versus cotton. */
@@ -170,19 +195,17 @@ export function IntakeView({ userId }: { userId: string }) {
     if (!g?.draft) return;
     updateGarment(jobId, path, { saving: true, saveError: false });
     try {
-      await saveGarment({
+      const itemId = await saveGarment({
         userId,
-        // The user's choice wins: a redraw (cut out if possible) over the original's cutout, over the plain crop.
-        cutoutPath: g.enhancedCutoutPath ?? g.enhancedPath ?? g.cutoutPath ?? g.path,
+        ...imageOf(g),
         sourcePath: g.path,
-        thumbPath: g.enhancedPath ? (g.enhancedThumbPath ?? null) : (g.thumbPath ?? null),
         name: g.draft.name.trim() || g.proposal?.name || "Item",
         brand: g.draft.brand,
         tags: g.draft.tags,
         proposal: g.proposal ?? null,
         model: g.model ?? null,
       });
-      updateGarment(jobId, path, { saving: false, saved: true });
+      updateGarment(jobId, path, { saving: false, saved: true, itemId });
       if (wardrobe.status === "ready") wardrobe.reload();
     } catch (error) {
       console.error("Save failed", error);
@@ -196,9 +219,8 @@ export function IntakeView({ userId }: { userId: string }) {
     if (!g?.duplicate) return;
     updateGarment(jobId, path, { saving: true, saveError: false });
     try {
-      const image = g.enhancedCutoutPath ?? g.enhancedPath ?? g.cutoutPath ?? g.path;
-      const thumb = g.enhancedPath ? (g.enhancedThumbPath ?? null) : (g.thumbPath ?? null);
-      await setItemImage(g.duplicate.item_id, image, thumb);
+      const { cutoutPath, thumbPath } = imageOf(g);
+      await setItemImage(g.duplicate.item_id, cutoutPath, thumbPath);
       updateGarment(jobId, path, { saving: false, replaced: true });
       if (wardrobe.status === "ready") wardrobe.reload();
     } catch (error) {
