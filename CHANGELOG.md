@@ -251,3 +251,14 @@
 - "הסר מהארון": two taps; archives the item (status `archived`) so wear history stays and it is never listed or
   suggested again.
 - Screens: design/screens/2026-11-10-item-view.png, 2026-11-10-item-edit.png.
+
+## 2026-11-10 - Duplicate check, sleeve length, name in the redraw prompt
+- intake-tag: after tagging, up to 4 look-alikes (same subcategory, colour and sleeve length, active, with an image)
+  are compared with the new crop by Claude Haiku (_shared/ai/duplicates.ts). Only a high-confidence match is returned
+  as `duplicate`. Daily tag cap 80 -> 160 (two calls per garment). Redeployed.
+- App: a duplicate notice shows both images before the tags, with "same garment, skip", "same garment, use this photo"
+  (sets the existing item's image) and "different garment".
+- Sleeve length: a row in the review and the item editor (tops, layers, outerwear); `normalizeTags` keeps category,
+  sleeve "na" and the short_sleeve / short_pants modesty flags consistent with manual edits. Shown on the item page.
+- The AI redraw description now starts with the item's current name (brand and the user's own words), plus sleeve length.
+- Screens: design/screens/2026-11-10-intake-duplicate.png, 2026-11-10-intake-review-sleeve.png.
