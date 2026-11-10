@@ -1,9 +1,11 @@
 import {
   IntakeDetectResultSchema,
   IntakeEnhanceResultSchema,
+  IntakeCutoutResultSchema,
   IntakeTagResultSchema,
   itemToInsertRow,
   type DetectedGarment,
+  type IntakeCutoutResult,
   type IntakeDetectResult,
   type IntakeEnhanceResult,
   type IntakeTagResult,
@@ -96,7 +98,7 @@ export async function uploadLabel(userId: string, photo: PreparedPhoto, cutoutPa
 async function invoke<T extends { ok: boolean }>(
   body: object,
   schema: z.ZodType<T>,
-  fn: "intake-separate" | "intake-tag" = "intake-separate"
+  fn: "intake-separate" | "intake-tag" | "intake-cutout" = "intake-separate"
 ): Promise<T | { ok: false; reason: string }> {
   try {
     const { data, error } = await supabase.functions.invoke(fn, { body });
@@ -125,6 +127,14 @@ export function detectPhoto(originalPath: string, single = false): Promise<Intak
  */
 export function enhanceCutout(cutoutPath: string, description: string): Promise<IntakeEnhanceResult> {
   return invoke({ action: "enhance", cutout_path: cutoutPath, description }, IntakeEnhanceResultSchema) as Promise<IntakeEnhanceResult>;
+}
+
+/**
+ * Background removal for one crop (Modal worker). Answers reason "not_configured" until the worker is deployed;
+ * the app then simply keeps the crop. Never throws.
+ */
+export function removeBackground(cutoutPath: string): Promise<IntakeCutoutResult> {
+  return invoke({ cutout_path: cutoutPath }, IntakeCutoutResultSchema, "intake-cutout") as Promise<IntakeCutoutResult>;
 }
 
 /** Proposes the full tags for one crop (Claude). `labelPath` adds a care-label photo for the real composition. */
@@ -160,13 +170,16 @@ export function describeForRedraw(tags: ItemTags): string {
 export async function saveGarment(args: {
   userId: string;
   cutoutPath: string;
+  /** Crop path the external id is derived from; stays the same whether the image saved is the crop, cutout or redraw. */
+  sourcePath: string;
+  thumbPath: string | null;
   name: string;
   brand: string | null;
   tags: ItemTags;
   proposal: TagProposal | null;
   model: string | null;
 }): Promise<string> {
-  const externalId = `photo:${args.cutoutPath.split("/").slice(-2).join("/")}`;
+  const externalId = `photo:${args.sourcePath.split("/").slice(-2).join("/")}`;
   const row = itemToInsertRow(
     {
       id: externalId,
@@ -184,7 +197,11 @@ export async function saveGarment(args: {
     },
     args.userId
   );
-  const { data, error } = await supabase.from("items").upsert(row, { onConflict: "user_id,external_id" }).select("id").single();
+  const { data, error } = await supabase
+    .from("items")
+    .upsert({ ...row, thumb_path: args.thumbPath }, { onConflict: "user_id,external_id" })
+    .select("id")
+    .single();
   if (error) throw error;
   if (args.proposal && args.model) {
     const proposed = reviewValues(args.proposal.name, args.proposal.tags);
