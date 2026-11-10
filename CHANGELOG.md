@@ -270,3 +270,9 @@
 - App: the sleeve row shows "worth checking" when uncertain; a garment that gains sleeves defaults to short. New
   "leg length" row (long/short) for bottoms in the review and the item editor; short maps to `shorts`, long restores the
   garment's long type (or chinos).
+
+## 2026-11-10 (daily caps)
+
+- Roy hit `daily_limit` mid-upload (80 Google calls in 24 h). Spend was fine: Google $1.55/24 h, $1.76 this month of the $8 cap; Claude $0.19; Modal $0.18.
+- Daily caps raised to runaway guards only: detect 200, enhance 60, tag 400, cutout 400. The money guard stays the monthly $8 Google cap in `intake-separate`.
+- Deployed: intake-separate v19, intake-cutout v6, intake-tag v7.
