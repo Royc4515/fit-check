@@ -1,8 +1,11 @@
 import { z } from "zod";
 import type { AiLogEntry } from "./types.ts";
 
-/** USD per second of Modal T4 time (2026-11 list price, billed against the $30/month Starter credit). */
-const T4_PER_SECOND = 0.000164;
+/**
+ * USD per second of the cutout container: 8 CPU cores at Modal's ~$0.0000131 per core-second (2026-11), billed
+ * against the $30/month Starter credit. An estimate for cost visibility; memory is not included.
+ */
+const WORKER_PER_SECOND = 8 * 0.0000131;
 
 const CutoutResponseSchema = z.object({
   cutout_png_b64: z.string().min(1),
@@ -29,7 +32,7 @@ function fromBase64(b64: string): Uint8Array {
  * Inputs: the crop's bytes and media type. Needs MODAL_CUTOUT_URL and MODAL_WORKER_TOKEN in the function env;
  * without them it answers `notConfigured` so the app keeps the plain crop. Failure modes: network error or timeout
  * (a cold start downloads the model once, so the first call can take a minute), non-200 from the worker, or an
- * answer that fails the schema. The cost logged is wall time on a T4, an upper bound on the billed GPU time.
+ * answer that fails the schema. The cost logged is wall time x 8 CPU cores, an upper bound on the billed time.
  */
 export async function cutout(image: Uint8Array, mediaType: string): Promise<CutoutResult> {
   const started = Date.now();
@@ -50,9 +53,10 @@ export async function cutout(image: Uint8Array, mediaType: string): Promise<Cuto
       headers: { authorization: `Bearer ${token}`, "content-type": mediaType },
       // A Blob, not the raw Uint8Array: fetch types only accept ArrayBuffer-backed bodies.
       body: new Blob([image.slice()], { type: mediaType }),
-      // don't touch / 100 s: a cold container loads BiRefNet (and on the very first run downloads it) before
-      // answering; a shorter timeout fails exactly the first photo of every session.
-      signal: AbortSignal.timeout(100_000),
+      // don't touch / 140 s: on CPU a warm call takes 10-20 s, and a cold container first loads BiRefNet (on the very
+      // first run, downloads it). A shorter timeout fails exactly the first photo of every session. The Edge
+      // Function wall-clock limit is 150 s, so this cannot go higher.
+      signal: AbortSignal.timeout(140_000),
     });
   } catch (error) {
     return fail(`network: ${String(error)}`);
@@ -66,6 +70,6 @@ export async function cutout(image: Uint8Array, mediaType: string): Promise<Cuto
     ok: true,
     cutout: fromBase64(parsed.data.cutout_png_b64),
     thumb: fromBase64(parsed.data.thumb_png_b64),
-    log: { ...base, latency_ms: latency, ok: true, cost_usd: Math.round((latency / 1000) * T4_PER_SECOND * 100_000) / 100_000 },
+    log: { ...base, latency_ms: latency, ok: true, cost_usd: Math.round((latency / 1000) * WORKER_PER_SECOND * 100_000) / 100_000 },
   };
 }

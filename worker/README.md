@@ -1,11 +1,12 @@
 # worker
 
 Modal app (worker/app.py):
-- `Cutter.cutout`: background removal (BiRefNet `birefnet-general` via rembg, on a T4). Used by `intake-cutout`.
+- `Cutter.cutout`: background removal (BiRefNet `birefnet-general` via rembg, on 8 CPU cores). Used by `intake-cutout`.
 - `Embedder.embed`: FashionCLIP, 512-d, L2-normalised. Not wired yet.
 
-Cost: per second of GPU against Modal's free $30/month Starter credit (T4 $0.000164/s, about a second per photo plus
-cold starts). Containers scale to zero two minutes after the last call.
+Cost: per second against Modal's free $30/month Starter credit; about 10-20 s of 8 CPU cores per photo, a fraction
+of a cent. No GPU on purpose: Modal requires a payment method for GPU functions. Containers scale to zero two
+minutes after the last call.
 
 ## Deploy (from your own computer: Modal's CLI uses gRPC, which the cloud dev sandbox cannot reach)
 
