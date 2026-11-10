@@ -23,7 +23,7 @@ const PRICE: Record<TagModel, { input: number; output: number; cacheRead: number
   "claude-sonnet-5-5": { input: 2 / 1e6, output: 10 / 1e6, cacheRead: 0.2 / 1e6 },
 };
 
-const UNCERTAIN_FIELDS = ["subcategory", "color", "pattern", "material", "fit"] as const;
+const UNCERTAIN_FIELDS = ["subcategory", "color", "pattern", "material", "fit", "sleeve"] as const;
 
 /**
  * The tagger's instructions. Stable text only (it is cached); anything per request goes in the user turn.
@@ -65,7 +65,8 @@ Colour:
 
 Other fields:
 - fit: from the cut you can see (slim, regular, relaxed, oversized). Usually regular.
-- sleeve: na for anything without sleeves to judge (trousers, shoes, accessories).
+- sleeve: na for anything without sleeves (trousers, shoes, accessories). For tops, knits and jackets look at where the sleeve ends: short if it ends above the elbow, long if it reaches the wrist, including long sleeves rolled up to the elbow (the extra fabric of the roll shows). sleeveless only for tanks and vests. If the sleeve end is hidden or out of frame, answer short and put "sleeve" in uncertain (the owner's default, 2026-11-10).
+- Leg length: shorts end above the knee; anything reaching the ankle is a long trouser type (jeans, chinos, trousers). If the leg end is out of frame, choose the long type and put "subcategory" in uncertain.
 - formality, 1-10: gym kit 1, hoodie or sandals 2, sweatshirt 3, t-shirt or sneakers 4, polo or casual knit 5, casual button-down 6, chinos, oxford or fine knit 7, tailored trousers or dress shoes 8, suit pieces 9.
 - seasons and temp_min_c/temp_max_c (the outdoor temperatures it suits, Celsius): t-shirt or linen 20 to 40; polo 18 to 35; button-down 14 to 32; cotton knit or sweatshirt 10 to 22; wool knit 0 to 17; jacket 5 to 18; coat -5 to 12; trousers by cloth weight.
 - modesty_flags: short_sleeve for short sleeves, short_pants for shorts, open_front for garments worn open (cardigans, unbuttoned overshirts). Else empty.
@@ -73,7 +74,7 @@ Other fields:
 
 name: English, in the wardrobe's existing style "Brand Type" (e.g. "Gap Chinos", "Zara Mandarin Collar", "Nike Sweatshirt"). Without a visible brand use colour and type ("Navy Wool Sweater"). brand: only when a logo or label shows it, else null.
 
-uncertain: list every field among subcategory, color, pattern, material, fit that the photo cannot settle. An empty list means you would bet on every field.`;
+uncertain: list every field among subcategory, color, pattern, material, fit, sleeve that the photo cannot settle. An empty list means you would bet on every field.`;
 
 /** JSON schema the API enforces. Numeric ranges and the hex format are checked by zod afterwards. */
 const OUTPUT_SCHEMA = {
