@@ -214,3 +214,14 @@ export async function saveGarment(args: {
   }
   return data.id as string;
 }
+
+/**
+ * The plain crop an item's image came from, so a redraw always starts from the real photo rather than from an
+ * earlier redraw or cutout. Image paths are `<dir>/<n>.jpg` plus suffixes (`-cutout.png`, `-enhanced.png`,
+ * `-enhanced-<ts>.png`, ...). Null for anything that does not follow that shape.
+ */
+export function sourceCropPath(path: string | null): string | null {
+  if (!path) return null;
+  const m = path.match(/^(.*\/)(\d+)(?:-[^/]*)?\.(?:jpe?g|png)$/);
+  return m ? `${m[1]}${m[2]}.jpg` : null;
+}
