@@ -90,3 +90,12 @@ export const IntakeTagResultSchema = z.union([
   z.object({ ok: z.literal(false), reason: z.string() }),
 ]);
 export type IntakeTagResult = z.infer<typeof IntakeTagResultSchema>;
+
+/** Input of intake-cutout: one crop the app uploaded to `cutouts/{uid}/...`, to get its background removed. */
+export const IntakeCutoutInputSchema = z.object({ cutout_path: z.string().min(3).max(300) });
+
+export const IntakeCutoutResultSchema = z.union([
+  z.object({ ok: z.literal(true), path: z.string(), thumb_path: z.string(), url: z.string().url() }),
+  z.object({ ok: z.literal(false), reason: z.string() }),
+]);
+export type IntakeCutoutResult = z.infer<typeof IntakeCutoutResultSchema>;

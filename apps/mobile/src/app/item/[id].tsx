@@ -180,7 +180,7 @@ export function ItemContent({
           {/* Inside the flying frame, so the drawing travels and scales with it. */}
           {item ? (
             <View style={{ flex: 1, padding: "14%" }}>
-              <ItemArt tags={item.tags} />
+              <ItemArt tags={item.tags} cutoutPath={item.cutout_path} />
             </View>
           ) : null}
         </Animated.View>
