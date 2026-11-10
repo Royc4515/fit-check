@@ -35,6 +35,9 @@ type Garment = DetectedGarment &
     /** Background-removed PNG and its thumbnail, when the worker is available. */
     cutoutPath?: string;
     thumbPath?: string;
+    /** The redraw with its background removed (the redraw comes on white). */
+    enhancedCutoutPath?: string;
+    enhancedThumbPath?: string;
     model?: string;
   };
 type Job = { id: string; preview: string; status: JobStatus; garments: Garment[]; skipped: number; lowRes: boolean; reason?: string };
@@ -113,8 +116,11 @@ export function IntakeView({ userId }: { userId: string }) {
   const cut = async (jobId: string, path: string) => {
     updateGarment(jobId, path, { cutting: true });
     const result = await removeBackground(path);
-    if (result.ok) updateGarment(jobId, path, { cutting: false, cutoutPath: result.path, thumbPath: result.thumb_path, url: result.url });
-    else updateGarment(jobId, path, { cutting: false });
+    if (!result.ok) return updateGarment(jobId, path, { cutting: false });
+    // don't touch / Roy, 2026-11-10: a slow cutout of the original landed after he asked for the AI redraw and
+    // replaced it on screen. If a redraw exists, keep the original's cutout as data only.
+    const redrawn = findGarment(jobId, path)?.enhanced;
+    updateGarment(jobId, path, { cutting: false, cutoutPath: result.path, thumbPath: result.thumb_path, ...(redrawn ? {} : { url: result.url }) });
   };
 
   /** Paid redraw, on request only, described from the confirmed tags (not detection's guess). */
@@ -123,8 +129,15 @@ export function IntakeView({ userId }: { userId: string }) {
     if (!g?.draft) return;
     updateGarment(jobId, path, { enhancing: true, enhanceError: undefined });
     const result = await enhanceCutout(path, describeForRedraw(g.draft.tags));
-    if (result.ok) updateGarment(jobId, path, { enhancing: false, enhanced: true, url: result.url, enhancedPath: result.path });
-    else updateGarment(jobId, path, { enhancing: false, enhanceError: result.reason });
+    if (!result.ok) return updateGarment(jobId, path, { enhancing: false, enhanceError: result.reason });
+    updateGarment(jobId, path, { enhancing: false, enhanced: true, url: result.url, enhancedPath: result.path, cutting: true });
+    // The redraw comes on white; cut it out too so it sits on the same transparent ground as every other item.
+    const cut = await removeBackground(result.path);
+    updateGarment(
+      jobId,
+      path,
+      cut.ok ? { cutting: false, url: cut.url, enhancedCutoutPath: cut.path, enhancedThumbPath: cut.thumb_path } : { cutting: false }
+    );
   };
 
   /** A photo of the garment's care label: the composition on it settles wool versus cotton. */
@@ -149,9 +162,10 @@ export function IntakeView({ userId }: { userId: string }) {
     try {
       await saveGarment({
         userId,
-        cutoutPath: g.enhancedPath ?? g.cutoutPath ?? g.path,
+        // The user's choice wins: a redraw (cut out if possible) over the original's cutout, over the plain crop.
+        cutoutPath: g.enhancedCutoutPath ?? g.enhancedPath ?? g.cutoutPath ?? g.path,
         sourcePath: g.path,
-        thumbPath: g.enhancedPath ? null : (g.thumbPath ?? null),
+        thumbPath: g.enhancedPath ? (g.enhancedThumbPath ?? null) : (g.thumbPath ?? null),
         name: g.draft.name.trim() || g.proposal?.name || "Item",
         brand: g.draft.brand,
         tags: g.draft.tags,

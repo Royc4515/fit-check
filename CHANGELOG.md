@@ -226,3 +226,12 @@
 - How to go back to a T4 is in the comment above `cutout_image` in worker/app.py.
 - Bake the BiRefNet weights into the cutout image at build time. Downloading them at container start (~3 min at
   ~5.5 MB/s, repeated by every parallel container) hit the container timeout, so the first deploy never answered.
+
+## 2026-11-10 - Cutout fixes: AI redraws, speed, existing photos
+- AI redraw: the slow cutout of the original no longer replaces the redraw on screen; the redraw itself is now cut out
+  (it comes on white), and saving prefers redraw-cutout > redraw > original cutout > crop. intake-cutout accepts
+  `-enhanced` paths (redeployed).
+- Speed: Cutter uses Modal memory snapshots (`enable_memory_snapshot`, `@enter(snap=True)`), so a sleeping worker
+  restores the loaded model instead of reloading 1 GB (the first real call took 112 s). Needs a `modal deploy`.
+- Existing photo items: one-off `cutout-backfill` function (code-guarded, expires 2026-11-10 23:00 UTC) cuts out
+  every photo item that has no `-cutout.png` yet; retired after the run.

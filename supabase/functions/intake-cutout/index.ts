@@ -48,8 +48,8 @@ Deno.serve(async (req) => {
   if (!parsed.success) return json(400, { ok: false, reason: "bad_input" });
   const path = parsed.data.cutout_path;
   const mediaType = mediaOf(path);
-  // Only the app's own crops: never a previous cutout, redraw or label photo.
-  if (!ownPath(userId, path) || !mediaType || /-(cutout|thumb|enhanced|label)/.test(path)) {
+  // The app's own crops and redraws only: never a previous cutout, thumbnail or label photo.
+  if (!ownPath(userId, path) || !mediaType || /-(cutout|thumb|label)/.test(path)) {
     return json(400, { ok: false, reason: "bad_input" });
   }
 
