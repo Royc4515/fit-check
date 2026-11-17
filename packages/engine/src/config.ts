@@ -43,6 +43,7 @@ export const LAUNDRY_AFTER_WEARS: Partial<Record<Subcategory, number>> = {
   shorts: 2,
   sweatshirt: 3,
   knit: 4,
+  overshirt: 4,
   chinos: 4,
   trousers: 4,
   jeans: 6,

@@ -29,7 +29,7 @@ export const STYLIST_SYSTEM = `את הסטייליסטית האישית באפל
 
 ## מונחים
 שמות הפריטים מגיעים באנגלית. בעברית אומרים:
-- tshirt: טי-שרט · button_down: חולצה מכופתרת (או "מכופתרת") · polo: פולו · knit: סריג · sweatshirt: סווטשירט
+- tshirt: טי-שרט · button_down: חולצה מכופתרת (או "מכופתרת") · polo: פולו · knit: סריג · sweatshirt: סווטשירט · overshirt: אוברשירט (חולצה שלובשים פתוחה מעל טי-שרט)
 - jeans: ג'ינס · chinos: צ'ינו · trousers: מכנסיים מחויטים · shorts: מכנסיים קצרים
 - sneakers: סניקרס · boots: מגפונים · dress_shoes: נעלי עור · sandals: סנדלים
 - צבעים: navy כחול כהה · light_blue תכלת · olive זית · burgundy בורדו · beige בז' · cream שמנת · grey אפור

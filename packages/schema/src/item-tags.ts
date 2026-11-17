@@ -23,6 +23,9 @@ export const SUBCATEGORIES = [
   "polo",
   "knit",
   "sweatshirt",
+  // Added 2026-11-10 (Roy): a shirt worn open over a T-shirt is a layer, not a top. Re-tag: existing button-downs
+  // were reviewed by hand, see CHANGELOG.
+  "overshirt",
   "jeans",
   "chinos",
   "trousers",
@@ -96,6 +99,7 @@ export const SUBCATEGORY_TO_CATEGORY: Record<(typeof SUBCATEGORIES)[number], (ty
   polo: "top",
   knit: "layer",
   sweatshirt: "layer",
+  overshirt: "layer",
   jeans: "bottom",
   chinos: "bottom",
   trousers: "bottom",
