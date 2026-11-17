@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { TextAction } from "../../components/TextAction";
 import { TextLink } from "../../components/TextLink";
 import { useWardrobe } from "../../data/WardrobeProvider";
 import {
@@ -18,6 +19,7 @@ import {
   saveGarment,
   tagCutout,
   uploadLabel,
+  uploadForClaude,
   uploadOriginal,
   wholePhotoGarment,
   type PreparedPhoto,
@@ -260,6 +262,28 @@ export function IntakeView({ userId }: { userId: string }) {
     return { garments, skipped };
   };
 
+  const [forClaude, setForClaude] = useState<null | "sending" | { sent: number; failed: number }>(null);
+
+  /** Parks photos for Claude (MCP intake_pending): upload only, no detection or tagging, so no paid call. */
+  const sendToClaude = async () => {
+    const assets = await pickImages(MAX_PHOTOS_PER_BATCH);
+    if (assets.length === 0) return;
+    setForClaude("sending");
+    let sent = 0;
+    let failed = 0;
+    for (const [i, asset] of assets.entries()) {
+      try {
+        const photo = await preparePhoto(asset.uri, asset.width, asset.height);
+        await uploadForClaude(userId, photo, i);
+        sent++;
+      } catch (error) {
+        console.error("Upload for Claude failed", error);
+        failed++;
+      }
+    }
+    setForClaude({ sent, failed });
+  };
+
   /** Runs each picked photo through upload, separation and tagging. `retake` is one photo of one garment. */
   const pick = async (retake = false) => {
     const single = retake || mode === "single";
@@ -339,6 +363,19 @@ export function IntakeView({ userId }: { userId: string }) {
         >
           <Text className="font-body-semibold text-body text-accent-ink">{t("intake.pick")}</Text>
         </Pressable>
+        <View className="mt-4 self-start">
+          <TextAction
+            label={forClaude === "sending" ? t("intake.forClaude.sending") : t("intake.forClaude.action")}
+            quiet
+            disabled={running || forClaude === "sending"}
+            onPress={() => void sendToClaude()}
+          />
+        </View>
+        <Text className="mt-2 font-body text-meta text-ink-faint">
+          {forClaude && forClaude !== "sending"
+            ? t("intake.forClaude.done", { count: forClaude.sent }) + (forClaude.failed > 0 ? ` ${t("intake.forClaude.failed", { count: forClaude.failed })}` : "")
+            : t("intake.forClaude.hint")}
+        </Text>
 
         <View className="mt-10" style={{ gap: 28 }}>
           {jobs.map((job) => (

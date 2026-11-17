@@ -343,6 +343,13 @@
       "replace": "Same garment, use this photo",
       "different": "It's a different garment",
       "replaced": "The photo of {{name}} was updated in the wardrobe."
+    },
+    "forClaude": {
+      "action": "Send to Claude untagged",
+      "sending": "Uploading…",
+      "hint": "One photo per garment. Claude tags and adds them from the chat, no AI cost.",
+      "done": "{{count}} photos are waiting for Claude. In the chat: \"add the clothes I uploaded\".",
+      "failed": "{{count}} failed."
     }
   },
   "oauth": {
