@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient, authenticate } from "../_shared/auth.ts";
 import { IntakeSeparateInputSchema } from "@fit-check/schema/intake.ts";
-import { DETECT_MODEL, detectGarments, ENHANCE_MODEL, enhanceGarment } from "../_shared/ai/gemini.ts";
-import { countAiCalls, logAiCall, sumAiCost } from "../_shared/ai/log.ts";
+import { detectGarments, enhanceGarment } from "../_shared/ai/gemini.ts";
+import { MONTHLY_GOOGLE_BUDGET_USD, monthlyGoogleSpend } from "../_shared/ai/budget.ts";
+import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
 
 /**
  * intake-separate: finds the garments in a photo, and optionally redraws one (docs/PLAN.md stage C, steps 1-2).
@@ -23,26 +24,12 @@ import { countAiCalls, logAiCall, sumAiCost } from "../_shared/ai/log.ts";
  */
 
 /**
- * Runaway-loop guards only; the money guard is MONTHLY_GOOGLE_BUDGET_USD below. Raised 2026-11-10 when Roy hit
+ * Runaway-loop guards only; the money guard is MONTHLY_GOOGLE_BUDGET_USD (_shared/ai/budget.ts). Raised 2026-11-10 when Roy hit
  * the old 80/day while uploading his whole wardrobe at about $1.55 a day.
  */
 const DAILY_DETECT_LIMIT = 200;
 /** 60 redraws a day is at most about $2; the monthly cap still stops spending at $8. */
 const DAILY_ENHANCE_LIMIT = 60;
-/**
- * Hard monthly cap on paid Google calls (redraws and paid detection together), in USD, below the $10 monthly
- * Google Cloud credit from Google AI Pro (Roy: no real money). Counted across all users from ai_calls, because the
- * credit belongs to the project, not to a user. Past it, detection drops to the free tier and redraws stop.
- */
-const MONTHLY_GOOGLE_BUDGET_USD = 8;
-
-/** Paid Google spend since the 1st of this month (UTC); null when it cannot be read, which callers treat as spent. */
-async function monthlyGoogleSpend(): Promise<number | null> {
-  const now = new Date();
-  const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const [enhance, detect] = await Promise.all([sumAiCost(ENHANCE_MODEL, since), sumAiCost(DETECT_MODEL, since)]);
-  return enhance === null || detect === null ? null : enhance + detect;
-}
 const MAX_BYTES = 8 * 1024 * 1024;
 
 const cors = {

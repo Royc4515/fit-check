@@ -19,10 +19,12 @@ import { TOOL_BY_NAME, TOOLS, type ToolContext } from "./tools.ts";
  */
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
-const SERVER_INFO = { name: "fit-check", title: "Fit Check", version: "0.1.1" };
+const SERVER_INFO = { name: "fit-check", title: "Fit Check", version: "0.2.0" };
 const INSTRUCTIONS =
   "Fit Check is Roy's personal wardrobe app (Hebrew-first, religious-modest menswear). Use wardrobe_search to see what he owns " +
   "and to find ids, item_get to look at one garment, item_update to fix names or tags, item_archive/item_restore to remove or bring back. " +
+  "outfit_today gives today's candidates: you pick and explain, then outfit_log what he wore. intake_pending shows photos he " +
+  "uploaded for you: tag them yourself and item_create. item_redraw costs money: write the description yourself and ask first. " +
   "Ask before archiving or editing several items at once. Answer Roy in Hebrew.";
 
 const cors = {
