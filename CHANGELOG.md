@@ -291,3 +291,11 @@
 - Deployed: intake-tag v8 (tagger knows overshirt), style-outfit v15 (stylist schema and Hebrew term).
 - Wardrobe: a "type" filter row before season/colour: shirts, T-shirts, polos, overshirts, knits, trousers, shorts, shoes, coats, accessories (only types present show). Look at `design/screens/2026-11-10-wardrobe-type-*.png`.
 - Re-classified by Roy (2026-11-10): Koton, American Eagle and Grey hooded check flannels are thick overshirts (cotton, 6-20C, transition/winter); Brown Long Sleeve Shirt (olive) is a thin overshirt (16-26C, transition). All `open_front`. Until this PR is live, the deployed app skips these 4 rows as unknown subcategory.
+
+## 2026-11-17 (MCP, phase 1)
+
+- New Edge Function `mcp` (verify_jwt off on purpose, see its header): Fit Check as an MCP server over Streamable HTTP, stateless JSON. Tools: `wardrobe_search`, `item_get` (returns the photo), `item_update` (validated tag merge, hot columns kept in sync), `item_archive`, `item_restore`, `spend_summary`. Service-role client with an explicit `user_id` filter in every query (user-token clients fail inside the Edge runtime, see `_shared/auth.ts`).
+- Auth: OAuth 2.1 via Supabase Auth's OAuth server. 401 carries `WWW-Authenticate` -> `/functions/v1/mcp/.well-known/oauth-protected-resource` -> authorization server `/auth/v1`. New consent page `apps/mobile/src/app/oauth/consent.tsx` (outside both route guards; a signed-out user's request survives the Google redirect via session storage, `oauthPending.ts`). Screenshot: `design/screens/2026-11-17-oauth-consent-signed-out.png`.
+- Needs from Roy (dashboard): Authentication > OAuth Server: enable, Authorization Path `/oauth/consent`, allow dynamic client registration; Site URL = the production web URL. Then add the connector in claude.ai with `https://ftjerbwrzjprfikxkukj.supabase.co/functions/v1/mcp`.
+- Not verified yet with a real OAuth token (the OAuth server is still disabled): if its access tokens carry an audience other than `authenticated`, `authenticate()` will 401 and needs the audience added.
+- Phase 2: today's outfit, adding garments from photos, AI redraw and re-cut from chat.

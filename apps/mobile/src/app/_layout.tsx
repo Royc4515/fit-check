@@ -1,6 +1,6 @@
 import "../../global.css";
 import "../i18n";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { colors } from "../theme/tokens";
 import { useAppFonts } from "../theme/fonts";
 import { WardrobeProvider } from "../data/WardrobeProvider";
+import { takePendingConsent } from "../features/auth/oauthPending";
 import { SessionProvider, useSession } from "../features/auth/SessionProvider";
 import { isRtl } from "../i18n";
 
@@ -24,6 +25,14 @@ const quiet = <View style={{ flex: 1, backgroundColor: colors["ivory"] }} />;
  */
 function Routes() {
   const session = useSession();
+  const router = useRouter();
+  const signedInNow = session.status === "signedIn";
+  // A Claude connection that was waiting for Google sign-in resumes on its consent page (see oauthPending.ts).
+  useEffect(() => {
+    if (!signedInNow) return;
+    const pending = takePendingConsent();
+    if (pending) router.replace({ pathname: "/oauth/consent", params: { authorization_id: pending } });
+  }, [signedInNow, router]);
   // First storage read: render nothing rather than flash the sign-in screen at a signed-in user.
   if (session.status === "loading") return quiet;
   const signedIn = session.status === "signedIn";
@@ -54,6 +63,8 @@ function Routes() {
       <Stack.Protected guard={!signedIn}>
         <Stack.Screen name="sign-in" />
       </Stack.Protected>
+      {/* Outside both guards: Supabase's OAuth server sends signed-in and signed-out browsers here alike. */}
+      <Stack.Screen name="oauth/consent" />
     </Stack>
   );
 
