@@ -3,6 +3,7 @@ import { adminClient, authenticate } from "../_shared/auth.ts";
 import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
 import { DEFAULT_TAG_MODEL, tagItem, type TagCorrection, type WardrobeLine } from "../_shared/ai/tagger.ts";
 import { findDuplicate, MAX_CANDIDATES, type Candidate } from "../_shared/ai/duplicates.ts";
+import { sniffImageType } from "../_shared/media.ts";
 
 /**
  * intake-tag: proposes the full tag set for one cropped garment, for the user to confirm (PRD section 4, step 3).
@@ -68,7 +69,7 @@ Deno.serve(async (req) => {
       return null;
     }
     const bytes = new Uint8Array(await data.arrayBuffer());
-    return bytes.length > MAX_BYTES ? null : { bytes, mediaType: mediaOf(path)! };
+    return bytes.length > MAX_BYTES ? null : { bytes, mediaType: sniffImageType(bytes, mediaOf(path)!) };
   };
 
   const [image, label, wardrobeRes, correctionsRes] = await Promise.all([
