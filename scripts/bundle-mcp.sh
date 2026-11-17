@@ -7,5 +7,5 @@ cd "$(dirname "$0")/.."
 out="${1:-/tmp/mcp.bundle.js}"
 node_modules/.bin/esbuild supabase/functions/mcp/index.ts --bundle --format=esm --platform=neutral --minify --legal-comments=none \
   --alias:@fit-check/schema=./packages/schema/src \
-  --alias:zod=npm:zod@3.23.8 --alias:@supabase/supabase-js=npm:@supabase/supabase-js@2.119.0 --alias:jose=npm:jose@5.9.6 \
+  --alias:zod=npm:zod@3.23.8 --alias:@supabase/supabase-js=npm:@supabase/supabase-js@2.119.0 --alias:jose=npm:jose@5.9.6 --alias:imagescript=npm:imagescript@1.3.0 \
   --external:npm:* --outfile="$out"

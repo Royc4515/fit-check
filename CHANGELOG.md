@@ -320,3 +320,9 @@
 - The engine runs in Deno through a generated bundle, `supabase/functions/_shared/engine.js` (`scripts/bundle-engine.sh`; re-run after changing packages/engine) with types in `engine.d.ts`.
 - The mcp function is deployed as one minified bundle (`scripts/bundle-mcp.sh`), because its sources are too large to paste into the deploy tool.
 - `MONTHLY_GOOGLE_BUDGET_USD` and `monthlyGoogleSpend` moved to `_shared/ai/budget.ts`, shared by intake-separate and mcp. intake-separate's deployed v19 already behaves identically; redeploy it with the next real change.
+
+## 2026-11-17 (MCP: several garments in one photo)
+
+- Bug (reported from a Claude session): a pending photo with 6 garments; the first item_create moved the photo away and the second failed with "Object not found", and the cutout covered the whole pile.
+- Fix: item_create now copies the photo into the item's own folder, takes an optional `crop` box (fractions 0-1; cropped with imagescript before the cutout, so the item's original, redraw source and re-cut are that garment only) and `keep_pending` (leave it in the queue for its other garments). New tools `intake_dismiss` (drop a pending photo) and `item_recrop` (crop an existing item's original; full photo kept as `N-full-<ts>.jpg`; `requeue_original` puts a copy back in pending; `recut` optional). Single-garment flow unchanged.
+- Data: "Zara Half-Zip Sweater" (fa5f2cf6) still has the 6-garment photo as its original; fix with item_recrop (crop box from the photo, `requeue_original: true` to bring the photo back for the other 5).
