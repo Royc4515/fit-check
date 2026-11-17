@@ -28,6 +28,12 @@ const SHORT_SLEEVE_TOP = "M36 12 L43 9 L50 15 L57 9 L64 12 L84 23 L78 38 L69 34 
 const TROUSERS = "M30 8 L70 8 L74 92 L56 92 L50 36 L44 92 L26 92 Z";
 
 export const SHAPES: Record<Subcategory, Shape> = {
+  // A shirt worn open: the two front edges stand apart over the tee underneath.
+  overshirt: {
+    body: LONG_SLEEVE_TOP,
+    details: ["M43 9 L46 19 L48 17 L48 90", "M57 9 L54 19 L52 17 L52 90", "M34 30 L44 30 L44 38 L34 38", "M56 30 L66 30 L66 38 L56 38", "M21 64 L29 66", "M79 64 L71 66"],
+    dots: [[46, 28], [46, 44], [46, 60], [46, 76]],
+  },
   button_down: {
     body: LONG_SLEEVE_TOP,
     details: ["M43 9 L46 19 L50 15 L54 19 L57 9", "M50 15 L50 90", "M21 64 L29 66", "M79 64 L71 66"],

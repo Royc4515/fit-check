@@ -284,3 +284,10 @@
 - Needs `modal deploy worker/app.py` (image grows by CPU torch + SAM; memory 6 GB -> 8 GB). intake-cutout v7 is already deployed and works with the old worker too.
 - Fixed: a cutout that finished after "save" never reached the item, so items kept the uncut redraw on white. The app now updates the saved item when a late cutout lands; 17 items fixed in the data.
 - Temporary `cutout-backfill` function deployed to re-cut the 21 photo items once the worker is up; retire to 410 after.
+
+## 2026-11-10 (overshirt, type filter)
+
+- New subcategory `overshirt` (category `layer`): a heavier shirt worn open over a T-shirt. The engine can now put it over a tee below the layer threshold (19C) and never on a hot day; laundry after 4 wears. Tagger prompt separates it from `button_down` (thick flannel, corduroy, shacket, chest flap pockets). No DB migration: `items.subcategory` is plain text with no check constraint. Existing button-downs are re-classified by hand with Roy, not by a silent default.
+- Deployed: intake-tag v8 (tagger knows overshirt), style-outfit v15 (stylist schema and Hebrew term).
+- Wardrobe: a "type" filter row before season/colour: shirts, T-shirts, polos, overshirts, knits, trousers, shorts, shoes, coats, accessories (only types present show). Look at `design/screens/2026-11-10-wardrobe-type-*.png`.
+- Re-classified by Roy (2026-11-10): Koton, American Eagle and Grey hooded check flannels are thick overshirts (cotton, 6-20C, transition/winter); Brown Long Sleeve Shirt (olive) is a thin overshirt (16-26C, transition). All `open_front`. Until this PR is live, the deployed app skips these 4 rows as unknown subcategory.

@@ -77,6 +77,18 @@
     "empty": "Your wardrobe is empty. Photograph a few garments to start.",
     "all": "All",
     "noMatch": "No items match this filter",
+    "type": {
+      "shirts": "Shirts",
+      "tshirts": "T-shirts",
+      "polos": "Polos",
+      "overshirts": "Overshirts",
+      "knitwear": "Knits & sweatshirts",
+      "trousers": "Trousers",
+      "shorts": "Shorts",
+      "shoes": "Shoes",
+      "outerwear": "Coats & jackets",
+      "accessories": "Accessories"
+    },
     "category": {
       "top": "Tops",
       "bottom": "Bottoms",
@@ -153,6 +165,7 @@
       "polo": "Polo",
       "knit": "Knit",
       "sweatshirt": "Sweatshirt",
+      "overshirt": "Overshirt",
       "jeans": "Jeans",
       "chinos": "Chinos",
       "trousers": "Trousers",
