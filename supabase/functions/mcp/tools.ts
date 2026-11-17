@@ -14,6 +14,7 @@ import {
   SUBCATEGORY_TO_CATEGORY,
   type ItemTags,
 } from "@fit-check/schema/item-tags.ts";
+import { sniffImageType } from "../_shared/media.ts";
 
 /**
  * The Fit Check tools offered to Claude over MCP (Roy, 2026-11-17: "a full MCP to run the app and site from Claude").
@@ -229,7 +230,7 @@ export const TOOLS: Tool[] = [
           const bytes = new Uint8Array(await data.arrayBuffer());
           let s = "";
           for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-          content.push({ type: "image", data: btoa(s), mimeType: path.endsWith(".png") ? "image/png" : "image/jpeg" });
+          content.push({ type: "image", data: btoa(s), mimeType: sniffImageType(bytes, path.endsWith(".png") ? "image/png" : "image/jpeg") });
         }
       }
       return { content };
