@@ -49,6 +49,16 @@ async function upload(bucket: string, path: string, uri: string): Promise<void> 
   if (error) throw error;
 }
 
+/**
+ * "For Claude" (Roy, 2026-11-17): a photo of one garment parked in `cutouts/{uid}/pending/` with no detection and no
+ * tagging. Claude picks it up through the MCP (intake_pending), tags it itself and adds it, so no paid call runs.
+ */
+export async function uploadForClaude(userId: string, photo: PreparedPhoto, index: number): Promise<string> {
+  const path = `${userId}/pending/${Date.now()}-${index}.jpg`;
+  await upload("cutouts", path, photo.uri);
+  return path;
+}
+
 /** Uploads a prepared photo to the private `originals` bucket under the user's folder; returns its path. */
 export async function uploadOriginal(userId: string, photo: PreparedPhoto, index: number): Promise<string> {
   const path = `${userId}/${Date.now()}-${index}.jpg`;

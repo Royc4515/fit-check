@@ -304,3 +304,19 @@
 
 - MCP verified end to end from a Claude session through Roy's claude.ai connector (OAuth token accepted with the existing `authenticated` audience): wardrobe_search (4 overshirts), item_get with photo, spend_summary.
 - Fixed: 15 of 144 tag/duplicate calls failed with "specified using image/png but appears to be image/jpeg": some `.png` files hold JPEG bytes. New `_shared/media.ts` sniffs the type from the bytes; used by intake-tag (v9) and mcp (v2). The duplicate check had been silently skipped in those cases.
+
+## 2026-11-17 (wardrobe cleanup, no AI spend)
+
+- Duplicates removed (archived, reversible with item_restore): the older "Polo Ralph Lauren Denim Shirt" and "Tsumi Mandarin Collar" were the same photo saved twice. Checked and kept as different garments: the two white Tommy Hilfiger shirts (pocket vs no pocket) and the Next vs plain white tees.
+- 20 images re-cut for free: 19 closet photos re-run through the worker's own BiRefNet + SAM 2 isolation inside Claude's sandbox (Roy, 2026-11-17: do the work locally where it saves paid AI calls), plus the Beige Melange redraw that had kept its white background. Uploaded through a temporary `image-put` function (now 410) as new `N-clean-<ts>-cutout/thumb.png` files; old files untouched. Before/after: `design/screens/2026-11-17-cleanup-before-after.png`.
+- Still imperfect (shirt pressed against a same-coloured garment): Gant Button-Down, Grey Hooded Flannel, Tommy Hilfiger Shirt, Abercrombie Button-Down, Brown Zip Jacket. A paid redraw (~$0.034 each) would fix them.
+- `cutout-backfill` and `image-put` retired to 410.
+- Redrawn with Roy's OK ($0.17 total, 5 x $0.034): Gant Button-Down, Grey Check Flannel Hooded Shirt, Tommy Hilfiger Shirt, Abercrombie Button-Down, Brown Zip Jacket. Descriptions written by Claude from the photos (hood, pocket, logos), so each took one call. Temporary `redraw-five` function retired to 410. Before/after: `design/screens/2026-11-17-redraw-five.png`.
+
+## 2026-11-17 (MCP phase 2)
+
+- New MCP tools: `outfit_today` (the app's engine builds today's candidates with weather, Shabbat/holiday rules, laundry and recent wears; Claude in the chat picks and explains, so the paid Sonnet stylist is skipped), `outfit_log` (worn/skipped/disliked with the app's three writes, pair-weight learning and laundry), `intake_pending` + `item_create` (photos parked with the new "send to Claude" button; Claude tags them itself, no tagger call), `item_redraw` (one paid call, description written by Claude), `item_recut` (free, Modal).
+- App: intake screen has "שלח ל-Claude בלי תיוג" under the main button; uploads to `cutouts/{uid}/pending/`. Screenshot: `design/screens/2026-11-17-intake-for-claude.png`.
+- The engine runs in Deno through a generated bundle, `supabase/functions/_shared/engine.js` (`scripts/bundle-engine.sh`; re-run after changing packages/engine) with types in `engine.d.ts`.
+- The mcp function is deployed as one minified bundle (`scripts/bundle-mcp.sh`), because its sources are too large to paste into the deploy tool.
+- `MONTHLY_GOOGLE_BUDGET_USD` and `monthlyGoogleSpend` moved to `_shared/ai/budget.ts`, shared by intake-separate and mcp. intake-separate's deployed v19 already behaves identically; redeploy it with the next real change.

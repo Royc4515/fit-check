@@ -15,6 +15,8 @@ import {
   type ItemTags,
 } from "@fit-check/schema/item-tags.ts";
 import { sniffImageType } from "../_shared/media.ts";
+import { outfitLog, outfitToday } from "./outfit.ts";
+import { intakePending, itemCreate, itemRecut, itemRedraw } from "./photos.ts";
 
 /**
  * The Fit Check tools offered to Claude over MCP (Roy, 2026-11-17: "a full MCP to run the app and site from Claude").
@@ -23,7 +25,7 @@ import { sniffImageType } from "../_shared/media.ts";
  * user-token client does not work inside the Edge runtime), so EVERY query below filters on `user_id` explicitly and
  * storage paths are checked to start with the user's folder. A query without that filter is a data leak.
  *
- * Not here yet (phase 2): the paid AI redraw, re-running the cutout, adding garments from photos, today's outfit.
+ * Phase 2 (outfit.ts, photos.ts): today's outfit and wear logging, adding garments from photos, redraw and re-cut.
  */
 
 export type ToolContext = {
@@ -360,6 +362,119 @@ export const TOOLS: Tool[] = [
         google_monthly_cap_usd: 8,
       });
     },
+  },
+  {
+    name: "outfit_today",
+    title: "Today's outfit candidates",
+    description:
+      "Builds today's outfit candidates with the app's own engine: weather (Tel Aviv by default), weekday/Shabbat/holiday rules, " +
+      "laundry and what Roy wore recently. YOU are the stylist: pick one candidate and explain it to Roy in Hebrew. " +
+      "Optional: date (yyyy-mm-dd), day_type, lat/lon for another place, anchor_item_id to build around one garment.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        date: { type: "string", format: "date" },
+        day_type: enumOf(["weekday", "shabbat", "holiday"]),
+        lat: { type: "number" },
+        lon: { type: "number" },
+        anchor_item_id: { type: "string", format: "uuid" },
+      },
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    run: outfitToday,
+  },
+  {
+    name: "outfit_log",
+    title: "Log an outfit",
+    description:
+      "Records Roy's answer to an outfit, as the app's buttons do: worn (default), skipped or disliked. Updates which garments go well " +
+      "together and sends garments due for washing to the laundry. Use the item ids from outfit_today or wardrobe_search.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        item_ids: { type: "array", items: { type: "string", format: "uuid" }, minItems: 2, maxItems: 5 },
+        feedback: { ...enumOf(["worn", "skipped", "disliked"]), default: "worn" },
+        date: { type: "string", format: "date" },
+        day_type: enumOf(["weekday", "shabbat", "holiday"]),
+      },
+      required: ["item_ids"],
+      additionalProperties: false,
+    },
+    run: outfitLog,
+  },
+  {
+    name: "intake_pending",
+    title: "Photos waiting to be added",
+    description:
+      "Shows the photos Roy uploaded in the app with \"for Claude\" (up to 6 at a time; offset for more). Tag each garment yourself, " +
+      "confirm with Roy, then item_create. No AI cost: you are the tagger.",
+    inputSchema: { type: "object", properties: { offset: { type: "integer", minimum: 0, default: 0 } }, additionalProperties: false },
+    annotations: { readOnlyHint: true },
+    run: intakePending,
+  },
+  {
+    name: "item_create",
+    title: "Add a garment from a pending photo",
+    description:
+      "Adds one garment from an intake_pending photo with the name and tags YOU chose, removes the background (free) and saves it. " +
+      "Name style: English \"Brand Type\" (e.g. \"Gant Oxford Shirt\"). Category follows the type automatically.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        photo_path: { type: "string" },
+        name: { type: "string" },
+        brand: { type: ["string", "null"] },
+        tags: {
+          type: "object",
+          additionalProperties: false,
+          required: ["subcategory", "color_hex", "color_name", "pattern", "material", "sleeve", "formality", "seasons", "temp_min_c", "temp_max_c"],
+          properties: {
+            subcategory: enumOf(SUBCATEGORIES),
+            color_hex: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+            color_name: enumOf(COLOR_NAMES),
+            secondary_color_hex: { type: ["string", "null"] },
+            pattern: enumOf(PATTERNS),
+            material: enumOf(MATERIALS),
+            fit: enumOf(FITS),
+            sleeve: enumOf(SLEEVES),
+            formality: { type: "integer", minimum: 1, maximum: 10 },
+            seasons: { type: "array", items: enumOf(SEASONS), minItems: 1 },
+            temp_min_c: { type: "integer" },
+            temp_max_c: { type: "integer" },
+            modesty_flags: { type: "array", items: enumOf(MODESTY_FLAGS) },
+            style_tags: { type: "array", items: enumOf(STYLE_TAGS) },
+          },
+        },
+      },
+      required: ["photo_path", "name", "tags"],
+      additionalProperties: false,
+    },
+    run: itemCreate,
+  },
+  {
+    name: "item_redraw",
+    title: "AI redraw of a garment (paid)",
+    description:
+      "Redraws a photo garment as a clean product image (Google image model, about $0.034, counted against the $8 monthly cap) and sets it as " +
+      "its image. Write the description yourself from the photo, in English: colour, fabric, collar, pockets, logos, sleeves " +
+      "(e.g. \"white cotton oxford shirt, button-down collar, chest pocket with a small red flag logo, long sleeves\"). Ask Roy first.",
+    inputSchema: {
+      type: "object",
+      properties: { id: { type: "string", format: "uuid" }, description: { type: "string", minLength: 10, maxLength: 400 } },
+      required: ["id", "description"],
+      additionalProperties: false,
+    },
+    annotations: { openWorldHint: true },
+    run: itemRedraw,
+  },
+  {
+    name: "item_recut",
+    title: "Redo a garment's background removal",
+    description: "Runs background removal again on a photo garment's original photo (free) and sets the result as its image.",
+    inputSchema: { type: "object", properties: { id: { type: "string", format: "uuid" } }, required: ["id"], additionalProperties: false },
+    annotations: { idempotentHint: true },
+    run: itemRecut,
   },
 ];
 
