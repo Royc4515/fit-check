@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { decode, Image } from "imagescript";
 import {
   COLOR_NAMES,
   FITS,
@@ -94,7 +93,11 @@ function sourceCrop(path: string | null): string | null {
 
 /** Cuts the box out of a JPEG/PNG and returns it as JPEG. A small margin keeps sleeves and hems that touch the box. */
 async function cropImage(bytes: Uint8Array, crop: Crop): Promise<Uint8Array> {
-  const img = (await decode(bytes)) as Image;
+  // don't touch / the Deno build of imagescript (pure WASM), loaded only when a crop runs. The npm build loads a
+  // native Node codec that the Edge runtime rejects ("unsupported arch/platform"), and as a static import it
+  // crashed the whole mcp function at boot (v4, 2026-11-17). Dynamic, so a codec failure can only break cropping.
+  const { decode, Image } = await import("https://deno.land/x/imagescript@1.3.0/mod.ts");
+  const img = (await decode(bytes)) as InstanceType<typeof Image>;
   const pad = 0.01;
   const x0 = Math.max(0, Math.floor((crop.x - pad) * img.width));
   const y0 = Math.max(0, Math.floor((crop.y - pad) * img.height));
