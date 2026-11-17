@@ -344,5 +344,17 @@
       "different": "It's a different garment",
       "replaced": "The photo of {{name}} was updated in the wardrobe."
     }
+  },
+  "oauth": {
+    "title": "Connect to Fit Check",
+    "working": "One moment…",
+    "missing": "The link is incomplete. Start the connection again from Claude.",
+    "failed": "The connection did not go through. Try again from Claude.",
+    "signInFirst": "Sign in first to approve the connection.",
+    "request": "{{client}} is asking for access to your wardrobe.",
+    "what": "It will be able to see, edit and remove your garments, as in the app. You can disconnect it anytime in Claude's settings.",
+    "scopes": "Permissions: {{scopes}}",
+    "approve": "Approve",
+    "deny": "Cancel"
   }
 }
