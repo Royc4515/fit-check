@@ -304,3 +304,10 @@
 
 - MCP verified end to end from a Claude session through Roy's claude.ai connector (OAuth token accepted with the existing `authenticated` audience): wardrobe_search (4 overshirts), item_get with photo, spend_summary.
 - Fixed: 15 of 144 tag/duplicate calls failed with "specified using image/png but appears to be image/jpeg": some `.png` files hold JPEG bytes. New `_shared/media.ts` sniffs the type from the bytes; used by intake-tag (v9) and mcp (v2). The duplicate check had been silently skipped in those cases.
+
+## 2026-11-17 (wardrobe cleanup, no AI spend)
+
+- Duplicates removed (archived, reversible with item_restore): the older "Polo Ralph Lauren Denim Shirt" and "Tsumi Mandarin Collar" were the same photo saved twice. Checked and kept as different garments: the two white Tommy Hilfiger shirts (pocket vs no pocket) and the Next vs plain white tees.
+- 20 images re-cut for free: 19 closet photos re-run through the worker's own BiRefNet + SAM 2 isolation inside Claude's sandbox (Roy, 2026-11-17: do the work locally where it saves paid AI calls), plus the Beige Melange redraw that had kept its white background. Uploaded through a temporary `image-put` function (now 410) as new `N-clean-<ts>-cutout/thumb.png` files; old files untouched. Before/after: `design/screens/2026-11-17-cleanup-before-after.png`.
+- Still imperfect (shirt pressed against a same-coloured garment): Gant Button-Down, Grey Hooded Flannel, Tommy Hilfiger Shirt, Abercrombie Button-Down, Brown Zip Jacket. A paid redraw (~$0.034 each) would fix them.
+- `cutout-backfill` and `image-put` retired to 410.
