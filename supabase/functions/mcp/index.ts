@@ -19,7 +19,7 @@ import { TOOL_BY_NAME, TOOLS, type ToolContext } from "./tools.ts";
  */
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
-const SERVER_INFO = { name: "fit-check", title: "Fit Check", version: "0.1.0" };
+const SERVER_INFO = { name: "fit-check", title: "Fit Check", version: "0.1.1" };
 const INSTRUCTIONS =
   "Fit Check is Roy's personal wardrobe app (Hebrew-first, religious-modest menswear). Use wardrobe_search to see what he owns " +
   "and to find ids, item_get to look at one garment, item_update to fix names or tags, item_archive/item_restore to remove or bring back. " +

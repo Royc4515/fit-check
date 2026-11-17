@@ -299,3 +299,8 @@
 - Needs from Roy (dashboard): Authentication > OAuth Server: enable, Authorization Path `/oauth/consent`, allow dynamic client registration; Site URL = the production web URL. Then add the connector in claude.ai with `https://ftjerbwrzjprfikxkukj.supabase.co/functions/v1/mcp`.
 - Not verified yet with a real OAuth token (the OAuth server is still disabled): if its access tokens carry an audience other than `authenticated`, `authenticate()` will 401 and needs the audience added.
 - Phase 2: today's outfit, adding garments from photos, AI redraw and re-cut from chat.
+
+## 2026-11-17 (MCP live, image type fix)
+
+- MCP verified end to end from a Claude session through Roy's claude.ai connector (OAuth token accepted with the existing `authenticated` audience): wardrobe_search (4 overshirts), item_get with photo, spend_summary.
+- Fixed: 15 of 144 tag/duplicate calls failed with "specified using image/png but appears to be image/jpeg": some `.png` files hold JPEG bytes. New `_shared/media.ts` sniffs the type from the bytes; used by intake-tag (v9) and mcp (v2). The duplicate check had been silently skipped in those cases.
