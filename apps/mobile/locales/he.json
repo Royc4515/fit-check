@@ -452,6 +452,16 @@
       "wholePhoto": "לא זוהה בגד בנפרד, נשמרת התמונה המלאה",
       "spec": "התמונה נשמרה, אבל פרטי השיפור לא נשמרו",
       "correction": "הבגד נשמר, אבל התיקונים שלך לא נשמרו"
+    },
+    "queue": {
+      "title": "ממתינות ל-Claude",
+      "count_one": "תמונה אחת",
+      "count_two": "{{count}} תמונות",
+      "count_other": "{{count}} תמונות",
+      "hint": "Claude יתייג אותן מהצ'אט.",
+      "photo": "תמונה ממתינה, הועלתה {{when}}",
+      "photoUndated": "תמונה ממתינה",
+      "failed": "רשימת התמונות הממתינות לא נטענה."
     }
   },
   "oauth": {
@@ -710,7 +720,12 @@
       "duplicate": "כרטיס כפילות",
       "duplicateAsk": "שאלת כפילות",
       "duplicateFailed": "החלפה נכשלה",
-      "replaced": "אישור החלפה"
+      "replaced": "אישור החלפה",
+      "queue": "תור ממתינות ל-Claude",
+      "queueLoading": "טוען",
+      "queueOne": "תמונה אחת",
+      "queueSeven": "שבע תמונות, החדשה ראשונה",
+      "queueFailed": "הרשימה לא נטענה (נסה שוב)"
     },
     "masonry": {
       "all": "הכל",

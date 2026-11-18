@@ -486,3 +486,11 @@
 - Verified in Chromium on the web build with the read-only design preview, at 390 and 1280, Hebrew and English. Not verified: Android, real writes, the real intake pipeline, the paid redraw, real Google sign-in. `TASKS.md` lists what is open and who can close it.
 - Look at: `design/screens/before/` vs `design/screens/after/` (same names), `docs/redesign-checklist-part1.md` and `part2.md` for the regression tables and defects.
 - lint went from 20 problems to 0; typecheck and tests pass.
+
+## 2026-11-19 - Intake queue (stage 2, task 2.3)
+
+- The Add screen shows "Waiting for Claude" under the two buttons: the photos sent with "send to Claude" that Claude has not tagged yet, 3 per row on a phone and 6 from 900, each with when it was uploaded (relative for 24 hours, then a short date). Not rendered when the queue is empty. Refreshes on screen focus and after a send batch; no polling.
+- `listPendingForClaude` in `data/intake.ts` lists `cutouts/{uid}/pending` with the same folder, extension filter and page size as the MCP's `intake_pending`, newest first. It is a read, so it also runs in the design preview (the bucket is publicly readable).
+- Thumbnails are images, not buttons: the bucket has no delete policy, so dismissing stays in the chat (`intake_dismiss`).
+- Gallery: loading, one photo, seven photos, failure in the intake block of `/design-system`.
+- Look at: `design/screens/2026-11-19-intake-queue-*`; the Hebrew hint line (explicit RTL, it starts with "Claude"); a real send-then-refresh on a signed-in device (not exercised).

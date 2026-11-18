@@ -449,6 +449,15 @@
       "wholePhoto": "No separate garment was found, the full photo is kept",
       "spec": "The photo was saved, but the improvement details were not saved",
       "correction": "The garment was saved, but your corrections were not recorded"
+    },
+    "queue": {
+      "title": "Waiting for Claude",
+      "count_one": "{{count}} photo",
+      "count_other": "{{count}} photos",
+      "hint": "Claude will tag them from the chat.",
+      "photo": "Waiting photo, uploaded {{when}}",
+      "photoUndated": "Waiting photo",
+      "failed": "The waiting photos did not load."
     }
   },
   "oauth": {
@@ -706,7 +715,12 @@
       "duplicate": "Duplicate card",
       "duplicateAsk": "The duplicate question",
       "duplicateFailed": "Replacing failed",
-      "replaced": "Replaced confirmation"
+      "replaced": "Replaced confirmation",
+      "queue": "Waiting for Claude queue",
+      "queueLoading": "Loading",
+      "queueOne": "One photo",
+      "queueSeven": "Seven photos, newest first",
+      "queueFailed": "List failed (retry)"
     },
     "masonry": {
       "all": "All",
