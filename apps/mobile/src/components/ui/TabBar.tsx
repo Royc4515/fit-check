@@ -3,7 +3,7 @@ import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, layout } from "../../theme/tokens";
 import { Icon, type IconName } from "./Icon";
-import { focusRingProps, selectionHaptic, usePressFeedback } from "./interaction";
+import { focusRingProps, selectionHaptic, usePressFeedback, webStateProps } from "./interaction";
 
 export type NavItem<K extends string = string> = { key: K; label: string; icon: IconName };
 
@@ -28,9 +28,7 @@ function Tab<K extends string>({ item, active, onPress }: { item: NavItem<K>; ac
       accessibilityRole="tab"
       accessibilityLabel={item.label}
       accessibilityState={{ selected: active }}
-      // don't touch / react-native-web does not map accessibilityState.selected to the DOM; without this the tab
-      // is never `aria-selected` for screen readers and tests on web.
-      aria-selected={active}
+      {...webStateProps({ selected: active })}
       className="flex-1 items-center pt-1"
       style={{ height: layout.tabBarHeight }}
     >

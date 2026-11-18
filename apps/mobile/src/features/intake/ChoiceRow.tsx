@@ -33,7 +33,9 @@ export function Row<T extends string>(props: {
           </View>
         ) : null}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 8 }}>
+      {/* A chip's 44 hit box is 4 taller than its face on each side; a scroll view clips what overhangs it, so the
+          row keeps 4 below the chips (the top already has 8) and gives the 4 back with a negative margin. */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: -4 }} contentContainerStyle={{ gap: 8, paddingTop: 8, paddingBottom: 4 }}>
         {(props.proposed ? [props.proposed, ...props.values.filter((v) => v !== props.proposed)] : props.values).map((v) => (
           <UiChip key={v} label={props.label(v)} selected={v === props.selected} swatch={props.swatch?.(v)} onPress={() => props.onPick(v)} />
         ))}

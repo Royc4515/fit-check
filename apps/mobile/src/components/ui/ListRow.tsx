@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 import { colors, layout } from "../../theme/tokens";
 import { Icon } from "./Icon";
-import { focusRingProps } from "./interaction";
+import { focusRingProps, webStateProps } from "./interaction";
 
 type Props = {
   label: string;
@@ -54,8 +54,7 @@ export function ListRow({ label, value, onPress, disabled = false, meta, selecte
       accessibilityRole="button"
       accessibilityLabel={[label, value ?? meta].filter(Boolean).join(", ")}
       accessibilityState={{ disabled, selected: choice ? selected : undefined }}
-      // don't touch / react-native-web does not map accessibilityState.selected to the DOM (same note as TopNav).
-      aria-selected={choice ? selected : undefined}
+      {...webStateProps({ selected: choice ? selected : undefined, disabled })}
       // Pressed = an ivory-deep wash, not a scale: a full-width row shrinking reads as the page jumping.
       style={({ pressed }) => ({ opacity: disabled ? 0.4 : 1, backgroundColor: pressed ? colors["ivory-deep"] : undefined })}
     >

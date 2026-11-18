@@ -323,7 +323,9 @@ export function Gallery() {
       </Block>
 
       <Block title={t("ds.section.swatches")}>
-        <View className="flex-row flex-wrap items-center" style={{ gap: 12 }}>
+        {/* A swatch is a 44 box around a 32 ring: the 12 between ring rows is already inside the boxes, so only the
+            columns have a gap, and the 6 each box adds above and below the ring is pulled back by the margins. */}
+        <View className="flex-row flex-wrap items-center" style={{ columnGap: 12, marginVertical: -6 }}>
           {COLOR_NAMES.map((name) => (
             <Swatch
               key={name}

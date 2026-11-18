@@ -17,6 +17,49 @@ export const timing = (duration: number) => ({ duration, easing: easeOut });
  */
 export const focusRingProps: object = Platform.OS === "web" ? { dataSet: { focusring: "" } } : {};
 
+/** The state of a pressable that screen readers must hear: one of the pairs the helper below knows how to say. */
+export type A11yState = {
+  /** Tabs, list choices. Role tab / option. */
+  selected?: boolean;
+  /** Checkboxes and radios. Role checkbox / radio. */
+  checked?: boolean;
+  /** Toggle buttons (a chip that is on or off). Role button. */
+  pressed?: boolean;
+  /** Buttons that open or close something (a sheet, a list). Role button. */
+  expanded?: boolean;
+  disabled?: boolean;
+};
+
+/** The DOM attributes {@link webStateProps} can return. Typed here because RN's own types do not list them all. */
+export type WebStateProps = {
+  "aria-selected"?: boolean;
+  "aria-checked"?: boolean;
+  "aria-pressed"?: boolean;
+  "aria-expanded"?: boolean;
+  "aria-disabled"?: boolean;
+};
+
+const NO_WEB_STATE: WebStateProps = {};
+
+/**
+ * Spread onto a Pressable next to `accessibilityState`. react-native-web does not turn `accessibilityState` into
+ * `aria-*` attributes, so on the web a chosen tab, a checked tile or an open menu button was invisible to screen
+ * readers and to tests. This is the one place that maps the state to the right attribute (`selected` →
+ * `aria-selected`, `checked` → `aria-checked`, `pressed` → `aria-pressed`, `expanded` → `aria-expanded`,
+ * `disabled` → `aria-disabled`). Only the keys the caller passes are emitted, so a role never gets an attribute it
+ * does not allow. Returns an empty object on native, where `accessibilityState` already does the job.
+ */
+export function webStateProps(state: A11yState): WebStateProps {
+  if (Platform.OS !== "web") return NO_WEB_STATE;
+  const out: WebStateProps = {};
+  if (state.selected !== undefined) out["aria-selected"] = state.selected;
+  if (state.checked !== undefined) out["aria-checked"] = state.checked;
+  if (state.pressed !== undefined) out["aria-pressed"] = state.pressed;
+  if (state.expanded !== undefined) out["aria-expanded"] = state.expanded;
+  if (state.disabled) out["aria-disabled"] = true;
+  return out;
+}
+
 /** Native selection tick (chip, tab, tile). Web has no haptics; expo-haptics would only warn there. */
 export function selectionHaptic(): void {
   if (Platform.OS !== "web") void Haptics.selectionAsync();
