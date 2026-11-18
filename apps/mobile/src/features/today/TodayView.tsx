@@ -2,7 +2,7 @@ import { combineAdjustments, learnedAdjustment, NO_ADJUSTMENT, swapOptions, type
 import type { Item, Slot, StylistInput, StylistOutput } from "@fit-check/schema";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
@@ -33,6 +33,7 @@ import { explainOutfit } from "./explain";
 import { planToday, type Swaps } from "./outfit";
 import { PieceSheet } from "./PieceSheet";
 import { outfitIndex, SLOT_ORDER } from "./pieces";
+import { useOutOfTabOrder } from "./useOutOfTabOrder";
 import { useSwipeToSkip } from "./useSwipeToSkip";
 
 /** Wraps digits and the degree/percent signs so they stay LTR inside Hebrew text (DESIGN.md: numbers always LTR). */
@@ -199,6 +200,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   };
   const skip = () => (plan.kind === "suggestion" ? actions.skip(plan.outfit, plan.source, effective).then(resetSwaps) : Promise.resolve());
   const swipe = useSwipeToSkip({ enabled: plan.kind === "suggestion" && !busy, onSkip: skip });
+  const heroRef = useRef<ComponentRef<typeof View>>(null);
+  useOutOfTabOrder(heroRef, plan.kind === "suggestion");
 
   const adjustParts = [
     adjustPart(t("today.warmer"), adjustment.temp_steps),
@@ -346,7 +349,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     pieces.length > 0 ? (
       // touchAction is also set in the gesture's own config (see useSwipeToSkip): RNGH 3.3 drops this one on update.
       <GestureDetector gesture={swipe.gesture} touchAction="pan-y">
-        <View onLayout={swipe.onLayout}>
+        <View ref={heroRef} onLayout={swipe.onLayout}>
           <FlatLay
             pieces={pieces}
             onPressPiece={openPiece}
@@ -391,7 +394,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   ) : null;
 
   // CC BY 4.0 attribution is a condition of both free APIs.
-  const credits = <Meta>{t("today.credits")}</Meta>;
+  // A sentence with proper names (Open-Meteo, Hebcal): no English uppercase from the Meta default, same as Profile.
+  const credits = <Meta style={{ textTransform: "none" }}>{t("today.credits")}</Meta>;
 
   const wear = () => {
     if (plan.kind !== "suggestion") return;
@@ -524,7 +528,9 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
       <View style={{ flex: 1, width: "100%", maxWidth: layout.maxContentWidth, alignSelf: "center" }}>
         <ScrollView
           contentContainerStyle={{
-            paddingTop: insets.top + 32,
+            // 24 above and 16 between masthead and hero (not 32 and 32): the whole 4:5 flat-lay must clear the floating
+            // bar at scroll top on a 390x844 and a 360x800 phone (it overlapped by 13 and 20px before).
+            paddingTop: insets.top + 24,
             // Nothing may end under the floating bar: its measured height (worn and failure lines join it) plus air.
             // No bottom inset otherwise: the tab bar under the screen owns it.
             paddingBottom: (hasBar ? barHeight : 0) + UNDER_BAR,
@@ -537,7 +543,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
             <>
               <Reveal index={1}>
                 {skipStatus ? <View className="mt-6 px-5">{lineOf(skipStatus)}</View> : null}
-                <View className={skipStatus ? "mt-4" : "mt-8"}>{hero}</View>
+                <View className="mt-4">{hero}</View>
               </Reveal>
               <Reveal index={2}>
                 <View className="mt-6 px-5">{captions}</View>

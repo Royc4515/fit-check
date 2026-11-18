@@ -43,9 +43,12 @@ export default function LocationScreen() {
     return () => clearTimeout(timer);
   }, [query, i18n.language]);
 
+  // A deep link to /location has no history, so back would do nothing; Profile is where the location row lives.
+  const leave = () => (router.canGoBack() ? router.back() : router.replace("/profile"));
+
   const choose = async (loc: SavedLocation) => {
     await saveLocation(loc);
-    router.back();
+    leave();
   };
 
   const chooseCurrent = async () => {
@@ -75,7 +78,7 @@ export default function LocationScreen() {
       >
         {/* The glyph sits 10px inside its 44 box; pulling the box out by 8 lines the arrow up with the title's edge. */}
         <View style={{ alignSelf: "flex-start", marginStart: -8 }}>
-          <Button variant="icon" icon="arrow_back" accessibilityLabel={t("common.back")} onPress={() => router.back()} />
+          <Button variant="icon" icon="arrow_back" accessibilityLabel={t("common.back")} onPress={leave} />
         </View>
         <ScreenHeader title={t("location.title")} safeArea={false} />
         <Text className="mt-2 font-body text-body-sm text-ink-soft">{t("location.hint")}</Text>
@@ -93,7 +96,7 @@ export default function LocationScreen() {
             selected={saved?.kind === "current"}
             onPress={() => void chooseCurrent()}
           />
-          {saved?.kind === "city" ? <ListRow label={saved.name} meta={saved.region ?? undefined} selected onPress={() => router.back()} /> : null}
+          {saved?.kind === "city" ? <ListRow label={saved.name} meta={saved.region ?? undefined} selected onPress={leave} /> : null}
         </View>
         {denied ? (
           <View className="mt-3">

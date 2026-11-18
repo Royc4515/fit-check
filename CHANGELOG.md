@@ -446,3 +446,10 @@
 - Availability to spec rows: 32 instead of 48.
 - Screen-reader labels and hints on the item screen and in the composer have the bidi isolates stripped (`features/item/a11y.ts` `spoken`); visible text keeps them.
 - Look at: `design/screens/2026-11-18-item-flight-*` (re-shot), `-tags-390-*`, `-1280-*`, `-browserback-today-390-he`.
+
+## 2026-11-18 - Verification fixes
+
+- Wardrobe: a filter chip applies and closes the sheet (tune + chip = 2 taps); "show N" footer removed; "נקה" in the active-filter row clears colour/type/season/availability in 1 tap and keeps the category. DESIGN.md "ארון" item 7 updated.
+- Today: 24px above the masthead and 16px between masthead and hero, so the whole flat-lay clears the action bar at 390x844 and 360x800; credits line sentence case; hero garments out of the Tab order on web (legend rows are the 01..04 stops).
+- Reserve duty failure line clears on cancel. `/location` back/choose go to `/profile` when there is no history. Sign-in still life hidden from assistive tech; Monogram uses the 16px token.
+- Look at: design/screens/2026-11-18-{today-default,wardrobe-filter-sheet,wardrobe-filters-active,sign-in-idle}-*.png

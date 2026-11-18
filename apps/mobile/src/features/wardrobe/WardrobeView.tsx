@@ -134,6 +134,9 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
     setSelection({});
     setScope("all");
   };
+  // The row's "נקה" keeps the category: it is the screen's scope (the tab the reader chose), not a filter on it.
+  const clearFilters = () => setSelection({});
+  const filtersActive = sheetActive || selection.color !== undefined;
 
   const run = (ids: string[], next: Availability, after?: () => void) => {
     if (!onMove || ids.length === 0) return;
@@ -162,6 +165,8 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
     setPacking(true);
   };
   const stopPacking = () => {
+    // The failure line belongs to the attempt that failed; once that attempt is cancelled it would read as current.
+    setFailed(false);
     setPacking(false);
     setPackAll(false);
     setPicked(new Set());
@@ -320,18 +325,24 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
   const subheader = (
     <View style={{ width: rowWidth, alignSelf: "center" }} className="pt-3">
       <SwatchRow swatches={swatches} selected={selection.color} onToggle={(name) => toggle("color", name)} inset={rowInset} />
-      {activeChips.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          accessibilityLabel={t("wardrobe.activeFilters")}
-          className="mt-2"
-          contentContainerStyle={{ paddingHorizontal: rowInset, gap: 8 }}
-        >
-          {activeChips.map((c) => (
-            <Chip key={c.facet} label={c.label} removable onPress={() => toggle(c.facet, c.value)} />
-          ))}
-        </ScrollView>
+      {filtersActive ? (
+        <View className="mt-2 flex-row items-center">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            accessibilityLabel={t("wardrobe.activeFilters")}
+            style={{ flexGrow: 1, flexShrink: 1 }}
+            contentContainerStyle={{ paddingStart: rowInset, paddingEnd: 12, gap: 8 }}
+          >
+            {activeChips.map((c) => (
+              <Chip key={c.facet} label={c.label} removable onPress={() => toggle(c.facet, c.value)} />
+            ))}
+          </ScrollView>
+          {/* Outside the scrolling part so clear-all is always in view, whatever the chips' count or width. */}
+          <View style={{ paddingEnd: rowInset }}>
+            <Button variant="text" label={t("wardrobe.filter.clear")} onPress={clearFilters} />
+          </View>
+        </View>
       ) : null}
       <View style={{ height: subheaderGap }} />
     </View>
@@ -402,7 +413,6 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
         selection={selection}
         onToggle={toggle}
         onClear={clearSheet}
-        count={visible.length}
       />
       <ItemActionsSheet
         item={actionsItem}
