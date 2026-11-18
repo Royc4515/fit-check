@@ -47,7 +47,9 @@ export const IntakeDetectResultSchema = z.union([
 export type IntakeDetectResult = z.infer<typeof IntakeDetectResultSchema>;
 
 export const IntakeEnhanceResultSchema = z.union([
-  z.object({ ok: z.literal(true), path: z.string(), url: z.string().url() }),
+  // transparent: the white background was already removed on the server (_shared/whitebg.ts), so the app skips the
+  // worker's cutout. Optional so an older deployed function still parses.
+  z.object({ ok: z.literal(true), path: z.string(), url: z.string().url(), transparent: z.boolean().optional() }),
   z.object({ ok: z.literal(false), reason: z.string() }),
 ]);
 export type IntakeEnhanceResult = z.infer<typeof IntakeEnhanceResultSchema>;

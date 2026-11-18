@@ -327,3 +327,10 @@
 - Fix: item_create now copies the photo into the item's own folder, takes an optional `crop` box (fractions 0-1; cropped with imagescript before the cutout, so the item's original, redraw source and re-cut are that garment only) and `keep_pending` (leave it in the queue for its other garments). New tools `intake_dismiss` (drop a pending photo) and `item_recrop` (crop an existing item's original; full photo kept as `N-full-<ts>.jpg`; `requeue_original` puts a copy back in pending; `recut` optional). Single-garment flow unchanged.
 - Data: "Zara Half-Zip Sweater" (fa5f2cf6) still has the 6-garment photo as its original; fix with item_recrop (crop box from the photo, `requeue_original: true` to bring the photo back for the other 5).
 - Incident (≈20:26–now UTC): mcp v4 returned 500 at boot. Cause: the npm build of imagescript loads a native Node codec the Edge runtime rejects ("unsupported arch/platform"). Fix: the Deno build (https://deno.land/x/imagescript@1.3.0, pure WASM), imported dynamically inside cropImage so a codec problem can only break cropping, never the whole server.
+
+## 2026-11-18 (redraw background)
+
+- An AI redraw's white background is now removed on the server right after generation (`supabase/functions/_shared/whitebg.ts`): a flood fill from the border with a threshold read from the image itself, so white shirts stay whole. Free, no model, about 0.1 s. Wired into `intake-separate` enhance (v20, returns `transparent`) and the MCP `item_redraw` (v6); the Modal worker is only a fallback when the check declines.
+- App: `ItemEditor` and `IntakeView` skip the worker cutout when the redraw comes back `transparent`.
+- Cause: the Modal workspace was disabled on 2026-11-18, so every redraw stayed on white. 18 items left on white were cleared with the same code; the temporary `image-put` function is retired (410).
+- Look at: `design/screens/2026-11-18-redraw-whitebg.png` (all 18 on a green test ground). A faint light outline remains on a few dark garments; it doesn't show on the app's light background.

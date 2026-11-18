@@ -70,6 +70,8 @@ export function ItemEditor({ item, edits, onClose, onRemoved }: { item: Item; ed
       if (!source) throw new Error("no source photo");
       const drawn = await enhanceCutout(source, describeForRedraw(tags, name));
       if (!drawn.ok) throw new Error(drawn.reason);
+      // The server usually clears the white itself; the worker is only asked when that check declined.
+      if (drawn.transparent) return edits.setImage(item.id, drawn.path, null);
       const cut = await removeBackground(drawn.path);
       await edits.setImage(item.id, cut.ok ? cut.path : drawn.path, cut.ok ? cut.thumb_path : null);
     });
