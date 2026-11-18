@@ -367,3 +367,11 @@
 - Gallery at `/design-system` (not linked). Screens are not migrated yet.
 - Look at: `design/screens/2026-11-18-design-system-*` and `-today-tokens-v2`, `-wardrobe-tokens-v2`.
 - Not verified: native iOS/Android (no emulator in the session): Modal + gestures, `boxShadow` on Android, haptics, `I18nManager` RTL.
+
+## 2026-11-18 (redesign 1.3: navigation shell)
+
+- Route group `src/app/(tabs)/` with expo-router `Tabs` and a custom bar (`features/shell/ShellTabBar.tsx`): library `TabBar` below 900px, `TopNav` from 900px, switched on window width. Destinations: wardrobe, today (`/`), add (`/intake`), insights (new), profile (new). URLs unchanged; `/item/[id]` and `/location` stay above the tabs. Tab switches are instant (`animation: "none"`).
+- `/profile`: location row (opens `/location`), read-only language row, data credits. `/insights`: empty state pointing at the wardrobe. The old text links between Wardrobe, Intake and Today are removed (Today's own link is left to the Today task).
+- Preview banner now sits directly above the tab bar on mobile (root layout only shows it on screens outside the tabs). `TabBar`/`TopNav` got `aria-selected`, which react-native-web did not emit from `accessibilityState`.
+- Look at: `design/screens/2026-11-18-shell-*`; resize the browser across 900px; open an item and go back.
+- Not verified: native iOS/Android (no emulator): safe-area padding, haptics, RTL tab order.
