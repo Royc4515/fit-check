@@ -479,3 +479,10 @@
 - `ListRow` choice rows use `aria-pressed` (not `aria-selected`, invalid on role=button).
 - design/screens/after/ and the 360/430 today-default shots re-taken from the final build.
 - Look at: Tab on `/` (weather, 4 legend rows, wear, tune); the heading outline per screen; the active-filter chip row at 390.
+
+## 2026-11-18 (redesign stage 1 closed)
+
+- Stage 1 of `docs/REDESIGN_PLAN.md` is complete on `claude/gifted-goldberg-9498c1`: DESIGN.md v2, the component library (`apps/mobile/src/components/ui/`, gallery at `/design-system`), bottom tab bar and desktop top nav, and every existing screen rebuilt on the library. No change to the data model, the Edge Functions or the MCP tools.
+- Verified in Chromium on the web build with the read-only design preview, at 390 and 1280, Hebrew and English. Not verified: Android, real writes, the real intake pipeline, the paid redraw, real Google sign-in. `TASKS.md` lists what is open and who can close it.
+- Look at: `design/screens/before/` vs `design/screens/after/` (same names), `docs/redesign-checklist-part1.md` and `part2.md` for the regression tables and defects.
+- lint went from 20 problems to 0; typecheck and tests pass.
