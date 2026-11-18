@@ -11,18 +11,14 @@ type Props = {
   onToggle: (facet: SheetFacet, value: string) => void;
   /** Clears the sheet's facets only; category and colour are on the screen and stay as they are. */
   onClear: () => void;
-  /** How many items the current filters show; filters apply live, so this is what "show" closes onto. */
-  count: number;
 };
-
-const ltr = (n: number) => `⁦${n}⁩`;
 
 /**
  * "סינון" (DESIGN.md section 3 "ארון" item 7): type, season and availability as rows of chips, single choice per
- * row (tap again clears it). Every tap applies at once behind the sheet; "show N" only closes it, so the number on
- * it is always the grid the user is about to see.
+ * row. A chip tap applies the filter and closes the sheet (tune + chip = 2 taps from the screen); tapping the
+ * chosen chip clears that facet and closes too. "נקה" clears the sheet's facets and closes.
  */
-export function FilterSheet({ open, onClose, facets, selection, onToggle, onClear, count }: Props) {
+export function FilterSheet({ open, onClose, facets, selection, onToggle, onClear }: Props) {
   const { t } = useTranslation();
   const any = facets.some(({ facet }) => selection[facet] !== undefined);
   return (
@@ -31,10 +27,15 @@ export function FilterSheet({ open, onClose, facets, selection, onToggle, onClea
       onClose={onClose}
       title={t("wardrobe.filter.title")}
       footer={
-        <View className="flex-row items-center justify-between" style={{ gap: 16 }}>
-          <Button variant="text" label={t("wardrobe.filter.clear")} onPress={onClear} disabled={!any} />
-          <Button variant="ink" label={t("wardrobe.filter.show", { count, n: ltr(count) })} onPress={onClose} />
-        </View>
+        <Button
+          variant="text"
+          label={t("wardrobe.filter.clear")}
+          onPress={() => {
+            onClear();
+            onClose();
+          }}
+          disabled={!any}
+        />
       }
     >
       {facets.map(({ facet, values }, i) => (
@@ -46,7 +47,10 @@ export function FilterSheet({ open, onClose, facets, selection, onToggle, onClea
                 key={value}
                 label={t(`wardrobe.${facet}.${value}`)}
                 selected={selection[facet] === value}
-                onPress={() => onToggle(facet, value)}
+                onPress={() => {
+                  onToggle(facet, value);
+                  onClose();
+                }}
               />
             ))}
           </View>

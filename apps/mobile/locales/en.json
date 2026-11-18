@@ -166,8 +166,6 @@
       "openActive": "Filter, filters on",
       "title": "Filter",
       "clear": "Clear",
-      "show_one": "Show 1 item",
-      "show_other": "Show {{n}} items",
       "facet": {
         "type": "Type",
         "season": "Season",
