@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TextAction } from "../../components/TextAction";
-import { TextLink } from "../../components/TextLink";
 import { useWardrobe } from "../../data/WardrobeProvider";
 import {
   cropGarment,
@@ -355,7 +354,6 @@ export function IntakeView({ userId }: { userId: string }) {
       >
         <View className="flex-row items-baseline justify-between">
           <Text className="font-display text-display-xl text-ink">{t("intake.title")}</Text>
-          <TextLink href="/wardrobe" label={t("nav.wardrobe")} />
         </View>
         <Text className="mt-3 font-body text-body text-ink-soft">{t("intake.intro")}</Text>
 

@@ -1,8 +1,8 @@
 import type { Availability } from "@fit-check/schema";
-import { WardrobeGate } from "../components/WardrobeGate";
-import { setAvailabilityMany } from "../data/feedback";
-import { useWardrobe } from "../data/WardrobeProvider";
-import { WardrobeView } from "../features/wardrobe/WardrobeView";
+import { WardrobeGate } from "../../components/WardrobeGate";
+import { setAvailabilityMany } from "../../data/feedback";
+import { useWardrobe } from "../../data/WardrobeProvider";
+import { WardrobeView } from "../../features/wardrobe/WardrobeView";
 
 /** Wardrobe: loads the items, then hands them to the view. Filters are local state inside the view. */
 export default function Wardrobe() {

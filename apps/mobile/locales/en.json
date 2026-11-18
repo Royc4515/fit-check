@@ -153,7 +153,24 @@
   "nav": {
     "today": "Today",
     "wardrobe": "Wardrobe",
-    "addClothes": "Add clothes"
+    "addClothes": "Add clothes",
+    "add": "Add",
+    "insights": "Insights",
+    "profile": "Profile"
+  },
+  "profile": {
+    "title": "Profile",
+    "location": "Location",
+    "language": "Language",
+    "languageValue": "English"
+  },
+  "insights": {
+    "title": "Insights",
+    "empty": {
+      "title": "No insights yet",
+      "body": "Outfit history and spending on your wardrobe will appear here.",
+      "action": "Go to wardrobe"
+    }
   },
   "item": {
     "back": "Wardrobe",
