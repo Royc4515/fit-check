@@ -454,3 +454,10 @@
 - Reversible picks: colour and leg-length picks are built against the item as the screen opened it (`edit.ts` `colorPatch`, `legPatch`), so jeans -> shorts -> long gives jeans and a colour changed back gets its measured hex, as in the old editor.
 - Error lines end with their action: any next edit on the details clears the last failure; "keep" clears the remove failure; closing the composer clears its failure.
 - Composer garment words expose `aria-expanded` on web. Library `Chip` has no `expanded` prop yet, so tag chips do not.
+
+## 2026-11-18 - Verification fixes
+
+- Wardrobe: a filter chip applies and closes the sheet (tune + chip = 2 taps); "show N" footer removed; "נקה" in the active-filter row clears colour/type/season/availability in 1 tap and keeps the category. DESIGN.md "ארון" item 7 updated.
+- Today: 24px above the masthead and 16px between masthead and hero, so the whole flat-lay clears the action bar at 390x844 and 360x800; credits line sentence case; hero garments out of the Tab order on web (legend rows are the 01..04 stops).
+- Reserve duty failure line clears on cancel. `/location` back/choose go to `/profile` when there is no history. Sign-in still life hidden from assistive tech; Monogram uses the 16px token.
+- Look at: design/screens/2026-11-18-{today-default,wardrobe-filter-sheet,wardrobe-filters-active,sign-in-idle}-*.png
