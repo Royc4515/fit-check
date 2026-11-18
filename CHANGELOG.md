@@ -486,3 +486,11 @@
 - Verified in Chromium on the web build with the read-only design preview, at 390 and 1280, Hebrew and English. Not verified: Android, real writes, the real intake pipeline, the paid redraw, real Google sign-in. `TASKS.md` lists what is open and who can close it.
 - Look at: `design/screens/before/` vs `design/screens/after/` (same names), `docs/redesign-checklist-part1.md` and `part2.md` for the regression tables and defects.
 - lint went from 20 problems to 0; typecheck and tests pass.
+
+## 2026-11-19 - Stage 2.1: wardrobe search, Shabbat and formality filters, archive
+
+- Wardrobe search (DESIGN.md "שלב 2"): `search` before `tune` swaps the title row for a focused `SearchField` + live count + `close`; name or brand, substring, any case, trimmed (`matchesQuery` in `features/wardrobe/filters.ts`), AND with category, colour and sheet filters. Close / Escape clears. Desktop: field always in the header, 280 wide. No-match quotes the query and offers "נקה". `SearchField` gained `autoFocus` and `onEscape`.
+- Filter sheet rows "הקשר" (one chip, "לשבת") and "רשמיות" (1-4 / 5-7 / 8-10). "לשבת" uses the new engine export `passesContextRules(item, DEFAULT_CONTEXT_RULES.shabbat)`, which `hardFilter` now calls for its context part (same behaviour, test in `context-rules.test.ts`; `engine.js` re-bundled). Outerwear and accessories have no Shabbat rules and pass.
+- Archive: `/archive` (above the tabs, back falls back to `/profile`), masonry of archived items, sheet with "שחזר לארון" (optimistic, rolls back with an error line). Data: `useArchivedItems()`, `useArchivedCount()`, `useSetItemStatus()` in `data/WardrobeProvider.tsx`; archived rows already came with `fetchWardrobe` and the preview snapshot, no new query.
+- After a removal from the long-press sheet, an undo line "הוסר מהארון · ביטול" pinned under the category row until the next action; a failed undo shows an error line with retry.
+- Look at: `design/screens/2026-11-19-wardrobe-*` and `2026-11-19-archive-*`; the Shabbat list (outerwear jackets with formality 3-4 are in it, by the rules as written).

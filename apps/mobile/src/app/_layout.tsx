@@ -61,6 +61,7 @@ function Routes() {
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="location" />
+        <Stack.Screen name="archive" />
         {/* Internal component gallery; not linked from any screen. */}
         <Stack.Screen name="design-system" />
         {/* don't touch / transparent + no native animation: the item screen runs its own shared-element
