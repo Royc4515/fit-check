@@ -23,6 +23,11 @@ export type FeedbackActions = {
   undo: (record: TodayRecord) => Promise<void>;
   /** Overrides the automatic laundry move: the items stay home and keep their wear count. */
   keepHome: (itemIds: string[]) => Promise<void>;
+  /**
+   * Clears the failure line. A failure belongs to the action that produced it: the screen calls this when the user
+   * starts something else (opens a sheet), so the line does not outlive its action. Starting a write clears it too.
+   */
+  dismissFailure: () => void;
 };
 
 /** Items the last "wearing" sent to the laundry, so Today can name them and offer to keep them home. */
@@ -155,8 +160,10 @@ export function useFeedback(args: {
             today: [...(h?.today ?? []), record],
             samples: [{ wearId: record.wearId, adjustment }, ...(h?.samples ?? [])],
           }));
-          // The wear is stored even if learning fails; the weights are a derived signal, the wear is the fact.
-          await learn(record.itemIds, "worn", 1);
+          // The wear is stored even if learning fails; the weights are a derived signal, the wear is the fact. So a
+          // failed weights write is logged and swallowed here: letting it reach run() would show "didn't save" for a
+          // wear that was saved, and the user would press "wearing it" again and wear the day twice.
+          await learn(record.itemIds, "worn", 1).catch((error: unknown) => console.error("Pair weights update failed", error));
           // A failed laundry move is logged, not shown: the wear itself succeeded and the user can move items by hand.
           await launder(record).catch((error: unknown) => console.error("Automatic laundry failed", error));
         }),
@@ -195,6 +202,7 @@ export function useFeedback(args: {
           await move(itemIds, "home");
           setLaundered(null);
         }),
+      dismissFailure: () => setFailed(false),
     }),
     [run, learn, launder, move, laundered, setHistory, userId, date, dayType]
   );

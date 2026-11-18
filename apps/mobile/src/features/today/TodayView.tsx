@@ -2,7 +2,7 @@ import { combineAdjustments, learnedAdjustment, NO_ADJUSTMENT, swapOptions, type
 import type { Item, Slot, StylistInput, StylistOutput } from "@fit-check/schema";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
@@ -75,6 +75,24 @@ const DESKTOP_HERO_MAX = 560;
 const DESKTOP_HERO_PAD = 32;
 const DESKTOP_GAP = 64;
 const DESKTOP_GUTTER = 32;
+/** Mobile layout, wide windows (>= this): the flat-lay is a centred card, not full-bleed, and capped to fit above the bar. */
+const CARD_MIN_WIDTH = 600;
+/** Air between the flat-lay's bottom edge and the floating bar's top edge at scroll top. */
+const HERO_BAR_GAP = 8;
+/** Never smaller than this when capping (a short window would otherwise shrink the hero to a thumbnail). */
+const HERO_MIN = 240;
+/** Mobile layout's scroll padding above the masthead, and the space between masthead and flat-lay (see its comment). */
+const MOBILE_TOP = 24;
+const MOBILE_HERO_GAP = 16;
+
+/** DOM ids of the places focus is sent to after an action (web only; see the focus effect in TodayView). */
+const FOCUS_BAR_STATUS = "today-bar-status";
+const FOCUS_SKIP_STATUS = "today-skip-status";
+const FOCUS_WEAR = "today-wear";
+/** The first thing in a container that a keyboard can reach: react-native-web gives every live pressable tabindex 0. */
+/** A little longer than the sheet's critically damped close spring takes to settle (motion.spring). */
+const SHEET_SETTLE_MS = 700;
+const FIRST_TABBABLE = '[tabindex="0"]:not([aria-disabled="true"])';
 
 type StatusItem = {
   key: string;
@@ -112,6 +130,13 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const [barHeight, setBarHeight] = useState(0);
   // Desktop: the scene's height (under the top nav), to cap the flat-lay so it is never cut off.
   const [viewportHeight, setViewportHeight] = useState(0);
+  // Mobile layout: the masthead's height, to cap the flat-lay so the whole surface clears the floating bar.
+  const [mastheadHeight, setMastheadHeight] = useState(0);
+  // Where focus goes once the action that was just taken has settled (web). The bar's button is replaced by a status
+  // line when it works, and a focused element that unmounts drops focus to <body>.
+  const [focusRequest, setFocusRequest] = useState<{ after: "wear" | "skip" | "undo"; n: number } | null>(null);
+  const focusHandled = useRef(0);
+  const requestFocus = (after: "wear" | "skip" | "undo") => setFocusRequest((cur) => ({ after, n: (cur?.n ?? 0) + 1 }));
 
   // The standing lean learned from recent wears, then today's taps on top. The total is what gets stored with a
   // worn outfit (see engine learnedAdjustment for why the total and not the taps).
@@ -197,7 +222,13 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     resetSwaps();
     setAdjustment(NO_ADJUSTMENT);
   };
-  const skip = () => (plan.kind === "suggestion" ? actions.skip(plan.outfit, plan.source, effective).then(resetSwaps) : Promise.resolve());
+  const skip = () =>
+    plan.kind === "suggestion"
+      ? actions.skip(plan.outfit, plan.source, effective).then(() => {
+          resetSwaps();
+          requestFocus("skip");
+        })
+      : Promise.resolve();
   const swipe = useSwipeToSkip({ enabled: plan.kind === "suggestion" && !busy, onSkip: skip });
 
   const adjustParts = [
@@ -240,6 +271,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     const id = outfit?.items.find((i) => i.slot === slot)?.id;
     const item = id ? itemById.get(id) : undefined;
     if (!item) return;
+    actions.dismissFailure();
     setPiece({ slot, item });
     setPieceOpen(true);
   };
@@ -248,7 +280,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const statuses: StatusItem[] = [];
   if (plan.kind === "worn") {
     const record = plan.record;
-    statuses.push({ key: "worn", variant: "ok", message: t("today.status.worn"), action: { label: t("today.undo"), onPress: () => void actions.undo(record) } });
+    statuses.push({ key: "worn", variant: "ok", message: t("today.status.worn"), action: { label: t("today.undo"), onPress: () => void actions.undo(record).then(() => requestFocus("undo")) } });
     if (laundered && laundered.wearId === record.wearId) {
       const ids = laundered.itemIds;
       const names = ids.map((id) => {
@@ -265,7 +297,14 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   }
   if (lastSkip) {
     const record = lastSkip;
-    const undo = { label: t("today.undo"), onPress: () => void actions.undo(record).then(resetSwaps) };
+    const undo = {
+      label: t("today.undo"),
+      onPress: () =>
+        void actions.undo(record).then(() => {
+          resetSwaps();
+          requestFocus("undo");
+        }),
+    };
     statuses.push({
       key: "skip",
       variant: "info",
@@ -284,6 +323,42 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // cover a sixth of the phone. The bar keeps a constant height (worn, laundry and failure still replace or join it).
   const skipStatus = statuses.find((s) => s.key === "skip");
   const barStatusLines = statuses.filter((s) => s.key !== "skip").map(lineOf);
+  // One focusable wrapper (tabIndex -1: reachable by script, not by Tab) so focus has a place to land when the line
+  // has no action of its own (a failure), and screen readers read the whole line when it arrives.
+  const barStatusLine =
+    barStatusLines.length > 0 ? (
+      <View nativeID={FOCUS_BAR_STATUS} tabIndex={-1} style={{ gap: 8 }}>
+        {barStatusLines}
+      </View>
+    ) : null;
+
+  // After wear / skip / undo the bar's button (or the status line) the hand was on is gone: send focus to the new
+  // status line's first action (undo), or the line itself when it has none, and back to "wearing it" after an undo.
+  // Waits for `busy` to end: a pressable that is still disabled is not a place to put focus.
+  const planKind = plan.kind;
+  const tuneLabel = t("today.tune");
+  const hasSkipStatus = skipStatus !== undefined;
+  useEffect(() => {
+    // Each request is served once: `n` counts them, `focusHandled` (read only here) remembers the last one served.
+    if (!focusRequest || busy || Platform.OS !== "web" || focusHandled.current === focusRequest.n) return;
+    focusHandled.current = focusRequest.n;
+    const { after } = focusRequest;
+    const within = (id: string) => {
+      const el = document.getElementById(id);
+      return el ? (el.querySelector<HTMLElement>(FIRST_TABBABLE) ?? el) : null;
+    };
+    const targetId = planKind === "worn" ? FOCUS_BAR_STATUS : after === "skip" && hasSkipStatus ? FOCUS_SKIP_STATUS : FOCUS_WEAR;
+    within(targetId)?.focus();
+    // don't touch / a skip taken from the adjust sheet finishes while the sheet is still sliding away, and on unmount
+    // the sheet's Modal hands focus back to its opener (the tune button), over what was just set. Look again after
+    // it has settled and take focus back only if it was lost to the body or the opener, never from something the
+    // user has moved to meanwhile. No cleanup on purpose: the lookup is by id and harmless if the screen is gone.
+    window.setTimeout(() => {
+      const at = document.activeElement;
+      const lost = !at || at === document.body || at.getAttribute("aria-label") === tuneLabel;
+      if (lost) within(targetId)?.focus();
+    }, SHEET_SETTLE_MS);
+  }, [focusRequest, busy, planKind, hasSkipStatus, tuneLabel]);
 
   /** The learned lean and today's nudges: small, under the quote, because they qualify the reason. */
   const adjustNotes =
@@ -342,6 +417,14 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     </View>
   );
 
+  // Mobile layout in a window wide enough to show side margins (600-899): the flat-lay becomes a centred card whose
+  // whole 4:5 surface clears the floating bar at scroll top (N8: at 899x800 it was 700 high and sat under the bar).
+  // Below 600 it stays full-bleed. The cap uses the measured space; until measured, the column width applies.
+  const card = !desktop && width >= CARD_MIN_WIDTH;
+  const heroFits = (viewportHeight - barHeight - (insets.top + MOBILE_TOP) - mastheadHeight - MOBILE_HERO_GAP - HERO_BAR_GAP) / FLAT_LAY_ASPECT;
+  const cardWidth =
+    card && viewportHeight > 0 && mastheadHeight > 0 && barHeight > 0 ? Math.max(HERO_MIN, Math.min(layout.maxContentWidth, heroFits)) : null;
+
   const hero =
     pieces.length > 0 ? (
       // touchAction is also set in the gesture's own config (see useSwipeToSkip): RNGH 3.3 drops this one on update.
@@ -353,7 +436,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
             // The legend rows below the hero are the same action in 01-04 order; the hero stops would be duplicates.
             pieceFocusable={false}
             instantKey={history.today.length}
-            radius={desktop ? "md" : "none"}
+            radius={desktop || card ? "md" : "none"}
             accessibilityLabel={heroLabel}
             contentStyle={swipe.style}
             onPieceNode={(id, node) => registerOrigin("today", id, node, { tone: flatLayTone(pieces), loose: true })}
@@ -399,16 +482,19 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const wear = () => {
     if (plan.kind !== "suggestion") return;
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    void actions.wear(plan.outfit, plan.source, effective).then(resetSwaps);
+    void actions.wear(plan.outfit, plan.source, effective).then(() => {
+      resetSwaps();
+      requestFocus("wear");
+    });
   };
   const adjustActive = adjustment.temp_steps !== 0 || adjustment.formality_steps !== 0;
 
   const barContent: ReactNode =
     plan.kind === "suggestion" ? (
       <>
-        {barStatusLines}
+        {barStatusLine}
         <View className="flex-row items-center" style={{ gap: 8 }}>
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1 }} nativeID={FOCUS_WEAR}>
             <Button variant="primary" label={t("today.wearing")} onPress={wear} disabled={busy} fullWidth />
           </View>
           <Button
@@ -416,14 +502,17 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
             outlined
             icon="tune"
             selected={adjustActive}
-            accessibilityLabel={t("today.tune")}
-            onPress={() => setAdjustOpen(true)}
+            accessibilityLabel={tuneLabel}
+            onPress={() => {
+              actions.dismissFailure();
+              setAdjustOpen(true);
+            }}
             disabled={busy}
           />
         </View>
       </>
     ) : plan.kind === "worn" ? (
-      <>{barStatusLines}</>
+      <>{barStatusLine}</>
     ) : null;
 
   const empty =
@@ -440,7 +529,9 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         ) : (
           <EmptyState title={t("today.empty")} body={t("today.emptyBody")} />
         )}
-        {statusLines}
+        <View nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
+          {statusLines}
+        </View>
         {adjustNotes}
       </View>
     ) : null;
@@ -496,7 +587,11 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
             </View>
             <View style={{ flex: 1 }}>
               <Reveal index={0}>{masthead}</Reveal>
-              {skipStatus && outfit ? <View className="mt-6">{lineOf(skipStatus)}</View> : null}
+              {skipStatus && outfit ? (
+                <View className="mt-6" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
+                  {lineOf(skipStatus)}
+                </View>
+              ) : null}
               {outfit ? (
                 <>
                   <Reveal index={2}>
@@ -523,26 +618,32 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
 
   const hasBar = barContent !== null;
   return (
-    <View className="flex-1 bg-ivory">
+    <View className="flex-1 bg-ivory" onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}>
       <View style={{ flex: 1, width: "100%", maxWidth: layout.maxContentWidth, alignSelf: "center" }}>
         <ScrollView
           contentContainerStyle={{
             // 24 above and 16 between masthead and hero (not 32 and 32): the whole 4:5 flat-lay must clear the floating
             // bar at scroll top on a 390x844 and a 360x800 phone (it overlapped by 13 and 20px before).
-            paddingTop: insets.top + 24,
+            paddingTop: insets.top + MOBILE_TOP,
             // Nothing may end under the floating bar: its measured height (worn and failure lines join it) plus air.
             // No bottom inset otherwise: the tab bar under the screen owns it.
             paddingBottom: (hasBar ? barHeight : 0) + UNDER_BAR,
           }}
         >
           <Reveal index={0}>
-            <View className="px-5">{masthead}</View>
+            <View className="px-5" onLayout={(e) => setMastheadHeight(e.nativeEvent.layout.height)}>
+              {masthead}
+            </View>
           </Reveal>
           {outfit ? (
             <>
               <Reveal index={1}>
-                {skipStatus ? <View className="mt-6 px-5">{lineOf(skipStatus)}</View> : null}
-                <View className="mt-4">{hero}</View>
+                {skipStatus ? (
+                  <View className="mt-6 px-5" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
+                    {lineOf(skipStatus)}
+                  </View>
+                ) : null}
+                <View style={{ marginTop: MOBILE_HERO_GAP, ...(cardWidth ? { width: cardWidth, alignSelf: "center" as const } : null) }}>{hero}</View>
               </Reveal>
               <Reveal index={2}>
                 <View className="mt-6 px-5">{captions}</View>
