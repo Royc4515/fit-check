@@ -7,6 +7,8 @@ import { Meta } from "../../components/ui";
 import { layout } from "../../theme/tokens";
 import { GarmentReview, type Draft, type ReviewState } from "./GarmentReview";
 import { JobCard, type JobStatus } from "./JobCard";
+import { PendingQueue } from "./PendingQueue";
+import type { PendingQueueState } from "./usePendingQueue";
 
 const noop = () => {};
 /** One demo cell at the phone column's width, so the states look as they do on the screen. */
@@ -42,6 +44,23 @@ function Review({ garment, draft, proposal, busy = false, onChange }: { garment:
   );
 }
 
+/** A fixed clock for the queue fixtures, so their captions ("3 hours ago", a date) never drift between runs. */
+const QUEUE_NOW = Date.parse("2026-11-19T12:00:00Z");
+/** Minutes before QUEUE_NOW, newest first: now, minutes, hours, and two older than a day (a date). */
+const QUEUE_AGES = [0, 12, 3 * 60, 9 * 60, 23 * 60, 2 * 24 * 60, 9 * 24 * 60];
+/** The queue sits in the screen's 720 column; the demo cell matches it. */
+const QUEUE_COLUMN = 720 - 2 * 20;
+
+/** Pending photos for the queue states, on the wardrobe's own images (a fixture never needs a real pending upload). */
+function queueFixture(urls: readonly string[], n: number): PendingQueueState {
+  const photos = QUEUE_AGES.slice(0, n).map((minutes, i) => ({
+    path: `fixture/pending/${i}.jpg`,
+    url: urls[i % Math.max(1, urls.length)] ?? "",
+    uploadedAt: new Date(QUEUE_NOW - minutes * 60_000).toISOString(),
+  }));
+  return { status: "ready", photos };
+}
+
 const JOBS: readonly { key: string; status: JobStatus; reason?: string; lowRes?: boolean; skipped?: number; retry?: boolean }[] = [
   { key: "waiting", status: "waiting" },
   { key: "uploading", status: "uploading" },
@@ -67,6 +86,13 @@ export function IntakeGallery({ items }: { items: readonly Item[] }) {
   if (!top) return <Meta>{t("ds.intake.loading")}</Meta>;
 
   const url = top.cutout_path ? cutoutUrl(top.cutout_path) : "";
+  const queueUrls = items.flatMap((i) => (i.cutout_path ? [cutoutUrl(i.cutout_path)] : [])).slice(0, QUEUE_AGES.length);
+  const queue: readonly { key: string; state: PendingQueueState }[] = [
+    { key: "queueLoading", state: { status: "loading" } },
+    { key: "queueOne", state: queueFixture(queueUrls, 1) },
+    { key: "queueSeven", state: queueFixture(queueUrls, 7) },
+    { key: "queueFailed", state: { status: "failed", reason: "network" } },
+  ];
   const proposal: TagProposal = {
     name: top.name,
     brand: top.brand,
@@ -154,6 +180,17 @@ export function IntakeGallery({ items }: { items: readonly Item[] }) {
             </View>
           ))}
         </View>
+      </View>
+
+      <View style={{ gap: 32 }}>
+        <Meta>{t("ds.intake.queue")}</Meta>
+        {/* The column count follows the window, as on the screen: 3 on a phone, 6 from 900. */}
+        {queue.map((q) => (
+          <View key={q.key} testID={`gallery-${q.key}`} style={{ maxWidth: QUEUE_COLUMN, width: "100%", gap: 8 }}>
+            <Meta>{t(`ds.intake.${q.key}`)}</Meta>
+            <PendingQueue state={q.state} onRetry={noop} now={QUEUE_NOW} spaced={false} />
+          </View>
+        ))}
       </View>
 
       <View style={{ gap: 32 }}>
