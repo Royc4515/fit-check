@@ -3,9 +3,8 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, View } from "react-native";
 import { ScreenColumn, ScreenHeader } from "../../components/ui";
-import { fetchMonthSpend, fetchWornOutfits, localDate, summarizeSpend, summarizeWears, type AiCallRow, type WornOutfit } from "../../data/insights";
+import { fetchMonthSpend, fetchWornOutfits, summarizeSpend, summarizeWears, wearsToday, type AiCallRow, type WornOutfit } from "../../data/insights";
 import { useWardrobe } from "../../data/WardrobeProvider";
-import { flyFrom } from "../item/transition";
 import { useIsDesktop } from "../shell/ShellTabBar";
 import { SpendSection, type SpendState } from "./SpendSection";
 import { WearsSection, type WearsState } from "./WearsSection";
@@ -44,12 +43,13 @@ function useOnFocus<T>(fetch: () => Promise<T>): [Load<T>, () => void] {
 }
 
 // Module-level, so useOnFocus gets stable functions. "Now" is read at load time: a tab left open past midnight
-// moves its window on the next focus.
+// moves its window on the next focus. "Today" is the saved location's date (what Today uses and what wears are written
+// with), not the device's: see wearsToday.
 const loadWorn = async (): Promise<{ today: string; rows: WornOutfit[] }> => {
-  const today = localDate(new Date());
+  const today = await wearsToday();
   return { today, rows: await fetchWornOutfits(today) };
 };
-const loadSpend = (): Promise<{ kind: "rows"; rows: AiCallRow[] } | { kind: "unavailable" }> => fetchMonthSpend(new Date());
+const loadSpend = (): Promise<{ kind: "rows"; rows: AiCallRow[]; partial: boolean } | { kind: "unavailable" }> => fetchMonthSpend(new Date());
 
 /**
  * Insights tab (DESIGN.md "שלב 2", "תובנות"): what was worn in the last 30 days and what AI cost this month. Two
@@ -77,12 +77,12 @@ export function InsightsView() {
     if (spend.kind === "loading") return { kind: "loading" };
     if (spend.kind === "error") return { kind: "error", message: t("insights.spend.failed"), retry: retrySpend };
     if (spend.value.kind === "unavailable") return { kind: "unavailable" };
-    return { kind: "ready", summary: summarizeSpend(spend.value.rows) };
+    return { kind: "ready", summary: summarizeSpend(spend.value.rows), partial: spend.value.partial };
   }, [spend, retrySpend, t]);
 
   const openItem = useCallback(
-    // The pressed garment is the shared element's origin: measured first, then the push.
-    (scope: string, id: string) => void flyFrom(scope, id).then(() => router.push({ pathname: "/item/[id]", params: { id } })),
+    // From a row of the outfit's sheet: no garment picture to fly from, so the item screen fades in.
+    (id: string) => router.push({ pathname: "/item/[id]", params: { id } }),
     [router]
   );
 

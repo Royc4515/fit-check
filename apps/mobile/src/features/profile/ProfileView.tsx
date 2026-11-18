@@ -1,31 +1,31 @@
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, Text, View } from "react-native";
 import { Button, ListRow, Meta, ScreenColumn, ScreenHeader, Segmented, Sheet, StatusLine } from "../../components/ui";
-import { fetchArchivedCount } from "../../data/insights";
 import { getSavedLocation, onLocationChange, type SavedLocation } from "../../data/location";
 import { isPreview } from "../../data/preview";
+import { useArchivedCount } from "../../data/WardrobeProvider";
 import { needsRestartForDirection, setLanguage, type Locale } from "../../i18n";
 import { signOut } from "../auth/signOut";
 import { useIsDesktop } from "../shell/ShellTabBar";
-
 
 /**
  * Profile tab: where weather comes from, the app language (switched here, stored on the device), the archive, the
  * data credits and sign-out (DESIGN.md "שלב 2", "פרופיל").
  * Reads the saved location itself (device setting, no network) and refreshes when the location screen saves a new one,
- * because this tab stays mounted underneath it. The archived count reloads on every focus (archiving happens
- * elsewhere).
- * Failure modes: an unreadable location falls back to the default place (getSavedLocation never throws); a failed
- * archive count shows the row without a number; a failed sign-out is said inside the sheet, which stays open.
+ * because this tab stays mounted underneath it. The archived count comes from the shared wardrobe (it follows an
+ * archive or restore made anywhere, with no query of its own).
+ * Failure modes: an unreadable location falls back to the default place (getSavedLocation never throws); while the
+ * wardrobe has not loaded the archive row shows no number; a failed sign-out is said inside the sheet, which stays
+ * open.
  */
 export function ProfileView() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const desktop = useIsDesktop();
   const [saved, setSaved] = useState<SavedLocation | null>(null);
-  const [archived, setArchived] = useState<number | null>(null);
+  const archived = useArchivedCount();
   const language: Locale = i18n.language === "en" ? "en" : "he";
   const [restart, setRestart] = useState(() => needsRestartForDirection(language));
   const [signOutOpen, setSignOutOpen] = useState(false);
@@ -42,19 +42,6 @@ export function ProfileView() {
       off();
     };
   }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-      fetchArchivedCount().then(
-        (n) => active && setArchived(n),
-        (error: unknown) => console.error("Archived count failed", error)
-      );
-      return () => {
-        active = false;
-      };
-    }, [])
-  );
 
   const place =
     saved === null ? "" : saved.kind === "city" ? saved.name : saved.kind === "current" ? t("location.currentShort") : t("location.default");
@@ -91,7 +78,6 @@ export function ProfileView() {
               />
               {restart ? <Meta style={{ textTransform: "none" }}>{t("profile.languageRestart")}</Meta> : null}
             </View>
-            {/* /archive belongs to the wardrobe work and lands with it; until that merge this link is a 404. */}
             <ListRow label={t("profile.archive")} value={archived === null ? undefined : String(archived)} onPress={() => router.push("/archive")} />
           </View>
           {/* flex-1 spacer: credits and sign-out sit at the bottom of the screen, not right after the rows. */}

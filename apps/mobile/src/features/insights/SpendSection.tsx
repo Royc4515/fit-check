@@ -10,13 +10,12 @@ export type SpendState =
   | { kind: "error"; message: string; retry: () => void }
   /** The design preview: its snapshot has no ai_calls, and the screen must not invent numbers. */
   | { kind: "unavailable" }
-  | { kind: "ready"; summary: SpendSummary };
+  /** `partial`: the page cap was hit while reading the month, so the total may be short. */
+  | { kind: "ready"; summary: SpendSummary; partial?: boolean };
 
 /** The bar: 8 high, radius 2 (DESIGN brief), ink fill on a hairline track. */
 const BAR_H = 8;
-/** Number columns of the task table, wide enough for "999" and "$99.99" in mono. */
-const CALLS_W = 64;
-const COST_W = 88;
+/** Number columns of the task table (spacing scale: w-16 and w-24), wide enough for "999" and "$99.99" in mono. */
 
 /**
  * "AI cost this month" (DESIGN.md "שלב 2", "תובנות"): the month's total, one bar of Google spend against the monthly
@@ -31,7 +30,7 @@ export function SpendSection({ state }: { state: SpendState }) {
       <View className="mt-6">
         {state.kind === "loading" ? (
           <View style={{ gap: 8 }}>
-            <Skeleton height={34} width={120} radius="sm" />
+            <Skeleton height={34} width={96} radius="sm" />
             <Skeleton height={18} width={96} radius="sm" />
             <View className="mt-4">
               <Skeleton height={BAR_H} radius="sm" />
@@ -44,7 +43,7 @@ export function SpendSection({ state }: { state: SpendState }) {
         ) : state.summary.byTask.length === 0 ? (
           <Text className="font-body text-body text-ink-soft">{t("insights.spend.none")}</Text>
         ) : (
-          <SpendContent summary={state.summary} />
+          <SpendContent summary={state.summary} partial={state.partial === true} />
         )}
       </View>
     </View>
@@ -73,7 +72,7 @@ function OfCap({ spent, cap }: { spent: string; cap: string }) {
   );
 }
 
-function SpendContent({ summary }: { summary: SpendSummary }) {
+function SpendContent({ summary, partial }: { summary: SpendSummary; partial: boolean }) {
   const { t } = useTranslation();
   const level = capLevel(summary.googleUsd, summary.capUsd);
   const share = summary.capUsd > 0 ? Math.min(summary.googleUsd / summary.capUsd, 1) : 1;
@@ -83,7 +82,7 @@ function SpendContent({ summary }: { summary: SpendSummary }) {
     <View>
       {/* items-start: a line of only figures takes LTR as its direction and would hug the left edge in Hebrew. */}
       <View className="items-start">
-        <Text className="font-mono text-display text-ink">{usd(summary.totalUsd)}</Text>
+        <Text className="font-mono text-num-lg text-ink">{usd(summary.totalUsd)}</Text>
         <Meta>{t("insights.spend.totalLabel")}</Meta>
       </View>
 
@@ -121,10 +120,10 @@ function SpendContent({ summary }: { summary: SpendSummary }) {
           <View className="flex-1">
             <Meta>{t("insights.spend.colTask")}</Meta>
           </View>
-          <View className="items-end" style={{ width: CALLS_W }}>
+          <View className="w-16 items-end">
             <Meta>{t("insights.spend.colCalls")}</Meta>
           </View>
-          <View className="items-end" style={{ width: COST_W }}>
+          <View className="w-24 items-end">
             <Meta>{t("insights.spend.colCost")}</Meta>
           </View>
         </View>
@@ -136,15 +135,20 @@ function SpendContent({ summary }: { summary: SpendSummary }) {
               </Text>
             </View>
             {/* items-end: the figures align to the end edge in either direction (a column's cross axis follows it). */}
-            <View className="items-end" style={{ width: CALLS_W }}>
+            <View className="w-16 items-end">
               <Text className="font-mono text-num text-ink">{`⁦${row.calls}⁩`}</Text>
             </View>
-            <View className="items-end" style={{ width: COST_W }}>
+            <View className="w-24 items-end">
               <Text className="font-mono text-num text-ink">{usd(row.usd)}</Text>
             </View>
           </View>
         ))}
       </View>
+      {partial ? (
+        <Meta className="mt-2" style={{ textTransform: "none" }}>
+          {t("insights.spend.partial")}
+        </Meta>
+      ) : null}
     </View>
   );
 }

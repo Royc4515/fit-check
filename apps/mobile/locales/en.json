@@ -255,7 +255,8 @@
       "daysWorn": "Days with an outfit",
       "distinctItems": "Different items",
       "mostWorn": "Most worn",
-      "mostWornCount": "Most worn · {{n}} times",
+      "mostWornCount_one": "Most worn · {{count}} time",
+      "mostWornCount_other": "Most worn · {{count}} times",
       "mostWornNone": "None yet",
       "stripSummary": "Outfit worn on {{n}} of the last {{total}} days",
       "dayWorn": "{{date}}: worn",
@@ -263,7 +264,7 @@
       "stripToday": "Today",
       "recent": "Recent outfits",
       "outfitLabel": "{{date}}: {{pieces}}",
-      "piece": "{{name}}, open the item",
+      "rowHint": "Opens the outfit's garments",
       "showMore": "Show more",
       "empty": {
         "title": "No wears logged yet",
@@ -284,6 +285,7 @@
       "colTask": "Task",
       "colCalls": "Calls",
       "colCost": "Cost",
+      "partial": "The total is partial: there are more calls than were loaded.",
       "none": "No AI calls this month yet.",
       "preview": "AI cost is not available in the preview.",
       "failed": "Could not load the AI cost.",
@@ -563,7 +565,12 @@
       "hint": "Claude will tag them from the chat.",
       "photo": "Waiting photo, uploaded {{when}}",
       "photoUndated": "Waiting photo",
-      "failed": "The waiting photos did not load."
+      "failed": "The waiting photos did not load.",
+      "ago": {
+        "minuteOne": "1 minute ago",
+        "hourOne": "1 hour ago",
+        "hourTwo": "2 hours ago"
+      }
     }
   },
   "oauth": {

@@ -258,7 +258,10 @@
       "daysWorn": "ימים עם אאוטפיט",
       "distinctItems": "פריטים שונים",
       "mostWorn": "הנלבש ביותר",
-      "mostWornCount": "הנלבש ביותר · {{n}} פעמים",
+      "mostWornCount_one": "הנלבש ביותר · פעם אחת",
+      "mostWornCount_two": "הנלבש ביותר · פעמיים",
+      "mostWornCount_many": "הנלבש ביותר · {{count}} פעמים",
+      "mostWornCount_other": "הנלבש ביותר · {{count}} פעמים",
       "mostWornNone": "עוד אין",
       "stripSummary": "נלבש אאוטפיט ב-{{n}} מתוך {{total}} הימים האחרונים",
       "dayWorn": "{{date}}: נלבש",
@@ -266,7 +269,7 @@
       "stripToday": "היום",
       "recent": "אאוטפיטים אחרונים",
       "outfitLabel": "{{date}}: {{pieces}}",
-      "piece": "{{name}}, פתח את הפריט",
+      "rowHint": "פותח את חלקי האאוטפיט",
       "showMore": "הצג עוד",
       "empty": {
         "title": "עוד לא נרשמו לבישות",
@@ -287,6 +290,7 @@
       "colTask": "משימה",
       "colCalls": "קריאות",
       "colCost": "עלות",
+      "partial": "הסכום חלקי: יש יותר קריאות ממה שנטען.",
       "none": "החודש עוד לא היו קריאות AI.",
       "preview": "עלות ה-AI לא זמינה בתצוגה המקדימה.",
       "failed": "לא הצלחנו לטעון את עלות ה-AI.",
@@ -570,7 +574,12 @@
       "hint": "Claude יתייג אותן מהצ'אט.",
       "photo": "תמונה ממתינה, הועלתה {{when}}",
       "photoUndated": "תמונה ממתינה",
-      "failed": "רשימת התמונות הממתינות לא נטענה."
+      "failed": "רשימת התמונות הממתינות לא נטענה.",
+      "ago": {
+        "minuteOne": "לפני דקה",
+        "hourOne": "לפני שעה",
+        "hourTwo": "לפני שעתיים"
+      }
     }
   },
   "oauth": {
