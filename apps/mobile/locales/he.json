@@ -204,7 +204,20 @@
     "title": "פרופיל",
     "location": "מיקום",
     "language": "שפה",
-    "languageValue": "עברית"
+    "languageValue": "עברית",
+    "languageHe": "עברית",
+    "languageEn": "English",
+    "languageRestart": "כיוון הפריסה יתחלף אחרי הפעלה מחדש של האפליקציה.",
+    "archive": "ארכיון",
+    "signOut": {
+      "button": "התנתקות",
+      "title": "התנתקות",
+      "body": "להתנתק מ-Fit Check במכשיר הזה?",
+      "bodyPreview": "התצוגה המקדימה תיסגר ותחזור למסך הכניסה.",
+      "confirm": "התנתק",
+      "cancel": "ביטול",
+      "failed": "ההתנתקות נכשלה. נסה שוב."
+    }
   },
   "insights": {
     "title": "תובנות",
@@ -212,6 +225,52 @@
       "title": "עוד אין תובנות",
       "body": "כאן תופיע היסטוריית הלבישה וההוצאות על הארון.",
       "action": "לארון"
+    },
+    "wears": {
+      "title": "לבישות, 30 הימים האחרונים",
+      "daysWorn": "ימים עם אאוטפיט",
+      "distinctItems": "פריטים שונים",
+      "mostWorn": "הנלבש ביותר",
+      "mostWornCount": "הנלבש ביותר · {{n}} פעמים",
+      "mostWornNone": "עוד אין",
+      "stripSummary": "נלבש אאוטפיט ב-{{n}} מתוך {{total}} הימים האחרונים",
+      "dayWorn": "{{date}}: נלבש",
+      "dayNotWorn": "{{date}}: לא נלבש",
+      "stripToday": "היום",
+      "recent": "אאוטפיטים אחרונים",
+      "outfitLabel": "{{date}}: {{pieces}}",
+      "piece": "{{name}}, פתח את הפריט",
+      "showMore": "הצג עוד",
+      "empty": {
+        "title": "עוד לא נרשמו לבישות",
+        "body": "כשתסמן \"לובש\" במסך היום, הלבישות יופיעו כאן.",
+        "action": "להיום"
+      },
+      "failed": "לא הצלחנו לטעון את הלבישות.",
+      "wardrobeFailed": "לא הצלחנו לטעון את הארון."
+    },
+    "spend": {
+      "title": "עלות AI החודש",
+      "totalLabel": "סך הכול החודש",
+      "googleLabel": "הוצאה על Google מול התקרה החודשית",
+      "ofCap": "{{spent}} מתוך {{cap}}",
+      "barLabel": "הוצאה על Google: {{spent}} מתוך {{cap}}",
+      "near": "קרוב לתקרה: נשארו {{left}} החודש.",
+      "over": "התקרה נוצלה: ציור מחדש מושבת עד החודש הבא.",
+      "colTask": "משימה",
+      "colCalls": "קריאות",
+      "colCost": "עלות",
+      "none": "החודש עוד לא היו קריאות AI.",
+      "preview": "עלות ה-AI לא זמינה בתצוגה המקדימה.",
+      "failed": "לא הצלחנו לטעון את עלות ה-AI.",
+      "task": {
+        "separate": "זיהוי בגדים",
+        "cutout": "הסרת רקע",
+        "embed": "הטמעה",
+        "tag": "תיוג",
+        "style": "סטייליסט",
+        "receipt": "קבלות"
+      }
     }
   },
   "item": {
@@ -588,7 +647,8 @@
       "masonry": "הארון כ-masonry",
       "intake": "הוספה",
       "flatLay": "Flat-lay",
-      "stepper": "מונה צעדים"
+      "stepper": "מונה צעדים",
+      "insights": "תובנות"
     },
     "state": {
       "default": "רגיל",
@@ -737,6 +797,12 @@
       "label": "טמפרטורה",
       "less": "יותר קר",
       "more": "יותר חם"
+    },
+    "insights": {
+      "populated": "החודש, עם נתונים",
+      "empty": "בלי קריאות",
+      "near": "מעל 80% מהתקרה",
+      "preview": "תצוגה מקדימה"
     }
   }
 }

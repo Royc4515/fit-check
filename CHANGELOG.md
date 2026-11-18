@@ -486,3 +486,10 @@
 - Verified in Chromium on the web build with the read-only design preview, at 390 and 1280, Hebrew and English. Not verified: Android, real writes, the real intake pipeline, the paid redraw, real Google sign-in. `TASKS.md` lists what is open and who can close it.
 - Look at: `design/screens/before/` vs `design/screens/after/` (same names), `docs/redesign-checklist-part1.md` and `part2.md` for the regression tables and defects.
 - lint went from 20 problems to 0; typecheck and tests pass.
+
+## 2026-11-19 (stage 2: insights and profile)
+
+- Insights: "Wears, last 30 days" (days with an outfit, distinct items, most-worn item with ties to the most recent; a 30-day ink/hairline strip, newest at the end side, one focusable group with a summary and a named square per day; recent outfits as small flat-lays, 10 then "show more", garments open the item with the shared-element flight) and "AI cost this month" (total, Google spend bar against the $8 cap with a warn line from 80%, cost by task). Reads in `src/data/insights.ts`; the preview has no `ai_calls`, so it says so instead of showing numbers. Gallery has an Insights block with fixture states.
+- Profile: language `Segmented` (stored on the device, wins over the device locale; web flips text, `dir` and tab order at once; native shows a restart note for direction), "Archive" row with count linking to `/archive` (route lands with the wardrobe work), "Sign out" with a confirmation sheet (preview: forgets the preview code and reloads to sign-in).
+- Outside the owned folders: root `_layout.tsx` computes `dir` per render from the active language; `useRtl` re-renders on a language change and on native reports the drawn direction; `kv.ts` gained plain settings; `preview.ts` exports `forgetCode`.
+- Look at: `design/screens/2026-11-19-insights-*` and `-profile-*`; the "fixture" insights shots use real items with synthetic worn wears injected in the test browser only (the real snapshot has no worn wear).
