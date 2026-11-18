@@ -10,6 +10,7 @@ import { editPayload, type ItemChange, type ItemEdits } from "./edit";
 import { GoesWith } from "./GoesWith";
 import { InlineText } from "./InlineText";
 import { fieldLabelKey, TagSheet, type TagField } from "./TagSheet";
+import { spoken } from "./a11y";
 
 /** Numbers stay LTR inside Hebrew text (DESIGN.md section 2). */
 const ltr = (s: string) => `⁦${s}⁩`;
@@ -87,7 +88,7 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
         swatch={opts.swatch}
         dashed={opts.dashed}
         onPress={() => openField(f)}
-        accessibilityLabel={t("item.editField", { field: t(fieldLabelKey[f]), value: label })}
+        accessibilityLabel={spoken(t("item.editField", { field: t(fieldLabelKey[f]), value: label }))}
       />
     ) : (
       <Text key={opts.key ?? f} className="font-body text-body text-ink">
@@ -179,14 +180,14 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
             value={item.availability}
             onChange={(a) => changeAvailability?.(a)}
             disabled={!changeAvailability}
-            accessibilityLabel={t("item.where")}
+            accessibilityLabel={spoken(t("item.where"))}
           />
         </View>
         {item.availability !== "home" ? <Text className="mt-3 font-body text-body-sm text-ink-soft">{t("item.notSuggested")}</Text> : null}
         {failed("availability", t("item.availabilityFailed"))}
       </View>
 
-      <View className="mt-12">
+      <View className="mt-8">
         <SpecTable rows={rows} />
       </View>
 

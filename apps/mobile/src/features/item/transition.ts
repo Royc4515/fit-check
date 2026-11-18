@@ -2,6 +2,10 @@ import type { ComponentRef } from "react";
 import type { View } from "react-native";
 import type { TileTone } from "../../theme/tileTone";
 
+// Hiding goes by the measured node, so every library picture that can be an origin (Tile via `imageRef`, FlatLay via
+// `onPieceNode`) hides the same way, with no change in the screens that register them.
+export { setOriginHidden } from "../../components/ui/originVisibility";
+
 /** Instance type of a View ref; RN 0.88 types `View` as a component, not a class. */
 export type ViewNode = ComponentRef<typeof View>;
 
@@ -43,7 +47,7 @@ export const DEFAULT_ORIGIN_PAD = 12;
 // flew). Freshness is what keeps a later deep link from replaying an old flight.
 const ORIGIN_TTL_MS = 3000;
 /** `scope` = which registered origin started the flight; null for the wardrobe's direct `setOrigin`. */
-let pending: { id: string; origin: FlightOrigin; scope: string | null; at: number } | null = null;
+let pending: { id: string; origin: FlightOrigin; node: ViewNode | null; scope: string | null; at: number } | null = null;
 
 /** Cells register their image box so the item screen can fly back to where the item now sits. */
 const cells = new Map<string, ViewNode>();
@@ -64,7 +68,7 @@ export function registerCell(id: string, node: ViewNode | null): void {
 
 /** Records the wardrobe cell's rect as the origin of the next flight to this item. */
 export function setOrigin(id: string, rect: Rect): void {
-  pending = { id, origin: { rect }, scope: null, at: Date.now() };
+  pending = { id, origin: { rect }, node: cells.get(id) ?? null, scope: null, at: Date.now() };
 }
 
 /** The rect the tapped cell recorded for this item, if it is recent enough to belong to the current navigation. */
@@ -110,13 +114,26 @@ export function registerOrigin(scope: string, id: string, node: ViewNode | null,
 export async function flyFrom(scope: string, id: string): Promise<void> {
   const entry = origins.get(originKey(scope, id));
   const rect = await measureNode(entry?.node ?? null);
-  pending = rect && entry ? { id, origin: originFrom(rect, entry.style), scope, at: Date.now() } : null;
+  pending = rect && entry ? { id, origin: originFrom(rect, entry.style), node: entry.node, scope, at: Date.now() } : null;
 }
 
 /** The full origin (rect, tone, picture box) of a fresh flight to `id`, or null for a deep link or a stale one. */
 export function getFlightOrigin(id: string): FlightOrigin | null {
-  return pending && pending.id === id && Date.now() - pending.at < ORIGIN_TTL_MS ? pending.origin : null;
+  return fresh(id)?.origin ?? null;
 }
+
+/**
+ * The node a fresh flight to `id` started from, so the item screen can hide its picture while the copy is in flight
+ * (`setOriginHidden`). Null for a deep link or a stale origin.
+ */
+export function getFlightNode(id: string): ViewNode | null {
+  return fresh(id)?.node ?? null;
+}
+
+/** A landing for the flight back: where to fly to, and which node's picture to hide meanwhile and show on landing. */
+export type FlightReturn = { origin: FlightOrigin; node: ViewNode };
+
+const fresh = (id: string) => (pending && pending.id === id && Date.now() - pending.at < ORIGIN_TTL_MS ? pending : null);
 
 /**
  * Where the item screen should fly back to: the very origin it came from, measured again now (it may have scrolled
@@ -124,22 +141,23 @@ export function getFlightOrigin(id: string): FlightOrigin | null {
  * be a new one). Null when that origin is gone or off-layout: the caller falls back to an opacity-only exit.
  * Reads the origin recorded when the screen opened, so call `captureReturn` on mount and keep its result.
  */
-export function captureReturn(id: string): () => Promise<FlightOrigin | null> {
-  const fresh = pending && pending.id === id && Date.now() - pending.at < ORIGIN_TTL_MS ? pending : null;
-  if (fresh?.scope) {
-    const scope = fresh.scope;
+export function captureReturn(id: string): () => Promise<FlightReturn | null> {
+  const start = fresh(id);
+  if (start?.scope) {
+    const scope = start.scope;
     return async () => {
       const entry = origins.get(originKey(scope, id));
       const rect = await measureNode(entry?.node ?? null);
-      return rect && entry ? originFrom(rect, entry.style) : null;
+      return rect && entry ? { origin: originFrom(rect, entry.style), node: entry.node } : null;
     };
   }
-  const style: OriginStyle = fresh ? { tone: fresh.origin.tone, pad: fresh.origin.pad } : {};
+  const style: OriginStyle = start ? { tone: start.origin.tone, pad: start.origin.pad } : {};
   // A deep link has no origin to return to, but a wardrobe cell for the item may be on screen beneath: that was the
   // behaviour before origins had scopes, and it is still the right landing.
   return async () => {
-    const rect = await measureCell(id);
-    return rect ? { rect, ...style } : null;
+    const node = cells.get(id) ?? null;
+    const rect = await measureNode(node);
+    return rect && node ? { origin: { rect, ...style }, node } : null;
   };
 }
 

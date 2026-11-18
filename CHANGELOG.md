@@ -430,3 +430,11 @@
 - Library (additive): `Chip` `accessibilityLabel`/`accessibilityHint`/`onLongPress`/`stretch`; `Button` icon `surface`; `FlatLay` `numbered`, `onPieceNode`, exported `flatLayTone`.
 - Look at: `design/screens/2026-11-18-item-*` (top/tags/goes-with 390 he+en, bottom, shoes 360, no photo, sheets, rollback, name edit, overflow, remove confirm, composer states, 1280 he+en, flight strips from wardrobe/Today/goes-with and back).
 - Not verified: native (no emulator); real writes and the paid redraw (preview blocks them: the failure lines were seen, the success paths were not); price on the button (preview returns no quote).
+
+## 2026-11-18 (redesign 1.6: Item fix round)
+
+- Shared element: the origin's picture is hidden for the whole flight in both directions and shown again on landing, on an exit without a flight, and when the item screen unmounts (browser back). Hiding goes by the measured node: `components/ui/originVisibility.ts` (`useOriginVisibility`, `setOriginHidden`), wired into `Tile` (`imageRef`) and `FlatLay` (`onPieceNode`; the node now lives inside each garment). `transition.ts` adds `getFlightNode` and re-exports `setOriginHidden`; `captureReturn` now returns `{ origin, node }`. No wardrobe screen change. The page fades out at once on the way back again (the delay only masked the double).
+- Back from a deep-linked item (no history) now goes to Today instead of leaving a blank page.
+- Availability to spec rows: 32 instead of 48.
+- Screen-reader labels and hints on the item screen and in the composer have the bidi isolates stripped (`features/item/a11y.ts` `spoken`); visible text keeps them.
+- Look at: `design/screens/2026-11-18-item-flight-*` (re-shot), `-tags-390-*`, `-1280-*`, `-browserback-today-390-he`.
