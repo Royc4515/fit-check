@@ -126,8 +126,17 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
   const status = imageStatus ? (
     imageStatus.kind === "replacing" ? (
       <StatusLine message={t("item.edit.replacing")} />
+    ) : imageStatus.kind === "recutting" ? (
+      <StatusLine message={t("item.recut.busy")} />
     ) : imageStatus.kind === "kept-uncut" ? (
       <StatusLine message={t("item.image.keptUncut")} action={{ label: t("ui.close"), onPress: () => setImageStatus(null) }} />
+    ) : imageStatus.retry ? (
+      <StatusLine
+        variant="error"
+        message={imageStatus.message}
+        action={{ label: t("item.recut.retry"), onPress: imageStatus.retry }}
+        secondaryAction={{ label: t("ui.close"), onPress: () => setImageStatus(null) }}
+      />
     ) : (
       <StatusLine variant="error" message={imageStatus.message} action={{ label: t("ui.close"), onPress: () => setImageStatus(null) }} />
     )

@@ -1,11 +1,12 @@
 import type { IntakeQuoteResult, Item, ItemTags, RedrawSpec } from "@fit-check/schema";
 import * as ImagePicker from "expo-image-picker";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { Button, ListRow, Sheet, StatusLine } from "../../components/ui";
-import { enhanceCutout, preparePhoto, removeBackground, sourceCropPath, wholePhotoGarment } from "../../data/intake";
+import { enhanceCutout, preparePhoto, reasonOf, removeBackground, sourceCropPath, wholePhotoGarment } from "../../data/intake";
 import { quoteRedraw, saveRedrawSpec } from "../../data/redraw";
+import { failureMessage, isRetryable } from "../intake/failure";
 import { normalizeTags } from "../intake/tagRules";
 import { RedrawComposer } from "../redraw/RedrawComposer";
 import { colorHexFor, editPayload, type ItemEdits } from "./edit";
@@ -13,8 +14,9 @@ import { colorHexFor, editPayload, type ItemEdits } from "./edit";
 /** What the picture is doing, for the status line under the hero. */
 export type ImageStatus =
   | { kind: "replacing" }
+  | { kind: "recutting" }
   | { kind: "kept-uncut" }
-  | { kind: "failed"; message: string };
+  | { kind: "failed"; message: string; retry?: () => void };
 
 type Props = {
   item: Item;
@@ -49,8 +51,9 @@ class ReasonError extends Error {
 const priceOf = (q: IntakeQuoteResult | null) => (q?.ok ? `$${q.price_usd.toFixed(3)}` : null);
 
 /**
- * The item's `more_horiz` sheet (DESIGN.md section 3 "פריט" item 6): replace the photo, improve with AI (only when the
- * picture has a source crop to redraw from; the price is on the row), and remove from the wardrobe behind a confirm
+ * The item's `more_horiz` sheet (DESIGN.md section 3 "פריט" item 6 and "שלב 2"): replace the photo, improve with AI
+ * (only when the picture has a source crop to redraw from; the price is on the row), remove the background again
+ * from that same crop (free), and remove from the wardrobe behind a confirm
  * step inside the sheet. No accent anywhere: removal is ink text and an ink confirm button, not a red one.
  * The AI composer opens in its own sheet; its submit button carries the price, and that is the only confirmation.
  */
@@ -69,6 +72,9 @@ export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStat
   const [drawing, setDrawing] = useState(false);
   const [drawError, setDrawError] = useState<string | null>(null);
   const canRedraw = sourceCropPath(item.cutout_path) !== null;
+  const [recutting, setRecutting] = useState(false);
+  // A ref, not the state: the retry on the failure line is a closure from an earlier render.
+  const recutBusy = useRef(false);
 
   // The price is free to ask for; it is on the row before anything is spent. Asked once, on the first opening.
   const wantsQuote = open && canRedraw;
@@ -105,6 +111,34 @@ export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStat
     } catch (error) {
       console.error("Item replacing failed", error);
       onImageStatus({ kind: "failed", message: t("item.edit.failed.replacing") });
+    }
+  };
+
+  /**
+   * Removes the background again from the item's own source crop, through the same worker call "replace photo" uses
+   * (intake-cutout, free). Success points the item at the new cutout, so the hero shows it. A failure says why under
+   * the hero, with a retry when trying again can help (never for the design preview, which blocks the call).
+   */
+  const recut = async () => {
+    close();
+    const source = sourceCropPath(item.cutout_path);
+    if (!source || recutBusy.current) return;
+    recutBusy.current = true;
+    setRecutting(true);
+    onImageStatus({ kind: "recutting" });
+    try {
+      const cut = await removeBackground(source);
+      if (!cut.ok) throw new ReasonError(cut.reason);
+      await edits.setImage(item.id, cut.path, cut.thumb_path);
+      onImageStatus(null);
+    } catch (error) {
+      console.error("Item re-cut failed", error);
+      const reason = error instanceof ReasonError ? error.reason : reasonOf(error);
+      const message = reason === "not_configured" ? t("item.recut.notConfigured") : failureMessage(t, reason);
+      onImageStatus({ kind: "failed", message, retry: isRetryable(reason) ? () => void recut() : undefined });
+    } finally {
+      recutBusy.current = false;
+      setRecutting(false);
     }
   };
 
@@ -191,6 +225,8 @@ export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStat
           <View className="border-t border-hairline">
             <ListRow label={t("item.edit.replacePhoto")} onPress={() => void replacePhoto()} />
             {canRedraw ? <ListRow label={t("intake.enhance")} value={price ?? undefined} onPress={openComposer} /> : null}
+            {/* Free, so no price on the row; only when there is a source crop to cut from. */}
+            {canRedraw ? <ListRow label={t("item.recut.row")} onPress={() => void recut()} disabled={recutting} /> : null}
             <ListRow label={t("item.edit.remove")} onPress={() => setConfirming(true)} />
           </View>
         )}
