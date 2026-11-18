@@ -24,6 +24,11 @@ type Props = {
    * actions move to their own row under the message, aligned with the text: two of them never fit beside it.
    */
   secondaryAction?: Action;
+  /**
+   * Further answers after the two (the wardrobe's reserve-duty line: "back, to the laundry", "back, clean", "add
+   * more"). Only shown together with `action` and `secondaryAction`, on the same second row.
+   */
+  moreActions?: readonly Action[];
   /** A write is in flight: the actions are inert, the message stays readable. */
   disabled?: boolean;
 };
@@ -35,7 +40,7 @@ const GAP = 8;
  * One-line status (saved, failed, offline): icon + text + optional text action. Each variant has its own glyph so
  * the meaning never rests on colour (DESIGN.md section 1). Errors are announced as alerts; the rest politely.
  */
-export function StatusLine({ variant = "info", message, action, secondaryAction, disabled = false }: Props) {
+export function StatusLine({ variant = "info", message, action, secondaryAction, moreActions, disabled = false }: Props) {
   const look = LOOK[variant];
   const a11y = {
     accessibilityRole: variant === "error" ? ("alert" as const) : undefined,
@@ -55,6 +60,7 @@ export function StatusLine({ variant = "info", message, action, secondaryAction,
       <View className="flex-row flex-wrap" style={{ paddingStart: ICON + GAP, columnGap: 24 }}>
         <Button variant="text" label={action.label} onPress={action.onPress} disabled={disabled} />
         <Button variant="text" label={secondaryAction.label} onPress={secondaryAction.onPress} disabled={disabled} />
+        {moreActions?.map((a) => <Button key={a.label} variant="text" label={a.label} onPress={a.onPress} disabled={disabled} />)}
       </View>
     </View>
   );

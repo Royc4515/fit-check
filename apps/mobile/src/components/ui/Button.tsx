@@ -31,6 +31,11 @@ type IconOnly = Common & {
    * action bar): a bare 44 glyph next to a 48 block reads as misaligned.
    */
   outlined?: boolean;
+  /**
+   * A small ink dot at the glyph's top end corner: "something here is set" (the wardrobe's `tune` with an active
+   * filter). A mark, not a colour, so it also reads in greyscale; the screen-reader label must say it too.
+   */
+  dot?: boolean;
 };
 
 export type ButtonProps = Labelled | IconOnly;
@@ -43,6 +48,8 @@ const SURFACE = {
 
 // Disabled reads as inert, not as a lighter colour that could pass for another variant.
 const DISABLED_OPACITY = 0.4;
+/** The `dot` mark: 8 is the smallest step of the spacing scale that still reads at arm's length. */
+const DOT = 8;
 
 /**
  * The app's one button (DESIGN.md section 4): 48 high, radius 6, body-sm semibold.
@@ -79,6 +86,13 @@ export function Button(props: ButtonProps) {
         <Animated.View style={pressStyle}>
           {/* mirrorInRtl is safe for every icon: Icon only flips the directional ones. */}
           <Icon name={props.icon} size={24} color={selected ? "ink" : "ink-soft"} mirrorInRtl />
+          {props.dot ? (
+            <View
+              pointerEvents="none"
+              className="absolute bg-ink"
+              style={{ top: -DOT / 2, end: -DOT / 2, width: DOT, height: DOT, borderRadius: DOT / 2 }}
+            />
+          ) : null}
         </Animated.View>
       </Pressable>
     );
