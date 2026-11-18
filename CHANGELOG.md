@@ -375,3 +375,11 @@
 - Preview banner now sits directly above the tab bar on mobile (root layout only shows it on screens outside the tabs). `TabBar`/`TopNav` got `aria-selected`, which react-native-web did not emit from `accessibilityState`.
 - Look at: `design/screens/2026-11-18-shell-*`; resize the browser across 900px; open an item and go back.
 - Not verified: native iOS/Android (no emulator): safe-area padding, haptics, RTL tab order.
+
+## 2026-11-18 (redesign 1.4: Today)
+
+- Today rebuilt per DESIGN.md section 3 "היום": masthead (date line, weather line in mono that opens `/location`, place name under it), full-bleed 4:5 flat-lay of cutouts, numbered legend, pull quote, floating action bar ("wearing it" = 1 tap, `tune` opens the adjustments sheet). Tap a garment or its legend row = piece sheet (3 alternatives, swap = 2 taps; "open item"). Swipe on the flat-lay = skip (toward the start edge: left in LTR, right in RTL). Desktop >= 900: two columns, nothing floats. The header link to the wardrobe is gone (the tab bar replaces it).
+- New library pieces: `FlatLay` (with the one `FLAT_LAY` placement config; numbers attach to the drawn garment's edge, computed from the photo's aspect), `Stepper`, `LegendRow`, `ActionBar`. Extended: `Button` icon `outlined` (48, beside a button), `StatusLine` `secondaryAction` + `disabled`. Fixed: `Sheet` title hugged the wrong edge for Latin titles in RTL. Gallery shows 8 real flat-lay combinations and the stepper.
+- Removed (no other importers): `ActionSheet`, `OutfitComposition`, `ItemPlaceholder`, `editorial/DataStrip`.
+- Look at: `design/screens/2026-11-18-today-*` (default at 360/390/430/1280 he+en, piece sheet, adjust sheet, mid-swipe, failed wear, flat-lay combinations).
+- Not verified: native (no emulator), real writes (preview is read-only: wear/skip show the failure line), the all-skipped/missing/empty states (not reachable with this wardrobe in preview). Known gap: RNGH 3.3 on web overrides the detector's `touchAction="pan-y"` with `none`, so on a touch browser a vertical scroll that starts on the flat-lay does not scroll.

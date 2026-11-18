@@ -25,7 +25,7 @@ type Props = {
 const MAX_HEIGHT_SHARE = 0.85;
 /** DESIGN.md section 5: release past 30% of the sheet's height closes it. */
 const DISMISS_SHARE = 0.3;
-/** Seconds of the finger's velocity added on release, so a fling closes even from a short drag (as ActionSheet). */
+/** Seconds of the finger's velocity added on release, so a fling closes even from a short drag. */
 const PROJECTION_S = 0.15;
 const HANDLE_W = 32;
 const HANDLE_H = 4;
@@ -143,9 +143,13 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
         </View>
       )}
       <View className="flex-row items-center ps-5 pe-2" style={{ minHeight: layout.hit }}>
-        <Text accessibilityRole="header" className="flex-1 font-body-semibold text-title text-ink" numberOfLines={1}>
-          {title ?? ""}
-        </Text>
+        {/* don't touch / start-aligned box, not text alignment: react-native-web gives text dir="auto", so a Latin
+            title ("Benetton Polo") hugged the close button's edge in an RTL sheet. */}
+        <View style={{ flex: 1, alignItems: "flex-start" }}>
+          <Text accessibilityRole="header" className="font-body-semibold text-title text-ink" numberOfLines={1} style={{ maxWidth: "100%" }}>
+            {title ?? ""}
+          </Text>
+        </View>
         {/* Every gesture also exists as a button (DESIGN.md section 6): drag and scrim tap have this. */}
         <Button variant="icon" icon="close" accessibilityLabel={t("ui.close")} onPress={onClose} />
       </View>

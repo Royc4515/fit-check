@@ -1,4 +1,5 @@
-import { COLOR_NAMES, type Item } from "@fit-check/schema";
+import { slotOf } from "@fit-check/engine";
+import { COLOR_NAMES, type Item, type Slot } from "@fit-check/schema";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View, useWindowDimensions } from "react-native";
@@ -10,7 +11,9 @@ import {
   Display,
   Meta,
   EmptyState,
+  FlatLay,
   Icon,
+  LegendRow,
   ListRow,
   MasonryGrid,
   ScreenHeader,
@@ -18,11 +21,13 @@ import {
   Sheet,
   Skeleton,
   StatusLine,
+  Stepper,
   Swatch,
   TabBar,
   Tile,
   TILE_CAPTION_HEIGHT,
   TopNav,
+  type FlatLayPiece,
   type IconName,
   type MasonrySection,
   type NavItem,
@@ -53,6 +58,8 @@ const ICONS: readonly IconName[] = [
   "error",
 ];
 const TONES: readonly TileTone[] = ["tile", "tile-deep", "tile-cool"];
+/** Enough combinations to see every arrangement with several garment shapes. */
+const FLAT_LAY_DEMOS = 8;
 const AVAILABILITY = ["home", "laundry", "away", "lent"] as const;
 type NavKey = "wardrobe" | "today" | "insights" | "profile";
 type Category = (typeof CATEGORY_ORDER)[number];
@@ -141,6 +148,27 @@ export function Gallery() {
   }, [items]);
   const sample = items[0];
   const withPhoto = items.find((i) => i.cutout_path) ?? sample;
+
+  // Flat-lays from real garments: deterministic combinations stepping through each slot at a different stride, so
+  // the demo covers many shapes (shorts, long trousers, boots, sneakers) and alternates 3 and 4 pieces.
+  const [steps, setSteps] = useState(1);
+  const flatLayW = Math.min(contentW, 390);
+  const flatLays = useMemo<FlatLayPiece[][]>(() => {
+    const bySlot = (s: Slot) => items.filter((i) => slotOf(i) === s);
+    const [tops, bottoms, shoes, layers] = (["top", "bottom", "shoes", "layer"] as const).map(bySlot);
+    if (!tops?.length || !bottoms?.length || !shoes?.length) return [];
+    return Array.from({ length: FLAT_LAY_DEMOS }, (_, n) => {
+      const pick: [Slot, Item | undefined][] = [
+        ["top", tops[n % tops.length]],
+        ["bottom", bottoms[(n * 3) % bottoms.length]],
+        ["shoes", shoes[(n * 5) % shoes.length]],
+        ["layer", n % 2 === 1 && layers?.length ? layers[(n * 2) % layers.length] : undefined],
+      ];
+      return pick.flatMap(([slot, item], k) =>
+        item ? [{ slot, item, index: String(k + 1).padStart(2, "0"), accessibilityLabel: item.name }] : []
+      );
+    });
+  }, [items]);
 
   const captionOf = useCallback(
     (i: Item) => ({
@@ -378,6 +406,40 @@ export function Gallery() {
         </Wrap>
       </Block>
 
+      <Block title={t("ds.section.flatLay")}>
+        <Text className="mb-4 font-body text-body-sm text-ink-soft">{t("ds.flatLay.intro")}</Text>
+        <Wrap gap={24}>
+          {flatLays.map((pieces, n) => (
+            <View key={pieces.map((p) => p.item.id).join("+")} style={{ width: flatLayW }}>
+              <FlatLay pieces={pieces} onPressPiece={noop} accessibilityLabel={t("ds.flatLay.label", { n: ltr(n + 1) })} />
+              <View className="mt-2">
+                {pieces.map((p) => (
+                  <LegendRow key={p.slot} index={p.index} title={t(`item.subcategory.${p.item.tags.subcategory}`)} detail={p.item.name} />
+                ))}
+              </View>
+            </View>
+          ))}
+        </Wrap>
+      </Block>
+
+      <Block title={t("ds.section.stepper")}>
+        <View style={{ maxWidth: layout.maxContentWidth }}>
+          <Stepper
+            accessibilityLabel={t("ds.stepper.label")}
+            value={steps}
+            decrease={{ label: t("ds.stepper.less"), onPress: () => setSteps((s) => s - 1) }}
+            increase={{ label: t("ds.stepper.more"), onPress: () => setSteps((s) => s + 1) }}
+          />
+          <Stepper
+            accessibilityLabel={t("ds.stepper.label")}
+            value={0}
+            decrease={{ label: t("ds.stepper.less"), onPress: noop }}
+            increase={{ label: t("ds.stepper.more"), onPress: noop }}
+            disabled
+          />
+        </View>
+      </Block>
+
       <Block title={t("ds.section.rows")}>
         <View style={{ maxWidth: layout.maxContentWidth }}>
           <ListRow label={t("ds.row.location")} value={t("ds.row.locationValue")} onPress={noop} />
@@ -410,6 +472,12 @@ export function Gallery() {
         <View style={{ maxWidth: layout.maxContentWidth }}>
           <StatusLine variant="info" message={t("ds.status.info")} />
           <StatusLine variant="ok" message={t("ds.status.ok")} action={{ label: t("ds.status.undo"), onPress: noop }} />
+          <StatusLine
+            variant="info"
+            message={t("today.status.skipped")}
+            action={{ label: t("today.undo"), onPress: noop }}
+            secondaryAction={{ label: t("today.dislike"), onPress: noop }}
+          />
           <StatusLine variant="error" message={t("ds.status.error")} action={{ label: t("common.retry"), onPress: () => setStatus("ok") }} />
           <View className="mt-2">
             <Segmented
