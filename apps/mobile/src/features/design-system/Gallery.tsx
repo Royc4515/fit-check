@@ -36,6 +36,7 @@ import { useWardrobe } from "../../data/WardrobeProvider";
 import { tileAspect, tileTone, type TileTone } from "../../theme/tileTone";
 import { layout, masonryColumnsFor } from "../../theme/tokens";
 import { IntakeGallery } from "../intake/IntakeGallery";
+import { ItemGallery } from "../item/ItemGallery";
 import { COLOR_HEX } from "../intake/palette";
 import { CATEGORY_ORDER, groupByCategory } from "../wardrobe/filters";
 
@@ -532,6 +533,10 @@ export function Gallery() {
 
       <Block title={t("ds.section.intake")}>
         <IntakeGallery items={items} />
+      </Block>
+
+      <Block title={t("ds.section.item")}>
+        <ItemGallery items={items} />
       </Block>
 
       <Block title={t("ds.section.masonry")}>

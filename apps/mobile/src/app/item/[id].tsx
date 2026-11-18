@@ -2,15 +2,15 @@ import type { Availability, Item } from "@fit-check/schema";
 import { useLocalSearchParams } from "expo-router";
 import { WardrobeGate } from "../../components/WardrobeGate";
 import { setAvailability } from "../../data/feedback";
-import { archiveItem, setItemImage, updateItemDetails } from "../../data/items";
+import { archiveItem, setItemImage, updateItemDetails, updateItemNotes } from "../../data/items";
 import { useWardrobe } from "../../data/WardrobeProvider";
 import { sessionUserId, useSession } from "../../features/auth/SessionProvider";
 import type { ItemEdits } from "../../features/item/edit";
 import { ItemView } from "../../features/item/ItemView";
 
 /**
- * Item route: wires the wardrobe store and the data layer into the item screen (features/item/ItemView). Tag and
- * name edits are optimistic: the store changes at once, the write follows, and a failed write puts the item back
+ * Item route: wires the wardrobe store and the data layer into the item screen (features/item/ItemView). Tag, name
+ * and notes edits are optimistic: the store changes at once, the write follows, and a failed write puts the item back
  * (the screen says so). Image changes and removal write first: they are deliberate actions with their own progress.
  */
 export default function ItemScreen() {
@@ -27,15 +27,20 @@ export default function ItemScreen() {
         save: async (itemId, e) => {
           const before = wardrobe.items.find((i) => i.id === itemId);
           if (!before) return;
-          const optimistic = { name: e.name, brand: e.brand, tags: e.tags };
+          const optimistic = { name: e.name, brand: e.brand, tags: e.tags, notes: e.notes };
+          // One change at a time arrives here (editPayload): write the part that changed. Untouched tags keep the
+          // stored object, so a reference check is enough to tell them apart.
+          const identityChanged = e.name !== before.name || e.brand !== before.brand || e.tags !== before.tags;
+          const notesChanged = e.notes !== before.notes;
           update(itemId, (i) => ({ ...i, ...optimistic }));
           try {
-            await updateItemDetails(itemId, e);
+            if (identityChanged) await updateItemDetails(itemId, e);
+            if (notesChanged) await updateItemNotes(itemId, e.notes);
           } catch (error) {
             // Roll back only if nothing newer replaced this edit meanwhile; a later edit owns the item now.
             update(itemId, (i) =>
-              i.name === optimistic.name && i.brand === optimistic.brand && i.tags === optimistic.tags
-                ? { ...i, name: before.name, brand: before.brand, tags: before.tags }
+              i.name === optimistic.name && i.brand === optimistic.brand && i.tags === optimistic.tags && i.notes === optimistic.notes
+                ? { ...i, name: before.name, brand: before.brand, tags: before.tags, notes: before.notes }
                 : i
             );
             throw error;
