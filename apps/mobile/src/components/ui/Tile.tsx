@@ -22,7 +22,7 @@ export type TileSize = "grid" | "hero" | "mini";
 export const TILE_CAPTION_HEIGHT = 8 + 22 + 18;
 
 // DESIGN.md: grid tiles radius 6 with 12 padding; small images radius 2; the item hero has no radius.
-const FRAME = {
+export const FRAME = {
   grid: { radius: 6, pad: 12 },
   hero: { radius: 0, pad: 24 },
   mini: { radius: 2, pad: 8 },

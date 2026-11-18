@@ -1,0 +1,79 @@
+import { Image } from "expo-image";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { View, type DimensionValue } from "react-native";
+import type { TileTone } from "../../theme/tileTone";
+import { colors, motion } from "../../theme/tokens";
+import { Icon } from "./Icon";
+import { Skeleton } from "./Skeleton";
+import { FRAME, type TileSize } from "./Tile";
+
+type Props = {
+  /** The photo. Missing = still loading: the reserved box pulses in the tile tone. */
+  uri?: string | null;
+  tone?: TileTone;
+  size?: TileSize;
+  /** Box width: a number in px or a percentage. Defaults to the parent's width. */
+  width?: DimensionValue;
+  /** Height / width of the box, fixed up front so nothing jumps when the image arrives. */
+  aspect: number;
+  /** A photo of a whole scene (the picked photo) fills the box; a garment crop is `contain`ed like a tile. */
+  fit?: "contain" | "cover";
+  /** Force the reserved loading state even with a uri. */
+  loading?: boolean;
+  accessibilityLabel: string;
+};
+
+/**
+ * A tile for a photo that is not a wardrobe item yet (a picked photo, a crop under review, the existing garment in a
+ * duplicate check): the same ground, radius and padding as `Tile`, the same reserved size and quiet pulse while the
+ * image loads, no frame. Not pressable; `Tile` stays the one component for items. If the image cannot be read it
+ * shows an error glyph on the ground, never an endless pulse.
+ */
+export function PhotoTile({ uri, tone = "tile", size = "grid", width = "100%", aspect, fit = "contain", loading = false, accessibilityLabel }: Props) {
+  const { t } = useTranslation();
+  const frame = FRAME[size];
+  // Keyed by uri, so a new photo in the same box starts from loading again without an effect to reset it.
+  const [loadedUri, setLoadedUri] = useState<string | null>(null);
+  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const loaded = loadedUri === uri;
+  const failed = failedUri === uri;
+  const reserved = loading || !uri;
+  const pad = fit === "cover" ? 0 : frame.pad;
+  return (
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={accessibilityLabel}
+      style={{ width, aspectRatio: 1 / aspect, borderRadius: frame.radius, backgroundColor: colors[tone], overflow: "hidden" }}
+    >
+      {reserved ? (
+        <Skeleton height="100%" tone={tone} radius="none" />
+      ) : failed ? (
+        <View className="flex-1 items-center justify-center" accessibilityLabel={t("ui.imageFailed")}>
+          <Icon name="error" color="warn" />
+        </View>
+      ) : (
+        <>
+          <View style={{ flex: 1, padding: pad }}>
+            <Image
+              source={{ uri }}
+              contentFit={fit}
+              transition={{ duration: motion.stateMs, effect: "cross-dissolve" }}
+              onLoad={() => setLoadedUri(uri ?? null)}
+              onError={() => setFailedUri(uri ?? null)}
+              style={{ width: "100%", height: "100%" }}
+              accessibilityIgnoresInvertColors
+            />
+          </View>
+          {/* Until the first paint, the reserved box pulses; the image fades in over it. */}
+          {loaded ? null : (
+            <View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, start: 0, end: 0 }}>
+              <Skeleton height="100%" tone={tone} radius="none" />
+            </View>
+          )}
+        </>
+      )}
+    </View>
+  );
+}

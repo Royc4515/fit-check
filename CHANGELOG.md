@@ -392,3 +392,10 @@
 - `ActionBar` in Today has `safeArea={false}`: the tab bar below owns the bottom inset.
 - Desktop flat-lay capped to the viewport height under the top nav (32 above and below), 4:5 kept by narrowing.
 - Look at: `design/screens/2026-11-18-today-{default,piece,adjust}-*.png` (re-shot). Not seen: the skip line on Today itself (the preview cannot record a skip).
+
+## 2026-11-18 (redesign 1.7: Add / intake)
+
+- Add screen rebuilt on the library: `ScreenHeader`, `Segmented` mode, one primary `Button` (choose photos), "send to Claude" as `outline`, `JobCard` (thumbnail + `StatusLine` per photo), `GarmentReview` (large photo on a tile ground from `tileTone`, inline name, library `Chip` rows with an icon-and-words "worth checking" marker, ink save button), duplicate card with two `PhotoTile`s. New library piece `PhotoTile` (tile-style photo with reserved size, skeleton, error glyph); `Tile`'s `FRAME` is exported. Desktop: 720 column, review cards two to a row from 1200.
+- Every failure is visible with a reason and, where it can help, "try again": job failures (reason kept: server reason, `http_<status>`, network, preview), failed background removal (original and redraw), late image sync, redraw-spec save, one-garment fallback to the whole photo, tag-corrections write, send-to-Claude failures (retries only the failed photos). Preview blocks read "design preview only: the photo was not uploaded". `busy` is now real (saving, syncing, reading a label).
+- Data: `invoke` keeps the server's reason or `http_<status>`; new `reasonOf`; `saveGarment` returns `{ id, correctionSaved }`; `saveRedrawSpec` (data/redraw.ts) returns a boolean.
+- Look at: `design/screens/2026-11-18-intake-*`, and the "Add" block of `/design-system`. Not verified: native, and the real upload, detection, tagging, saving pipeline (blocked in the preview).

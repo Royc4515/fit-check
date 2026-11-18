@@ -13,6 +13,7 @@ export { LegendRow } from "./LegendRow";
 export { ListRow } from "./ListRow";
 export { computeMasonry, MasonryGrid, type MasonryCellInfo, type MasonryLayout, type MasonrySection } from "./MasonryGrid";
 export { ScreenHeader } from "./ScreenHeader";
+export { PhotoTile } from "./PhotoTile";
 export { Segmented, type Segment } from "./Segmented";
 export { Sheet } from "./Sheet";
 export { Skeleton } from "./Skeleton";
