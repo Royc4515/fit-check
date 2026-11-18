@@ -195,3 +195,61 @@ export async function setAvailabilityMany(itemIds: readonly string[], availabili
   const { error } = await supabase.from("items").update(moveRow(availability, options)).in("id", [...itemIds]);
   if (error) throw error;
 }
+
+/** One worn outfit that contained a given item: the day and every item of that outfit (the item itself included). */
+export type ItemWear = { wearId: string; date: string; itemIds: string[] };
+
+/** `total`: every worn wear of the item; `wears`: the newest of them, at most ITEM_WEARS_LIMIT, newest first. */
+export type ItemWearHistory = { total: number; wears: ItemWear[] };
+
+/** The item screen lists five and expands to the rest; more rows than this is a log, not a screen. */
+export const ITEM_WEARS_LIMIT = 50;
+
+// The outfit's items are embedded twice: `outfit_items` lists the whole outfit (for "worn with"), the aliased inner
+// copy `mine` exists only to be filtered on this item. Filtering `outfit_items` itself would cut the list down to the
+// one item. Checked against the live PostgREST on 2026-11-19 (valid: 200; an unknown alias answers 400).
+const ITEM_WEAR_COLUMNS = "id,worn_on,feedback,outfit_id,outfits!inner(breakdown,outfit_items(item_id),mine:outfit_items!inner(item_id))";
+
+/**
+ * The wear history of one item for the item screen: wears with feedback `worn` whose outfit contains the item, all
+ * time, newest first, at most ITEM_WEARS_LIMIT rows; `total` is exact even past the limit. RLS scopes the rows to
+ * the signed-in user. Design preview: derived from the snapshot, which holds only the last RECENT_WEARS_DAYS + 1
+ * days, so the preview shows that window, not all time. Rows that fail the schema are skipped and logged.
+ * Throws on a network or permission error (the screen shows a retry).
+ * @param itemId - the item's uuid.
+ */
+export async function fetchItemWears(itemId: string): Promise<ItemWearHistory> {
+  if (isPreview()) {
+    const all = wearsOfItem((await getSnapshot()).wears, itemId);
+    return { total: all.length, wears: all.slice(0, ITEM_WEARS_LIMIT) };
+  }
+  const { data, error, count } = await supabase
+    .from("wears")
+    .select(ITEM_WEAR_COLUMNS, { count: "exact" })
+    .eq("feedback", "worn")
+    .eq("outfits.mine.item_id", itemId)
+    .order("worn_on", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(ITEM_WEARS_LIMIT);
+  if (error) throw error;
+  const wears = wearsOfItem(data ?? [], itemId);
+  return { total: Math.max(count ?? 0, wears.length), wears };
+}
+
+/** Wear rows, newest first, to the worn wears whose outfit holds `itemId` (the query filters too; the snapshot does not). */
+function wearsOfItem(rows: readonly unknown[], itemId: string): ItemWear[] {
+  const out: ItemWear[] = [];
+  for (const raw of rows) {
+    const parsed = WearRowSchema.safeParse(raw);
+    if (!parsed.success) {
+      console.error("Skipping malformed wear row", parsed.error);
+      continue;
+    }
+    const row = parsed.data;
+    if (row.feedback !== "worn" || !row.outfits) continue;
+    const itemIds = row.outfits.outfit_items.map((i) => i.item_id);
+    if (!itemIds.includes(itemId)) continue;
+    out.push({ wearId: row.id, date: row.worn_on, itemIds });
+  }
+  return out;
+}

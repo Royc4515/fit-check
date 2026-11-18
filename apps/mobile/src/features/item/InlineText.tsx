@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, Pressable, TextInput, View } from "react-native";
+import { Platform, Pressable, Text, TextInput, View } from "react-native";
 import { focusRingProps } from "../../components/ui";
 import { headingProps, useTypeTracking, type HeadingLevel } from "../../components/ui/Type";
 import { colors, layout } from "../../theme/tokens";
@@ -19,8 +19,19 @@ type Props = {
   /** The text at rest; pressing it starts editing. */
   children: ReactNode;
   /** The typography of the field while editing, matching the text at rest so nothing jumps. */
-  size: "display-xl" | "body-sm";
+  size: "display-xl" | "body" | "body-sm";
   disabled?: boolean;
+  /**
+   * Free text over several lines (the notes): Enter inserts a line break instead of saving, the field grows with its
+   * text, and only leaving the field saves (Escape still cancels on web). Without it the value is one line, always.
+   */
+  multiline?: boolean;
+  /** The field stops taking text here. */
+  maxLength?: number;
+  /** From this many characters a `n/max` counter shows under the field (needs `maxLength`). */
+  counterFrom?: number;
+  /** Placeholder while editing an empty value; defaults to `label`. */
+  placeholder?: string;
   /**
    * The text is a heading (the item's name): at rest the button sits inside a heading of this level, so the outline
    * keeps its title. While the field is open there is no heading: a heading that wraps a text input is announced
@@ -36,16 +47,39 @@ const oneLine = (s: string) => s.replace(/[\r\n]+/g, " ");
 // and the extra height is taken back by an equal negative margin, so the text sits exactly where it did.
 // don't touch / the Pressable itself must be the box: hitSlop does nothing in react-native-web.
 const SMALL_BOX_PULL = -8;
+/** A free-text field opens at least this tall (spacing scale; about three body lines) and grows with its text. */
+const MULTILINE_MIN = 96;
+
+/** Numbers stay LTR inside Hebrew text (DESIGN.md section 2). */
+const ltr = (s: string) => `⁦${s}⁩`;
 
 /**
  * Edit in place (DESIGN.md section 3 "פריט" item 2): the text is a button; pressing it swaps in a field in the same
  * face and size, focused. Return (Enter) or blur saves, Escape (web) cancels. Nothing is saved when nothing changed.
- * The spoken name starts with the visible text (WCAG "label in name"), then says what it is and that it edits.
+ * `multiline` (the notes): Enter is a new line and only blur saves. The spoken name starts with the visible text
+ * (WCAG "label in name"), then says what it is and that it edits.
  */
-export function InlineText({ value, label, emptyText, onCommit, onBegin, children, size, disabled = false, headingLevel }: Props) {
+export function InlineText({
+  value,
+  label,
+  emptyText,
+  onCommit,
+  onBegin,
+  children,
+  size,
+  disabled = false,
+  headingLevel,
+  multiline = false,
+  maxLength,
+  counterFrom,
+  placeholder,
+}: Props) {
   const { t, i18n } = useTranslation();
   const tracking = useTypeTracking();
   const [draft, setDraft] = useState<string | null>(null);
+  const [fieldHeight, setFieldHeight] = useState(MULTILINE_MIN);
+  // Free text keeps its line breaks; a one-line value never carries one.
+  const clean = multiline ? (s: string) => s : oneLine;
   // Hebrew is right-aligned, English left; the field does not inherit the page direction on web.
   const align = { textAlign: i18n.language === "en" ? "left" : "right" } as const;
 
@@ -63,11 +97,11 @@ export function InlineText({ value, label, emptyText, onCommit, onBegin, childre
     live.current = null;
     setDraft(null);
     if (!save) onBegin?.();
-    if (save && text !== null && oneLine(text).trim() !== value.trim()) onCommit(oneLine(text));
+    if (save && text !== null && clean(text).trim() !== value.trim()) onCommit(clean(text));
   };
   const edit = (text: string) => {
-    // A touch keyboard's return in a multiline field arrives as a line break: it means "done".
-    if (/[\r\n]/.test(text)) {
+    // A touch keyboard's return in a one-line field arrives as a line break: it means "done".
+    if (!multiline && /[\r\n]/.test(text)) {
       live.current = text;
       return stop(true);
     }
@@ -77,12 +111,13 @@ export function InlineText({ value, label, emptyText, onCommit, onBegin, childre
 
   if (draft !== null) {
     const display = size === "display-xl";
-    return (
+    const face = display ? "font-display text-display-xl text-ink" : size === "body" ? "font-body text-body text-ink" : "font-body text-body-sm text-ink";
+    const field = (
       <TextInput
         value={draft}
         onChangeText={edit}
         onBlur={() => stop(true)}
-        onSubmitEditing={() => stop(true)}
+        onSubmitEditing={multiline ? undefined : () => stop(true)}
         onKeyPress={(e) => {
           if (Platform.OS !== "web") return;
           const key = e.nativeEvent.key;
@@ -90,31 +125,57 @@ export function InlineText({ value, label, emptyText, onCommit, onBegin, childre
           if (key === "Escape") stop(false);
           // don't touch / a multiline field on web is a <textarea>, where Enter inserts a line break before any submit
           // handler runs (seen 2026-11-18: the name became "…\n" and the field stayed open). Stop the key, then save.
-          else if (key === "Enter" && !("shiftKey" in e.nativeEvent && e.nativeEvent.shiftKey === true)) {
+          // Free text (notes) wants that line break, so it is left alone there.
+          else if (!multiline && key === "Enter" && !("shiftKey" in e.nativeEvent && e.nativeEvent.shiftKey === true)) {
             e.preventDefault();
             stop(true);
           }
         }}
         autoFocus
-        selectTextOnFocus
-        // Multiline only so a long name wraps exactly as it does at rest; Enter still saves (above, and on native via
-        // submitBehavior), it never adds a line.
-        multiline={display}
-        submitBehavior="blurAndSubmit"
-        returnKeyType="done"
+        // Selecting a whole note on focus would let the first key wipe it; a name is usually replaced, a note added to.
+        selectTextOnFocus={!multiline}
+        // The name is multiline only so a long name wraps exactly as it does at rest; Enter still saves (above, and on
+        // native via submitBehavior), it never adds a line. Notes are real multiline text.
+        multiline={display || multiline}
+        submitBehavior={multiline ? "newline" : "blurAndSubmit"}
+        returnKeyType={multiline ? "default" : "done"}
+        maxLength={maxLength}
+        onContentSizeChange={multiline ? (e) => setFieldHeight(Math.max(MULTILINE_MIN, Math.ceil(e.nativeEvent.contentSize.height))) : undefined}
         accessibilityLabel={spoken(label)}
-        placeholder={label}
+        placeholder={placeholder ?? label}
         placeholderTextColor={colors["ink-faint"]}
-        className={`border-b-2 border-ink pb-1 outline-none ${display ? "font-display text-display-xl text-ink" : "font-body text-body-sm text-ink"}`}
+        className={`border-b-2 border-ink pb-1 outline-none ${face}`}
         // The 2px ink underline is the focus mark (the ring's weight); the browser's own box around a serif headline
         // would read as a form field dropped into the page.
-        style={[align, display ? tracking.displayXl : null]}
+        style={[align, display ? tracking.displayXl : null, multiline ? { height: fieldHeight, textAlignVertical: "top" } : null]}
       />
+    );
+    if (maxLength === undefined || counterFrom === undefined) return field;
+    // don't touch / always this wrapper while a counter is possible: wrapping the field only once the counter appears
+    // remounts the TextInput, whose blur then saves and closes it mid-sentence.
+    return (
+      <View>
+        {field}
+        {draft.length >= counterFrom ? (
+          // Mono count at the field's end side, where a counter is expected; LTR-isolated in the text, plain words
+          // for screen readers.
+          <Text
+            className="mt-1 font-mono text-num-sm text-ink-soft"
+            style={{ alignSelf: "flex-end" }}
+            accessibilityLabel={t("item.notes.counter", { n: draft.length, max: maxLength })}
+          >
+            {ltr(`${draft.length}/${maxLength}`)}
+          </Text>
+        ) : null}
+      </View>
     );
   }
 
   const name = value ? t("item.editInline", { value, field: label }) : (emptyText ?? t("item.editInline", { value: t("item.empty"), field: label }));
+  // Text lines shorter than a finger get a 44 box: body-sm pulled back to its line (a row of its own), body (notes)
+  // simply at least 44 high, since it is a block that may run over several lines.
   const small = size === "body-sm";
+  const block = size === "body";
   const button = (
     <Pressable
       {...focusRingProps}
@@ -127,6 +188,7 @@ export function InlineText({ value, label, emptyText, onCommit, onBegin, childre
         alignSelf: "flex-start",
         maxWidth: "100%",
         ...(small ? { minHeight: layout.hit, minWidth: layout.hit, justifyContent: "center", marginVertical: SMALL_BOX_PULL } : null),
+        ...(block ? { minHeight: layout.hit, minWidth: layout.hit, justifyContent: "center" } : null),
       }}
     >
       <View>{children}</View>

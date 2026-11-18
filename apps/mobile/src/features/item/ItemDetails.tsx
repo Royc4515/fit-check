@@ -6,10 +6,12 @@ import { Text, View } from "react-native";
 import { SpecTable, type SpecRow } from "../../components/editorial/SpecTable";
 import { Chip, Display, Meta, Segmented, StatusLine } from "../../components/ui";
 import { hasSleeves, isBottom, legOf } from "../intake/tagRules";
-import { editPayload, type ItemChange, type ItemEdits } from "./edit";
+import { editPayload, NOTES_COUNTER_FROM, NOTES_MAX, type ItemChange, type ItemEdits } from "./edit";
 import { GoesWith } from "./GoesWith";
 import { InlineText } from "./InlineText";
 import { fieldLabelKey, TagSheet, type TagField } from "./TagSheet";
+import { useItemWears } from "./useItemWears";
+import { WearHistory } from "./WearHistory";
 import { spoken } from "./a11y";
 
 /** Numbers stay LTR inside Hebrew text (DESIGN.md section 2). */
@@ -19,7 +21,7 @@ const ltr = (s: string) => `⁦${s}⁩`;
  * A status line under the part of the screen it is about: the name, the availability, or the very tag row that
  * failed (under the chip that just rolled back, not at the end of a table that may be below the fold).
  */
-type Failure = { where: "identity" | "availability" | TagField };
+type Failure = { where: "identity" | "availability" | "notes" | TagField };
 
 type Props = {
   item: Item;
@@ -37,9 +39,9 @@ type Props = {
 };
 
 /**
- * Everything under the hero (DESIGN.md section 3 "פריט" items 2-5): the name and brand, edited in place; where the
- * item is; every tag as a chip in a labelled row, each opening its closed list in a sheet and saving on choice (no
- * edit mode, no save button); "goes with". Saves are optimistic upstream (the item route rolls back a failed write);
+ * Everything under the hero (DESIGN.md section 3 "פריט" items 2-5 and "שלב 2"): the name and brand, edited in place;
+ * where the item is; every tag as a chip in a labelled row, each opening its closed list in a sheet and saving on
+ * choice (no edit mode, no save button); the notes, edited in place; the wear history; "goes with". Saves are optimistic upstream (the item route rolls back a failed write);
  * this component only says that it failed, next to what failed.
  */
 export function ItemDetails({ item, items, pairWeights, onAvailability, edits, imageStatus, onOpenOther, onScrollTop, bleed }: Props) {
@@ -49,6 +51,7 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
   const [sheetOpen, setSheetOpen] = useState(false);
   // The item as it was when the screen opened: a pick back to it restores it exactly (edit.ts colorPatch/legPatch).
   const [baseline] = useState(item.tags);
+  const wears = useItemWears(item.id);
   const { tags } = item;
   /**
    * An error line belongs to the action that produced it: any next action on these details (opening a sheet,
@@ -211,6 +214,49 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
 
       <View className="mt-8">
         <SpecTable rows={rows} />
+      </View>
+
+      {/* Notes: free text edited in place like the name, several lines, saved when the field is left. Read-only and
+          empty, there is nothing to show. */}
+      {edits || item.notes ? (
+        <View className="mt-12">
+          <Display>{t("item.notes.title")}</Display>
+          <View className="mt-4">
+            {edits ? (
+              <InlineText
+                value={item.notes ?? ""}
+                label={t("item.notes.title")}
+                emptyText={t("item.notes.add")}
+                placeholder={t("item.notes.add")}
+                size="body"
+                multiline
+                maxLength={NOTES_MAX}
+                counterFrom={NOTES_COUNTER_FROM}
+                onBegin={moveOn}
+                onCommit={(notes) => change({ notes }, "notes")}
+              >
+                {item.notes ? (
+                  <Text className="font-body text-body text-ink" style={align}>
+                    {item.notes}
+                  </Text>
+                ) : (
+                  <View className="border-b border-hairline pb-1">
+                    <Text className="font-body text-body text-ink-faint">{t("item.notes.add")}</Text>
+                  </View>
+                )}
+              </InlineText>
+            ) : (
+              <Text className="font-body text-body text-ink" style={align}>
+                {item.notes}
+              </Text>
+            )}
+            {failed("notes", t("item.saveFailed"))}
+          </View>
+        </View>
+      ) : null}
+
+      <View className="mt-12">
+        <WearHistory itemId={item.id} items={items} state={wears.state} onRetry={wears.retry} />
       </View>
 
       <View className="mt-12">
