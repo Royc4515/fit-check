@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import { View } from "react-native";
 import { PreviewBanner } from "../../components/PreviewBanner";
 import { isPreview } from "../../data/preview";
+import { SceneLayout } from "../../features/shell/SceneGate";
 import { ShellTabBar, useIsDesktop } from "../../features/shell/ShellTabBar";
 import { colors } from "../../theme/tokens";
 
@@ -14,6 +15,9 @@ export default function TabsLayout() {
   return (
     <View style={{ flex: 1, backgroundColor: colors["ivory"] }}>
       <Tabs
+        // don't touch / visited tabs stay mounted (state and scroll survive); SceneLayout takes the blurred ones out
+        // of the web tab order. React Activity (`activityEnabled`) was tried and does nothing for a tab navigator.
+        screenLayout={({ children }) => <SceneLayout>{children}</SceneLayout>}
         tabBar={(props) => <ShellTabBar {...props} />}
         screenOptions={{
           headerShown: false,

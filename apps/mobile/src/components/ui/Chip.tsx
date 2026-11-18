@@ -3,7 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { layout } from "../../theme/tokens";
 import { Icon } from "./Icon";
-import { focusRingProps, selectionHaptic, usePressFeedback } from "./interaction";
+import { focusRingProps, selectionHaptic, usePressFeedback, webStateProps } from "./interaction";
 import { Swatch } from "./Swatch";
 
 type Props = {
@@ -30,9 +30,12 @@ type Props = {
   onLongPress?: () => void;
   /** Fill the parent's width with the label centred (a grid of equal chips, e.g. formality 1-10). */
   stretch?: boolean;
+  /** The chip opens (true) or closes (false) a sheet or list; exposed as `aria-expanded`. Omit for plain chips. */
+  expanded?: boolean;
 };
 
-// Visible 36, hit 44 (DESIGN.md section 2): split the difference above and below.
+// Visible 36, hit 44 (DESIGN.md section 2): the Pressable is the 44 box, the chip a centred child, and the box's
+// extra height is cancelled by a negative vertical margin so rows lay out exactly as 36-high chips would.
 const SLOP = (layout.hit - layout.chip) / 2;
 /** Shorter than RN's 500 default: a held chip should answer before the finger starts to wonder. */
 const LONG_PRESS_MS = 350;
@@ -40,6 +43,10 @@ const LONG_PRESS_MS = 350;
 /**
  * Chip: 36 high, radius 6, hairline. Selected = ink fill with ivory text, a change of shape (outline → solid), so
  * the state never rests on colour alone. Never accent (accent is one action per screen).
+ * Semantics: every chip is a toggle button, so `selected` is `aria-pressed` on the web (also for chips in a
+ * single-choice row: the row is a group of buttons, not a radiogroup, so one model holds everywhere). A removable
+ * chip is an action, not a toggle, and carries no pressed state. The hit box is a real 44×44 minimum on every
+ * platform (react-native-web ignores `hitSlop`).
  */
 export function Chip({
   label,
@@ -53,6 +60,7 @@ export function Chip({
   accessibilityHint,
   onLongPress,
   stretch = false,
+  expanded,
 }: Props) {
   const { t } = useTranslation();
   const { onPressIn, onPressOut, pressStyle } = usePressFeedback();
@@ -77,16 +85,26 @@ export function Chip({
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       disabled={disabled}
-      hitSlop={{ top: SLOP, bottom: SLOP }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? (removable ? t("ui.remove", { label }) : label)}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ selected, disabled }}
+      accessibilityState={{ selected, disabled, expanded }}
+      {...webStateProps({ pressed: removable ? undefined : selected, expanded, disabled })}
       accessibilityActions={onLongPress ? [{ name: "longpress" }] : undefined}
       onAccessibilityAction={(e) => {
         if (e.nativeEvent.actionName === "longpress") onLongPress?.();
       }}
-      style={{ opacity: disabled ? 0.4 : 1, ...(stretch ? { flex: 1 } : null) }}
+      // don't touch / the negative margin cancels the 44 box's extra 8px of height, so the layout footprint stays 36.
+      // A clipping parent (a horizontal ScrollView) without 4px of vertical room cuts the box back to 36.
+      style={{
+        minWidth: layout.hit,
+        minHeight: layout.hit,
+        marginVertical: -SLOP,
+        justifyContent: "center",
+        alignItems: stretch ? "stretch" : "center",
+        opacity: disabled ? 0.4 : 1,
+        ...(stretch ? { flex: 1 } : null),
+      }}
     >
       <Animated.View style={pressStyle}>
         <View className={`flex-row items-center rounded border px-3 ${frame} ${stretch ? "justify-center" : ""}`} style={{ height: layout.chip }}>
