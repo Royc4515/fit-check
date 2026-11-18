@@ -2,6 +2,7 @@ import { StylistOutputSchema, type StylistInput, type StylistOutput } from "@fit
 import { z } from "zod";
 import { supabase } from "../lib/supabase";
 import { cacheGet, cacheSet } from "./kv";
+import { isPreview } from "./preview";
 
 const ResponseSchema = z.union([
   z.object({ ok: z.literal(true), output: StylistOutputSchema }),
@@ -22,6 +23,8 @@ function cacheKey(input: StylistInput): string {
  * top candidate with the template explanation, which is the designed fallback (CLAUDE.md), not an error state.
  */
 export async function requestStyle(input: StylistInput): Promise<StylistOutput | null> {
+  // Design preview: never a paid Sonnet call. Null is the designed "no stylist" path: top candidate, template text.
+  if (isPreview()) return null;
   const key = cacheKey(input);
   const cached = await cacheGet<StylistOutput>(key, CACHE_MS);
   if (cached && StylistOutputSchema.safeParse(cached).success) return cached;

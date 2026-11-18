@@ -6,3 +6,4 @@ export * from "./db.ts";
 export * from "./external.ts";
 export * from "./intake.ts";
 export * from "./redraw-spec.ts";
+export * from "./design-preview.ts";
