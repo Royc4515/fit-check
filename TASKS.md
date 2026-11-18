@@ -13,9 +13,9 @@ Status: `todo` / `doing` / `review` / `done` / `blocked`. A model that fails a t
 | 1.1 | DESIGN.md v2 | lead | done | Tokens, layout per screen, component table, motion, accessibility |
 | 1.2 | Foundations: tokens v2, tileTone, components/ui, /design-system gallery | opus | done | b528fd7. Reviewed by the lead on the gallery (390 he/en, 1280 he, real wardrobe): approved. Web only; native unverified. `insights` icon is the `monitoring` glyph; tab labels use the body font (Plex Mono has no Hebrew) |
 | 1.3 | Shell: tab bar (mobile), top nav (desktop), Profile and Insights screens | sonnet | done | 7c1bfea. 117 scripted web checks pass (tabs, deep links, item modal over the bar, resize). Lead reviewed screenshots: approved. Desktop content width of Profile/Insights is polished in 1.8. Native unverified |
-| 1.4 | Today (flat-lay hero). Stop for Roy's approval | opus | review | 3f3e7ed merged. Lead reviewed at 390 he/en and 1280: composition approved. Fix round open: touch scroll blocked over the hero on mobile web, sheet ground, skip line placement, safe area inside tabs, desktop hero height. Waiting for Roy's approval of the screen |
-| 1.5 | Wardrobe: masonry (opus), filters and reserve flow (sonnet) | opus + sonnet | todo | |
-| 1.6 | Item: inline chips, overflow actions, shared element from three sources | sonnet + opus | todo | |
-| 1.7 | Add: restyle, every failure visible | sonnet | todo | |
-| 1.8 | Profile, Insights empty state, sign-in, consent, loading and error states | sonnet | todo | |
+| 1.4 | Today (flat-lay hero) | opus | done | 3f3e7ed + a3148a0. Roy approved 2026-11-18. Numbers 01-04 stay on the flat-lay (lead's call: they tie the garments to the legend). Native and real writes unverified |
+| 1.5 | Wardrobe: category row, tappable swatches, masonry, filter sheet, long-press actions, reserve flow | opus | doing | |
+| 1.6 | Item: inline chips, overflow actions, redraw composer, shared element from three sources | opus | doing | |
+| 1.7 | Add: restyle, every failure visible | sonnet | doing | |
+| 1.8 | Sign-in, consent, location, loading and error states, Profile/Insights desktop width | sonnet | doing | |
 | 1.9 | Accessibility, i18n, regression checklist, after screenshots | haiku + sonnet | todo | |
