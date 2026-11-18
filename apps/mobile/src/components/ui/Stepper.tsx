@@ -64,7 +64,7 @@ export function Stepper({ decrease, increase, value, accessibilityLabel, disable
         <Text
           accessibilityLabel={`${accessibilityLabel}: ${shown}`}
           accessibilityLiveRegion="polite"
-          // ink-soft, not ink-faint, at rest: steppers live in sheets, on ivory-deep (DESIGN.md section 2 contrast).
+          // ink-soft at rest, not ink-faint: "0" is a value, and it must read at the same weight as the labels beside it.
           className={`font-mono text-num ${value === 0 ? "text-ink-soft" : "text-ink"}`}
         >{`⁦${shown}⁩`}</Text>
       </View>

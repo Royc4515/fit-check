@@ -383,3 +383,12 @@
 - Removed (no other importers): `ActionSheet`, `OutfitComposition`, `ItemPlaceholder`, `editorial/DataStrip`.
 - Look at: `design/screens/2026-11-18-today-*` (default at 360/390/430/1280 he+en, piece sheet, adjust sheet, mid-swipe, failed wear, flat-lay combinations).
 - Not verified: native (no emulator), real writes (preview is read-only: wear/skip show the failure line), the all-skipped/missing/empty states (not reachable with this wardrobe in preview). Known gap: RNGH 3.3 on web overrides the detector's `touchAction="pan-y"` with `none`, so on a touch browser a vertical scroll that starts on the flat-lay does not scroll.
+
+## 2026-11-18 (redesign 1.4: Today fix round)
+
+- Touch scroll over the hero (web): RNGH 3.3 applies GestureDetector's `touchAction` once, then every gesture config change runs `setGestureConfig()` → `resetConfig()`, which puts `touch-action: none` back. The swipe's pan config now carries `touchAction: "pan-y"` itself (whitelisted at runtime in RNGH's `allowedNativeProps`, missing from `PanGestureConfig`'s type; passed via a variable typed with it, no cast). Verified with iPhone 13 touch emulation: vertical drag from the hero scrolls, horizontal drag swipes.
+- `Sheet` ground is `ivory` (was `ivory-deep`), so tiles inside a sheet show their ground.
+- Skip line moved out of the floating bar to between the masthead and the hero; the bar is only wear + tune (worn, laundry, failure lines still in it).
+- `ActionBar` in Today has `safeArea={false}`: the tab bar below owns the bottom inset.
+- Desktop flat-lay capped to the viewport height under the top nav (32 above and below), 4:5 kept by narrowing.
+- Look at: `design/screens/2026-11-18-today-{default,piece,adjust}-*.png` (re-shot). Not seen: the skip line on Today itself (the preview cannot record a skip).

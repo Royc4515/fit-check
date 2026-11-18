@@ -222,7 +222,7 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
               aria-label={name}
               accessibilityViewIsModal
               onLayout={(e) => sheetH.set(e.nativeEvent.layout.height)}
-              className={`border-hairline bg-ivory-deep ${desktop ? "rounded-lg border" : "rounded-t-lg border-t"}`}
+              className={`border-hairline bg-ivory ${desktop ? "rounded-lg border" : "rounded-t-lg border-t"}`}
               style={[{ maxHeight: maxH, overflow: "hidden" }, shadow.sheet]}
             >
               {content}

@@ -13,6 +13,7 @@ import {
   Button,
   Display,
   EmptyState,
+  FLAT_LAY_ASPECT,
   FlatLay,
   LegendRow,
   Meta,
@@ -68,6 +69,8 @@ const REQUIRED_SLOTS = ["top", "bottom", "shoes"] as const;
 const UNDER_BAR = 32;
 /** Desktop: the flat-lay column is at most this wide (DESIGN.md section 3 "היום" item 9). */
 const DESKTOP_HERO_MAX = 560;
+/** Air above and below the desktop flat-lay, which must fit whole in the viewport under the top nav. */
+const DESKTOP_HERO_PAD = 32;
 const DESKTOP_GAP = 64;
 const DESKTOP_GUTTER = 32;
 
@@ -105,6 +108,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const [pieceOpen, setPieceOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [barHeight, setBarHeight] = useState(0);
+  // Desktop: the scene's height (under the top nav), to cap the flat-lay so it is never cut off.
+  const [viewportHeight, setViewportHeight] = useState(0);
 
   // The standing lean learned from recent wears, then today's taps on top. The total is what gets stored with a
   // worn outfit (see engine learnedAdjustment for why the total and not the taps).
@@ -269,9 +274,14 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   }
   if (failed) statuses.push({ key: "failed", variant: "error", message: t("today.status.failed") });
 
-  const statusLines = statuses.map((s) => (
+  const lineOf = (s: StatusItem) => (
     <StatusLine key={s.key} variant={s.variant} message={s.message} action={s.action} secondaryAction={s.secondaryAction} disabled={busy} />
-  ));
+  );
+  const statusLines = statuses.map(lineOf);
+  // The skip line lives above the hero, not in the bar: it can stay all day, and a bar that grows with it would
+  // cover a sixth of the phone. The bar keeps a constant height (worn, laundry and failure still replace or join it).
+  const skipStatus = statuses.find((s) => s.key === "skip");
+  const barStatusLines = statuses.filter((s) => s.key !== "skip").map(lineOf);
 
   /** The learned lean and today's nudges: small, under the quote, because they qualify the reason. */
   const adjustNotes =
@@ -332,8 +342,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
 
   const hero =
     pieces.length > 0 ? (
-      // Known gap (RNGH 3.3 web): the handler resets its config after the detector applies this, so the surface
-      // still gets touch-action none and touch browsers cannot scroll the page from the flat-lay. Native is fine.
+      // touchAction is also set in the gesture's own config (see useSwipeToSkip): RNGH 3.3 drops this one on update.
       <GestureDetector gesture={swipe.gesture} touchAction="pan-y">
         <View onLayout={swipe.onLayout}>
           <FlatLay
@@ -391,7 +400,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const barContent: ReactNode =
     plan.kind === "suggestion" ? (
       <>
-        {statusLines}
+        {barStatusLines}
         <View className="flex-row items-center" style={{ gap: 8 }}>
           <View style={{ flex: 1 }}>
             <Button variant="primary" label={t("today.wearing")} onPress={wear} disabled={busy} fullWidth />
@@ -408,7 +417,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         </View>
       </>
     ) : plan.kind === "worn" ? (
-      <>{statusLines}</>
+      <>{barStatusLines}</>
     ) : null;
 
   const empty =
@@ -466,18 +475,21 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   );
 
   if (desktop) {
+    // The whole surface fits under the top nav: the scene's height minus the 32 above and below, as a 4:5 width.
+    const heroMax = viewportHeight > 0 ? Math.min(DESKTOP_HERO_MAX, (viewportHeight - 2 * DESKTOP_HERO_PAD) / FLAT_LAY_ASPECT) : DESKTOP_HERO_MAX;
     return (
-      <View className="flex-1 bg-ivory">
-        <ScrollView contentContainerStyle={{ paddingTop: insets.top + 32, paddingBottom: 64 + insets.bottom }}>
+      <View className="flex-1 bg-ivory" onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}>
+        <ScrollView contentContainerStyle={{ paddingTop: insets.top + DESKTOP_HERO_PAD, paddingBottom: 64 + insets.bottom }}>
           <View
             className="flex-row items-start"
             style={{ width: "100%", maxWidth: layout.maxContentWidthWide, alignSelf: "center", paddingHorizontal: DESKTOP_GUTTER, gap: DESKTOP_GAP }}
           >
-            <View style={{ flex: 1, maxWidth: DESKTOP_HERO_MAX }}>
+            <View style={{ flex: 1, maxWidth: heroMax }}>
               <Reveal index={1}>{hero ?? empty}</Reveal>
             </View>
             <View style={{ flex: 1 }}>
               <Reveal index={0}>{masthead}</Reveal>
+              {skipStatus && outfit ? <View className="mt-6">{lineOf(skipStatus)}</View> : null}
               {outfit ? (
                 <>
                   <Reveal index={2}>
@@ -509,8 +521,9 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         <ScrollView
           contentContainerStyle={{
             paddingTop: insets.top + 32,
-            // Nothing may end under the floating bar: its measured height (it grows with status lines) plus air.
-            paddingBottom: (hasBar ? barHeight : insets.bottom) + UNDER_BAR,
+            // Nothing may end under the floating bar: its measured height (worn and failure lines join it) plus air.
+            // No bottom inset otherwise: the tab bar under the screen owns it.
+            paddingBottom: (hasBar ? barHeight : 0) + UNDER_BAR,
           }}
         >
           <Reveal index={0}>
@@ -519,7 +532,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
           {outfit ? (
             <>
               <Reveal index={1}>
-                <View className="mt-8">{hero}</View>
+                {skipStatus ? <View className="mt-6 px-5">{lineOf(skipStatus)}</View> : null}
+                <View className={skipStatus ? "mt-4" : "mt-8"}>{hero}</View>
               </Reveal>
               <Reveal index={2}>
                 <View className="mt-6 px-5">{captions}</View>
@@ -537,7 +551,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
           )}
         </ScrollView>
         {hasBar ? (
-          <ActionBar floating onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}>
+          // safeArea off: Today always renders inside the tabs, whose bar below already takes the bottom inset.
+          <ActionBar floating safeArea={false} onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}>
             {barContent}
           </ActionBar>
         ) : null}
