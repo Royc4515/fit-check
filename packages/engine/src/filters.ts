@@ -1,4 +1,4 @@
-import type { Item, SlotRule, StylingRequest } from "@fit-check/schema";
+import type { ContextRules, Item, SlotRule, StylingRequest } from "@fit-check/schema";
 import type { Slot } from "@fit-check/schema";
 import { FORMALITY_SLACK, LAYER_THRESHOLD_C, WARM_DAY_ONLY_MIN_C, WEATHER_SLACK } from "./config";
 
@@ -56,9 +56,30 @@ function passesWeather(item: Item, slot: Slot, req: StylingRequest, layered: boo
  * Per-item formality is only a coarse gate (band minus the slot's slack); the real check is the outfit's weighted
  * mean in candidates.ts. Judging each item against the full band emptied whole slots (no shoes for a warm date).
  */
-function passesFormality(item: Item, slot: Slot, req: StylingRequest): boolean {
-  const [lo, hi] = req.context.formality_range;
+function passesFormality(item: Item, slot: Slot, context: ContextRules): boolean {
+  const [lo, hi] = context.formality_range;
   return item.tags.formality >= lo - FORMALITY_SLACK[slot] && item.tags.formality <= hi + 1;
+}
+
+/**
+ * The context's own hard rules for one item in its own slot: the coarse formality gate, and for top, bottom and
+ * shoes the slot's allow / deny lists and patterns. Weather, status and availability are not part of it: they
+ * belong to the day and the item's state, not to the context. hardFilter uses this, so anything else that asks
+ * "is this OK for Shabbat" (the wardrobe's filter chip) agrees with what the stylist may suggest.
+ *
+ * An item with no slot (outerwear, accessories) is not constrained by any context rule and passes; hardFilter
+ * leaves it out of outfits for a different reason (not part of the composition).
+ * @param item any item; its status and availability are ignored.
+ * @param context e.g. `DEFAULT_CONTEXT_RULES.shabbat`.
+ * @returns true when the rules let the item into its slot.
+ */
+export function passesContextRules(item: Item, context: ContextRules): boolean {
+  const slot = slotOf(item);
+  if (!slot) return true;
+  if (!passesFormality(item, slot, context)) return false;
+  // Layers are judged on formality only, not by subcategory whitelists; otherwise shabbat (button_down only)
+  // would forbid a sweater over the shirt.
+  return slot === "layer" || passesSlotRule(item, context[slot]);
 }
 
 /**
@@ -78,10 +99,7 @@ export function hardFilter(items: Item[], req: StylingRequest): Record<Slot, Ite
     if (!slot) continue;
     if (slot === "layer" && !needsLayer) continue;
     if (!passesWeather(item, slot, req, needsLayer)) continue;
-    if (!passesFormality(item, slot, req)) continue;
-    // Layers are judged on formality only, not by subcategory whitelists; otherwise shabbat (button_down only)
-    // would forbid a sweater over the shirt.
-    if (slot !== "layer" && !passesSlotRule(item, req.context[slot])) continue;
+    if (!passesContextRules(item, req.context)) continue;
     out[slot].push(item);
   }
   return out;

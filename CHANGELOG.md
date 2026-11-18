@@ -502,3 +502,11 @@
 - Manual re-cut: "חיתוך רקע מחדש" in the item's overflow sheet when the item has a source crop; the same free intake-cutout call as "replace photo", on that crop. Busy line under the hero, the hero updates on success, a failure line with the reason (and "נסה שוב" when retrying can help).
 - Not verified: native; real notes writes, the real history query with data (only its syntax against PostgREST, as anon) and a real re-cut, all blocked in the preview.
 - Look at: `design/screens/2026-11-19-item-*.png`.
+
+## 2026-11-19 - Stage 2.1: wardrobe search, Shabbat and formality filters, archive
+
+- Wardrobe search (DESIGN.md "שלב 2"): `search` before `tune` swaps the title row for a focused `SearchField` + live count + `close`; name or brand, substring, any case, trimmed (`matchesQuery` in `features/wardrobe/filters.ts`), AND with category, colour and sheet filters. Close / Escape clears. Desktop: field always in the header, 280 wide. No-match quotes the query and offers "נקה". `SearchField` gained `autoFocus` and `onEscape`.
+- Filter sheet rows "הקשר" (one chip, "לשבת") and "רשמיות" (1-4 / 5-7 / 8-10). "לשבת" uses the new engine export `passesContextRules(item, DEFAULT_CONTEXT_RULES.shabbat)`, which `hardFilter` now calls for its context part (same behaviour, test in `context-rules.test.ts`; `engine.js` re-bundled). Outerwear and accessories have no Shabbat rules and pass.
+- Archive: `/archive` (above the tabs, back falls back to `/profile`), masonry of archived items, sheet with "שחזר לארון" (optimistic, rolls back with an error line). Data: `useArchivedItems()`, `useArchivedCount()`, `useSetItemStatus()` in `data/WardrobeProvider.tsx`; archived rows already came with `fetchWardrobe` and the preview snapshot, no new query.
+- After a removal from the long-press sheet, an undo line "הוסר מהארון · ביטול" pinned under the category row until the next action; a failed undo shows an error line with retry.
+- Look at: `design/screens/2026-11-19-wardrobe-*` and `2026-11-19-archive-*`; the Shabbat list (outerwear jackets with formality 3-4 are in it, by the rules as written).
