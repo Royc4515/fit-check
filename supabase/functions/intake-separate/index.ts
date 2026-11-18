@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient, authenticate } from "../_shared/auth.ts";
 import { IntakeSeparateInputSchema } from "@fit-check/schema/intake.ts";
 import { detectGarments, enhanceGarment } from "../_shared/ai/gemini.ts";
+import { whiteToTransparent } from "../_shared/whitebg.ts";
 import { MONTHLY_GOOGLE_BUDGET_USD, monthlyGoogleSpend } from "../_shared/ai/budget.ts";
 import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
 
@@ -14,7 +15,8 @@ import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
  *   with the shot (hidden, overlapping, cut off, creased, blurry, dark). Under a cent per photo. The app crops the real photo itself and uploads the
  *   crops; doing it here needed an image library that crashed the Edge runtime at boot.
  * - enhance { cutout_path, description }: on request only, the paid image model redraws one crop the app uploaded
- *   to `cutouts/{uid}/...` as a complete, clean product photo (`...-enhanced.png`). While the project has no
+ *   to `cutouts/{uid}/...` as a complete, clean product photo (`...-enhanced-<ts>.png`), its white
+ *   background removed on the spot (_shared/whitebg.ts; `transparent: false` when that check declined). While the project has no
  *   billing it answers reason "billing_required" and the crop stays as it is.
  * Nothing is written to `items`; the user confirms and tags on the next screen.
  *
@@ -113,9 +115,17 @@ async function enhance(supabase: SupabaseClient, userId: string, cutoutPath: str
     return json(200, { ok: false, reason: result.billingRequired ? "billing_required" : "ai_failed" });
   }
 
+  // Roy, 2026-11-18: the white background is removed right here, so a redraw never depends on the Modal worker
+  // (disabled that morning, which left every redraw on white). Null means the check judged the result unsafe; the
+  // white image is kept and the app still tries the worker.
+  const clear = await whiteToTransparent(result.png).catch((error) => {
+    console.error("whitebg failed", error instanceof Error ? error.message : String(error));
+    return null;
+  });
+
   // A new name per redraw: an item can be redrawn again later from the item page, and each result is kept.
   const out = cutoutPath.replace(/\.[^.]+$/, `-enhanced-${Date.now()}.png`);
-  const upload = await supabase.storage.from("cutouts").upload(out, result.png, { contentType: "image/png", upsert: false });
+  const upload = await supabase.storage.from("cutouts").upload(out, clear ?? result.png, { contentType: "image/png", upsert: false });
   if (upload.error) return json(200, { ok: false, reason: "ai_failed" });
-  return json(200, { ok: true, path: out, url: supabase.storage.from("cutouts").getPublicUrl(out).data.publicUrl });
+  return json(200, { ok: true, path: out, url: supabase.storage.from("cutouts").getPublicUrl(out).data.publicUrl, transparent: clear !== null });
 }
