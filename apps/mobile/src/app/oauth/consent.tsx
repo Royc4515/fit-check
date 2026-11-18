@@ -1,13 +1,14 @@
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Monogram } from "../../components/brand/Monogram";
-import { TextAction } from "../../components/TextAction";
+import { Button, Display, ListRow, Meta, StatusLine } from "../../components/ui";
 import { savePendingConsent } from "../../features/auth/oauthPending";
 import { useSession } from "../../features/auth/SessionProvider";
 import { signInWithGoogle } from "../../features/auth/signIn";
+import { isRtl } from "../../i18n";
 import { supabase } from "../../lib/supabase";
 import { layout } from "../../theme/tokens";
 
@@ -37,6 +38,9 @@ export default function OAuthConsent() {
   const authorizationId = typeof params.authorization_id === "string" ? params.authorization_id : null;
   const [state, setState] = useState<State>({ kind: "loading" });
 
+  // don't touch / the two synchronous setState calls below are the state machine's entry points (no id, signed out);
+  // the lint rule wants them derived, but the consent flow's logic is frozen and they behave as intended.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!authorizationId) return setState({ kind: "error", key: "missing" });
     if (session.status === "loading") return;
@@ -59,6 +63,7 @@ export default function OAuthConsent() {
       cancelled = true;
     };
   }, [authorizationId, session.status]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const decide = async (approve: boolean) => {
     if (!authorizationId) return;
@@ -94,48 +99,51 @@ export default function OAuthConsent() {
         }}
       >
         <Monogram />
-        <View className="mt-12 border-t border-hairline pt-6">
-          <Text className="font-display text-display text-ink">{t("oauth.title")}</Text>
+        <View className="mt-12">
+          <Display level={1}>{t("oauth.title")}</Display>
 
           {state.kind === "loading" || state.kind === "working" ? (
-            <Text className="mt-4 font-body text-body text-ink-soft">{t("oauth.working")}</Text>
+            <Text accessibilityLiveRegion="polite" className="mt-4 font-body text-body text-ink-soft">
+              {t("oauth.working")}
+            </Text>
           ) : null}
 
-          {state.kind === "error" ? <Text className="mt-4 font-body text-body text-ink-soft">{t(`oauth.${state.key}`)}</Text> : null}
+          {state.kind === "error" ? (
+            <View className="mt-4">
+              <StatusLine variant="error" message={t(`oauth.${state.key}`)} />
+            </View>
+          ) : null}
 
           {state.kind === "signedOut" ? (
             <>
               <Text className="mt-4 font-body text-body text-ink-soft">{t("oauth.signInFirst")}</Text>
               <View className="mt-8">
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => void signIn()}
-                  className="items-center justify-center rounded bg-ink"
-                  style={{ height: 52 }}
-                >
-                  <Text className="font-body-semibold text-body text-ivory">{t("auth.google")}</Text>
-                </Pressable>
+                <Button variant="primary" fullWidth label={t("auth.google")} onPress={() => void signIn()} />
               </View>
             </>
           ) : null}
 
           {state.kind === "ask" ? (
             <>
-              <Text className="mt-4 font-body text-body text-ink">{t("oauth.request", { client: state.details.client })}</Text>
+              {/* don't touch / explicit direction: the sentence starts with the client's name, a Latin word, so
+                  the browser's first-strong rule laid the whole Hebrew line out left-to-right and left-aligned it. */}
+              <Text className="mt-4 font-body text-body text-ink" style={{ writingDirection: isRtl() ? "rtl" : "ltr" }}>
+                {t("oauth.request", { client: state.details.client })}
+              </Text>
               <Text className="mt-3 font-body text-body-sm text-ink-soft">{t("oauth.what")}</Text>
               {state.details.scopes.length > 0 ? (
-                <Text className="mt-3 font-body text-meta text-ink-faint">{t("oauth.scopes", { scopes: state.details.scopes.join(", ") })}</Text>
+                <View className="mt-8">
+                  <Meta>{t("oauth.scopesTitle")}</Meta>
+                  <View className="mt-2 border-t border-hairline">
+                    {state.details.scopes.map((scope) => (
+                      <ListRow key={scope} label={scope} />
+                    ))}
+                  </View>
+                </View>
               ) : null}
-              <View className="mt-8 flex-row items-center" style={{ columnGap: 20 }}>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => void decide(true)}
-                  className="items-center justify-center rounded bg-ink px-6"
-                  style={{ height: 48 }}
-                >
-                  <Text className="font-body-semibold text-body text-ivory">{t("oauth.approve")}</Text>
-                </Pressable>
-                <TextAction label={t("oauth.deny")} quiet onPress={() => void decide(false)} />
+              <View className="mt-8" style={{ gap: 12 }}>
+                <Button variant="primary" fullWidth label={t("oauth.approve")} onPress={() => void decide(true)} />
+                <Button variant="outline" fullWidth label={t("oauth.deny")} onPress={() => void decide(false)} />
               </View>
             </>
           ) : null}

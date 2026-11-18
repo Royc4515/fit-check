@@ -358,3 +358,131 @@
 - To remove: retire `design-preview` to a plain 410 (like redraw-five), delete the `DESIGN_PREVIEW_CODE` secret, and revert the preview commits on `claude/busy-tesla-bogylz` (snapshot schema, function, data layer, session/banner, this entry stays).
 - Deployed: `design-preview` v1 (one esbuild bundle, same flags as `scripts/bundle-mcp.sh`; deployed source checked against the bundle). Checked: wrong or missing code 401 with no data, OPTIONS preflight returns the CORS headers. Not yet set: the `DESIGN_PREVIEW_CODE` secret (the Supabase tool asks for the value in the dashboard and got no answer), so until it is set every code gets 401 and the preview shows "could not load the wardrobe".
 - Look at: on web, `/?preview=<code>`. Checked locally with a mocked snapshot built from the anonymized fixture: Today, wardrobe grid, item page and intake render with the line at the bottom; "לובש", an availability change and every other write sent no request to Supabase and showed the screens' own "not saved" message. Screenshots stay out of the repo (they would show the real wardrobe once the secret is set).
+
+## 2026-11-18 (redesign 1.2: design system foundations)
+
+- Tokens v2 (DESIGN.md section 2): `ink-faint` darkened to #6E6A61 (meta text is darker on every screen, intended), `scrim`, `tile`/`tile-deep`/`tile-cool`, `num-sm`; `motion` gains press/stagger/skeleton, `shadow.lift`/`shadow.sheet` (one `boxShadow` string: RN 0.88 new architecture and react-native-web both take it), `layout` gains grid, nav, desktop and hit sizes plus `masonryColumnsFor()`. Display serif now Frank Ruhl Libre 400 (500 no longer loaded).
+- `theme/tileTone.ts`: OKLCH tone rule; bounds L > 0.86 deep, hue 40-110 / L 0.55-0.86 / C 0.02-0.10 cool. Checked on white, cream, beige, khaki, camel, tan, light brown, navy, black, olive, burgundy, blue, grey, yellow, light blue. `tileAspect()` covers all 19 subcategories.
+- `components/ui/`: Button, Chip, Segmented, Tile, MasonryGrid (windowed ScrollView, synchronous shortest-column layout), Sheet (RN Modal; desktop dialog >= 900), Swatch, Icon (Material Symbols Rounded 300 paths inline), ScreenHeader, TabBar, TopNav, ListRow, EmptyState, Skeleton, StatusLine, and `Display`/`Meta` (the English-only tracking and uppercase rules live there). Web keyboard focus ring via `data-focusring` in global.css.
+- Gallery at `/design-system` (not linked). Screens are not migrated yet.
+- Look at: `design/screens/2026-11-18-design-system-*` and `-today-tokens-v2`, `-wardrobe-tokens-v2`.
+- Not verified: native iOS/Android (no emulator in the session): Modal + gestures, `boxShadow` on Android, haptics, `I18nManager` RTL.
+
+## 2026-11-18 (redesign 1.3: navigation shell)
+
+- Route group `src/app/(tabs)/` with expo-router `Tabs` and a custom bar (`features/shell/ShellTabBar.tsx`): library `TabBar` below 900px, `TopNav` from 900px, switched on window width. Destinations: wardrobe, today (`/`), add (`/intake`), insights (new), profile (new). URLs unchanged; `/item/[id]` and `/location` stay above the tabs. Tab switches are instant (`animation: "none"`).
+- `/profile`: location row (opens `/location`), read-only language row, data credits. `/insights`: empty state pointing at the wardrobe. The old text links between Wardrobe, Intake and Today are removed (Today's own link is left to the Today task).
+- Preview banner now sits directly above the tab bar on mobile (root layout only shows it on screens outside the tabs). `TabBar`/`TopNav` got `aria-selected`, which react-native-web did not emit from `accessibilityState`.
+- Look at: `design/screens/2026-11-18-shell-*`; resize the browser across 900px; open an item and go back.
+- Not verified: native iOS/Android (no emulator): safe-area padding, haptics, RTL tab order.
+
+## 2026-11-18 (redesign 1.4: Today)
+
+- Today rebuilt per DESIGN.md section 3 "היום": masthead (date line, weather line in mono that opens `/location`, place name under it), full-bleed 4:5 flat-lay of cutouts, numbered legend, pull quote, floating action bar ("wearing it" = 1 tap, `tune` opens the adjustments sheet). Tap a garment or its legend row = piece sheet (3 alternatives, swap = 2 taps; "open item"). Swipe on the flat-lay = skip (toward the start edge: left in LTR, right in RTL). Desktop >= 900: two columns, nothing floats. The header link to the wardrobe is gone (the tab bar replaces it).
+- New library pieces: `FlatLay` (with the one `FLAT_LAY` placement config; numbers attach to the drawn garment's edge, computed from the photo's aspect), `Stepper`, `LegendRow`, `ActionBar`. Extended: `Button` icon `outlined` (48, beside a button), `StatusLine` `secondaryAction` + `disabled`. Fixed: `Sheet` title hugged the wrong edge for Latin titles in RTL. Gallery shows 8 real flat-lay combinations and the stepper.
+- Removed (no other importers): `ActionSheet`, `OutfitComposition`, `ItemPlaceholder`, `editorial/DataStrip`.
+- Look at: `design/screens/2026-11-18-today-*` (default at 360/390/430/1280 he+en, piece sheet, adjust sheet, mid-swipe, failed wear, flat-lay combinations).
+- Not verified: native (no emulator), real writes (preview is read-only: wear/skip show the failure line), the all-skipped/missing/empty states (not reachable with this wardrobe in preview). Known gap: RNGH 3.3 on web overrides the detector's `touchAction="pan-y"` with `none`, so on a touch browser a vertical scroll that starts on the flat-lay does not scroll.
+
+## 2026-11-18 (redesign 1.4: Today fix round)
+
+- Touch scroll over the hero (web): RNGH 3.3 applies GestureDetector's `touchAction` once, then every gesture config change runs `setGestureConfig()` → `resetConfig()`, which puts `touch-action: none` back. The swipe's pan config now carries `touchAction: "pan-y"` itself (whitelisted at runtime in RNGH's `allowedNativeProps`, missing from `PanGestureConfig`'s type; passed via a variable typed with it, no cast). Verified with iPhone 13 touch emulation: vertical drag from the hero scrolls, horizontal drag swipes.
+- `Sheet` ground is `ivory` (was `ivory-deep`), so tiles inside a sheet show their ground.
+- Skip line moved out of the floating bar to between the masthead and the hero; the bar is only wear + tune (worn, laundry, failure lines still in it).
+- `ActionBar` in Today has `safeArea={false}`: the tab bar below owns the bottom inset.
+- Desktop flat-lay capped to the viewport height under the top nav (32 above and below), 4:5 kept by narrowing.
+- Look at: `design/screens/2026-11-18-today-{default,piece,adjust}-*.png` (re-shot). Not seen: the skip line on Today itself (the preview cannot record a skip).
+
+## 2026-11-18 (redesign 1.8: small screens on the component library)
+
+- Sign-in is a cover: `Display` app name as the one serif moment, the still life narrowed with air around it, `StatusLine` for a failed sign-in, the Google `Button` (primary) at the bottom. Still-life tiles lost their hairline frames and sit on `tile` / `tile-deep` / `tile-cool` grounds; the garment hexes stay in one commented constant. Monogram label comes from `app.name`.
+- Location: back icon button + `ScreenHeader`, `ListRow` choice rows (check + selected state), new `SearchField`, `StatusLine` for the denied message (it used to replace the row's meta). Logic untouched except the search reset is derived instead of set in an effect (lint).
+- OAuth consent: `Display` title, scopes as `ListRow`s under a `Meta` label, approve = primary `Button`, deny = outline, errors in `StatusLine`. Logic and redirect handling untouched; the sentence that starts with the client's name now gets an explicit direction.
+- `WardrobeGate`: loading is one centred `Meta` line low on ivory; error is `EmptyState` with a retry `Button`. New `+not-found` route (`EmptyState` + back to Today).
+- Profile and Insights: new `ScreenColumn`; from 900px the 720 column sits on the start edge of the 1200 container, under the TopNav brand mark. Mobile unchanged.
+- `TextAction` / `TextLink` now render the library text `Button` (`quiet` is ignored).
+- Library additions: `ListRow` `meta` and `selected`, `SearchField`, `ScreenColumn`. New keys: `common.back`, `common.loadFailedBody`, `oauth.scopesTitle`, `notFound.*`.
+- Look at: `design/screens/2026-11-18-{sign-in-idle,location-*,consent-*,gate-*,notfound*,profile,insights}-*.png`.
+- Not verified: native, a real Google sign-in, a real consent approval (the ask state was reached with a faked session and mocked Supabase responses), a successful "my current location" write (back has no history in a fresh tab).
+## 2026-11-18 (redesign 1.7: Add / intake)
+
+- Add screen rebuilt on the library: `ScreenHeader`, `Segmented` mode, one primary `Button` (choose photos), "send to Claude" as `outline`, `JobCard` (thumbnail + `StatusLine` per photo), `GarmentReview` (large photo on a tile ground from `tileTone`, inline name, library `Chip` rows with an icon-and-words "worth checking" marker, ink save button), duplicate card with two `PhotoTile`s. New library piece `PhotoTile` (tile-style photo with reserved size, skeleton, error glyph); `Tile`'s `FRAME` is exported. Desktop: 720 column, review cards two to a row from 1200.
+- Every failure is visible with a reason and, where it can help, "try again": job failures (reason kept: server reason, `http_<status>`, network, preview), failed background removal (original and redraw), late image sync, redraw-spec save, one-garment fallback to the whole photo, tag-corrections write, send-to-Claude failures (retries only the failed photos). Preview blocks read "design preview only: the photo was not uploaded". `busy` is now real (saving, syncing, reading a label).
+- Data: `invoke` keeps the server's reason or `http_<status>`; new `reasonOf`; `saveGarment` returns `{ id, correctionSaved }`; `saveRedrawSpec` (data/redraw.ts) returns a boolean.
+- Look at: `design/screens/2026-11-18-intake-*`, and the "Add" block of `/design-system`. Not verified: native, and the real upload, detection, tagging, saving pipeline (blocked in the preview).
+
+## 2026-11-18 (redesign 1.5: Wardrobe)
+
+- Wardrobe rebuilt on the library: `ScreenHeader` with count, `tune` (ink dot when a sheet filter is on) and a `backpack` icon for reserve duty; sticky category words (`TextTabs`, new) in DESIGN.md order; colour filter as tappable 24px swatches with the chosen name beside the row; active sheet filters as removable chips; windowed `MasonryGrid` of `Tile`s (2/3/4/5 columns, gap 8, gutter 16); "all" grouped under `Display` headings with counts, one category = continuous grid. Groups now follow the tab order (top, bottom, layer, outerwear, shoes, accessory).
+- Filter sheet (type, season, availability; "נקה" / "הצג N פריטים", live). Long press (or Shift+F10 / context-menu key / right click on web, or the screen-reader action) opens the item's actions: availability as `Segmented` (optimistic, same `setAvailability` rules as the item screen), "לפריט" (flight kept), "הסר מהארון" with a confirm step (`archiveItem`). Failures show as `StatusLine`.
+- Reserve duty in the grid: tiles toggle with ring + check, usual/all as `Segmented`, reminder under the header, floating `ActionBar` above the tab bar with the count and "סמן כבמילואים" / "ביטול"; away items as a `StatusLine` with the three actions.
+- Library (additive): `Button` `dot`; `Tile` `imageRef` + web keyboard/right-click long-press; `MasonryGrid` `StickyHeaderComponent`, `ListSubheaderComponent`, `scrollRef`, `onScroll`; `StatusLine` `moreActions`; `Icon` `backpack`; new `TextTabs`. `Sheet`: the scrim closes only on a press that started on it (a touch long press opened the sheet under the finger and the release click closed it at once).
+- Removed (no importers left): `features/wardrobe/{WardrobeGrid,FilterChips}.tsx`, `components/PressScale.tsx`.
+- Look at: `design/screens/2026-11-18-wardrobe-*.png`. Not verified: native (no emulator), real writes (preview is read-only; every write shows its failure line), the away block on real data (checked once with a local, uncommitted override).
+
+## 2026-11-18 (redesign 1.6: Item)
+
+- Item screen rebuilt per DESIGN.md section 3 "פריט": hero 56% of the phone screen on its own tile tone, edge to edge, full cutout `contain`ed; `arrow_back` / `more_horiz` as 44 ivory squares on the hero corners (they scroll with it on a phone). Name (display-xl) and brand edit in place (blur/return saves, Escape cancels on web). Availability is the library `Segmented`. Every tag is a chip in a labelled hairline row; a chip opens a `Sheet` with the closed list and saves on choice (seasons: multi-select + done; formality: 1-10 grid). Optimistic: the store changes at once, a failed write rolls back and a `StatusLine` appears under that row. No edit mode, no save button. "Goes with" = up to 3 small flat-lays in a scrolling row, each garment opens its item. Overflow sheet: replace photo, improve with AI (price on the row when quoted), remove (confirm inside the sheet, ink, no accent). Desktop >= 900: two columns, picture held in the start column.
+- One save path: `features/item/edit.ts` `editPayload(item, change)` builds the old editor's payload (trim, empty name keeps the old one, empty brand null, `normalizeTags` on a tag patch) and calls the same `updateItemDetails`. `ItemEditor.tsx` removed.
+- Replace photo: when background removal fails the uncut photo is still saved, and now a status line says so.
+- `RedrawComposer` restyled with library Chip/Button/StatusLine/Meta; new optional props `sheet` (own sheet, paid button + budget pinned in the footer) and `error`. Same logic; long-press on a detail also has a button route (empty "own detail" note offers the chosen details as starting text). Intake's inline use is unchanged in props.
+- Shared element (`features/item/transition.ts`, additive): origins carry a tone, a picture rect and `loose`; `registerOrigin` / `flyFrom` / `getFlightOrigin` / `captureReturn` let any picture be an origin. Today's flat-lay ("לפריט" in the piece sheet) and "goes with" garments fly; the ground expands from the origin, the picture scales uniformly; back flies to the pressed garment if still measurable, else fades. Old exports unchanged.
+- Library (additive): `Chip` `accessibilityLabel`/`accessibilityHint`/`onLongPress`/`stretch`; `Button` icon `surface`; `FlatLay` `numbered`, `onPieceNode`, exported `flatLayTone`.
+- Look at: `design/screens/2026-11-18-item-*` (top/tags/goes-with 390 he+en, bottom, shoes 360, no photo, sheets, rollback, name edit, overflow, remove confirm, composer states, 1280 he+en, flight strips from wardrobe/Today/goes-with and back).
+- Not verified: native (no emulator); real writes and the paid redraw (preview blocks them: the failure lines were seen, the success paths were not); price on the button (preview returns no quote).
+
+## 2026-11-18 (polish: sign-in, wardrobe gap, tile tone, lint)
+
+- Sign-in: the Latin app name is in a start-aligned box (same fix as Tile captions and Sheet titles), so it sits on the start edge in he and en.
+- Wardrobe "all": the first section heading is now 24 below the visible swatch row (the row is a 44 hit box around 24 swatches, so the spacer is 14); with active-filter chips it stays 24; sections keep 48 between them.
+- `tile-cool` #E3E3DD -> #E6E3DC (tokens.base.js, DESIGN.md section 2): less green next to the warm tiles. Beige tee and khaki chinos still read clearly against it (ground moved by 3 on red, 1 on blue).
+- Lint clean: the `mounted` flag in the root layout is `useSyncExternalStore` (server false, client true) instead of setState in an effect; the two `i18n` imports are one (kept first); `T[]` instead of `Array<T>`; `i18n.use` goes through the named `use` export.
+- Look at: `design/screens/2026-11-18-sign-in-idle-*`, `2026-11-18-wardrobe-all-*`.
+
+## 2026-11-18 (redesign 1.6: Item fix round)
+
+- Shared element: the origin's picture is hidden for the whole flight in both directions and shown again on landing, on an exit without a flight, and when the item screen unmounts (browser back). Hiding goes by the measured node: `components/ui/originVisibility.ts` (`useOriginVisibility`, `setOriginHidden`), wired into `Tile` (`imageRef`) and `FlatLay` (`onPieceNode`; the node now lives inside each garment). `transition.ts` adds `getFlightNode` and re-exports `setOriginHidden`; `captureReturn` now returns `{ origin, node }`. No wardrobe screen change. The page fades out at once on the way back again (the delay only masked the double).
+- Back from a deep-linked item (no history) now goes to Today instead of leaving a blank page.
+- Availability to spec rows: 32 instead of 48.
+- Screen-reader labels and hints on the item screen and in the composer have the bidi isolates stripped (`features/item/a11y.ts` `spoken`); visible text keeps them.
+- Look at: `design/screens/2026-11-18-item-flight-*` (re-shot), `-tags-390-*`, `-1280-*`, `-browserback-today-390-he`.
+
+## 2026-11-18 (redesign 1.6: Item, verification fixes)
+
+- Name field: Enter saves and closes on web (the multiline textarea inserted a line break) and on native; a saved name or brand never contains a line break. Brand and name controls: the spoken name starts with the visible text ("הוסף מותג" when empty), and the small brand control is a real 44x44 pressable box on web with no visual change.
+- Flight start: the flying picture stays invisible until it has been drawn, then appears in the same frame the origin's picture is hidden (per-frame probe, wardrobe x3, Today x2, goes-with x2: no frame with zero or two copies).
+- Reversible picks: colour and leg-length picks are built against the item as the screen opened it (`edit.ts` `colorPatch`, `legPatch`), so jeans -> shorts -> long gives jeans and a colour changed back gets its measured hex, as in the old editor.
+- Error lines end with their action: any next edit on the details clears the last failure; "keep" clears the remove failure; closing the composer clears its failure.
+- Composer garment words expose `aria-expanded` on web. Library `Chip` has no `expanded` prop yet, so tag chips do not.
+
+## 2026-11-18 - Verification fixes
+
+- Wardrobe: a filter chip applies and closes the sheet (tune + chip = 2 taps); "show N" footer removed; "נקה" in the active-filter row clears colour/type/season/availability in 1 tap and keeps the category. DESIGN.md "ארון" item 7 updated.
+- Today: 24px above the masthead and 16px between masthead and hero, so the whole flat-lay clears the action bar at 390x844 and 360x800; credits line sentence case; hero garments out of the Tab order on web (legend rows are the 01..04 stops).
+- Reserve duty failure line clears on cancel. `/location` back/choose go to `/profile` when there is no history. Sign-in still life hidden from assistive tech; Monogram uses the 16px token.
+- Look at: design/screens/2026-11-18-{today-default,wardrobe-filter-sheet,wardrobe-filters-active,sign-in-idle}-*.png
+
+## 2026-11-18 (redesign 1.7: accessibility fix round)
+
+- State reaches the DOM on web: `webStateProps` in `ui/interaction.ts` maps an accessibility state to `aria-selected` / `-checked` / `-pressed` / `-expanded` / `-disabled` (nothing on native). Used by TextTabs, Swatch, Chip, Segmented (radiogroup + radio), Tile (checkbox), ListRow, TabBar, TopNav, Button. Model: chips and swatches are toggle buttons (`aria-pressed`, also in single-choice rows; a removable chip has none); tabs `aria-selected`; segments `aria-checked`. `Chip` and `Button` take `expanded` for sheet-openers.
+- Real 44x44 hit boxes on web (react-native-web ignores `hitSlop`): the Pressable is the 44 box, the 36 chip / 32 ring a centred child; negative margins keep the footprint. Category tabs and TopNav destinations carry their gap as padding (12 / 16 each side) so a short word is still 44 wide; text buttons get `minWidth` 44. Visible sizes and rhythm unchanged (measured). A chip inside a horizontal ScrollView needs 4px of vertical room or the box is clipped back to 36: fixed in intake `ChoiceRow`; the wardrobe active-filter row still needs it.
+- Blurred tab screens leave the web tab order and accessibility tree: `features/shell/SceneGate.tsx` (`screenLayout`) marks them `data-scene-hidden`, `visibility: hidden` in `global.css`. State and scroll stay mounted.
+- `Display` has `level` (1-3, default 2; `role=heading` + `aria-level` on web); ScreenHeader's title is level 1; Sheet's title is level 2.
+- Sheet is one dialog named by its title (`aria-labelledby`, or `aria-label` without a title) on RNW's own Modal element; its two focus sentinels and the scrim are out of the tab order and the tree, Tab / Shift+Tab wrap inside the dialog.
+- Look at: wardrobe header rows and the design-system chips / swatches at 390 (should look identical to before); Tab on `/insights` after visiting Today and Wardrobe; the Filter sheet with a screen reader.
+
+## 2026-11-18 - Leftovers
+
+- `FlatLay` takes `pieceFocusable` (default true). False sets `focusable={false}` and `tabIndex={-1}` on the garment buttons (react-native-web renders a `<button>`, which Tab reaches unless `tabIndex` says otherwise); they stay clickable and named. Today passes it (legend rows are the 01..04 stops); the MutationObserver stopgap `useOutOfTabOrder` is deleted. The item screen's "goes with" flat-lays keep their stops.
+- Heading levels: `Display` takes `level={null}` for display type that is not a heading (Today's pull quote). Today title, item name, sign-in, consent, not-found titles are level 1 (`EmptyState` takes `level`, default 2); the item name is an h1 around its edit button at rest and a plain labelled field while editing (`InlineText headingLevel`). Gallery masonry category heads are level 3. No more `accessibilityRole="header"` on `Display` (it was overridden by the explicit role on web anyway).
+- Wardrobe active-filter chip row: 4px of vertical room in the scroll content and a -4 margin, so a chip's 44 box is no longer clipped to 36 (row and content below did not move). It was the only remaining clipped chip scroller.
+- `ListRow` choice rows use `aria-pressed` (not `aria-selected`, invalid on role=button).
+- design/screens/after/ and the 360/430 today-default shots re-taken from the final build.
+- Look at: Tab on `/` (weather, 4 legend rows, wear, tune); the heading outline per screen; the active-filter chip row at 390.
+
+## 2026-11-18 (redesign stage 1 closed)
+
+- Stage 1 of `docs/REDESIGN_PLAN.md` is complete on `claude/gifted-goldberg-9498c1`: DESIGN.md v2, the component library (`apps/mobile/src/components/ui/`, gallery at `/design-system`), bottom tab bar and desktop top nav, and every existing screen rebuilt on the library. No change to the data model, the Edge Functions or the MCP tools.
+- Verified in Chromium on the web build with the read-only design preview, at 390 and 1280, Hebrew and English. Not verified: Android, real writes, the real intake pipeline, the paid redraw, real Google sign-in. `TASKS.md` lists what is open and who can close it.
+- Look at: `design/screens/before/` vs `design/screens/after/` (same names), `docs/redesign-checklist-part1.md` and `part2.md` for the regression tables and defects.
+- lint went from 20 problems to 0; typecheck and tests pass.

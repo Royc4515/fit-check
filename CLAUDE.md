@@ -5,7 +5,7 @@ Personal wardrobe and styling app for Roy. Single user now, multi-user-ready sch
 ## Stack
 
 - App: Expo (latest SDK), Expo Router, TypeScript strict, NativeWind v4 (Tailwind, with the tokens from DESIGN.md as the only palette), Reanimated 4 + Gesture Handler, expo-notifications, expo-haptics, expo-image.
-- Web target: same code via react-native-web, deployed to Vercel. Animations on web use `motion` (import from `motion/react`) behind a platform split.
+- Web target: same code via react-native-web, deployed to Vercel. Animations use Reanimated + Gesture Handler on every platform, one code path (the `motion` split was never built; DESIGN.md section 5).
 - Backend: Supabase (Postgres + pgvector, Auth with Google, Storage, Edge Functions in Deno, pg_cron).
 - ML worker: Python service on Modal exposing `/cutout` (BiRefNet via rembg) and `/embed` (FashionCLIP, 512-d). Called only from Edge Functions.
 - AI providers, called only from Edge Functions, each behind one function in `supabase/functions/_shared/ai/`:
@@ -61,6 +61,7 @@ pnpm build:android    # eas build --platform android --profile preview (APK)
 
 - `DESIGN.md` section 1 ("אסור") is a hard constraint. Before committing a screen, re-read it.
 - Build and get approval on the "Today" screen before any other screen.
+- The redesign follows `docs/REDESIGN_PLAN.md`; live status is in `TASKS.md`.
 - Animations: Reanimated shared values only; no React state on the animation path. Load the `animate-expo` skill before animation work and `hebrew-rtl-best-practices` before layout work.
 - Save a screenshot of every new or changed screen to `design/screens/YYYY-MM-DD-<screen>.png`.
 
@@ -74,7 +75,7 @@ pnpm build:android    # eas build --platform android --profile preview (APK)
 
 ## Do not
 
-- Do not add a UI library (shadcn, Tamagui, Paper). Components are ours, styled from the tokens.
+- Do not add a UI library (shadcn, Tamagui, Paper). Components are ours, in `apps/mobile/src/components/ui/`, styled from the tokens. A screen never styles a one-off view; a missing component is added to the library (DESIGN.md section 4).
 - Do not add a vector DB, queue, or second backend. Supabase does all of it at this scale.
 - Do not call remove.bg (API shuts down 2026-12-01). Cutouts come from the Modal worker.
 - Do not implement virtual try-on, Gmail import, or price tracking in the MVP, even if tempting. Tables for them exist and stay empty.

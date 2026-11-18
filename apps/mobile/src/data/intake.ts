@@ -108,7 +108,35 @@ export async function uploadLabel(userId: string, photo: PreparedPhoto, cutoutPa
   return path;
 }
 
-/** Calls an intake Edge Function and parses the answer, turning HTTP errors (cap, bad input) into typed results too. */
+/** The reason carried for an HTTP failure whose body held no reason of its own; the screen shows the status. */
+export const httpReason = (status: number): string => `http_${status}`;
+
+/**
+ * The failure reason for something thrown by an upload or a write, so the screen can say what happened instead of
+ * one generic line. A blocked preview write is "preview"; a storage or database error that carries an HTTP status
+ * keeps it (`http_413`); anything else is "upload".
+ */
+export function reasonOf(error: unknown): string {
+  if (error instanceof PreviewReadOnlyError) return "preview";
+  if (typeof error === "object" && error !== null) {
+    const status = "status" in error ? error.status : "statusCode" in error ? error.statusCode : undefined;
+    const n = typeof status === "string" ? Number(status) : status;
+    if (typeof n === "number" && Number.isInteger(n) && n >= 400 && n <= 599) return httpReason(n);
+  }
+  return "upload";
+}
+
+/** A server answer that failed the strict schema can still name its reason (a gateway or validation error). */
+function reasonFromBody(body: unknown): string | null {
+  if (typeof body !== "object" || body === null || !("reason" in body)) return null;
+  return typeof body.reason === "string" && body.reason.length > 0 ? body.reason : null;
+}
+
+/**
+ * Calls an intake Edge Function and parses the answer, turning HTTP errors (cap, bad input) into typed results too.
+ * Reasons: the server's own when the body has one, `http_<status>` for an HTTP error without one, "network" when the
+ * request never got an answer, "bad_response" for an answer that does not parse.
+ */
 async function invoke<T extends { ok: boolean }>(
   body: object,
   schema: z.ZodType<T>,
@@ -120,14 +148,18 @@ async function invoke<T extends { ok: boolean }>(
     const { data, error } = await supabase.functions.invoke(fn, { body });
     if (error) {
       if (error instanceof FunctionsHttpError) {
-        const parsed = schema.safeParse(await error.context.json().catch(() => null));
+        const body: unknown = await error.context.json().catch(() => null);
+        const parsed = schema.safeParse(body);
         if (parsed.success) return parsed.data;
+        return { ok: false, reason: reasonFromBody(body) ?? httpReason(error.context.status) };
       }
       return { ok: false, reason: "network" };
     }
     const parsed = schema.safeParse(data);
     return parsed.success ? parsed.data : { ok: false, reason: "bad_response" };
-  } catch {
+  } catch (error) {
+    // Still "network" for the screen (the call never completed), but the cause stays in the console.
+    console.error(`${fn} call failed`, error);
     return { ok: false, reason: "network" };
   }
 }
@@ -172,7 +204,8 @@ export function reviewValues(name: string, tags: ItemTags): Record<ReviewField, 
 /**
  * Saves a confirmed garment to the wardrobe and records what the tagger got wrong. The external id is derived
  * from the crop path, so saving the same garment twice updates it instead of duplicating it.
- * Throws on a failed item write; a failed correction write is only logged (the item matters, the stat does not).
+ * Throws on a failed item write. A failed correction write does not throw (the item matters, the stat does not):
+ * it is logged and reported as `correctionSaved: false`, so the screen can say so quietly.
  */
 export async function saveGarment(args: {
   userId: string;
@@ -187,7 +220,7 @@ export async function saveGarment(args: {
   model: string | null;
   /** The composer's spec when the saved image is a redraw, so a later redraw of this item starts from it. */
   redrawSpec?: RedrawSpec | null;
-}): Promise<string> {
+}): Promise<{ id: string; correctionSaved: boolean }> {
   if (isPreview()) throw new PreviewReadOnlyError("saveGarment");
   const externalId = `photo:${args.sourcePath.split("/").slice(-2).join("/")}`;
   const row = itemToInsertRow(
@@ -213,6 +246,7 @@ export async function saveGarment(args: {
     .select("id")
     .single();
   if (error) throw error;
+  let correctionSaved = true;
   if (args.proposal && args.model) {
     const proposed = reviewValues(args.proposal.name, args.proposal.tags);
     const final = reviewValues(args.name, args.tags);
@@ -220,9 +254,12 @@ export async function saveGarment(args: {
     const res = await supabase
       .from("tag_corrections")
       .insert({ user_id: args.userId, item_id: data.id, model: args.model, proposed, final, changed });
-    if (res.error) console.error("tag correction not saved", res.error.message);
+    if (res.error) {
+      console.error("tag correction not saved", res.error.message);
+      correctionSaved = false;
+    }
   }
-  return data.id as string;
+  return { id: data.id as string, correctionSaved };
 }
 
 /**
