@@ -1,6 +1,6 @@
 import type { Slot } from "@fit-check/schema";
 import { Image, type ImageContentPosition, type ImageLoadEventData } from "expo-image";
-import { useCallback, useEffect, useState, type ComponentProps } from "react";
+import { useCallback, useEffect, useState, type ComponentProps, type ComponentRef } from "react";
 import { Pressable, Text, View, type LayoutChangeEvent } from "react-native";
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
@@ -102,7 +102,19 @@ type Props = {
    * clips it, so garments slide out over its edge rather than over the page.
    */
   contentStyle?: ComponentProps<typeof Animated.View>["style"];
+  /** Draw the 01-04 numbers beside the garments. Off for small surfaces, where they would only crowd the cloth. */
+  numbered?: boolean;
+  /**
+   * Receives, per garment, an invisible node laid exactly over the drawn garment (not its box), and null when it
+   * unmounts: the item screen's shared element measures it to start and end its flight on the cloth itself.
+   */
+  onPieceNode?: (itemId: string, node: ComponentRef<typeof View> | null) => void;
 };
+
+/** The surface's ground: `tile-deep` when any piece is light, so a white shirt stays readable; otherwise `tile`. */
+export function flatLayTone(pieces: readonly Pick<FlatLayPiece, "item">[]): "tile" | "tile-deep" {
+  return pieces.some((p) => tileTone(p.item.tags.color_hex) === "tile-deep") ? "tile-deep" : "tile";
+}
 
 /**
  * Flat-lay surface: one tile-toned 4:5 ground with the garments themselves on it as transparent cutouts, laid out
@@ -112,9 +124,9 @@ type Props = {
  * When one garment changes (a swap) the old one fades out while the new one fades in and rises 8px, 180ms.
  * Reduced motion: opacity only. A garment without a photo shows its drawing (ItemArt).
  */
-export function FlatLay({ pieces, onPressPiece, instantKey, radius = "none", accessibilityLabel, contentStyle }: Props) {
+export function FlatLay({ pieces, onPressPiece, instantKey, radius = "none", accessibilityLabel, contentStyle, numbered = true, onPieceNode }: Props) {
   const four = pieces.some((p) => p.slot === "layer");
-  const tone = pieces.some((p) => tileTone(p.item.tags.color_hex) === "tile-deep") ? "tile-deep" : "tile";
+  const tone = flatLayTone(pieces);
   const ordered = Z_ORDER.flatMap((slot) => pieces.filter((p) => p.slot === slot));
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   // Height / width of each photo, by item id, as it loads; the numbers need the drawn shape, not the box.
@@ -140,7 +152,26 @@ export function FlatLay({ pieces, onPressPiece, instantKey, radius = "none", acc
             <Piece key={`${four ? 4 : 3}-${p.slot}`} piece={p} place={place} instantKey={instantKey} onPress={onPressPiece} onAspect={onAspect} />
           ) : null;
         })}
+        {onPieceNode
+          ? ordered.map((p) => {
+              const place = placementOf(four, p.slot);
+              if (!place) return null;
+              // Until the photo's shape is known its box stands in; a flight then starts slightly off the cloth.
+              const aspect = p.item.cutout_path ? aspects[p.item.id] : DRAWING_ASPECT;
+              const r = aspect === undefined ? place : drawnRect(place, aspect, !p.item.cutout_path);
+              return (
+                <View
+                  key={`o-${p.slot}-${p.item.id}`}
+                  ref={(node) => onPieceNode(p.item.id, node)}
+                  collapsable={false}
+                  pointerEvents="none"
+                  style={{ position: "absolute", start: `${r.start}%`, top: `${r.top}%`, width: `${r.width}%`, height: `${r.height}%` }}
+                />
+              );
+            })
+          : null}
         {ordered.map((p) => {
+          if (!numbered) return null;
           const place = placementOf(four, p.slot);
           const aspect = p.item.cutout_path ? aspects[p.item.id] : DRAWING_ASPECT;
           // Hidden until the photo's shape is known, so a number never jumps from the box corner to the cloth.
@@ -181,17 +212,7 @@ function placementOf(four: boolean, slot: Slot): FlatLayPlacement | undefined {
  */
 export function numberPosition(place: FlatLayPlacement, aspect: number, surfaceWidth: number, centred: boolean): { start: number; top: number } {
   const W = Math.max(surfaceWidth, 1);
-  const bx = place.start / 100;
-  const by = (place.top / 100) * FLAT_LAY_ASPECT;
-  const bw = place.width / 100;
-  const bh = (place.height / 100) * FLAT_LAY_ASPECT;
-  const tall = aspect * bw > bh;
-  const gw = tall ? bh / aspect : bw;
-  const gh = tall ? bh : bw * aspect;
-  const alignX = centred ? "center" : place.alignX;
-  const alignY = centred ? "center" : place.alignY;
-  const gx = bx + (alignX === "start" ? 0 : alignX === "center" ? (bw - gw) / 2 : bw - gw);
-  const gy = by + (alignY === "top" ? 0 : alignY === "center" ? (bh - gh) / 2 : bh - gh);
+  const { gx, gy, gw, gh } = drawn(place, aspect, centred);
   const gap = NUM_GAP / W;
   const nw = NUM_W / W;
   const nh = NUM_H / W;
@@ -215,6 +236,31 @@ export function numberPosition(place: FlatLayPlacement, aspect: number, surfaceW
   const cx = Math.min(Math.max(x, inset), 1 - inset - nw);
   const cy = Math.min(Math.max(y, inset), FLAT_LAY_ASPECT - inset - nh);
   return { start: cx * 100, top: (cy / FLAT_LAY_ASPECT) * 100 };
+}
+
+/**
+ * The drawn garment inside its box, as percentages of the surface: what `contain` + contentPosition actually fill.
+ * @param aspect - the photo's height / width; 1 for a drawing (always centred).
+ */
+export function drawnRect(place: FlatLayPlacement, aspect: number, centred: boolean): { start: number; top: number; width: number; height: number } {
+  const { gx, gy, gw, gh } = drawn(place, aspect, centred);
+  return { start: gx * 100, top: (gy / FLAT_LAY_ASPECT) * 100, width: gw * 100, height: (gh / FLAT_LAY_ASPECT) * 100 };
+}
+
+/** The drawn garment in surface-width units (the surface is 1 wide, 1.25 high). */
+function drawn(place: FlatLayPlacement, aspect: number, centred: boolean): { gx: number; gy: number; gw: number; gh: number } {
+  const bx = place.start / 100;
+  const by = (place.top / 100) * FLAT_LAY_ASPECT;
+  const bw = place.width / 100;
+  const bh = (place.height / 100) * FLAT_LAY_ASPECT;
+  const tall = aspect * bw > bh;
+  const gw = tall ? bh / aspect : bw;
+  const gh = tall ? bh : bw * aspect;
+  const alignX = centred ? "center" : place.alignX;
+  const alignY = centred ? "center" : place.alignY;
+  const gx = bx + (alignX === "start" ? 0 : alignX === "center" ? (bw - gw) / 2 : bw - gw);
+  const gy = by + (alignY === "top" ? 0 : alignY === "center" ? (bh - gh) / 2 : bh - gh);
+  return { gx, gy, gw, gh };
 }
 
 /** expo-image positions in physical edges; the config speaks start/end, so the side flips with the direction. */

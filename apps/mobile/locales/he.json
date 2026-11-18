@@ -311,6 +311,28 @@
     "leg": {
       "long": "ארוך",
       "short": "קצר"
+    },
+    "close": "חזרה",
+    "more": "פעולות נוספות",
+    "editField": "{{field}}: {{value}}, עריכה",
+    "empty": "ריק",
+    "addBrand": "הוסף מותג",
+    "addMaterial": "הוסף בד",
+    "saveFailed": "השינוי לא נשמר והוחזר למה שהיה. נסה שוב.",
+    "done": "סיום",
+    "seasonsHint": "לפחות עונה אחת.",
+    "formalityValue": "רשמיות {{n}} מתוך 10",
+    "goesWithOutfit": "תלבושת {{n}}: {{pieces}}",
+    "goesWithPiece": "{{type}}, {{name}}. פתיחה",
+    "goesWithSelf": "{{type}}, {{name}}. הפריט הזה",
+    "image": {
+      "keptUncut": "הרקע לא הוסר, ולכן התמונה נשמרה כמו שהיא."
+    },
+    "actions": {
+      "removeTitle": "להסיר את הפריט מהארון?",
+      "removeBody": "הוא ייעלם מהארון ומההצעות. ההיסטוריה שלו נשמרת, ואפשר להחזיר אותו.",
+      "removeConfirm": "הסר",
+      "keep": "השאר"
     }
   },
   "auth": {
@@ -536,7 +558,8 @@
       "smooth_creases": "ישר קמטים",
       "true_colour": "צבע אמיתי באור יום",
       "sharp_texture": "חדד בד ותפרים"
-    }
+    },
+    "startFrom": "או להתחיל מפרט שבחרת"
   },
   "preview": {
     "banner": "תצוגה לעיצוב בלבד · שום דבר לא נשמר"

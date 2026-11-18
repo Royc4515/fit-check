@@ -36,6 +36,11 @@ type IconOnly = Common & {
    * filter). A mark, not a colour, so it also reads in greyscale; the screen-reader label must say it too.
    */
   dot?: boolean;
+  /**
+   * An ivory square under the glyph, for an icon that sits over a picture (the item hero's back and more buttons,
+   * DESIGN.md section 3 "פריט"): the glyph stays readable on any tile tone without a shadow or a scrim.
+   */
+  surface?: boolean;
 };
 
 export type ButtonProps = Labelled | IconOnly;
@@ -80,7 +85,7 @@ export function Button(props: ButtonProps) {
         {...common}
         accessibilityLabel={props.accessibilityLabel}
         accessibilityState={{ disabled, selected }}
-        className={`items-center justify-center rounded ${props.outlined ? `border ${selected ? "border-ink" : "border-hairline"}` : ""}`}
+        className={`items-center justify-center rounded ${props.outlined ? `border ${selected ? "border-ink" : "border-hairline"}` : ""} ${props.surface ? "bg-ivory" : ""}`}
         style={{ width: side, height: side, opacity: disabled ? DISABLED_OPACITY : 1 }}
       >
         <Animated.View style={pressStyle}>
