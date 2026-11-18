@@ -1,14 +1,14 @@
 import type { PairWeights } from "@fit-check/engine";
 import type { Item } from "@fit-check/schema";
-import { WardrobeGate } from "../components/WardrobeGate";
-import type { DayContext } from "../data/dayContext";
-import { useDayContext } from "../data/useDayContext";
-import { useFeedback } from "../data/useFeedback";
-import { requestStyle } from "../data/stylist";
-import type { WardrobeData } from "../data/wardrobe";
-import { useWardrobe } from "../data/WardrobeProvider";
-import { sessionUserId, useSession } from "../features/auth/SessionProvider";
-import { TodayView } from "../features/today/TodayView";
+import { WardrobeGate } from "../../components/WardrobeGate";
+import type { DayContext } from "../../data/dayContext";
+import { useDayContext } from "../../data/useDayContext";
+import { useFeedback } from "../../data/useFeedback";
+import { requestStyle } from "../../data/stylist";
+import type { WardrobeData } from "../../data/wardrobe";
+import { useWardrobe } from "../../data/WardrobeProvider";
+import { sessionUserId, useSession } from "../../features/auth/SessionProvider";
+import { TodayView } from "../../features/today/TodayView";
 
 /** Today: loads the wardrobe and the day, then hands both to the view. */
 export default function Index() {

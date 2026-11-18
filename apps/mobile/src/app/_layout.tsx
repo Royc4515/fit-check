@@ -1,6 +1,6 @@
 import "../../global.css";
 import "../i18n";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
@@ -55,10 +55,8 @@ function Routes() {
       }}
     >
       <Stack.Protected guard={signedIn}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="wardrobe" />
+        <Stack.Screen name="(tabs)" />
         <Stack.Screen name="location" />
-        <Stack.Screen name="intake" />
         {/* Internal component gallery; not linked from any screen. */}
         <Stack.Screen name="design-system" />
         {/* don't touch / transparent + no native animation: the item screen runs its own shared-element
@@ -97,6 +95,10 @@ export default function RootLayout() {
   // silently won in the wrong language/width. Locale and window size are client facts; skip server content.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  // The tabs (and the item screen above them) carry the preview banner themselves, stacked above the tab bar. Here
+  // only the screens outside them need it. Moving it in and out of this flow would resize the stack mid item flight.
+  const first = useSegments()[0];
+  const tabsOwnBanner = first === "(tabs)" || first === "item";
   // Quiet empty state while fonts load: no spinner, no skeleton (DESIGN.md section 1).
   if (!fontsLoaded || !mounted) return quiet;
 
@@ -112,7 +114,7 @@ export default function RootLayout() {
             <Routes />
           </SessionProvider>
         </View>
-        {isPreview() ? <PreviewBanner /> : null}
+        {isPreview() && !tabsOwnBanner ? <PreviewBanner /> : null}
       </View>
     </GestureHandlerRootView>
   );

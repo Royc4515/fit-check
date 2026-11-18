@@ -31,6 +31,8 @@ export function TopNav<K extends string>({ items, activeKey, onSelect, add, bran
                 accessibilityRole="tab"
                 accessibilityLabel={item.label}
                 accessibilityState={{ selected: active }}
+                // don't touch / react-native-web does not map accessibilityState.selected to the DOM.
+                aria-selected={active}
                 style={{ height: layout.topNavHeight, justifyContent: "center" }}
               >
                 <View style={{ borderBottomWidth: INDICATOR, borderBottomColor: active ? colors.ink : colors.transparent }} className="pb-1">
