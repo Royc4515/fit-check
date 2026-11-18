@@ -453,5 +453,133 @@
   },
   "preview": {
     "banner": "Design preview only · nothing is saved"
+  },
+  "ui": {
+    "close": "Close",
+    "remove": "Remove {{label}}",
+    "loading": "Loading"
+  },
+  "ds": {
+    "title": "Design system",
+    "intro": "Every component, every variant, every state. Internal page, not linked from the app.",
+    "section": {
+      "buttons": "Buttons",
+      "chips": "Chips",
+      "segmented": "Segmented control",
+      "swatches": "Swatches",
+      "icons": "Icons",
+      "tiles": "Tiles",
+      "tones": "Tile tones",
+      "rows": "Rows",
+      "empty": "Empty state",
+      "skeleton": "Loading",
+      "status": "Status line",
+      "sheet": "Sheet",
+      "nav": "Navigation",
+      "masonry": "The wardrobe as masonry"
+    },
+    "state": {
+      "default": "Default",
+      "selected": "Selected",
+      "disabled": "Disabled",
+      "withIcon": "With icon",
+      "notHome": "Not at home",
+      "loading": "Loading",
+      "mini": "Mini",
+      "hero": "Hero",
+      "hint": "Press: scale to 0.97 with a lifted shadow. Keyboard: ink focus ring."
+    },
+    "button": {
+      "primary": "Wearing",
+      "ink": "Save",
+      "outline": "Cancel",
+      "text": "All items",
+      "add": "Add",
+      "filter": "Filter",
+      "more": "More",
+      "back": "Back",
+      "filterActive": "Filter, active"
+    },
+    "chip": {
+      "summer": "Summer",
+      "winter": "Winter",
+      "cotton": "Cotton",
+      "suggestion": "Maybe linen?",
+      "removable": "Navy"
+    },
+    "segmented": {
+      "label": "Availability",
+      "two": {
+        "one": "One garment",
+        "many": "Several"
+      },
+      "twoLabel": "Add mode"
+    },
+    "swatch": {
+      "none": "No colour selected",
+      "picked": "Selected: {{name}}"
+    },
+    "tone": {
+      "tile": "tile · default",
+      "tile-deep": "tile-deep · light garments",
+      "tile-cool": "tile-cool · sand and earth"
+    },
+    "row": {
+      "location": "Location",
+      "locationValue": "Jerusalem",
+      "credits": "Redraw credits",
+      "language": "Language",
+      "languageValue": "English"
+    },
+    "empty": {
+      "title": "No insights yet",
+      "body": "After a week of wearing, this shows what works and what stays in the closet.",
+      "action": "To the wardrobe"
+    },
+    "status": {
+      "info": "The wardrobe is refreshing",
+      "ok": "Logged for today",
+      "error": "Upload failed: no connection",
+      "undo": "Undo"
+    },
+    "sheet": {
+      "open": "Open sheet",
+      "openLong": "Long sheet (scrolls)",
+      "title": "Filter",
+      "longTitle": "All colours",
+      "clear": "Clear",
+      "show_one": "Show 1 item",
+      "show_other": "Show {{n}} items",
+      "season": "Season",
+      "type": "Type",
+      "intro": "Drag the handle down, tap the backdrop or press Escape to close."
+    },
+    "nav": {
+      "today": "Today",
+      "wardrobe": "Wardrobe",
+      "insights": "Insights",
+      "profile": "Profile",
+      "add": "Add",
+      "mobile": "Tab bar (mobile)",
+      "desktop": "Top bar (desktop)",
+      "desktopOnly": "Shown from 900px wide. Phones use the tab bar."
+    },
+    "masonry": {
+      "all": "All",
+      "hint": "{{n}} items, {{cols}} columns. Switching category moves tiles to their new place.",
+      "loading": "Loading the wardrobe",
+      "category": "Category"
+    },
+    "variant": {
+      "primary": "primary",
+      "ink": "ink",
+      "outline": "outline",
+      "text": "text",
+      "icon": "icon",
+      "fullWidth": "fullWidth",
+      "info": "info",
+      "ok": "ok",
+      "error": "error"
+    }
   }
 }

@@ -1,3 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Keyboard focus ring for src/components/ui (DESIGN.md section 4: ink 2px, 2px offset). :focus-visible, so a mouse or
+   touch press never shows it. Opt-in via `focusRingProps` (data-focusring) so existing screens are unchanged. */
+[data-focusring]:focus-visible {
+  outline: 2px solid theme("colors.ink");
+  outline-offset: 2px;
+}

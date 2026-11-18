@@ -1,0 +1,21 @@
+/**
+ * The component library (DESIGN.md section 4). Screens build from these; a missing piece is added here, never
+ * styled ad hoc in a screen. The gallery at /design-system shows each one in every state.
+ */
+export { Button, type ButtonProps } from "./Button";
+export { Chip } from "./Chip";
+export { EmptyState } from "./EmptyState";
+export { Icon, type IconName } from "./Icon";
+export { focusRingProps, selectionHaptic, usePressFeedback } from "./interaction";
+export { ListRow } from "./ListRow";
+export { computeMasonry, MasonryGrid, type MasonryCellInfo, type MasonryLayout, type MasonrySection } from "./MasonryGrid";
+export { ScreenHeader } from "./ScreenHeader";
+export { Segmented, type Segment } from "./Segmented";
+export { Sheet } from "./Sheet";
+export { Skeleton } from "./Skeleton";
+export { StatusLine, type StatusVariant } from "./StatusLine";
+export { Swatch, type SwatchSize } from "./Swatch";
+export { TabBar, type NavItem, type NavProps } from "./TabBar";
+export { Tile, TILE_CAPTION_HEIGHT, type TileItem, type TileSize } from "./Tile";
+export { TopNav } from "./TopNav";
+export { Display, Meta, useTypeTracking } from "./Type";
