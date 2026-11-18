@@ -169,7 +169,9 @@
       "facet": {
         "type": "Type",
         "season": "Season",
-        "availability": "Availability"
+        "availability": "Availability",
+        "context": "Occasion",
+        "formality": "Formality"
       }
     },
     "actions": {
@@ -181,6 +183,30 @@
       "keep": "Keep",
       "failed": "That didn't save. Try again.",
       "removeFailed": "The removal didn't save. Try again."
+    },
+    "context": {
+      "shabbat": "For Shabbat"
+    },
+    "formality": {
+      "casual": "Casual",
+      "mid": "In between",
+      "formal": "Formal"
+    },
+    "search": {
+      "open": "Search the wardrobe",
+      "placeholder": "Search by name or brand",
+      "close": "Close search",
+      "clear": "Clear search",
+      "results_one": "1 item",
+      "results_other": "{{count}} items",
+      "noMatch": "Nothing matches “{{query}}”",
+      "noMatchBody": "No name or brand in the wardrobe contains it.",
+      "noMatchFiltered": "No name or brand contains it with the current filters."
+    },
+    "removed": {
+      "message": "Removed from the wardrobe",
+      "undo": "Undo",
+      "undoFailed": "The restore did not save. The item is still in the archive."
     }
   },
   "common": {
@@ -734,5 +760,14 @@
       "less": "Cooler",
       "more": "Warmer"
     }
+  },
+  "archive": {
+    "title": "Archive",
+    "hint": "Items removed from the wardrobe. They are never suggested, and each one can come back.",
+    "restore": "Restore to wardrobe",
+    "restoreHint": "It goes back to the wardrobe and to Today's suggestions.",
+    "restoreFailed": "The restore did not save. The item is still in the archive.",
+    "emptyTitle": "The archive is empty",
+    "empty": "An item removed from the wardrobe comes here, and can be brought back any time."
   }
 }
