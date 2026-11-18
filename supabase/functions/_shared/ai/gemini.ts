@@ -37,6 +37,8 @@ export const ENHANCE_MODEL = "gemini-3.1-flash-lite-image";
 
 /** USD, Gemini API paid tier (2026-11): $0.25 per 1M input tokens, $0.0336 per 1024px output image. */
 const ENHANCE_PRICE = { input_token: 0.25 / 1_000_000, image: 0.0336 } as const;
+/** What one redraw costs, rounded up for display (the prompt's ~1k input tokens add about $0.0003). */
+export const ENHANCE_PRICE_USD = Math.ceil((ENHANCE_PRICE.image + 1_500 * ENHANCE_PRICE.input_token) * 1000) / 1000;
 
 const endpoint = (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
@@ -64,15 +66,6 @@ const DETECT_SINGLE_PROMPT = [
   '"issues" (any of "occluded", "overlapping", "cut_off", "wrinkled", "blurry", "dark"; empty if the garment is clearly shown).',
   "If there is no garment, output an empty list.",
 ].join(" ");
-
-function enhancePrompt(description: string): string {
-  return [
-    `This is a photo of one garment: ${description}. Parts of it may be hidden, creased, or overlapped by other clothes.`,
-    "Render the complete garment as a clean e-commerce product photo: alone, laid flat or as if on an invisible mannequin, front view, centred, filling most of the frame.",
-    "Background: plain pure white (#FFFFFF), no shadow, no floor, no hanger, no person, no other clothing or objects.",
-    "Keep the exact colour, pattern, fabric texture, buttons, logos and proportions. Complete hidden parts plausibly and smooth creases, but do not restyle it and do not add text.",
-  ].join(" ");
-}
 
 const DetectEntrySchema = z.object({
   box_2d: BoxSchema,
@@ -190,8 +183,10 @@ export type EnhanceResult = { png: Uint8Array | null; billingRequired: boolean; 
  * Optional step: redraws one cutout as a clean product photo (paid model, only on the user's request). Never throws.
  * `billingRequired` is true when Google refuses because the project is on the free tier, so the app can say so
  * instead of a generic failure. Other failure modes: missing key, HTTP error, safety block, no image in the answer.
+ * `prompt` is the whole text instruction, built by the caller with buildRedrawPrompt (the composer's spec) or
+ * redrawPrompt (a free description), both in packages/schema/redraw-spec.ts so the app can preview it.
  */
-export async function enhanceGarment(image: Uint8Array, mimeType: string, description: string): Promise<EnhanceResult> {
+export async function enhanceGarment(image: Uint8Array, mimeType: string, prompt: string): Promise<EnhanceResult> {
   const started = Date.now();
   const base = { provider: "google" as const, model: ENHANCE_MODEL, task: "separate" as const };
   const fail = (error: string, extra: Partial<AiLogEntry> = {}, billingRequired = false): EnhanceResult => ({
@@ -211,7 +206,7 @@ export async function enhanceGarment(image: Uint8Array, mimeType: string, descri
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: enhancePrompt(description) }, { inline_data: { mime_type: mimeType, data: toBase64(image) } }] }],
+        contents: [{ role: "user", parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: toBase64(image) } }] }],
         generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "3:4" } },
       }),
       signal: AbortSignal.timeout(60_000),

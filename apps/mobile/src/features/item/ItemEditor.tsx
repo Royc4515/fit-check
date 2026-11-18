@@ -7,16 +7,19 @@ import {
   SUBCATEGORIES,
   type Item,
   type ItemTags,
+  type RedrawSpec,
 } from "@fit-check/schema";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { TextAction } from "../../components/TextAction";
-import { describeForRedraw, enhanceCutout, preparePhoto, removeBackground, sourceCropPath, wholePhotoGarment } from "../../data/intake";
+import { enhanceCutout, preparePhoto, removeBackground, sourceCropPath, wholePhotoGarment } from "../../data/intake";
+import { saveRedrawSpec } from "../../data/redraw";
 import { colors } from "../../theme/tokens";
-import { Chip, Row } from "../intake/GarmentReview";
+import { Chip, Row } from "../intake/ChoiceRow";
 import { COLOR_HEX } from "../intake/palette";
+import { RedrawComposer } from "../redraw/RedrawComposer";
 import { hasSleeves, isBottom, LEG_CHOICES, legOf, normalizeTags, SLEEVE_CHOICES, subcategoryForLeg } from "../intake/tagRules";
 
 export type ItemEdits = {
@@ -41,6 +44,7 @@ export function ItemEditor({ item, edits, onClose, onRemoved }: { item: Item; ed
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [composing, setComposing] = useState(false);
   const patch = (p: Partial<ItemTags>) => setTags((cur) => normalizeTags({ ...cur, ...p }));
   const align = { textAlign: i18n.language === "en" ? "left" : "right" } as const;
 
@@ -63,17 +67,28 @@ export function ItemEditor({ item, edits, onClose, onRemoved }: { item: Item; ed
       onClose();
     });
 
-  /** Redraws from the real crop (never from an earlier redraw), then removes the redraw's white background. */
-  const enhance = () =>
+  /**
+   * Redraws from the real crop (never from an earlier redraw), then removes the redraw's white background. Words
+   * changed in the composer are tag edits, so name and tags are saved with the new image: otherwise the wardrobe
+   * would show a navy shirt the engine still thinks is black. The spec is stored so the next redraw starts from it.
+   */
+  const enhance = (spec: RedrawSpec) =>
     run("enhancing", async () => {
       const source = sourceCropPath(item.cutout_path);
       if (!source) throw new Error("no source photo");
-      const drawn = await enhanceCutout(source, describeForRedraw(tags, name));
+      const drawn = await enhanceCutout(source, spec);
       if (!drawn.ok) throw new Error(drawn.reason);
+      if (name.trim() !== item.name || JSON.stringify(tags) !== JSON.stringify(item.tags)) {
+        await edits.save(item.id, { name: name.trim() || item.name, brand: brand.trim() || null, tags });
+      }
       // The server usually clears the white itself; the worker is only asked when that check declined.
-      if (drawn.transparent) return edits.setImage(item.id, drawn.path, null);
-      const cut = await removeBackground(drawn.path);
-      await edits.setImage(item.id, cut.ok ? cut.path : drawn.path, cut.ok ? cut.thumb_path : null);
+      if (drawn.transparent) await edits.setImage(item.id, drawn.path, null);
+      else {
+        const cut = await removeBackground(drawn.path);
+        await edits.setImage(item.id, cut.ok ? cut.path : drawn.path, cut.ok ? cut.thumb_path : null);
+      }
+      await saveRedrawSpec(item.id, spec);
+      setComposing(false);
     });
 
   /** A new photo of the same garment: uploaded as a fresh crop, cut out when the worker is available. */
@@ -237,10 +252,23 @@ export function ItemEditor({ item, edits, onClose, onRemoved }: { item: Item; ed
         <Text className="font-body text-meta text-ink-faint">{t("item.edit.image")}</Text>
         <View className="flex-row flex-wrap" style={{ columnGap: 18, rowGap: 12 }}>
           <TextAction label={busy === "replacing" ? t("item.edit.replacing") : t("item.edit.replacePhoto")} disabled={busy !== null} onPress={() => void replacePhoto()} />
-          {sourceCropPath(item.cutout_path) ? (
-            <TextAction label={busy === "enhancing" ? t("item.edit.enhancing") : t("intake.enhance")} quiet disabled={busy !== null} onPress={() => void enhance()} />
+          {sourceCropPath(item.cutout_path) && !composing ? (
+            <TextAction label={t("intake.enhance")} quiet disabled={busy !== null} onPress={() => setComposing(true)} />
           ) : null}
         </View>
+        {composing ? (
+          <RedrawComposer
+            tags={tags}
+            name={name}
+            brand={brand}
+            itemId={item.id}
+            onTagsChange={patch}
+            colorHex={(v) => (v === item.tags.color_name ? item.tags.color_hex : COLOR_HEX[v])}
+            onSubmit={(spec) => void enhance(spec)}
+            onCancel={() => setComposing(false)}
+            busy={busy === "enhancing"}
+          />
+        ) : null}
         <View className="mt-4 self-start">
           <Pressable onPress={remove} disabled={busy !== null} accessibilityRole="button" hitSlop={8}>
             <View className="border-b pb-1" style={{ borderColor: colors.accent }}>

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Bundles packages/engine into one Deno-loadable ES module for Edge Functions (the mcp function runs the engine).
 # Why a bundle: the engine is written for the app's bundler (extensionless relative imports), which Deno cannot
-# resolve, and it only imports types from @fit-check/schema, so the bundle has no runtime dependencies.
+# resolve. @fit-check/schema stays external: since the redraw composer (2026-11-18) the engine imports values from it,
+# which Deno resolves through supabase/functions/deno.json and the mcp bundle through its esbuild alias.
 # Run after changing packages/engine; the output is committed so deploys do not need Node.
 set -euo pipefail
 cd "$(dirname "$0")/.."

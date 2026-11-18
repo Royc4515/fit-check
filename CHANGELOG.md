@@ -334,3 +334,17 @@
 - App: `ItemEditor` and `IntakeView` skip the worker cutout when the redraw comes back `transparent`.
 - Cause: the Modal workspace was disabled on 2026-11-18, so every redraw stayed on white. 18 items left on white were cleared with the same code; the temporary `image-put` function is retired (410).
 - Look at: `design/screens/2026-11-18-redraw-whitebg.png` (all 18 on a green test ground). A faint light outline remains on a few dark garments; it doesn't show on the app's light background.
+
+## 2026-11-18 (AI redraw composer)
+
+- The paid redraw now opens a composer instead of firing right away (Roy, 2026-11-18): the garment as dotted running text where every word is a tag (tap = its closed list, and the change is a tag edit, saved with the new image), detail chips (collar, pockets, logo, closure, soles... 51 in `packages/schema/src/redraw-spec.ts`, Hebrew labels in the locales), photo-fix chips, and up to two free notes of 60 characters. The English prompt is shown read-only, built by the same function the server uses. The button shows the price and the month's remaining Google budget (new `quote` action on intake-separate, no AI call).
+- Suggestions cost nothing: the name, brand and detection's description preselect details by keyword (longest match per group), detection's issues preselect fixes (overlapping -> remove the garment behind), and past redraws of the same garment type rank the chips. A free note typed twice for a garment type is offered back as a chip. Logic in `packages/engine/src/redraw.ts`, 19 tests.
+- Free notes are cleaned (no quotes, brackets or line breaks), quoted in the prompt, and come with an instruction never to draw them as lettering on the garment.
+- Migration `0005_item_redraw_spec.sql`: `items.redraw_spec jsonb`, the last successful redraw's choices, so a second redraw of an item starts where the first ended. Not part of the frozen tags.
+- intake-separate `enhance` takes `spec` (the server builds the prompt) or the old `description` (older app builds keep working). A spec with no chips produces the exact pre-composer prompt (test in `redraw-spec.test.ts`).
+- MCP `item_redraw`: description is optional; without it, `details` from the same vocabulary build on the item's tags and the spec is stored. `fixes` and `notes` work in both modes.
+- `Chip`/`Row` moved from GarmentReview to `features/intake/ChoiceRow.tsx` (shared by intake, item editor and composer). Engine bundle regenerated; it now imports values from @fit-check/schema.
+- Deployed: migration 0005 applied; intake-separate v21 (one esbuild bundle, same flags as `scripts/bundle-mcp.sh`), checked to boot. Old app builds keep working (description path).
+- Not deployed yet: the mcp function. Its new `item_redraw` chips mode is in the source, but the 70 KB bundle was too large to paste reliably through the deploy tool in this session. Deployed v6 still works with a description. Next deploy: `scripts/bundle-mcp.sh` then deploy the bundle.
+- Look at: `design/screens/2026-11-18-redraw-composer.png` and `-open.png` (colour word open, a free note being typed, prompt shown).
+
