@@ -1,169 +1,207 @@
 import type { PairWeights } from "@fit-check/engine";
-import { AVAILABILITIES, type Availability, type Item } from "@fit-check/schema";
-import { useMemo, useState } from "react";
+import { AVAILABILITIES, type Availability, type Item, type ItemTags } from "@fit-check/schema";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, Text, View } from "react-native";
-import { SpecTable } from "../../components/editorial/SpecTable";
-import { ItemArt } from "../../components/item-art/ItemArt";
-import { TextAction } from "../../components/TextAction";
-import { ItemEditor, type ItemEdits } from "./ItemEditor";
-import { getOutfitsWith } from "../today/outfit";
+import { Text, View } from "react-native";
+import { SpecTable, type SpecRow } from "../../components/editorial/SpecTable";
+import { Chip, Display, Meta, Segmented, StatusLine } from "../../components/ui";
+import { hasSleeves, isBottom, legOf } from "../intake/tagRules";
+import { editPayload, type ItemChange, type ItemEdits } from "./edit";
+import { GoesWith } from "./GoesWith";
+import { InlineText } from "./InlineText";
+import { fieldLabelKey, TagSheet, type TagField } from "./TagSheet";
 
-/** Wraps numbers so they stay LTR inside Hebrew text (DESIGN.md section 2: numbers always LTR). */
+/** Numbers stay LTR inside Hebrew text (DESIGN.md section 2). */
 const ltr = (s: string) => `⁦${s}⁩`;
 
-/** A number in mono inside a spec cell. Kept apart from Hebrew words: Plex Mono has no Hebrew glyphs. */
-function Num({ children }: { children: string }) {
-  return <Text className="font-mono text-num text-ink">{ltr(children)}</Text>;
-}
-
 /**
- * Everything under the hero: the name, the tags as a spec sheet, and up to three engine outfits that contain this
- * item, each drawn as a small trio so "goes with" is something you see, not a list of names.
+ * A status line under the part of the screen it is about: the name, the availability, or the very tag row that
+ * failed (under the chip that just rolled back, not at the end of a table that may be below the fold).
  */
-/**
- * Where the item is: home, laundry, away (reserve duty), lent. Only `home` items are ever suggested, so this is the
- * laundry switch. The current state is ink with the underline; the others are faint, like an index.
- */
-function AvailabilityControl({
-  value,
-  onChange,
-}: {
-  value: Availability;
-  onChange?: (next: Availability) => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <View className="flex-row flex-wrap" style={{ columnGap: 16, rowGap: 8 }} accessibilityRole="radiogroup">
-      {AVAILABILITIES.map((a) => {
-        const selected = a === value;
-        return (
-          <Pressable
-            key={a}
-            accessibilityRole="radio"
-            accessibilityState={{ selected, disabled: !onChange }}
-            disabled={!onChange || selected}
-            onPress={() => onChange?.(a)}
-            hitSlop={8}
-          >
-            <View className={selected ? "border-b border-ink pb-1" : "pb-1"} style={selected ? undefined : { borderBottomWidth: 1, borderColor: "transparent" }}>
-              <Text className={`font-body text-body ${selected ? "text-ink" : "text-ink-faint"}`}>{t(`wardrobe.availability.${a}`)}</Text>
-            </View>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
+type Failure = { where: "identity" | "availability" | TagField };
 
-export function ItemDetails({
-  item,
-  items,
-  pairWeights,
-  onAvailability,
-  edits,
-  onRemoved,
-}: {
+type Props = {
   item: Item;
   items: Item[];
   pairWeights: PairWeights;
   onAvailability?: (itemId: string, next: Availability, prev: Availability) => Promise<void>;
-  /** Absent in read-only contexts (the design harness); the edit link is then hidden. */
+  /** Absent in read-only contexts (no session): every chip is then plain text. */
   edits?: ItemEdits;
-  onRemoved?: () => void;
-}) {
-  const { t } = useTranslation();
-  const [editing, setEditing] = useState(false);
-  const [failed, setFailed] = useState(false);
+  /** A status about the picture (replacing, cutout fallback), shown first, right under the hero. */
+  imageStatus?: ReactNode;
+  onOpenOther: (scope: string, itemId: string) => void;
+  onScrollTop: () => void;
+  /** Phone layout: "goes with" runs to the screen edges. */
+  bleed: boolean;
+};
+
+/**
+ * Everything under the hero (DESIGN.md section 3 "פריט" items 2-5): the name and brand, edited in place; where the
+ * item is; every tag as a chip in a labelled row, each opening its closed list in a sheet and saving on choice (no
+ * edit mode, no save button); "goes with". Saves are optimistic upstream (the item route rolls back a failed write);
+ * this component only says that it failed, next to what failed.
+ */
+export function ItemDetails({ item, items, pairWeights, onAvailability, edits, imageStatus, onOpenOther, onScrollTop, bleed }: Props) {
+  const { t, i18n } = useTranslation();
+  const [failure, setFailure] = useState<Failure | null>(null);
+  const [field, setField] = useState<TagField | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const { tags } = item;
+  // Names are often Latin inside a Hebrew page; aligned to the page's start, not to the script's (web gives text
+  // dir="auto"), so a wrapped English name does not hang off the far edge.
+  const align = { textAlign: i18n.language === "en" ? "left" : "right" } as const;
+
+  /** The one save path: "the item as it is now + this change", built exactly like the old editor's payload. */
+  const change = (c: ItemChange, where: Failure["where"]) => {
+    if (!edits) return;
+    const payload = editPayload(item, c);
+    if (!payload) return;
+    setFailure(null);
+    edits.save(item.id, payload).catch((error: unknown) => {
+      console.error("Item save failed", error);
+      setFailure({ where });
+    });
+  };
+
   const changeAvailability = onAvailability
     ? (next: Availability) => {
-        setFailed(false);
+        setFailure(null);
         onAvailability(item.id, next, item.availability).catch((error: unknown) => {
           console.error("Availability update failed", error);
-          setFailed(true);
+          setFailure({ where: "availability" });
         });
       }
     : undefined;
-  const outfits = useMemo(() => getOutfitsWith(items, pairWeights, item.id, 3), [items, pairWeights, item.id]);
-  const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
-  const { tags } = item;
 
-  const rows = [
-    { label: t("item.spec.type"), value: t(`item.subcategory.${tags.subcategory}`) },
-    {
-      label: t("item.spec.color"),
-      value: (
-        <View className="flex-row items-center" style={{ gap: 8 }}>
-          <View className="border border-hairline" style={{ width: 14, height: 14, backgroundColor: tags.color_hex }} />
-          <Text className="font-body text-body text-ink">{t(`wardrobe.color.${tags.color_name}`)}</Text>
+  const openField = (f: TagField) => {
+    setField(f);
+    setSheetOpen(true);
+  };
+
+  /** A tag value as a chip: a button that names the field and the value ("Colour: navy, edit"). Text when read-only. */
+  const value = (f: TagField, label: string, opts: { swatch?: string; key?: string; dashed?: boolean } = {}) =>
+    edits ? (
+      <Chip
+        key={opts.key ?? f}
+        label={label}
+        swatch={opts.swatch}
+        dashed={opts.dashed}
+        onPress={() => openField(f)}
+        accessibilityLabel={t("item.editField", { field: t(fieldLabelKey[f]), value: label })}
+      />
+    ) : (
+      <Text key={opts.key ?? f} className="font-body text-body text-ink">
+        {label}
+      </Text>
+    );
+
+  const failed = (where: Failure["where"], message: string) =>
+    failure?.where === where ? (
+      <View className="mt-2">
+        <StatusLine variant="error" message={message} />
+      </View>
+    ) : null;
+
+  /** One tag row: its chip(s), and the failure line under them when this field's save was just rolled back. */
+  const row = (f: TagField, content: ReactNode): SpecRow => ({
+    key: f,
+    label: t(fieldLabelKey[f]),
+    value: (
+      <View style={{ alignSelf: "stretch", alignItems: "flex-start" }}>
+        <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+          {content}
         </View>
-      ),
-    },
-    { label: t("item.spec.pattern"), value: t(`item.pattern.${tags.pattern}`) },
-    ...(tags.sleeve === "na" ? [] : [{ label: t("item.spec.sleeve"), value: t(`item.sleeve.${tags.sleeve}`) }]),
-    // "Unknown" material carries no information (half the sheet import); the row is dropped instead.
-    ...(tags.material === "unknown" ? [] : [{ label: t("item.spec.material"), value: t(`item.material.${tags.material}`) }]),
-    { label: t("item.spec.seasons"), value: tags.seasons.map((s) => t(`wardrobe.season.${s}`)).join(", ") },
-    { label: t("item.spec.formality"), value: <Num>{`${tags.formality}/10`}</Num> },
-    { label: t("item.spec.range"), value: <Num>{`${tags.temp_min_c}–${tags.temp_max_c}°`}</Num> },
-  ];
+        {failed(f, t("item.saveFailed"))}
+      </View>
+    ),
+  });
 
-  if (editing && edits) {
-    return <ItemEditor item={item} edits={edits} onClose={() => setEditing(false)} onRemoved={() => onRemoved?.()} />;
-  }
+  const rows: SpecRow[] = [
+    row("subcategory", value("subcategory", t(`item.subcategory.${tags.subcategory}`))),
+    row("color", value("color", t(`wardrobe.color.${tags.color_name}`), { swatch: tags.color_hex })),
+    row("pattern", value("pattern", t(`item.pattern.${tags.pattern}`))),
+    // "Unknown" material says nothing; read-only it is dropped, editable it is an invitation to fill in.
+    ...(tags.material !== "unknown"
+      ? [row("material", value("material", t(`item.material.${tags.material}`)))]
+      : edits
+        ? [row("material", value("material", t("item.addMaterial"), { dashed: true }))]
+        : []),
+    ...(hasSleeves(tags) ? [row("sleeve", value("sleeve", t(`item.sleeve.${tags.sleeve === "na" ? "short" : tags.sleeve}`)))] : []),
+    ...(isBottom(tags) ? [row("leg", value("leg", t(`item.leg.${legOf(tags)}`)))] : []),
+    row("fit", value("fit", t(`item.fit.${tags.fit}`))),
+    row("seasons", tags.seasons.map((s) => value("seasons", t(`wardrobe.season.${s}`), { key: s }))),
+    row("formality", value("formality", ltr(`${tags.formality}/10`))),
+    // Derived from the other tags by the tagger, so it is read, not chosen: no chip.
+    {
+      key: "range",
+      label: t("item.spec.range"),
+      value: <Text className="font-mono text-num text-ink">{ltr(`${tags.temp_min_c}–${tags.temp_max_c}°`)}</Text>,
+    },
+  ];
 
   return (
     <View>
-      <Text className="font-display text-display-xl text-ink">{item.name}</Text>
-      {item.brand ? <Text className="mt-1 font-body text-body-sm text-ink-soft">{item.brand}</Text> : null}
-      {edits ? (
-        <View className="mt-3 self-start">
-          <TextAction label={t("item.edit.open")} onPress={() => setEditing(true)} />
-        </View>
-      ) : null}
+      {imageStatus ? <View className="mb-6">{imageStatus}</View> : null}
 
-      <View className="mt-8">
-        <Text className="font-body text-meta text-ink-faint">{t("item.where")}</Text>
+      {edits ? (
+        <InlineText value={item.name} label={t("item.edit.name")} size="display-xl" onCommit={(name) => change({ name }, "identity")}>
+          <Display size="display-xl" style={align}>
+            {item.name}
+          </Display>
+        </InlineText>
+      ) : (
+        <Display size="display-xl" style={align}>
+          {item.name}
+        </Display>
+      )}
+      <View className="mt-1">
+        {edits ? (
+          <InlineText value={item.brand ?? ""} label={t("item.edit.brand")} size="body-sm" onCommit={(brand) => change({ brand }, "identity")}>
+            {item.brand ? (
+              <Text className="font-body text-body-sm text-ink-soft">{item.brand}</Text>
+            ) : (
+              <View className="border-b border-hairline pb-1">
+                <Text className="font-body text-body-sm text-ink-faint">{t("item.addBrand")}</Text>
+              </View>
+            )}
+          </InlineText>
+        ) : item.brand ? (
+          <Text className="font-body text-body-sm text-ink-soft">{item.brand}</Text>
+        ) : null}
+      </View>
+      {failed("identity", t("item.saveFailed"))}
+
+      <View className="mt-12">
+        <Meta>{t("item.where")}</Meta>
         <View className="mt-2">
-          <AvailabilityControl value={item.availability} onChange={changeAvailability} />
+          <Segmented
+            segments={AVAILABILITIES.map((a) => ({ key: a, label: t(`wardrobe.availability.${a}`) }))}
+            value={item.availability}
+            onChange={(a) => changeAvailability?.(a)}
+            disabled={!changeAvailability}
+            accessibilityLabel={t("item.where")}
+          />
         </View>
-        {item.availability !== "home" ? <Text className="mt-2 font-body text-body-sm text-ink-soft">{t("item.notSuggested")}</Text> : null}
-        {failed ? <Text className="mt-2 font-body text-body-sm text-ink-soft">{t("item.availabilityFailed")}</Text> : null}
+        {item.availability !== "home" ? <Text className="mt-3 font-body text-body-sm text-ink-soft">{t("item.notSuggested")}</Text> : null}
+        {failed("availability", t("item.availabilityFailed"))}
       </View>
 
-      <View className="mt-8">
+      <View className="mt-12">
         <SpecTable rows={rows} />
       </View>
 
-      {outfits.length > 0 ? (
-        <View className="mt-12">
-          <Text className="font-display text-display text-ink">{t("item.goesWith")}</Text>
-          <View className="mt-4" style={{ gap: 20 }}>
-            {outfits.map((outfit, n) => {
-              const others = outfit.items.filter((i) => i.id !== item.id);
-              return (
-                <View key={outfit.outfit_id} className="border-t border-hairline pt-3">
-                  <View className="flex-row" style={{ gap: 8 }}>
-                    <Text className="font-mono text-meta text-ink-faint" style={{ width: 20 }}>
-                      {String(n + 1).padStart(2, "0")}
-                    </Text>
-                    {others.map((o) => {
-                      const full = byId.get(o.id);
-                      return (
-                        <View key={o.id} className="rounded-sm bg-ivory-deep" style={{ width: 64, height: 80, padding: 8 }}>
-                          {full ? <ItemArt tags={full.tags} cutoutPath={full.cutout_path} /> : null}
-                        </View>
-                      );
-                    })}
-                  </View>
-                  <Text className="mt-2 font-body text-meta text-ink-faint" numberOfLines={2}>
-                    {others.map((o) => o.name).join(" · ")}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
+      <View className="mt-12">
+        <GoesWith item={item} items={items} pairWeights={pairWeights} onOpen={onOpenOther} onSelf={onScrollTop} bleed={bleed} />
+      </View>
+
+      {edits ? (
+        <TagSheet
+          field={field}
+          open={sheetOpen}
+          item={item}
+          onPick={(patch: Partial<ItemTags>) => field && change({ tags: patch }, field)}
+          onClose={() => setSheetOpen(false)}
+        />
       ) : null}
     </View>
   );

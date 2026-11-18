@@ -6,7 +6,7 @@ export { ActionBar } from "./ActionBar";
 export { Button, type ButtonProps } from "./Button";
 export { Chip } from "./Chip";
 export { EmptyState } from "./EmptyState";
-export { FLAT_LAY, FLAT_LAY_ASPECT, FlatLay, type FlatLayConfig, type FlatLayPiece, type FlatLayPlacement } from "./FlatLay";
+export { FLAT_LAY, FLAT_LAY_ASPECT, FlatLay, flatLayTone, type FlatLayConfig, type FlatLayPiece, type FlatLayPlacement } from "./FlatLay";
 export { Icon, type IconName } from "./Icon";
 export { focusRingProps, selectionHaptic, usePressFeedback } from "./interaction";
 export { LegendRow } from "./LegendRow";
