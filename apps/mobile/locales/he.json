@@ -331,7 +331,30 @@
       "removeConfirm": "הסר",
       "keep": "השאר"
     },
-    "editInline": "{{value}}, {{field}}, עריכה"
+    "editInline": "{{value}}, {{field}}, עריכה",
+    "notes": {
+      "title": "הערות",
+      "add": "הוסף הערה",
+      "counter": "{{n}} מתוך {{max}} תווים"
+    },
+    "wears": {
+      "title": "לבישות",
+      "summary_one": "נלבש פעם אחת · לאחרונה ב-{{date}}",
+      "summary_two": "נלבש פעמיים · לאחרונה ב-{{date}}",
+      "summary_many": "נלבש {{n}} פעמים · לאחרונה ב-{{date}}",
+      "summary_other": "נלבש {{n}} פעמים · לאחרונה ב-{{date}}",
+      "never": "עוד לא נלבש",
+      "showAll": "הצג הכול",
+      "showLess": "הצג פחות",
+      "failed": "הלבישות לא נטענו.",
+      "retry": "נסה שוב"
+    },
+    "recut": {
+      "row": "חיתוך רקע מחדש",
+      "busy": "מסיר את הרקע מחדש",
+      "notConfigured": "הסרת הרקע לא זמינה כרגע. התמונה נשארה כמו שהיא.",
+      "retry": "נסה שוב"
+    }
   },
   "auth": {
     "prompt": "התחבר כדי לראות את הארון שלך",
@@ -588,7 +611,15 @@
       "masonry": "הארון כ-masonry",
       "intake": "הוספה",
       "flatLay": "Flat-lay",
-      "stepper": "מונה צעדים"
+      "stepper": "מונה צעדים",
+      "item": "מסך פריט: לבישות"
+    },
+    "item": {
+      "wears": "עם לבישות (7 מתוך 12)",
+      "once": "לבישה אחת",
+      "never": "עוד לא נלבש",
+      "loading": "טעינה",
+      "failed": "כישלון"
     },
     "state": {
       "default": "רגיל",

@@ -329,7 +329,28 @@
       "removeConfirm": "Remove",
       "keep": "Keep it"
     },
-    "editInline": "{{value}}, {{field}}, edit"
+    "editInline": "{{value}}, {{field}}, edit",
+    "notes": {
+      "title": "Notes",
+      "add": "Add a note",
+      "counter": "{{n}} of {{max}} characters"
+    },
+    "wears": {
+      "title": "Wears",
+      "summary_one": "Worn once · last on {{date}}",
+      "summary_other": "Worn {{n}} times · last on {{date}}",
+      "never": "Not worn yet",
+      "showAll": "Show all",
+      "showLess": "Show less",
+      "failed": "The wears did not load.",
+      "retry": "Try again"
+    },
+    "recut": {
+      "row": "Remove the background again",
+      "busy": "Removing the background again",
+      "notConfigured": "Background removal is not available right now. The picture stays as it is.",
+      "retry": "Try again"
+    }
   },
   "auth": {
     "prompt": "Sign in to see your wardrobe",
@@ -585,7 +606,15 @@
       "masonry": "The wardrobe as masonry",
       "intake": "Add",
       "flatLay": "Flat-lay",
-      "stepper": "Stepper"
+      "stepper": "Stepper",
+      "item": "Item screen: wears"
+    },
+    "item": {
+      "wears": "With wears (7 of 12)",
+      "once": "One wear",
+      "never": "Not worn yet",
+      "loading": "Loading",
+      "failed": "Failed"
     },
     "state": {
       "default": "Default",

@@ -486,3 +486,11 @@
 - Verified in Chromium on the web build with the read-only design preview, at 390 and 1280, Hebrew and English. Not verified: Android, real writes, the real intake pipeline, the paid redraw, real Google sign-in. `TASKS.md` lists what is open and who can close it.
 - Look at: `design/screens/before/` vs `design/screens/after/` (same names), `docs/redesign-checklist-part1.md` and `part2.md` for the regression tables and defects.
 - lint went from 20 problems to 0; typecheck and tests pass.
+
+## 2026-11-19 - Item: notes, wear history, manual re-cut (stage 2, task 2.2)
+
+- Notes: a "הערות" section after the tags, edited in place like the name (`InlineText multiline`: Enter is a new line, blur saves, Escape cancels on web), 500 characters with a mono counter from 400. Saved through the one payload builder (`editPayload` now carries `notes`; trimmed, empty is null) and the item route's optimistic save, which writes `updateItemNotes` (new, `data/items.ts`) when only the notes changed.
+- Wear history: a "לבישות" section after notes: "נלבש N פעמים · לאחרונה ב-<date>" (Hebrew one/two/other forms) or "עוד לא נלבש", five newest wears as hairline rows (numeric date in mono, the outfit's other pieces), "הצג הכול" expands in place. `fetchItemWears` (`data/feedback.ts`): worn wears whose outfit holds the item, all time, newest first, 50 rows, exact count. The design preview derives it from the snapshot, i.e. only the last 31 days. The preview has no worn outfit, so the rows are shown with a fixture in `/design-system` ("מסך פריט: לבישות").
+- Manual re-cut: "חיתוך רקע מחדש" in the item's overflow sheet when the item has a source crop; the same free intake-cutout call as "replace photo", on that crop. Busy line under the hero, the hero updates on success, a failure line with the reason (and "נסה שוב" when retrying can help).
+- Not verified: native; real notes writes, the real history query with data (only its syntax against PostgREST, as anon) and a real re-cut, all blocked in the preview.
+- Look at: `design/screens/2026-11-19-item-*.png`.
