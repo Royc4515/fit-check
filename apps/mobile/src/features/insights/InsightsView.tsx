@@ -1,8 +1,7 @@
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ScrollView, View } from "react-native";
-import { EmptyState, ScreenHeader } from "../../components/ui";
-import { layout } from "../../theme/tokens";
+import { EmptyState, ScreenColumn, ScreenHeader } from "../../components/ui";
 import { useIsDesktop } from "../shell/ShellTabBar";
 
 /**
@@ -15,21 +14,15 @@ export function InsightsView() {
   const desktop = useIsDesktop();
   return (
     <View className="flex-1 bg-ivory">
-      <ScrollView
-        contentContainerStyle={{
-          width: "100%",
-          maxWidth: layout.maxContentWidth,
-          alignSelf: "center",
-          paddingHorizontal: layout.gutter,
-          paddingBottom: 32,
-        }}
-      >
-        <ScreenHeader title={t("insights.title")} safeArea={!desktop} />
-        <EmptyState
-          title={t("insights.empty.title")}
-          body={t("insights.empty.body")}
-          action={{ label: t("insights.empty.action"), onPress: () => router.navigate("/wardrobe") }}
-        />
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 32 }}>
+        <ScreenColumn>
+          <ScreenHeader title={t("insights.title")} safeArea={!desktop} />
+          <EmptyState
+            title={t("insights.empty.title")}
+            body={t("insights.empty.body")}
+            action={{ label: t("insights.empty.action"), onPress: () => router.navigate("/wardrobe") }}
+          />
+        </ScreenColumn>
       </ScrollView>
     </View>
   );

@@ -392,3 +392,15 @@
 - `ActionBar` in Today has `safeArea={false}`: the tab bar below owns the bottom inset.
 - Desktop flat-lay capped to the viewport height under the top nav (32 above and below), 4:5 kept by narrowing.
 - Look at: `design/screens/2026-11-18-today-{default,piece,adjust}-*.png` (re-shot). Not seen: the skip line on Today itself (the preview cannot record a skip).
+
+## 2026-11-18 (redesign 1.8: small screens on the component library)
+
+- Sign-in is a cover: `Display` app name as the one serif moment, the still life narrowed with air around it, `StatusLine` for a failed sign-in, the Google `Button` (primary) at the bottom. Still-life tiles lost their hairline frames and sit on `tile` / `tile-deep` / `tile-cool` grounds; the garment hexes stay in one commented constant. Monogram label comes from `app.name`.
+- Location: back icon button + `ScreenHeader`, `ListRow` choice rows (check + selected state), new `SearchField`, `StatusLine` for the denied message (it used to replace the row's meta). Logic untouched except the search reset is derived instead of set in an effect (lint).
+- OAuth consent: `Display` title, scopes as `ListRow`s under a `Meta` label, approve = primary `Button`, deny = outline, errors in `StatusLine`. Logic and redirect handling untouched; the sentence that starts with the client's name now gets an explicit direction.
+- `WardrobeGate`: loading is one centred `Meta` line low on ivory; error is `EmptyState` with a retry `Button`. New `+not-found` route (`EmptyState` + back to Today).
+- Profile and Insights: new `ScreenColumn`; from 900px the 720 column sits on the start edge of the 1200 container, under the TopNav brand mark. Mobile unchanged.
+- `TextAction` / `TextLink` now render the library text `Button` (`quiet` is ignored).
+- Library additions: `ListRow` `meta` and `selected`, `SearchField`, `ScreenColumn`. New keys: `common.back`, `common.loadFailedBody`, `oauth.scopesTitle`, `notFound.*`.
+- Look at: `design/screens/2026-11-18-{sign-in-idle,location-*,consent-*,gate-*,notfound*,profile,insights}-*.png`.
+- Not verified: native, a real Google sign-in, a real consent approval (the ask state was reached with a faked session and mocked Supabase responses), a successful "my current location" write (back has no history in a fresh tab).

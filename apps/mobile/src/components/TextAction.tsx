@@ -1,15 +1,10 @@
-import { Pressable, Text, View } from "react-native";
+import { Button } from "./ui";
 
 /**
- * TextLink's look (DESIGN.md section 2 secondary action) for an action instead of a route. `quiet` drops the
- * text to ink-soft for actions that should not compete with the content (undo, reset).
+ * Compatibility wrapper: the library `Button` text variant under the old name, so screens not yet moved to the
+ * library look identical to ones that are. New code uses `Button variant="text"` directly.
+ * `quiet` is accepted and ignored: the library has one text-button look, and a second tone would be a one-off.
  */
-export function TextAction({ label, onPress, disabled, quiet }: { label: string; onPress: () => void; disabled?: boolean; quiet?: boolean }) {
-  return (
-    <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityState={{ disabled }} hitSlop={8}>
-      <View className="border-b border-hairline pb-1" style={{ opacity: disabled ? 0.4 : 1 }}>
-        <Text className={`font-body text-body-sm ${quiet ? "text-ink-soft" : "text-ink"}`}>{label}</Text>
-      </View>
-    </Pressable>
-  );
+export function TextAction({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean; quiet?: boolean }) {
+  return <Button variant="text" label={label} onPress={onPress} disabled={disabled} />;
 }

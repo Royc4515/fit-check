@@ -1,28 +1,13 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button, ListRow, ScreenHeader, SearchField, StatusLine } from "../components/ui";
 import { currentPosition, getSavedLocation, saveLocation, searchCities, type SavedLocation } from "../data/location";
-import { colors, layout } from "../theme/tokens";
+import { layout } from "../theme/tokens";
 
 type City = Extract<SavedLocation, { kind: "city" }>;
-
-/** One choice as a hairline row: label, optional meta, and a quiet "selected" word instead of a coloured check. */
-function Row({ label, meta, selected, onPress }: { label: string; meta?: string | null; selected: boolean; onPress: () => void }) {
-  const { t } = useTranslation();
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityState={{ selected }} className="border-b border-hairline py-4">
-      <View className="flex-row items-baseline justify-between" style={{ gap: 12 }}>
-        <View style={{ flexShrink: 1 }}>
-          <Text className="font-body text-body text-ink">{label}</Text>
-          {meta ? <Text className="font-body text-meta text-ink-faint">{meta}</Text> : null}
-        </View>
-        {selected ? <Text className="font-body-semibold text-body-sm text-ink">{t("location.selected")}</Text> : null}
-      </View>
-    </Pressable>
-  );
-}
 
 /**
  * Where weather and Shabbat times come from: the default (Tel Aviv), the phone's current location, or any
@@ -42,14 +27,13 @@ export default function LocationScreen() {
     void getSavedLocation().then(setSaved);
   }, []);
 
+  // Under two characters there is nothing to search or show; derived here so the effect never has to reset state.
+  const searching = query.trim().length >= 2;
+
   // Debounced: a request per keystroke would hit the free geocoder's limits for nothing.
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) {
-      setResults([]);
-      setSearched(false);
-      return;
-    }
+    if (q.length < 2) return;
     const timer = setTimeout(() => {
       void searchCities(q, i18n.language === "en" ? "en" : "he").then((r) => {
         setResults(r);
@@ -84,47 +68,47 @@ export default function LocationScreen() {
           width: "100%",
           maxWidth: layout.maxContentWidth,
           alignSelf: "center",
-          paddingTop: insets.top + 32,
+          paddingTop: insets.top + 8,
           paddingHorizontal: layout.gutter,
           paddingBottom: insets.bottom + 48,
         }}
       >
-        <View className="flex-row items-baseline justify-between">
-          <Text className="font-display text-display-xl text-ink">{t("location.title")}</Text>
-          <Pressable onPress={() => router.back()} accessibilityRole="button" hitSlop={12}>
-            <View className="border-b border-hairline pb-1">
-              <Text className="font-body text-body-sm text-ink">{t("location.back")}</Text>
-            </View>
-          </Pressable>
+        {/* The glyph sits 10px inside its 44 box; pulling the box out by 8 lines the arrow up with the title's edge. */}
+        <View style={{ alignSelf: "flex-start", marginStart: -8 }}>
+          <Button variant="icon" icon="arrow_back" accessibilityLabel={t("common.back")} onPress={() => router.back()} />
         </View>
+        <ScreenHeader title={t("location.title")} safeArea={false} />
         <Text className="mt-2 font-body text-body-sm text-ink-soft">{t("location.hint")}</Text>
 
         <View className="mt-8 border-t border-hairline">
-          <Row label={t("location.default")} meta={t("location.defaultMeta")} selected={saved?.kind === "default"} onPress={() => void choose({ kind: "default" })} />
-          <Row
+          <ListRow
+            label={t("location.default")}
+            meta={t("location.defaultMeta")}
+            selected={saved?.kind === "default"}
+            onPress={() => void choose({ kind: "default" })}
+          />
+          <ListRow
             label={t("location.current")}
-            meta={denied ? t("location.denied") : t("location.genericCandles")}
+            meta={t("location.genericCandles")}
             selected={saved?.kind === "current"}
             onPress={() => void chooseCurrent()}
           />
-          {saved?.kind === "city" ? <Row label={saved.name} meta={saved.region} selected onPress={() => router.back()} /> : null}
+          {saved?.kind === "city" ? <ListRow label={saved.name} meta={saved.region ?? undefined} selected onPress={() => router.back()} /> : null}
         </View>
+        {denied ? (
+          <View className="mt-3">
+            <StatusLine variant="error" message={t("location.denied")} />
+          </View>
+        ) : null}
 
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder={t("location.search")}
-          placeholderTextColor={colors["ink-faint"]}
-          autoCorrect={false}
-          accessibilityLabel={t("location.search")}
-          className="mt-12 border-b border-hairline pb-2 font-body text-body text-ink"
-          style={{ textAlign: i18n.language === "en" ? "left" : "right" }}
-        />
+        <View className="mt-12">
+          <SearchField value={query} onChangeText={setQuery} placeholder={t("location.search")} />
+        </View>
         <View>
-          {results.map((c) => (
-            <Row key={c.geonameid} label={c.name} meta={c.region} selected={isCity(c)} onPress={() => void choose(c)} />
+          {(searching ? results : []).map((c) => (
+            <ListRow key={c.geonameid} label={c.name} meta={c.region ?? undefined} selected={isCity(c)} onPress={() => void choose(c)} />
           ))}
-          {searched && results.length === 0 ? <Text className="mt-4 font-body text-body-sm text-ink-soft">{t("location.noResults")}</Text> : null}
+          {searching && searched && results.length === 0 ? <Text className="mt-4 font-body text-body-sm text-ink-soft">{t("location.noResults")}</Text> : null}
         </View>
       </ScrollView>
     </View>

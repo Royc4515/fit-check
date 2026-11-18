@@ -153,7 +153,9 @@
   "common": {
     "loading": "Loading",
     "retry": "Retry",
-    "loadFailed": "Could not load your wardrobe"
+    "loadFailed": "Could not load your wardrobe",
+    "loadFailedBody": "Check your connection and try again.",
+    "back": "Back"
   },
   "nav": {
     "today": "Today",
@@ -384,8 +386,14 @@
     "request": "{{client}} is asking for access to your wardrobe.",
     "what": "It will be able to see, edit and remove your garments, as in the app. You can disconnect it anytime in Claude's settings.",
     "scopes": "Permissions: {{scopes}}",
+    "scopesTitle": "Permissions",
     "approve": "Approve",
     "deny": "Cancel"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "The link is wrong or the page no longer exists.",
+    "action": "Back to Today"
   },
   "redraw": {
     "title": "What will be drawn",

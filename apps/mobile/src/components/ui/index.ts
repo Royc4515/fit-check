@@ -12,7 +12,9 @@ export { focusRingProps, selectionHaptic, usePressFeedback } from "./interaction
 export { LegendRow } from "./LegendRow";
 export { ListRow } from "./ListRow";
 export { computeMasonry, MasonryGrid, type MasonryCellInfo, type MasonryLayout, type MasonrySection } from "./MasonryGrid";
+export { ScreenColumn } from "./ScreenColumn";
 export { ScreenHeader } from "./ScreenHeader";
+export { SearchField } from "./SearchField";
 export { Segmented, type Segment } from "./Segmented";
 export { Sheet } from "./Sheet";
 export { Skeleton } from "./Skeleton";

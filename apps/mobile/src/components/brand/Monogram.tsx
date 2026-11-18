@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 
 /**
@@ -5,10 +6,11 @@ import { Text, View } from "react-native";
  * (assets/icon.png). Ink on ivory only; it is a signature, not decoration, so it appears once per screen at most.
  */
 export function Monogram({ size = 44 }: { size?: number }) {
+  const { t } = useTranslation();
   return (
     <View
       accessibilityRole="image"
-      accessibilityLabel="Fit Check"
+      accessibilityLabel={t("app.name")}
       className="items-center justify-center border-ink"
       style={{ width: size, height: size, borderWidth: Math.max(1, size / 44) }}
     >

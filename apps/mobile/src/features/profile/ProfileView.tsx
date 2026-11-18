@@ -2,9 +2,8 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, View } from "react-native";
-import { ListRow, Meta, ScreenHeader } from "../../components/ui";
+import { ListRow, Meta, ScreenColumn, ScreenHeader } from "../../components/ui";
 import { getSavedLocation, onLocationChange, type SavedLocation } from "../../data/location";
-import { layout } from "../../theme/tokens";
 import { useIsDesktop } from "../shell/ShellTabBar";
 
 /**
@@ -35,26 +34,18 @@ export function ProfileView() {
 
   return (
     <View className="flex-1 bg-ivory">
-      <ScrollView
-        contentContainerStyle={{
-          flexGrow: 1,
-          width: "100%",
-          maxWidth: layout.maxContentWidth,
-          alignSelf: "center",
-          paddingHorizontal: layout.gutter,
-          // The tab bar below already owns the bottom safe area.
-          paddingBottom: 32,
-        }}
-      >
-        <ScreenHeader title={t("profile.title")} safeArea={!desktop} />
-        <View className="mt-8 border-t border-hairline">
-          <ListRow label={t("profile.location")} value={place} onPress={() => router.push("/location")} />
-          <ListRow label={t("profile.language")} value={t("profile.languageValue")} />
-        </View>
-        {/* flex-1 spacer: the credits sit at the bottom of the screen, not right after the rows. */}
-        <View className="flex-1" style={{ minHeight: 48 }} />
-        {/* Sentence with proper names, so no English uppercase from the Meta default. */}
-        <Meta style={{ textTransform: "none" }}>{t("today.credits")}</Meta>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 32 }}>
+        <ScreenColumn>
+          <ScreenHeader title={t("profile.title")} safeArea={!desktop} />
+          <View className="mt-8 border-t border-hairline">
+            <ListRow label={t("profile.location")} value={place} onPress={() => router.push("/location")} />
+            <ListRow label={t("profile.language")} value={t("profile.languageValue")} />
+          </View>
+          {/* flex-1 spacer: the credits sit at the bottom of the screen, not right after the rows. */}
+          <View className="flex-1" style={{ minHeight: 48 }} />
+          {/* Sentence with proper names, so no English uppercase from the Meta default. */}
+          <Meta style={{ textTransform: "none" }}>{t("today.credits")}</Meta>
+        </ScreenColumn>
       </ScrollView>
     </View>
   );
