@@ -16,7 +16,7 @@ import {
 } from "@fit-check/schema/item-tags.ts";
 import { sniffImageType } from "../_shared/media.ts";
 import { outfitLog, outfitToday } from "./outfit.ts";
-import { intakePending, itemCreate, itemRecut, itemRedraw } from "./photos.ts";
+import { intakeDismiss, intakePending, itemCreate, itemRecrop, itemRecut, itemRedraw } from "./photos.ts";
 
 /**
  * The Fit Check tools offered to Claude over MCP (Roy, 2026-11-17: "a full MCP to run the app and site from Claude").
@@ -418,11 +418,20 @@ export const TOOLS: Tool[] = [
     title: "Add a garment from a pending photo",
     description:
       "Adds one garment from an intake_pending photo with the name and tags YOU chose, removes the background (free) and saves it. " +
-      "Name style: English \"Brand Type\" (e.g. \"Gant Oxford Shirt\"). Category follows the type automatically.",
+      "Name style: English \"Brand Type\" (e.g. \"Gant Oxford Shirt\"). Category follows the type automatically. " +
+      "Several garments in one photo: pass crop (the garment's box) and keep_pending: true for every garment but the last.",
     inputSchema: {
       type: "object",
       properties: {
         photo_path: { type: "string" },
+        crop: {
+          type: "object",
+          description: "Box around ONE garment, as fractions of the photo's width and height (0-1, top-left origin). Use when the photo shows several garments.",
+          properties: { x: { type: "number", minimum: 0, maximum: 1 }, y: { type: "number", minimum: 0, maximum: 1 }, w: { type: "number", minimum: 0.02, maximum: 1 }, h: { type: "number", minimum: 0.02, maximum: 1 } },
+          required: ["x", "y", "w", "h"],
+          additionalProperties: false,
+        },
+        keep_pending: { type: "boolean", default: false, description: "true: leave the photo in the queue for its other garments." },
         name: { type: "string" },
         brand: { type: ["string", "null"] },
         tags: {
@@ -451,6 +460,40 @@ export const TOOLS: Tool[] = [
       additionalProperties: false,
     },
     run: itemCreate,
+  },
+  {
+    name: "intake_dismiss",
+    title: "Remove a photo from the queue",
+    description: "Removes a pending photo without adding anything: not a garment, a duplicate, or all its garments are already added.",
+    inputSchema: { type: "object", properties: { photo_path: { type: "string" } }, required: ["photo_path"], additionalProperties: false },
+    annotations: { destructiveHint: true, idempotentHint: true },
+    run: intakeDismiss,
+  },
+  {
+    name: "item_recrop",
+    title: "Re-crop a garment's original photo",
+    description:
+      "Replaces a garment's stored original photo with a crop of it (for items created from a photo of several garments). " +
+      "The full photo is kept as a backup; requeue_original puts a copy back in intake_pending for the other garments; " +
+      "recut also re-runs background removal on the crop and sets it as the image (leave false to keep a redraw).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        crop: {
+          type: "object",
+          description: "Box around ONE garment, as fractions of the photo's width and height (0-1, top-left origin). ",
+          properties: { x: { type: "number", minimum: 0, maximum: 1 }, y: { type: "number", minimum: 0, maximum: 1 }, w: { type: "number", minimum: 0.02, maximum: 1 }, h: { type: "number", minimum: 0.02, maximum: 1 } },
+          required: ["x", "y", "w", "h"],
+          additionalProperties: false,
+        },
+        recut: { type: "boolean", default: false },
+        requeue_original: { type: "boolean", default: false },
+      },
+      required: ["id", "crop"],
+      additionalProperties: false,
+    },
+    run: itemRecrop,
   },
   {
     name: "item_redraw",

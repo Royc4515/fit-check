@@ -25,6 +25,10 @@ import type { ToolContent, ToolContext, ToolResult } from "./tools.ts";
  * Cost rule (Roy: "cut paid AI steps where you can do them yourself"): Claude in the chat looks at the photo and
  * writes the tags and the redraw description itself, so item_create calls no tagger and item_redraw needs one paid
  * call. The cutout runs on the Modal worker (free credit). Every write is checked against ctx.userId.
+ *
+ * One pending photo may hold several garments (2026-11-17 bug: the first item_create moved the photo away and the
+ * second failed). So item_create COPIES the photo, optionally crops it to the garment first, and clears it from
+ * the queue only when keep_pending is false. Every item gets its own original, so archiving one never breaks another.
  */
 
 const PENDING = (uid: string) => `${uid}/pending`;
@@ -56,12 +60,27 @@ const TagsInput = z.object({
   style_tags: z.array(z.enum(STYLE_TAGS)).default([]),
 });
 
+/** A box in the photo, as fractions of its width and height (0-1), top-left origin. */
+const CropInput = z
+  .object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), w: z.number().min(0.02).max(1), h: z.number().min(0.02).max(1) })
+  .refine((c) => c.x + c.w <= 1.001 && c.y + c.h <= 1.001, { message: "crop box goes past the photo edge" });
+type Crop = z.infer<typeof CropInput>;
+
 const PendingInput = z.object({ offset: z.number().int().min(0).default(0) });
 const CreateInput = z.object({
   photo_path: z.string().min(5).max(300),
   name: z.string().min(2).max(80),
   brand: z.string().max(60).nullable().default(null),
   tags: TagsInput,
+  crop: CropInput.optional(),
+  keep_pending: z.boolean().default(false),
+});
+const DismissInput = z.object({ photo_path: z.string().min(5).max(300) });
+const RecropInput = z.object({
+  id: z.string().uuid(),
+  crop: CropInput,
+  recut: z.boolean().default(false),
+  requeue_original: z.boolean().default(false),
 });
 const RedrawInput = z.object({ id: z.string().uuid(), description: z.string().min(10).max(400) });
 const IdInput = z.object({ id: z.string().uuid() });
@@ -71,6 +90,23 @@ function sourceCrop(path: string | null): string | null {
   const m = path?.match(/^(.*\/)(\d+)[^/]*\.(?:jpe?g|png)$/);
   return m ? `${m[1]}${m[2]}.jpg` : null;
 }
+
+/** Cuts the box out of a JPEG/PNG and returns it as JPEG. A small margin keeps sleeves and hems that touch the box. */
+async function cropImage(bytes: Uint8Array, crop: Crop): Promise<Uint8Array> {
+  // don't touch / the Deno build of imagescript (pure WASM), loaded only when a crop runs. The npm build loads a
+  // native Node codec that the Edge runtime rejects ("unsupported arch/platform"), and as a static import it
+  // crashed the whole mcp function at boot (v4, 2026-11-17). Dynamic, so a codec failure can only break cropping.
+  const { decode, Image } = await import("https://deno.land/x/imagescript@1.3.0/mod.ts");
+  const img = (await decode(bytes)) as InstanceType<typeof Image>;
+  const pad = 0.01;
+  const x0 = Math.max(0, Math.floor((crop.x - pad) * img.width));
+  const y0 = Math.max(0, Math.floor((crop.y - pad) * img.height));
+  const x1 = Math.min(img.width, Math.ceil((crop.x + crop.w + pad) * img.width));
+  const y1 = Math.min(img.height, Math.ceil((crop.y + crop.h + pad) * img.height));
+  return await img.crop(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0)).encodeJPEG(92);
+}
+
+const isPending = (ctx: ToolContext, path: string) => path.startsWith(`${PENDING(ctx.userId)}/`) && !path.includes("..");
 
 async function download(ctx: ToolContext, path: string): Promise<Uint8Array | null> {
   if (!path.startsWith(`${ctx.userId}/`) || path.includes("..")) return null;
@@ -104,8 +140,10 @@ export async function intakePending(args: unknown, ctx: ToolContext): Promise<To
         total_pending: files.length,
         showing: page.map((f, i) => ({ index: offset + i, photo_path: `${PENDING(ctx.userId)}/${f.name}` })),
         how_to_answer:
-          "Look at each photo, tag the main garment yourself (exact enum values; check wardrobe_search for a duplicate first), " +
-          "show Roy the proposed name and tags in Hebrew, and call item_create after he confirms.",
+          "Look at each photo and tag each garment yourself (exact enum values; check wardrobe_search for duplicates first), " +
+          "show Roy the proposed names and tags in Hebrew, and call item_create after he confirms. A photo may show several " +
+          "garments: call item_create once per garment with its crop box and keep_pending: true, and false on the last one " +
+          "(or intake_dismiss when done). Photos that are not garments: intake_dismiss.",
       }),
     },
   ];
@@ -118,17 +156,25 @@ export async function intakePending(args: unknown, ctx: ToolContext): Promise<To
 
 export async function itemCreate(args: unknown, ctx: ToolContext): Promise<ToolResult> {
   const input = CreateInput.parse(args);
-  if (!input.photo_path.startsWith(`${PENDING(ctx.userId)}/`) || input.photo_path.includes("..")) return fail("photo_path must be one of intake_pending's photos.");
+  if (!isPending(ctx, input.photo_path)) return fail("photo_path must be one of intake_pending's photos.");
   const tags = ItemTagsSchema.safeParse({ ...input.tags, category: SUBCATEGORY_TO_CATEGORY[input.tags.subcategory], color_hex: input.tags.color_hex.toUpperCase() });
   if (!tags.success) return fail(`Invalid tags: ${tags.error.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}`);
 
-  // Moved into the intake layout (`intake/<id>/1.jpg`) so the app's redraw and re-cut find the original as N.jpg.
+  const photo = await download(ctx, input.photo_path);
+  if (!photo) return fail("That pending photo is gone (already added or dismissed). Call intake_pending again.");
+  let bytes: Uint8Array;
+  try {
+    bytes = input.crop ? await cropImage(photo, input.crop) : photo;
+  } catch (error) {
+    return fail(`Could not crop the photo: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  // The item's own copy, in the intake layout (`intake/<id>/1.jpg`) so redraw and re-cut find the original as N.jpg.
   const folder = `${ctx.userId}/intake/${Date.now()}-mcp`;
   const crop = `${folder}/1.jpg`;
-  const moved = await ctx.db.storage.from("cutouts").move(input.photo_path, crop);
-  if (moved.error) return fail(`Could not move the photo: ${moved.error.message}`);
-  const bytes = await download(ctx, crop);
-  const stored = bytes ? await cutAndStore(ctx, bytes, `${folder}/1`, true) : null;
+  const up = await ctx.db.storage.from("cutouts").upload(crop, bytes, { contentType: sniffImageType(bytes, "image/jpeg") });
+  if (up.error) return fail(`Could not store the photo: ${up.error.message}`);
+  // SAM keeps the garment at the centre of the frame: right for a crop or a one-garment photo.
+  const stored = await cutAndStore(ctx, bytes, `${folder}/1`, true);
 
   const t = tags.data;
   const { data, error } = await ctx.db
@@ -159,7 +205,62 @@ export async function itemCreate(args: unknown, ctx: ToolContext): Promise<ToolR
     .select("id")
     .single();
   if (error) return fail(`Saved the photo but not the item: ${error.message}`);
-  return text({ created: input.name, id: data.id, background_removed: stored !== null, next: "item_redraw for a product-photo look (paid, ask first)" });
+  if (!input.keep_pending) await ctx.db.storage.from("cutouts").remove([input.photo_path]);
+  return text({
+    created: input.name,
+    id: data.id,
+    cropped: input.crop !== undefined,
+    background_removed: stored !== null,
+    still_pending: input.keep_pending,
+    next: "item_redraw for a product-photo look (paid, ask first)",
+  });
+}
+
+export async function intakeDismiss(args: unknown, ctx: ToolContext): Promise<ToolResult> {
+  const { photo_path } = DismissInput.parse(args);
+  if (!isPending(ctx, photo_path)) return fail("photo_path must be one of intake_pending's photos.");
+  const { error } = await ctx.db.storage.from("cutouts").remove([photo_path]);
+  return error ? fail(`Could not remove it: ${error.message}`) : text({ dismissed: photo_path });
+}
+
+/**
+ * Replaces an item's stored original with a crop of it (the 2026-11-17 multi-garment photos). The full photo is kept
+ * next to it as `N-full-<ts>.jpg`, and with requeue_original a copy goes back to pending for the other garments.
+ */
+export async function itemRecrop(args: unknown, ctx: ToolContext): Promise<ToolResult> {
+  const input = RecropInput.parse(args);
+  const { data: item } = await ctx.db.from("items").select("id,name,cutout_path").eq("id", input.id).eq("user_id", ctx.userId).maybeSingle();
+  if (!item) return fail("No garment with that id in this wardrobe.");
+  const original = sourceCrop(item.cutout_path as string | null);
+  const bytes = original ? await download(ctx, original) : null;
+  if (!original || !bytes) return fail("This garment has no original photo.");
+  const ts = Date.now();
+  const full = original.replace(/\.jpg$/, `-full-${ts}.jpg`);
+  const backup = await ctx.db.storage.from("cutouts").upload(full, bytes, { contentType: sniffImageType(bytes, "image/jpeg") });
+  if (backup.error) return fail(`Could not keep the full photo: ${backup.error.message}`);
+  let requeued: string | null = null;
+  if (input.requeue_original) {
+    requeued = `${PENDING(ctx.userId)}/${ts}-requeued.jpg`;
+    const q = await ctx.db.storage.from("cutouts").upload(requeued, bytes, { contentType: sniffImageType(bytes, "image/jpeg") });
+    if (q.error) return fail(`Could not put the photo back in the queue: ${q.error.message}`);
+  }
+  let cropped: Uint8Array;
+  try {
+    cropped = await cropImage(bytes, input.crop);
+  } catch (error) {
+    return fail(`Could not crop the photo: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  const up = await ctx.db.storage.from("cutouts").upload(original, cropped, { contentType: "image/jpeg", upsert: true });
+  if (up.error) return fail(`Could not store the crop: ${up.error.message}`);
+  let image: string | null = null;
+  if (input.recut) {
+    const stored = await cutAndStore(ctx, cropped, original.replace(/\.jpg$/, `-recut-${ts}`), true);
+    if (stored) {
+      await ctx.db.from("items").update({ cutout_path: stored.image, thumb_path: stored.thumb, updated_at: new Date().toISOString() }).eq("id", input.id).eq("user_id", ctx.userId);
+      image = stored.image;
+    }
+  }
+  return text({ recropped: item.name, original, full_photo_kept_as: full, requeued, new_image: image ?? "unchanged" });
 }
 
 export async function itemRedraw(args: unknown, ctx: ToolContext): Promise<ToolResult> {
