@@ -17,5 +17,5 @@ Status: `todo` / `doing` / `review` / `done` / `blocked`. A model that fails a t
 | 1.5 | Wardrobe: category row, tappable swatches, masonry, filter sheet, long-press actions, reserve flow | opus | doing | |
 | 1.6 | Item: inline chips, overflow actions, redraw composer, shared element from three sources | opus | doing | |
 | 1.7 | Add: restyle, every failure visible | sonnet | doing | |
-| 1.8 | Sign-in, consent, location, loading and error states, Profile/Insights desktop width | sonnet | doing | |
+| 1.8 | Sign-in, consent, location, loading and error states, Profile/Insights desktop width | sonnet | review | 14baae9 merged. Lead reviewed sign-in, location, consent at 390 he: approved with one fix for the final round (the Latin app name sits on the wrong edge in Hebrew on sign-in). Real Google sign-in and consent approval not exercised |
 | 1.9 | Accessibility, i18n, regression checklist, after screenshots | haiku + sonnet | todo | |
