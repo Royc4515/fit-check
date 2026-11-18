@@ -392,3 +392,12 @@
 - `ActionBar` in Today has `safeArea={false}`: the tab bar below owns the bottom inset.
 - Desktop flat-lay capped to the viewport height under the top nav (32 above and below), 4:5 kept by narrowing.
 - Look at: `design/screens/2026-11-18-today-{default,piece,adjust}-*.png` (re-shot). Not seen: the skip line on Today itself (the preview cannot record a skip).
+
+## 2026-11-18 (redesign 1.5: Wardrobe)
+
+- Wardrobe rebuilt on the library: `ScreenHeader` with count, `tune` (ink dot when a sheet filter is on) and a `backpack` icon for reserve duty; sticky category words (`TextTabs`, new) in DESIGN.md order; colour filter as tappable 24px swatches with the chosen name beside the row; active sheet filters as removable chips; windowed `MasonryGrid` of `Tile`s (2/3/4/5 columns, gap 8, gutter 16); "all" grouped under `Display` headings with counts, one category = continuous grid. Groups now follow the tab order (top, bottom, layer, outerwear, shoes, accessory).
+- Filter sheet (type, season, availability; "נקה" / "הצג N פריטים", live). Long press (or Shift+F10 / context-menu key / right click on web, or the screen-reader action) opens the item's actions: availability as `Segmented` (optimistic, same `setAvailability` rules as the item screen), "לפריט" (flight kept), "הסר מהארון" with a confirm step (`archiveItem`). Failures show as `StatusLine`.
+- Reserve duty in the grid: tiles toggle with ring + check, usual/all as `Segmented`, reminder under the header, floating `ActionBar` above the tab bar with the count and "סמן כבמילואים" / "ביטול"; away items as a `StatusLine` with the three actions.
+- Library (additive): `Button` `dot`; `Tile` `imageRef` + web keyboard/right-click long-press; `MasonryGrid` `StickyHeaderComponent`, `ListSubheaderComponent`, `scrollRef`, `onScroll`; `StatusLine` `moreActions`; `Icon` `backpack`; new `TextTabs`. `Sheet`: the scrim closes only on a press that started on it (a touch long press opened the sheet under the finger and the release click closed it at once).
+- Removed (no importers left): `features/wardrobe/{WardrobeGrid,FilterChips}.tsx`, `components/PressScale.tsx`.
+- Look at: `design/screens/2026-11-18-wardrobe-*.png`. Not verified: native (no emulator), real writes (preview is read-only; every write shows its failure line), the away block on real data (checked once with a local, uncommitted override).

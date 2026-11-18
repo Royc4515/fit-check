@@ -149,7 +149,43 @@
       "failed": "השינוי לא נשמר. נסה שוב.",
       "notInWardrobe": "לא בארון, לא לשכוח: מדים · נעלי צבא · פיג'מה.",
       "showAll": "הצג את כל הארון",
-      "showUsual": "רק מה שבדרך כלל"
+      "showUsual": "רק מה שבדרך כלל",
+      "open": "יוצא למילואים",
+      "mode": "מה מוצג"
+    },
+    "categories": "קטגוריות",
+    "colors": "גוונים",
+    "colorSelected": "גוון: {{color}}",
+    "tileLabel": "{{name}}, {{type}}, {{color}}",
+    "tileLabelWhere": "{{name}}, {{type}}, {{color}}, {{where}}",
+    "tileActions": "פעולות",
+    "activeFilters": "סינון פעיל",
+    "clearFilters": "נקה סינון",
+    "noMatchBody": "אף פריט לא עונה על כל הסינונים יחד.",
+    "emptyTitle": "הארון ריק",
+    "filter": {
+      "open": "סינון",
+      "openActive": "סינון, יש סינון פעיל",
+      "title": "סינון",
+      "clear": "נקה",
+      "show_one": "הצג פריט אחד",
+      "show_two": "הצג {{n}} פריטים",
+      "show_other": "הצג {{n}} פריטים",
+      "facet": {
+        "type": "סוג",
+        "season": "עונה",
+        "availability": "זמינות"
+      }
+    },
+    "actions": {
+      "availability": "זמינות",
+      "open": "לפריט",
+      "remove": "הסר מהארון",
+      "confirm": "הפריט יוצא מהארון ומההצעות של היום.",
+      "confirmRemove": "הסר",
+      "keep": "השאר",
+      "failed": "השינוי לא נשמר. נסה שוב.",
+      "removeFailed": "ההסרה לא נשמרה. נסה שוב."
     }
   },
   "common": {
