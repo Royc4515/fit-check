@@ -446,3 +446,12 @@
 - Availability to spec rows: 32 instead of 48.
 - Screen-reader labels and hints on the item screen and in the composer have the bidi isolates stripped (`features/item/a11y.ts` `spoken`); visible text keeps them.
 - Look at: `design/screens/2026-11-18-item-flight-*` (re-shot), `-tags-390-*`, `-1280-*`, `-browserback-today-390-he`.
+
+## 2026-11-18 (redesign 1.7: accessibility fix round)
+
+- State reaches the DOM on web: `webStateProps` in `ui/interaction.ts` maps an accessibility state to `aria-selected` / `-checked` / `-pressed` / `-expanded` / `-disabled` (nothing on native). Used by TextTabs, Swatch, Chip, Segmented (radiogroup + radio), Tile (checkbox), ListRow, TabBar, TopNav, Button. Model: chips and swatches are toggle buttons (`aria-pressed`, also in single-choice rows; a removable chip has none); tabs `aria-selected`; segments `aria-checked`. `Chip` and `Button` take `expanded` for sheet-openers.
+- Real 44x44 hit boxes on web (react-native-web ignores `hitSlop`): the Pressable is the 44 box, the 36 chip / 32 ring a centred child; negative margins keep the footprint. Category tabs and TopNav destinations carry their gap as padding (12 / 16 each side) so a short word is still 44 wide; text buttons get `minWidth` 44. Visible sizes and rhythm unchanged (measured). A chip inside a horizontal ScrollView needs 4px of vertical room or the box is clipped back to 36: fixed in intake `ChoiceRow`; the wardrobe active-filter row still needs it.
+- Blurred tab screens leave the web tab order and accessibility tree: `features/shell/SceneGate.tsx` (`screenLayout`) marks them `data-scene-hidden`, `visibility: hidden` in `global.css`. State and scroll stay mounted.
+- `Display` has `level` (1-3, default 2; `role=heading` + `aria-level` on web); ScreenHeader's title is level 1; Sheet's title is level 2.
+- Sheet is one dialog named by its title (`aria-labelledby`, or `aria-label` without a title) on RNW's own Modal element; its two focus sentinels and the scrim are out of the tab order and the tree, Tab / Shift+Tab wrap inside the dialog.
+- Look at: wardrobe header rows and the design-system chips / swatches at 390 (should look identical to before); Tab on `/insights` after visiting Today and Wardrobe; the Filter sheet with a screen reader.

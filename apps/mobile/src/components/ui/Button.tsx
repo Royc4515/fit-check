@@ -2,11 +2,13 @@ import { Pressable, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { layout, type ColorToken } from "../../theme/tokens";
 import { Icon, type IconName } from "./Icon";
-import { focusRingProps, usePressFeedback } from "./interaction";
+import { focusRingProps, usePressFeedback, webStateProps } from "./interaction";
 
 type Common = {
   onPress: () => void;
   disabled?: boolean;
+  /** The button opens (true) or closes (false) a sheet or list; exposed as `aria-expanded`. Omit for plain buttons. */
+  expanded?: boolean;
   /** Stretch to the parent's width (the Today action bar). */
   fullWidth?: boolean;
 };
@@ -68,8 +70,10 @@ const DOT = 8;
 export function Button(props: ButtonProps) {
   const { onPressIn, onPressOut, pressStyle } = usePressFeedback();
   const disabled = props.disabled ?? false;
+  const expanded = props.expanded;
   const common = {
     ...focusRingProps,
+    ...webStateProps({ expanded }),
     onPress: props.onPress,
     onPressIn,
     onPressOut,
@@ -84,7 +88,8 @@ export function Button(props: ButtonProps) {
       <Pressable
         {...common}
         accessibilityLabel={props.accessibilityLabel}
-        accessibilityState={{ disabled, selected }}
+        accessibilityState={{ disabled, selected, expanded }}
+        {...webStateProps({ pressed: props.selected, expanded })}
         className={`items-center justify-center rounded ${props.outlined ? `border ${selected ? "border-ink" : "border-hairline"}` : ""} ${props.surface ? "bg-ivory" : ""}`}
         style={{ width: side, height: side, opacity: disabled ? DISABLED_OPACITY : 1 }}
       >
@@ -111,9 +116,11 @@ export function Button(props: ButtonProps) {
       <Pressable
         {...common}
         accessibilityLabel={props.accessibilityLabel ?? props.label}
-        accessibilityState={{ disabled }}
+        accessibilityState={{ disabled, expanded }}
         className={`justify-center ${width}`}
-        style={{ minHeight: layout.hit, opacity: disabled ? DISABLED_OPACITY : 1 }}
+        // minWidth: a one-word text button ("Skip") is narrower than 44, and react-native-web has no hitSlop. The
+        // label stays at the start (alignSelf below), so the extra width is invisible.
+        style={{ minHeight: layout.hit, minWidth: layout.hit, opacity: disabled ? DISABLED_OPACITY : 1 }}
       >
         {/* Underline is a bordered wrapper: RN cannot offset or colour text-decoration. */}
         <Animated.View style={[pressStyle, { alignSelf: "flex-start" }]}>
@@ -135,7 +142,7 @@ export function Button(props: ButtonProps) {
     <Pressable
       {...common}
       accessibilityLabel={props.accessibilityLabel ?? props.label}
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled, expanded }}
       className={width}
       style={{ opacity: disabled ? DISABLED_OPACITY : 1 }}
     >

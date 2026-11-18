@@ -22,7 +22,7 @@ export function ScreenHeader({ title, count, actions, safeArea = true }: Props) 
   return (
     <View className="flex-row items-end" style={{ paddingTop: (safeArea ? insets.top : 0) + 32, gap: 8 }}>
       <View className="flex-1 flex-row items-baseline" style={{ gap: 8 }}>
-        <Display size="display-xl" accessibilityRole="header" className="flex-shrink">
+        <Display size="display-xl" level={1} className="flex-shrink">
           {title}
         </Display>
         {count !== undefined ? (

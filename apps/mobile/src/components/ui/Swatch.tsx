@@ -1,6 +1,6 @@
 import { Pressable, View } from "react-native";
 import { layout } from "../../theme/tokens";
-import { focusRingProps, selectionHaptic } from "./interaction";
+import { focusRingProps, selectionHaptic, webStateProps } from "./interaction";
 
 /** Visible swatch sizes: 24 in the wardrobe colour row, 12 inside a chip (DESIGN.md section 4). */
 export type SwatchSize = 12 | 24;
@@ -38,8 +38,12 @@ export function Swatch({ color, size = 24, accessibilityLabel, selected = false,
     );
   }
   const outer = size + 2 * (RING + RING_GAP);
-  // Pad the visible ring box up to the 44 hit target.
-  const slop = Math.max(0, (layout.hit - outer) / 2);
+  // The pressable is the 44 box (react-native-web has no hitSlop); the ring box is its centred child. Sideways the
+  // box's extra width is cancelled by a negative margin, so the row keeps the pitch it was designed with (32 + the
+  // caller's gap). Vertically it is not cancelled: the wardrobe row is 44 high anyway, and a swatch inside a
+  // scrolling row would otherwise be clipped back to 32.
+  const box = Math.max(layout.hit, outer);
+  const side = (box - outer) / 2;
   return (
     <Pressable
       {...focusRingProps}
@@ -48,14 +52,19 @@ export function Swatch({ color, size = 24, accessibilityLabel, selected = false,
         onPress();
       }}
       disabled={disabled}
-      hitSlop={slop}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected, disabled }}
-      className={`items-center justify-center rounded ${selected ? "border-ink" : "border-transparent"}`}
-      style={{ width: outer, height: outer, borderWidth: RING, opacity: disabled ? 0.4 : 1 }}
+      {...webStateProps({ pressed: selected, disabled })}
+      className="items-center justify-center"
+      style={{ width: box, height: box, marginHorizontal: -side, opacity: disabled ? 0.4 : 1 }}
     >
-      {square}
+      <View
+        className={`items-center justify-center rounded ${selected ? "border-ink" : "border-transparent"}`}
+        style={{ width: outer, height: outer, borderWidth: RING }}
+      >
+        {square}
+      </View>
     </Pressable>
   );
 }

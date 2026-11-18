@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { colors, layout, motion } from "../../theme/tokens";
-import { focusRingProps, selectionHaptic, timing } from "./interaction";
+import { focusRingProps, selectionHaptic, timing, webStateProps } from "./interaction";
 
 export type TextTab<K extends string> = { key: K; label: string };
 
@@ -17,8 +17,12 @@ type Props<K extends string> = {
 };
 
 const UNDERLINE = 2;
-/** Between two tabs: the words must read as separate targets without any frame around them. */
-const TAB_GAP = 24;
+/**
+ * Visible space between two words: the words must read as separate targets without any frame around them. It is
+ * built from padding inside each tab (TAB_PAD on both sides), not from a flex gap, so the pressable box itself
+ * spans the whole space and a one-letter tab is still a 44-wide target.
+ */
+const TAB_PAD = 12;
 
 function TabButton<K extends string>({ tab, selected, onPress }: { tab: TextTab<K>; selected: boolean; onPress: () => void }) {
   const on = useSharedValue(selected ? 1 : 0);
@@ -33,14 +37,18 @@ function TabButton<K extends string>({ tab, selected, onPress }: { tab: TextTab<
       accessibilityRole="tab"
       accessibilityLabel={tab.label}
       accessibilityState={{ selected }}
-      className="justify-center"
-      style={{ minHeight: layout.hit }}
+      {...webStateProps({ selected })}
+      // Row, so the word's box stretches to the full 44 height; minWidth because react-native-web has no hitSlop.
+      style={{ flexDirection: "row", justifyContent: "center", paddingHorizontal: TAB_PAD, minWidth: layout.hit, minHeight: layout.hit }}
     >
-      <Text className={`font-body text-body-sm ${selected ? "text-ink" : "text-ink-soft"}`} numberOfLines={1}>
-        {tab.label}
-      </Text>
-      {/* The chosen word is underlined, not filled; its last pixel lies on the row's hairline (see marginBottom). */}
-      <Animated.View style={[{ position: "absolute", start: 0, end: 0, bottom: 0, height: UNDERLINE, backgroundColor: colors.ink }, underline]} />
+      {/* The underline lives on this inner box so it is as wide as the word, not as the padded pressable. */}
+      <View style={{ justifyContent: "center" }}>
+        <Text className={`font-body text-body-sm ${selected ? "text-ink" : "text-ink-soft"}`} numberOfLines={1}>
+          {tab.label}
+        </Text>
+        {/* The chosen word is underlined, not filled; its last pixel lies on the row's hairline (see marginBottom). */}
+        <Animated.View style={[{ position: "absolute", start: 0, end: 0, bottom: 0, height: UNDERLINE, backgroundColor: colors.ink }, underline]} />
+      </View>
     </Pressable>
   );
 }
@@ -58,7 +66,8 @@ export function TextTabs<K extends string>({ tabs, value, onChange, accessibilit
         showsHorizontalScrollIndicator={false}
         accessibilityRole="tablist"
         accessibilityLabel={accessibilityLabel}
-        contentContainerStyle={{ paddingHorizontal: inset, gap: TAB_GAP, flexGrow: 1 }}
+        // The tabs carry TAB_PAD themselves, so the row gives it back: the first word still starts at `inset`.
+        contentContainerStyle={{ paddingHorizontal: Math.max(0, inset - TAB_PAD), flexGrow: 1 }}
         // don't touch / a scroll view clips its children, so the underline cannot hang below it onto the hairline
         // (as Segmented's does); instead the whole row overlaps the hairline by 1px.
         style={{ marginBottom: -1 }}
