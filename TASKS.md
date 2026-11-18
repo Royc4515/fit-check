@@ -12,7 +12,7 @@ Status: `todo` / `doing` / `review` / `done` / `blocked`. A model that fails a t
 | 0 | "Before" screenshots from the live preview: 9 screens x 390/1280 x he/en | lead | done | `design/screens/before/2026-11-18-*.png` (36 files) |
 | 1.1 | DESIGN.md v2 | lead | done | Tokens, layout per screen, component table, motion, accessibility |
 | 1.2 | Foundations: tokens v2, tileTone, components/ui, /design-system gallery | opus | done | b528fd7. Reviewed by the lead on the gallery (390 he/en, 1280 he, real wardrobe): approved. Web only; native unverified. `insights` icon is the `monitoring` glyph; tab labels use the body font (Plex Mono has no Hebrew) |
-| 1.3 | Shell: tab bar (mobile), top nav (desktop), Profile and Insights screens | sonnet | doing | |
+| 1.3 | Shell: tab bar (mobile), top nav (desktop), Profile and Insights screens | sonnet | done | 7c1bfea. 117 scripted web checks pass (tabs, deep links, item modal over the bar, resize). Lead reviewed screenshots: approved. Desktop content width of Profile/Insights is polished in 1.8. Native unverified |
 | 1.4 | Today (flat-lay hero). Stop for Roy's approval | opus | doing | |
 | 1.5 | Wardrobe: masonry (opus), filters and reserve flow (sonnet) | opus + sonnet | todo | |
 | 1.6 | Item: inline chips, overflow actions, shared element from three sources | sonnet + opus | todo | |
