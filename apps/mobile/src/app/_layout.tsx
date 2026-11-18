@@ -35,6 +35,12 @@ function Routes() {
     const pending = takePendingConsent();
     if (pending) router.replace({ pathname: "/oauth/consent", params: { authorization_id: pending } });
   }, [signedInNow, router]);
+  // don't touch / the design-preview code must leave the address bar (screenshots, copied links). preview.ts strips it
+  // from history, but the router parsed the URL before that and wrote `?preview=` back on its next sync.
+  const previewMode = session.status === "preview";
+  useEffect(() => {
+    if (previewMode) router.setParams({ preview: undefined });
+  }, [previewMode, router]);
   // First storage read: render nothing rather than flash the sign-in screen at a signed-in user.
   if (session.status === "loading") return quiet;
   // The design preview counts as signed in for the guards; its data layer is read-only (data/preview.ts).
