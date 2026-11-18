@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import type { LayoutChangeEvent } from "react-native";
-import { usePanGesture } from "react-native-gesture-handler";
+import { usePanGesture, type PanGestureConfig } from "react-native-gesture-handler";
 import { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { selectionHaptic, timing, useRtl } from "../../components/ui/interaction";
@@ -69,7 +69,14 @@ export function useSwipeToSkip({ enabled, onSkip }: { enabled: boolean; onSkip: 
     void onSkip().then(enter);
   }, [onSkip, enter]);
 
-  const gesture = usePanGesture({
+  // don't touch / web touch scrolling. RNGH 3.3 applies GestureDetector's `touchAction` once at attach, then every
+  // config change runs setGestureConfig(), whose resetConfig() clears it back to touch-action: none, and the
+  // detector only re-applies when its own prop value changes. So the page could not be scrolled by a finger that
+  // landed on the flat-lay. The gesture config's own `touchAction` survives every reset (it is in RNGH's
+  // allowedNativeProps whitelist) but is missing from PanGestureConfig's type; a variable typed with it (not a
+  // literal argument, which would fail the excess-property check, and not a cast) passes it through.
+  const config: PanGestureConfig & { touchAction: "pan-y" } = {
+    touchAction: "pan-y",
     enabled,
     activeOffsetX: [-ACTIVATE, ACTIVATE],
     failOffsetY: [-FAIL, FAIL],
@@ -104,7 +111,8 @@ export function useSwipeToSkip({ enabled, onSkip }: { enabled: boolean; onSkip: 
         x.set(withSpring(0, { ...motion.spring, velocity: e.velocityX * FOLLOW }));
       }
     },
-  });
+  };
+  const gesture = usePanGesture(config);
 
   const style = useAnimatedStyle(() => ({
     opacity: opacity.get(),

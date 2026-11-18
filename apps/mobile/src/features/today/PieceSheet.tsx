@@ -28,7 +28,7 @@ export function PieceSheet({ piece, open, alternatives, onSwap, onOpenItem, onCl
     <Sheet open={open && piece !== null} onClose={onClose} title={piece?.name} accessibilityLabel={piece?.name ?? t("today.title")}>
       {piece ? (
         <View style={{ gap: 16 }}>
-          {/* ink-soft: on the sheet's ivory-deep, ink-faint falls under AA (DESIGN.md section 2). */}
+          {/* ink-soft, a step firmer than the default meta: the only line that says what the titled garment is. */}
           <Meta tone="text-ink-soft">{meta(piece)}</Meta>
           {alternatives ? (
             alternatives.length > 0 ? (
