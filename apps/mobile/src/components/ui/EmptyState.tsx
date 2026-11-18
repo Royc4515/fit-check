@@ -1,22 +1,24 @@
 import { Text, View } from "react-native";
 import { Button } from "./Button";
-import { Display } from "./Type";
+import { Display, type HeadingLevel } from "./Type";
 
 type Props = {
   title: string;
   body: string;
   /** The one thing that fixes the emptiness. Ink, not accent: the screen's accent belongs to its main action. */
   action?: { label: string; onPress: () => void };
+  /** Outline depth of the title: 2 inside a screen that has its own title, 1 when the empty state is the whole screen. */
+  level?: HeadingLevel;
 };
 
 /**
  * Designed empty state (DESIGN.md section 4): a display heading, one body line, at most one action. Start-aligned
  * like the rest of the editorial layout, never centred hero-style (section 1).
  */
-export function EmptyState({ title, body, action }: Props) {
+export function EmptyState({ title, body, action, level = 2 }: Props) {
   return (
     <View className="py-12">
-      <Display accessibilityRole="header">{title}</Display>
+      <Display level={level}>{title}</Display>
       <Text className="mt-3 font-body text-body text-ink-soft">{body}</Text>
       {action ? (
         <View className="mt-6">

@@ -470,3 +470,12 @@
 - `Display` has `level` (1-3, default 2; `role=heading` + `aria-level` on web); ScreenHeader's title is level 1; Sheet's title is level 2.
 - Sheet is one dialog named by its title (`aria-labelledby`, or `aria-label` without a title) on RNW's own Modal element; its two focus sentinels and the scrim are out of the tab order and the tree, Tab / Shift+Tab wrap inside the dialog.
 - Look at: wardrobe header rows and the design-system chips / swatches at 390 (should look identical to before); Tab on `/insights` after visiting Today and Wardrobe; the Filter sheet with a screen reader.
+
+## 2026-11-18 - Leftovers
+
+- `FlatLay` takes `pieceFocusable` (default true). False sets `focusable={false}` and `tabIndex={-1}` on the garment buttons (react-native-web renders a `<button>`, which Tab reaches unless `tabIndex` says otherwise); they stay clickable and named. Today passes it (legend rows are the 01..04 stops); the MutationObserver stopgap `useOutOfTabOrder` is deleted. The item screen's "goes with" flat-lays keep their stops.
+- Heading levels: `Display` takes `level={null}` for display type that is not a heading (Today's pull quote). Today title, item name, sign-in, consent, not-found titles are level 1 (`EmptyState` takes `level`, default 2); the item name is an h1 around its edit button at rest and a plain labelled field while editing (`InlineText headingLevel`). Gallery masonry category heads are level 3. No more `accessibilityRole="header"` on `Display` (it was overridden by the explicit role on web anyway).
+- Wardrobe active-filter chip row: 4px of vertical room in the scroll content and a -4 margin, so a chip's 44 box is no longer clipped to 36 (row and content below did not move). It was the only remaining clipped chip scroller.
+- `ListRow` choice rows use `aria-pressed` (not `aria-selected`, invalid on role=button).
+- design/screens/after/ and the 360/430 today-default shots re-taken from the final build.
+- Look at: Tab on `/` (weather, 4 legend rows, wear, tune); the heading outline per screen; the active-filter chip row at 390.

@@ -39,8 +39,10 @@ export function headingProps(level: HeadingLevel) {
 /**
  * The serif headline: display-xl (screen title, item name) or display (section heads). Frank Ruhl Libre 400.
  * Use this instead of `font-display` classes so the English tracking rule cannot be forgotten.
- * It is always a heading. `level` is its depth in the page outline, independent of its size: 1 for the screen
+ * By default it is a heading. `level` is its depth in the page outline, independent of its size: 1 for the screen
  * title (ScreenHeader sets it), 2 (default) for section heads, 3 below those. A page has one level 1.
+ * `level={null}` gives the typography with no heading semantics, for display-face text that is not a heading (the
+ * pull quote on Today, a title that sits inside a button or a heading something else already provides).
  */
 export function Display({
   size = "display",
@@ -49,12 +51,12 @@ export function Display({
   className = "",
   style,
   ...rest
-}: Props & { size?: "display-xl" | "display"; level?: HeadingLevel }) {
+}: Props & { size?: "display-xl" | "display"; level?: HeadingLevel | null }) {
   const tracking = useTypeTracking();
   return (
     <Text
       {...rest}
-      {...headingProps(level)}
+      {...(level === null ? null : headingProps(level))}
       className={`font-display ${size === "display-xl" ? "text-display-xl" : "text-display"} ${tone} ${className}`}
       style={[size === "display-xl" ? tracking.displayXl : tracking.display, style]}
     />

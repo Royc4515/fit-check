@@ -146,7 +146,7 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
       bleed={!geo.desktop}
     />
   ) : (
-    <Display>{t("item.notFound")}</Display>
+    <Display level={1}>{t("item.notFound")}</Display>
   );
 
   // Desktop: the details column starts beside the picture; the page is capped at 1200 and centred.

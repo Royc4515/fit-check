@@ -57,7 +57,7 @@ export default function SignIn() {
           {/* don't touch / start-aligned box, not text alignment: react-native-web gives text dir="auto", so the Latin
               name sat on the left edge of an RTL screen while everything else hugged the right. */}
           <View style={{ alignItems: "flex-start" }}>
-            <Display size="display-xl" accessibilityRole="header">
+            <Display size="display-xl" level={1}>
               {t("app.name")}
             </Display>
           </View>

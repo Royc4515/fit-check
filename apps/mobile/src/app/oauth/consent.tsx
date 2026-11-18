@@ -100,9 +100,7 @@ export default function OAuthConsent() {
       >
         <Monogram />
         <View className="mt-12">
-          <Display accessibilityRole="header">
-            {t("oauth.title")}
-          </Display>
+          <Display level={1}>{t("oauth.title")}</Display>
 
           {state.kind === "loading" || state.kind === "working" ? (
             <Text accessibilityLiveRegion="polite" className="mt-4 font-body text-body text-ink-soft">

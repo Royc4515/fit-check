@@ -2,7 +2,7 @@ import { combineAdjustments, learnedAdjustment, NO_ADJUSTMENT, swapOptions, type
 import type { Item, Slot, StylistInput, StylistOutput } from "@fit-check/schema";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
@@ -33,7 +33,6 @@ import { explainOutfit } from "./explain";
 import { planToday, type Swaps } from "./outfit";
 import { PieceSheet } from "./PieceSheet";
 import { outfitIndex, SLOT_ORDER } from "./pieces";
-import { useOutOfTabOrder } from "./useOutOfTabOrder";
 import { useSwipeToSkip } from "./useSwipeToSkip";
 
 /** Wraps digits and the degree/percent signs so they stay LTR inside Hebrew text (DESIGN.md: numbers always LTR). */
@@ -200,8 +199,6 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   };
   const skip = () => (plan.kind === "suggestion" ? actions.skip(plan.outfit, plan.source, effective).then(resetSwaps) : Promise.resolve());
   const swipe = useSwipeToSkip({ enabled: plan.kind === "suggestion" && !busy, onSkip: skip });
-  const heroRef = useRef<ComponentRef<typeof View>>(null);
-  useOutOfTabOrder(heroRef, plan.kind === "suggestion");
 
   const adjustParts = [
     adjustPart(t("today.warmer"), adjustment.temp_steps),
@@ -321,7 +318,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
 
   const masthead = (
     <View>
-      <Display size="display-xl" accessibilityRole="header">
+      <Display size="display-xl" level={1}>
         {t("today.title")}
       </Display>
       <Text className="mt-2 font-body text-body-sm text-ink-soft">{hebrew ? `${hebrew} · ${gregorian}` : gregorian}</Text>
@@ -349,10 +346,12 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     pieces.length > 0 ? (
       // touchAction is also set in the gesture's own config (see useSwipeToSkip): RNGH 3.3 drops this one on update.
       <GestureDetector gesture={swipe.gesture} touchAction="pan-y">
-        <View ref={heroRef} onLayout={swipe.onLayout}>
+        <View onLayout={swipe.onLayout}>
           <FlatLay
             pieces={pieces}
             onPressPiece={openPiece}
+            // The legend rows below the hero are the same action in 01-04 order; the hero stops would be duplicates.
+            pieceFocusable={false}
             instantKey={history.today.length}
             radius={desktop ? "md" : "none"}
             accessibilityLabel={heroLabel}
@@ -382,7 +381,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     <View>
       {/* Pull quote: the one sentence that says why, set in the display face under a 1px ink rule. */}
       <View className="border-t border-ink pt-4">
-        <Display>{explanation.lead}</Display>
+        <Display level={null}>{explanation.lead}</Display>
         {explanation.notes.map((n) => (
           <Text key={n} className="mt-2 font-body text-body-sm text-ink-soft">
             {n}

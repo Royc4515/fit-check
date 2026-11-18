@@ -54,7 +54,8 @@ export function ListRow({ label, value, onPress, disabled = false, meta, selecte
       accessibilityRole="button"
       accessibilityLabel={[label, value ?? meta].filter(Boolean).join(", ")}
       accessibilityState={{ disabled, selected: choice ? selected : undefined }}
-      {...webStateProps({ selected: choice ? selected : undefined, disabled })}
+      // pressed, not selected: aria-selected is not allowed on role=button (it belongs to option, tab, row).
+      {...webStateProps({ pressed: choice ? selected : undefined, disabled })}
       // Pressed = an ivory-deep wash, not a scale: a full-width row shrinking reads as the page jumping.
       style={({ pressed }) => ({ opacity: disabled ? 0.4 : 1, backgroundColor: pressed ? colors["ivory-deep"] : undefined })}
     >

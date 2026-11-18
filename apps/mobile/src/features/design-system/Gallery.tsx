@@ -74,7 +74,7 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View className="mt-12">
       <View className="mb-4 border-b border-hairline pb-3">
-        <Display accessibilityRole="header">{title}</Display>
+        <Display>{title}</Display>
       </View>
       {children}
     </View>
@@ -191,7 +191,7 @@ export function Gallery() {
       items: g.items,
       header: (
         <View className="flex-row items-baseline" style={{ gap: 8 }}>
-          <Display>{t(`wardrobe.category.${g.category}`)}</Display>
+          <Display level={3}>{t(`wardrobe.category.${g.category}`)}</Display>
           <Text className="font-mono text-num-sm text-ink-soft">{ltr(g.items.length)}</Text>
         </View>
       ),

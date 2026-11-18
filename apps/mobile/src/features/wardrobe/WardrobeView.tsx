@@ -226,7 +226,7 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
       items: g.items,
       header: (
         <View className="flex-row items-baseline" style={{ gap: 8 }}>
-          <Display accessibilityRole="header">{t(`wardrobe.category.${g.category}`)}</Display>
+          <Display>{t(`wardrobe.category.${g.category}`)}</Display>
           <Text className="font-mono text-num-sm text-ink-soft">{ltr(g.items.length)}</Text>
         </View>
       ),
@@ -331,8 +331,10 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
             horizontal
             showsHorizontalScrollIndicator={false}
             accessibilityLabel={t("wardrobe.activeFilters")}
-            style={{ flexGrow: 1, flexShrink: 1 }}
-            contentContainerStyle={{ paddingStart: rowInset, paddingEnd: 12, gap: 8 }}
+            // A chip's 44 hit box overhangs its 36 face by 4 on each side and a scroll view clips what overhangs it: the
+            // content keeps 4 of vertical room and the negative margin gives it back, so the row does not move.
+            style={{ flexGrow: 1, flexShrink: 1, marginVertical: -4 }}
+            contentContainerStyle={{ paddingStart: rowInset, paddingEnd: 12, paddingVertical: 4, gap: 8 }}
           >
             {activeChips.map((c) => (
               <Chip key={c.facet} label={c.label} removable onPress={() => toggle(c.facet, c.value)} />

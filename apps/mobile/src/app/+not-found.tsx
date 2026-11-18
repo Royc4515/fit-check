@@ -18,7 +18,7 @@ export default function NotFound() {
     <View className="flex-1 bg-ivory" style={{ paddingTop: insets.top + 32 }}>
       {/* Outside the tabs, so no TopNav to align with: the same centred 560 column as sign-in. */}
       <View style={{ width: "100%", maxWidth: layout.maxContentWidth, alignSelf: "center", paddingHorizontal: layout.gutter }}>
-        <EmptyState title={t("notFound.title")} body={t("notFound.body")} action={{ label: t("notFound.action"), onPress: () => router.replace("/") }} />
+        <EmptyState level={1} title={t("notFound.title")} body={t("notFound.body")} action={{ label: t("notFound.action"), onPress: () => router.replace("/") }} />
       </View>
     </View>
   );
