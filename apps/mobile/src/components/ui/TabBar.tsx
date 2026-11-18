@@ -28,6 +28,9 @@ function Tab<K extends string>({ item, active, onPress }: { item: NavItem<K>; ac
       accessibilityRole="tab"
       accessibilityLabel={item.label}
       accessibilityState={{ selected: active }}
+      // don't touch / react-native-web does not map accessibilityState.selected to the DOM; without this the tab
+      // is never `aria-selected` for screen readers and tests on web.
+      aria-selected={active}
       className="flex-1 items-center pt-1"
       style={{ height: layout.tabBarHeight }}
     >

@@ -155,7 +155,24 @@
   "nav": {
     "today": "היום",
     "wardrobe": "ארון",
-    "addClothes": "הוספת בגדים"
+    "addClothes": "הוספת בגדים",
+    "add": "הוספה",
+    "insights": "תובנות",
+    "profile": "פרופיל"
+  },
+  "profile": {
+    "title": "פרופיל",
+    "location": "מיקום",
+    "language": "שפה",
+    "languageValue": "עברית"
+  },
+  "insights": {
+    "title": "תובנות",
+    "empty": {
+      "title": "עוד אין תובנות",
+      "body": "כאן תופיע היסטוריית הלבישה וההוצאות על הארון.",
+      "action": "לארון"
+    }
   },
   "item": {
     "back": "ארון",
