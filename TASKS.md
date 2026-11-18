@@ -31,3 +31,14 @@ Status: `todo` / `doing` / `review` / `done` / `blocked`. A model that fails a t
 | Minor defects left from the checklists | Tab labels in Plex Sans (Plex Mono has no Hebrew), 4-piece top at 50% width, masonry sub-pixel gaps, sign-in/consent column on desktop | accepted or stage 2 |
 | Engine: "cooler + dressier" can pair a gingham shirt with shorts | Outside the redesign (engine rules) | separate task |
 | Stage 2 features | See `docs/REDESIGN_PLAN.md`; each needs its own go | Roy |
+
+## Stage 2 (started 2026-11-19; stage 1 merged as PR #22)
+
+| # | Task | Model | Status | Result |
+| --- | --- | --- | --- | --- |
+| 2.0 | Specs in DESIGN.md section 3 "שלב 2" | lead | done | |
+| 2.1 | Wardrobe: search, "for Shabbat" and formality filters, archive screen with restore, undo after archiving | sonnet | doing | |
+| 2.2 | Item: notes, wear history, manual re-cut | sonnet | doing | |
+| 2.3 | Add: queue of photos waiting for Claude | sonnet | doing | |
+| 2.4 | Insights content (wears, AI spend); Profile: language switch, archive row, sign-out | sonnet | doing | |
+| 2.5 | Independent verification of stage 2 and of the stage-1 fix rounds | sonnet | todo | |
