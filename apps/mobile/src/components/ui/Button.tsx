@@ -26,6 +26,11 @@ type IconOnly = Common & {
   accessibilityLabel: string;
   /** Selected state for toggles (e.g. `tune` with an active filter). */
   selected?: boolean;
+  /**
+   * Hairline frame at button height (48), for an icon that sits beside a labelled button in one row (the Today
+   * action bar): a bare 44 glyph next to a 48 block reads as misaligned.
+   */
+  outlined?: boolean;
 };
 
 export type ButtonProps = Labelled | IconOnly;
@@ -45,7 +50,7 @@ const DISABLED_OPACITY = 0.4;
  * - `ink`: the strong neutral (Add, confirmations that are not the screen's main action).
  * - `outline`: hairline frame, secondary.
  * - `text`: ink text over a hairline underline, 44 hit area.
- * - `icon`: 44×44, glyph only, label required.
+ * - `icon`: 44×44, glyph only, label required; `outlined` makes it a 48 hairline square to sit beside a button.
  * Press = scale 0.97 in 120ms; disabled = 0.4 and inert. Web shows the keyboard focus ring.
  */
 export function Button(props: ButtonProps) {
@@ -62,13 +67,14 @@ export function Button(props: ButtonProps) {
 
   if (props.variant === "icon") {
     const selected = props.selected ?? false;
+    const side = props.outlined ? layout.control : layout.hit;
     return (
       <Pressable
         {...common}
         accessibilityLabel={props.accessibilityLabel}
         accessibilityState={{ disabled, selected }}
-        className="items-center justify-center rounded"
-        style={{ width: layout.hit, height: layout.hit, opacity: disabled ? DISABLED_OPACITY : 1 }}
+        className={`items-center justify-center rounded ${props.outlined ? `border ${selected ? "border-ink" : "border-hairline"}` : ""}`}
+        style={{ width: side, height: side, opacity: disabled ? DISABLED_OPACITY : 1 }}
       >
         <Animated.View style={pressStyle}>
           {/* mirrorInRtl is safe for every icon: Icon only flips the directional ones. */}
