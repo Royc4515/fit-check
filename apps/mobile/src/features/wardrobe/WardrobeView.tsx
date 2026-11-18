@@ -45,6 +45,12 @@ import {
 import { ItemActionsSheet } from "./ItemActionsSheet";
 import { SwatchRow } from "./SwatchRow";
 
+/**
+ * Takes no space and paints nothing but stays in the accessibility tree. A 1px clipped box rather than
+ * `display: none` / opacity 0 / `aria-hidden`, which would remove it from screen readers too.
+ */
+const VISUALLY_HIDDEN = { position: "absolute", width: 1, height: 1, margin: -1, overflow: "hidden", padding: 0 } as const;
+
 const ltr = (s: string | number) => `⁦${s}⁩`;
 
 /** Section head inside the masonry: one display line (34) and 16 under it to the first tiles. */
@@ -374,6 +380,10 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive, onRestore
       {searchOpen && !desktop ? (
         // The title row, replaced: field, the live count, close. Same top spacing as the header it stands in for.
         <View className="flex-row items-center" style={{ paddingTop: insets.top + 32, gap: 8 }}>
+          {/* The screen keeps its level-1 heading while the visible title is out of the way (one h1 per page). */}
+          <Display size="display-xl" level={1} style={VISUALLY_HIDDEN}>
+            {t("wardrobe.title")}
+          </Display>
           <View className="flex-1">{searchField}</View>
           <Text
             className="font-mono text-num-sm text-ink-soft"
@@ -469,7 +479,7 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive, onRestore
           </ScrollView>
           {/* Outside the scrolling part so clear-all is always in view, whatever the chips' count or width. */}
           <View style={{ paddingEnd: rowInset }}>
-            <Button variant="text" label={t("wardrobe.filter.clear")} onPress={clearFilters} />
+            <Button variant="text" label={t("wardrobe.clearFilters")} onPress={clearFilters} />
           </View>
         </View>
       ) : null}
@@ -487,7 +497,7 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive, onRestore
             // An isolated run: a Latin query inside the Hebrew sentence must not drag the quotes to the wrong side.
             title={t("wardrobe.search.noMatch", { query: `⁨${query.trim()}⁩` })}
             body={t(anyFilter ? "wardrobe.search.noMatchFiltered" : "wardrobe.search.noMatchBody")}
-            action={{ label: t("wardrobe.filter.clear"), onPress: () => changeQuery("") }}
+            action={{ label: t("wardrobe.search.clear"), onPress: () => changeQuery("") }}
           />
         ) : (
           <EmptyState

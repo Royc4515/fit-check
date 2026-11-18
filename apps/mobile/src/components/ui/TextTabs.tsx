@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { colors, layout, motion } from "../../theme/tokens";
 import { focusRingProps, selectionHaptic, timing, webStateProps } from "./interaction";
+import { useRovingGroup } from "./roving";
 
 export type TextTab<K extends string> = { key: K; label: string };
 
@@ -24,7 +25,18 @@ const UNDERLINE = 2;
  */
 const TAB_PAD = 12;
 
-function TabButton<K extends string>({ tab, selected, onPress }: { tab: TextTab<K>; selected: boolean; onPress: () => void }) {
+function TabButton<K extends string>({
+  tab,
+  selected,
+  onPress,
+  roving,
+}: {
+  tab: TextTab<K>;
+  selected: boolean;
+  onPress: () => void;
+  /** Web keyboard props of the row (tabindex, arrow keys); empty on native. */
+  roving: object;
+}) {
   const on = useSharedValue(selected ? 1 : 0);
   useEffect(() => {
     on.set(withTiming(selected ? 1 : 0, timing(motion.stateMs)));
@@ -33,6 +45,7 @@ function TabButton<K extends string>({ tab, selected, onPress }: { tab: TextTab<
   return (
     <Pressable
       {...focusRingProps}
+      {...roving}
       onPress={onPress}
       accessibilityRole="tab"
       accessibilityLabel={tab.label}
@@ -57,8 +70,25 @@ function TabButton<K extends string>({ tab, selected, onPress }: { tab: TextTab<
  * A row of words as tabs (DESIGN.md section 3 "ארון" item 2, after SSENSE and Aimé Leon Dore): body-sm, the chosen
  * one ink with a 2px underline, the rest ink-soft, all on one hairline. Unlike Segmented the tabs keep their natural
  * width and the row scrolls sideways when it does not fit. Exactly one is always chosen.
+ *
+ * Keyboard on web (WAI-ARIA tablist): one tab stop, arrows / Home / End move between tabs, and moving the focus
+ * activates the tab (automatic activation: the grid under the tabs re-filters instantly, so there is no cost in
+ * following the focus, and one key press fewer for the reader).
  */
 export function TextTabs<K extends string>({ tabs, value, onChange, accessibilityLabel, inset = 0 }: Props<K>) {
+  const choose = (key: K) => {
+    if (key === value) return;
+    selectionHaptic();
+    onChange(key);
+  };
+  const { itemProps } = useRovingGroup(
+    tabs.length,
+    tabs.findIndex((tab) => tab.key === value),
+    (i) => {
+      const tab = tabs[i];
+      if (tab) choose(tab.key);
+    }
+  );
   return (
     <View className="border-b border-hairline">
       <ScrollView
@@ -72,17 +102,8 @@ export function TextTabs<K extends string>({ tabs, value, onChange, accessibilit
         // (as Segmented's does); instead the whole row overlaps the hairline by 1px.
         style={{ marginBottom: -1 }}
       >
-        {tabs.map((tab) => (
-          <TabButton
-            key={tab.key}
-            tab={tab}
-            selected={tab.key === value}
-            onPress={() => {
-              if (tab.key === value) return;
-              selectionHaptic();
-              onChange(tab.key);
-            }}
-          />
+        {tabs.map((tab, i) => (
+          <TabButton key={tab.key} tab={tab} selected={tab.key === value} roving={itemProps(i)} onPress={() => choose(tab.key)} />
         ))}
       </ScrollView>
     </View>
