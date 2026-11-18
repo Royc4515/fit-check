@@ -58,7 +58,7 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
   // so it lands on Today, the app's opening screen.
   const goBack = useCallback(() => (router.canGoBack() ? router.back() : router.replace("/")), [router]);
   const flight = useItemFlight(id, geo, heroTone, goBack);
-  const { close, onAspect } = flight;
+  const { close, onAspect, onCopyShown } = flight;
   const scroll = useAnimatedRef<Animated.ScrollView>();
   const [actionsOpen, setActionsOpen] = useState(false);
   const [imageStatus, setImageStatus] = useState<ImageStatus | null>(null);
@@ -74,8 +74,12 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
   }, [close]);
 
   useEffect(() => {
-    if (item && !item.cutout_path) onAspect(DRAWING_ASPECT);
-  }, [item, onAspect]);
+    if (item && !item.cutout_path) {
+      onAspect(DRAWING_ASPECT);
+      // A drawing is painted with the first frame, nothing to wait for.
+      onCopyShown();
+    }
+  }, [item, onAspect, onCopyShown]);
 
   /** Another item from "goes with": measure the pressed garment first so the next screen flies from it. */
   const openOther = async (scope: string, otherId: string) => {
@@ -107,6 +111,8 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
               const { width, height } = e.source;
               if (width > 0 && height > 0) onAspect(height / width);
             }}
+            // The copy is on screen: the origin's picture can go now (useItemFlight).
+            onDisplay={onCopyShown}
             style={{ width: "100%", height: "100%" }}
             accessibilityIgnoresInvertColors
           />

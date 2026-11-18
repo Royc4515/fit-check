@@ -330,7 +330,8 @@
       "removeBody": "It disappears from the wardrobe and from suggestions. Its history stays, and it can be brought back.",
       "removeConfirm": "Remove",
       "keep": "Keep it"
-    }
+    },
+    "editInline": "{{value}}, {{field}}, edit"
   },
   "auth": {
     "prompt": "Sign in to see your wardrobe",

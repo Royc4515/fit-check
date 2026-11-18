@@ -228,6 +228,8 @@ export function RedrawComposer(props: Props) {
                 onPress={() => setWord(word === w.key ? null : w.key)}
                 accessibilityRole="button"
                 accessibilityState={{ expanded: word === w.key }}
+                // react-native-web does not map accessibilityState; the ARIA prop reaches the DOM on web and native alike.
+                aria-expanded={word === w.key}
                 accessibilityHint={spoken(t("redraw.wordHint"))}
                 hitSlop={8}
               >

@@ -446,3 +446,11 @@
 - Availability to spec rows: 32 instead of 48.
 - Screen-reader labels and hints on the item screen and in the composer have the bidi isolates stripped (`features/item/a11y.ts` `spoken`); visible text keeps them.
 - Look at: `design/screens/2026-11-18-item-flight-*` (re-shot), `-tags-390-*`, `-1280-*`, `-browserback-today-390-he`.
+
+## 2026-11-18 (redesign 1.6: Item, verification fixes)
+
+- Name field: Enter saves and closes on web (the multiline textarea inserted a line break) and on native; a saved name or brand never contains a line break. Brand and name controls: the spoken name starts with the visible text ("הוסף מותג" when empty), and the small brand control is a real 44x44 pressable box on web with no visual change.
+- Flight start: the flying picture stays invisible until it has been drawn, then appears in the same frame the origin's picture is hidden (per-frame probe, wardrobe x3, Today x2, goes-with x2: no frame with zero or two copies).
+- Reversible picks: colour and leg-length picks are built against the item as the screen opened it (`edit.ts` `colorPatch`, `legPatch`), so jeans -> shorts -> long gives jeans and a colour changed back gets its measured hex, as in the old editor.
+- Error lines end with their action: any next edit on the details clears the last failure; "keep" clears the remove failure; closing the composer clears its failure.
+- Composer garment words expose `aria-expanded` on web. Library `Chip` has no `expanded` prop yet, so tag chips do not.
