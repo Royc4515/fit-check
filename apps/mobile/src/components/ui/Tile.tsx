@@ -9,6 +9,7 @@ import { colors, motion, shadow } from "../../theme/tokens";
 import { Icon } from "./Icon";
 import { focusRingProps, selectionHaptic, usePressFeedback } from "./interaction";
 import { Skeleton } from "./Skeleton";
+import { useOriginVisibility } from "./originVisibility";
 import { Meta } from "./Type";
 
 /** The fields a tile needs; any Item satisfies it. */
@@ -88,6 +89,8 @@ export function Tile({
   imageRef,
 }: Props) {
   const { onPressIn, onPressOut, pressStyle, liftStyle } = usePressFeedback();
+  // The item screen hides this picture while its shared-element copy flies to or from here.
+  const { attach: attachOrigin, style: originStyle } = useOriginVisibility(imageRef);
   const frame = FRAME[size];
   const tone = tileTone(item?.tags.color_hex);
   const ratio = aspect ?? (size === "mini" ? 1 : item ? tileAspect(item.tags.subcategory) : 1.25);
@@ -125,13 +128,15 @@ export function Tile({
   const body = (
     <Animated.View style={pressStyle}>
       {/* collapsable false: Android would otherwise flatten the box away and there would be nothing to measure. */}
-      <View ref={imageRef} collapsable={false} style={box}>
+      <View ref={imageRef ? attachOrigin : undefined} collapsable={false} style={box}>
         {/* Shadow layer: same shape as the tile, invisible at rest (DESIGN.md section 1: no shadow at rest). */}
         <Animated.View
           style={[{ position: "absolute", top: 0, bottom: 0, start: 0, end: 0, borderRadius: frame.radius, backgroundColor: colors[tone] }, shadow.lift, liftStyle]}
         />
         <View style={{ flex: 1, borderRadius: frame.radius, backgroundColor: colors[tone], padding: frame.pad }}>
-          <View style={{ flex: 1, opacity: dimmed ? DIMMED_OPACITY : 1 }}>{image}</View>
+          <View style={{ flex: 1, opacity: dimmed ? DIMMED_OPACITY : 1 }}>
+            <Animated.View style={[{ flex: 1 }, originStyle]}>{image}</Animated.View>
+          </View>
         </View>
         {selected ? (
           <>
