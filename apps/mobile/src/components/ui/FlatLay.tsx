@@ -8,6 +8,7 @@ import { cutoutUrl, ItemArt } from "../item-art/ItemArt";
 import { tileTone } from "../../theme/tileTone";
 import { colors, motion } from "../../theme/tokens";
 import { focusRingProps, timing, usePressFeedback, useRtl } from "./interaction";
+import { useOriginVisibility } from "./originVisibility";
 import type { TileItem } from "./Tile";
 
 /**
@@ -149,27 +150,19 @@ export function FlatLay({ pieces, onPressPiece, instantKey, radius = "none", acc
           // The arrangement is part of the identity: going from 3 to 4 pieces moves every box, and a garment that
           // changes place enters fresh rather than cross-fading across the table.
           return place ? (
-            <Piece key={`${four ? 4 : 3}-${p.slot}`} piece={p} place={place} instantKey={instantKey} onPress={onPressPiece} onAspect={onAspect} />
+            <Piece
+              key={`${four ? 4 : 3}-${p.slot}`}
+              piece={p}
+              place={place}
+              instantKey={instantKey}
+              onPress={onPressPiece}
+              onAspect={onAspect}
+              // Until the photo's shape is known its box stands in; a flight then starts slightly off the cloth.
+              drawn={onPieceNode ? drawnOf(place, p.item.cutout_path ? aspects[p.item.id] : DRAWING_ASPECT, !p.item.cutout_path) : null}
+              onNode={onPieceNode ? (node) => onPieceNode(p.item.id, node) : undefined}
+            />
           ) : null;
         })}
-        {onPieceNode
-          ? ordered.map((p) => {
-              const place = placementOf(four, p.slot);
-              if (!place) return null;
-              // Until the photo's shape is known its box stands in; a flight then starts slightly off the cloth.
-              const aspect = p.item.cutout_path ? aspects[p.item.id] : DRAWING_ASPECT;
-              const r = aspect === undefined ? place : drawnRect(place, aspect, !p.item.cutout_path);
-              return (
-                <View
-                  key={`o-${p.slot}-${p.item.id}`}
-                  ref={(node) => onPieceNode(p.item.id, node)}
-                  collapsable={false}
-                  pointerEvents="none"
-                  style={{ position: "absolute", start: `${r.start}%`, top: `${r.top}%`, width: `${r.width}%`, height: `${r.height}%` }}
-                />
-              );
-            })
-          : null}
         {ordered.map((p) => {
           if (!numbered) return null;
           const place = placementOf(four, p.slot);
@@ -195,6 +188,23 @@ export function FlatLay({ pieces, onPressPiece, instantKey, radius = "none", acc
     </View>
   );
 }
+
+/**
+ * The drawn garment as percentages of its own box (where `Piece` lays the origin node), or the whole box while the
+ * photo's shape is unknown.
+ */
+function drawnOf(place: FlatLayPlacement, aspect: number | undefined, centred: boolean): Percents {
+  if (aspect === undefined) return { start: 0, top: 0, width: 100, height: 100 };
+  const r = drawnRect(place, aspect, centred);
+  return {
+    start: ((r.start - place.start) / place.width) * 100,
+    top: ((r.top - place.top) / place.height) * 100,
+    width: (r.width / place.width) * 100,
+    height: (r.height / place.height) * 100,
+  };
+}
+
+type Percents = { start: number; top: number; width: number; height: number };
 
 /** ItemArt draws into a square viewBox, centred (`xMidYMid meet`). */
 const DRAWING_ASPECT = 1;
@@ -299,15 +309,22 @@ function Piece({
   instantKey,
   onPress,
   onAspect,
+  drawn,
+  onNode,
 }: {
   piece: FlatLayPiece;
   place: FlatLayPlacement;
   instantKey: string | number | undefined;
   onPress?: (slot: Slot) => void;
   onAspect: (id: string, aspect: number) => void;
+  /** Where the garment is drawn inside the box; with `onNode`, an invisible node is laid there for the flight. */
+  drawn?: Percents | null;
+  onNode?: (node: ComponentRef<typeof View> | null) => void;
 }) {
   const reduce = useReducedMotion();
   const { onPressIn, onPressOut, pressStyle } = usePressFeedback();
+  // The item screen hides this garment while its shared-element copy flies to or from here.
+  const { attach: attachOrigin, style: originStyle } = useOriginVisibility(onNode);
   const [layers, setLayers] = useState<Layers>({ cur: piece.item, prev: null, instantKey });
   // Derived during render (not in an effect) so the outgoing garment is still mounted in the very commit the new
   // one arrives; an effect would paint one frame with the new garment at full opacity first.
@@ -348,7 +365,7 @@ function Piece({
     // don't touch / pointerEvents none: the box (Pressable) is the target, never the <img> inside it. On web a press
     // that moved on an <img> started the browser's native image drag, which cancels the pointer stream, so a swipe
     // that began on a garment never reached the pan gesture.
-    <Animated.View style={[{ flex: 1 }, pressStyle]} pointerEvents="none">
+    <Animated.View style={[{ flex: 1 }, pressStyle, originStyle]} pointerEvents="none">
       {layers.prev ? (
         <Animated.View style={[fill, leave]}>
           <GarmentImage item={layers.prev} place={place} />
@@ -357,6 +374,13 @@ function Piece({
       <Animated.View style={[fill, enter]}>
         <GarmentImage item={layers.cur} place={place} onAspect={onAspect} />
       </Animated.View>
+      {onNode && drawn ? (
+        <View
+          ref={attachOrigin}
+          collapsable={false}
+          style={{ position: "absolute", start: `${drawn.start}%`, top: `${drawn.top}%`, width: `${drawn.width}%`, height: `${drawn.height}%` }}
+        />
+      ) : null}
     </Animated.View>
   );
 

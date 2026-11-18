@@ -18,6 +18,7 @@ import { ItemActions, type ImageStatus } from "./ItemActions";
 import { ItemDetails } from "./ItemDetails";
 import { flyFrom } from "./transition";
 import { useItemFlight } from "./useItemFlight";
+import { spoken } from "./a11y";
 
 /** ItemArt draws into a square viewBox, centred. */
 const DRAWING_ASPECT = 1;
@@ -53,7 +54,9 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
   const item = useMemo(() => items.find((i) => i.id === id), [items, id]);
   const geo = heroGeometry(windowW, windowH, rtl);
   const heroTone = tileTone(item?.tags.color_hex);
-  const goBack = useCallback(() => router.back(), [router]);
+  // A deep link has nothing beneath it: back alone faded the page out and left a blank screen (seen 2026-11-18),
+  // so it lands on Today, the app's opening screen.
+  const goBack = useCallback(() => (router.canGoBack() ? router.back() : router.replace("/")), [router]);
   const flight = useItemFlight(id, geo, heroTone, goBack);
   const { close, onAspect } = flight;
   const scroll = useAnimatedRef<Animated.ScrollView>();
@@ -87,7 +90,7 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
       pointerEvents="none"
       accessible
       accessibilityRole="image"
-      accessibilityLabel={item.name}
+      accessibilityLabel={spoken(item.name)}
       style={{ position: "absolute", start: geo.start, top: ground.y, width: ground.width, height: ground.height }}
     >
       <Animated.View style={[fill, { backgroundColor: colors[heroTone] }, flight.groundStyle]}>

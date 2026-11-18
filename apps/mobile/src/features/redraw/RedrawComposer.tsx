@@ -32,6 +32,7 @@ import { Button, Chip, focusRingProps, Meta, Sheet, StatusLine } from "../../com
 import { fetchRedrawHistory, previousSpec, quoteRedraw } from "../../data/redraw";
 import { colors } from "../../theme/tokens";
 import { hasSleeves, SLEEVE_CHOICES } from "../intake/tagRules";
+import { spoken } from "../item/a11y";
 
 /** The words of the garment sentence; each one is a tag and opens that tag's closed list. */
 type Word = "subcategory" | "color_name" | "pattern" | "material" | "sleeve";
@@ -227,7 +228,7 @@ export function RedrawComposer(props: Props) {
                 onPress={() => setWord(word === w.key ? null : w.key)}
                 accessibilityRole="button"
                 accessibilityState={{ expanded: word === w.key }}
-                accessibilityHint={t("redraw.wordHint")}
+                accessibilityHint={spoken(t("redraw.wordHint"))}
                 hitSlop={8}
               >
                 {/* An underline is a bordered wrapper: RN cannot offset or colour text-decoration. Open = 2px ink. */}
@@ -253,7 +254,7 @@ export function RedrawComposer(props: Props) {
               selected={spec.details.includes(id)}
               onPress={() => tapDetail(id)}
               onLongPress={() => startNote({ kind: "detail", fromDetail: id, text: t(`redraw.detail.${id}`) })}
-              accessibilityHint={t("redraw.longPressHint")}
+              accessibilityHint={spoken(t("redraw.longPressHint"))}
             />
           ))}
           {!allDetails && offered.length > shownDetails.length ? (
@@ -295,7 +296,7 @@ export function RedrawComposer(props: Props) {
             returnKeyType="done"
             placeholder={t("redraw.notePlaceholder")}
             placeholderTextColor={colors["ink-faint"]}
-            accessibilityLabel={editing.kind === "detail" ? t("redraw.noteDetail") : t("redraw.noteFix")}
+            accessibilityLabel={spoken(editing.kind === "detail" ? t("redraw.noteDetail") : t("redraw.noteFix"))}
             className="border-b-2 border-ink pb-1 font-body text-body text-ink outline-none"
             style={align}
           />

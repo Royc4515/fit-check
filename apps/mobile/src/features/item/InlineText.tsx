@@ -4,6 +4,7 @@ import { Platform, Pressable, TextInput, View } from "react-native";
 import { focusRingProps } from "../../components/ui";
 import { useTypeTracking } from "../../components/ui/Type";
 import { colors } from "../../theme/tokens";
+import { spoken } from "./a11y";
 
 type Props = {
   value: string;
@@ -65,7 +66,7 @@ export function InlineText({ value, label, onCommit, children, size, disabled = 
         multiline={display}
         submitBehavior="blurAndSubmit"
         returnKeyType="done"
-        accessibilityLabel={label}
+        accessibilityLabel={spoken(label)}
         placeholder={label}
         placeholderTextColor={colors["ink-faint"]}
         className={`border-b-2 border-ink pb-1 outline-none ${display ? "font-display text-display-xl text-ink" : "font-body text-body-sm text-ink"}`}
@@ -82,7 +83,7 @@ export function InlineText({ value, label, onCommit, children, size, disabled = 
       onPress={start}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={t("item.editField", { field: label, value: value || t("item.empty") })}
+      accessibilityLabel={spoken(t("item.editField", { field: label, value: value || t("item.empty") }))}
       // Start-aligned box: the text inside sizes to its content and stays on the reading side (Tile caption note).
       style={{ alignSelf: "flex-start", maxWidth: "100%" }}
     >

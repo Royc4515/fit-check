@@ -438,3 +438,11 @@
 - `tile-cool` #E3E3DD -> #E6E3DC (tokens.base.js, DESIGN.md section 2): less green next to the warm tiles. Beige tee and khaki chinos still read clearly against it (ground moved by 3 on red, 1 on blue).
 - Lint clean: the `mounted` flag in the root layout is `useSyncExternalStore` (server false, client true) instead of setState in an effect; the two `i18n` imports are one (kept first); `T[]` instead of `Array<T>`; `i18n.use` goes through the named `use` export.
 - Look at: `design/screens/2026-11-18-sign-in-idle-*`, `2026-11-18-wardrobe-all-*`.
+
+## 2026-11-18 (redesign 1.6: Item fix round)
+
+- Shared element: the origin's picture is hidden for the whole flight in both directions and shown again on landing, on an exit without a flight, and when the item screen unmounts (browser back). Hiding goes by the measured node: `components/ui/originVisibility.ts` (`useOriginVisibility`, `setOriginHidden`), wired into `Tile` (`imageRef`) and `FlatLay` (`onPieceNode`; the node now lives inside each garment). `transition.ts` adds `getFlightNode` and re-exports `setOriginHidden`; `captureReturn` now returns `{ origin, node }`. No wardrobe screen change. The page fades out at once on the way back again (the delay only masked the double).
+- Back from a deep-linked item (no history) now goes to Today instead of leaving a blank page.
+- Availability to spec rows: 32 instead of 48.
+- Screen-reader labels and hints on the item screen and in the composer have the bidi isolates stripped (`features/item/a11y.ts` `spoken`); visible text keeps them.
+- Look at: `design/screens/2026-11-18-item-flight-*` (re-shot), `-tags-390-*`, `-1280-*`, `-browserback-today-390-he`.
