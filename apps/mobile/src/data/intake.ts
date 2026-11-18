@@ -10,6 +10,7 @@ import {
   type IntakeEnhanceResult,
   type IntakeTagResult,
   type ItemTags,
+  type RedrawSpec,
   type TagProposal,
 } from "@fit-check/schema";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
@@ -132,11 +133,12 @@ export function detectPhoto(originalPath: string, single = false): Promise<Intak
 }
 
 /**
- * Optional, paid: redraws one crop as a complete, clean product photo. Answers reason "billing_required" while the
- * Gemini project is on the free tier; the crop is then kept as it is. Never throws.
+ * Optional, paid: redraws one crop as a complete, clean product photo from the composer's spec (the server builds
+ * the prompt from it, the same one the composer previews). Answers reason "billing_required" while the Gemini
+ * project is on the free tier; the crop is then kept as it is. Never throws.
  */
-export function enhanceCutout(cutoutPath: string, description: string): Promise<IntakeEnhanceResult> {
-  return invoke({ action: "enhance", cutout_path: cutoutPath, description }, IntakeEnhanceResultSchema) as Promise<IntakeEnhanceResult>;
+export function enhanceCutout(cutoutPath: string, spec: RedrawSpec): Promise<IntakeEnhanceResult> {
+  return invoke({ action: "enhance", cutout_path: cutoutPath, spec }, IntakeEnhanceResultSchema) as Promise<IntakeEnhanceResult>;
 }
 
 /**
@@ -163,21 +165,6 @@ export function reviewValues(name: string, tags: ItemTags): Record<ReviewField, 
 }
 
 /**
- * The redraw prompt's garment description, from the confirmed tags rather than detection's guess: a wrong
- * description makes the image model draw the wrong cloth (melange tailored trousers came back as olive chinos).
- */
-export function describeForRedraw(tags: ItemTags, name?: string): string {
-  const pattern = tags.pattern === "solid" ? "" : `${tags.pattern} `;
-  const material = tags.material === "unknown" || tags.material === "mixed" ? "" : `${tags.material} `;
-  const sleeve = tags.sleeve === "na" ? "" : `, ${tags.sleeve === "sleeveless" ? "sleeveless" : `${tags.sleeve} sleeves`}`;
-  const base = `${tags.color_name.replace("_", " ")} ${pattern}${material}${tags.subcategory.replace("_", " ")}${sleeve} (main colour ${tags.color_hex})`;
-  // The name the user saw and maybe corrected (Roy, 2026-11-10): it carries the brand and his own word for the cut,
-  // e.g. "Zara Mandarin Collar", which the tags alone cannot express. Capped so the input stays within 400 chars.
-  const clean = name?.trim().slice(0, 120);
-  return clean ? `"${clean}": ${base}` : base;
-}
-
-/**
  * Saves a confirmed garment to the wardrobe and records what the tagger got wrong. The external id is derived
  * from the crop path, so saving the same garment twice updates it instead of duplicating it.
  * Throws on a failed item write; a failed correction write is only logged (the item matters, the stat does not).
@@ -193,6 +180,8 @@ export async function saveGarment(args: {
   tags: ItemTags;
   proposal: TagProposal | null;
   model: string | null;
+  /** The composer's spec when the saved image is a redraw, so a later redraw of this item starts from it. */
+  redrawSpec?: RedrawSpec | null;
 }): Promise<string> {
   const externalId = `photo:${args.sourcePath.split("/").slice(-2).join("/")}`;
   const row = itemToInsertRow(
@@ -214,7 +203,7 @@ export async function saveGarment(args: {
   );
   const { data, error } = await supabase
     .from("items")
-    .upsert({ ...row, thumb_path: args.thumbPath }, { onConflict: "user_id,external_id" })
+    .upsert({ ...row, thumb_path: args.thumbPath, ...(args.redrawSpec ? { redraw_spec: args.redrawSpec } : {}) }, { onConflict: "user_id,external_id" })
     .select("id")
     .single();
   if (error) throw error;

@@ -83,7 +83,7 @@
 ### 6.1 טבלאות (Supabase Postgres)
 
 - `profile`: user_id, height_cm, shirt_size, pants_w, pants_l, shoe_size, locale, push_hour, body_photo_path.
-- `items`: id, user_id, name, brand, category, subcategory, tags (jsonb, סכמה 6.2), color_hex, color_name, pattern, material, formality (1-10), seasons text[], temp_min_c, temp_max_c, modesty_flags text[], status (active | virtual | archived), availability (home | laundry | away | lent), price, currency, purchased_at, source (photo | sheet | link | receipt), original_path, cutout_path, thumb_path, created_at.
+- `items`: id, user_id, name, brand, category, subcategory, tags (jsonb, סכמה 6.2), color_hex, color_name, pattern, material, formality (1-10), seasons text[], temp_min_c, temp_max_c, modesty_flags text[], status (active | virtual | archived), availability (home | laundry | away | lent), price, currency, purchased_at, source (photo | sheet | link | receipt), original_path, cutout_path, thumb_path, redraw_spec (jsonb, the last AI redraw's composer choices; not part of the tags), created_at.
 - `item_vectors`: item_id, embedding vector(512), model_version.
 - `outfits`: id, user_id, context_type, created_for_date, score, llm_explanation_he, llm_explanation_en, source (daily | manual | swap).
 - `outfit_items`: outfit_id, item_id, slot.

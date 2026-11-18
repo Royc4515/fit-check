@@ -12,6 +12,17 @@ import {
   SUBCATEGORIES,
   SUBCATEGORY_TO_CATEGORY,
 } from "@fit-check/schema/item-tags.ts";
+import {
+  buildRedrawPrompt,
+  garmentOf,
+  REDRAW_DETAIL_IDS,
+  REDRAW_FIX_IDS,
+  REDRAW_FIXES,
+  RedrawFreeSchema,
+  redrawPrompt,
+  RedrawSpecSchema,
+  type RedrawSpec,
+} from "@fit-check/schema/redraw-spec.ts";
 import { cutout } from "../_shared/ai/modal.ts";
 import { ENHANCE_MODEL, enhanceGarment } from "../_shared/ai/gemini.ts";
 import { whiteToTransparent } from "../_shared/whitebg.ts";
@@ -83,7 +94,19 @@ const RecropInput = z.object({
   recut: z.boolean().default(false),
   requeue_original: z.boolean().default(false),
 });
-const RedrawInput = z.object({ id: z.string().uuid(), description: z.string().min(10).max(400) });
+/**
+ * Either Claude's own description from the photo (best when it has looked at it), or the app composer's chips on top
+ * of the item's tags. Fixes and owner notes go with either; details only without a description (it already says them).
+ */
+const RedrawInput = z
+  .object({
+    id: z.string().uuid(),
+    description: z.string().min(10).max(400).optional(),
+    details: z.array(z.enum(REDRAW_DETAIL_IDS)).optional(),
+    fixes: z.array(z.enum(REDRAW_FIX_IDS)).optional(),
+    notes: z.array(RedrawFreeSchema).max(2).optional(),
+  })
+  .refine((v) => !(v.description && v.details?.length), "details go in the description when one is given");
 const IdInput = z.object({ id: z.string().uuid() });
 
 /** The original photo an item was cut from (`…/N.jpg`), whatever its current image is called. */
@@ -266,8 +289,25 @@ export async function itemRecrop(args: unknown, ctx: ToolContext): Promise<ToolR
 
 export async function itemRedraw(args: unknown, ctx: ToolContext): Promise<ToolResult> {
   const input = RedrawInput.parse(args);
-  const { data: item } = await ctx.db.from("items").select("id,name,cutout_path").eq("id", input.id).eq("user_id", ctx.userId).maybeSingle();
+  const { data: item } = await ctx.db.from("items").select("id,name,tags,cutout_path").eq("id", input.id).eq("user_id", ctx.userId).maybeSingle();
   if (!item) return fail("No garment with that id in this wardrobe.");
+  // Chips mode builds the same spec the app's composer would, so its checks (a detail the garment type cannot take,
+  // two collars) apply here too, and the spec is stored for the app's next redraw of this item.
+  let spec: RedrawSpec | null = null;
+  if (!input.description) {
+    const tags = ItemTagsSchema.safeParse(item.tags);
+    if (!tags.success) return fail("This garment's tags are malformed; fix them with item_update first.");
+    const parsed = RedrawSpecSchema.safeParse({
+      v: 1,
+      name: item.name,
+      garment: garmentOf(tags.data),
+      details: input.details ?? [],
+      fixes: REDRAW_FIX_IDS.filter((f) => input.fixes?.includes(f)),
+      free: input.notes ?? [],
+    });
+    if (!parsed.success) return fail(`Invalid redraw choices: ${parsed.error.issues.map((i) => i.message).join("; ")}`);
+    spec = parsed.data;
+  }
   const crop = sourceCrop(item.cutout_path as string | null);
   if (!crop) return fail("This garment has no original photo to redraw.");
   const spent = await monthlyGoogleSpend();
@@ -275,7 +315,13 @@ export async function itemRedraw(args: unknown, ctx: ToolContext): Promise<ToolR
   const bytes = await download(ctx, crop);
   if (!bytes) return fail("The original photo is missing.");
 
-  const drawn = await enhanceGarment(bytes, sniffImageType(bytes, "image/jpeg"), input.description);
+  const prompt = spec
+    ? buildRedrawPrompt(spec)
+    : redrawPrompt(input.description ?? "", {
+        fixes: REDRAW_FIX_IDS.filter((f) => input.fixes?.includes(f)).map((f) => REDRAW_FIXES[f]),
+        notes: input.notes,
+      });
+  const drawn = await enhanceGarment(bytes, sniffImageType(bytes, "image/jpeg"), prompt);
   await ctx.db.from("ai_calls").insert({ user_id: ctx.userId, ...drawn.log });
   if (!drawn.png) return fail(`Redraw failed: ${drawn.log.error ?? "unknown"}`);
   const stem = crop.replace(/\.jpg$/, `-enhanced-${Date.now()}`);
@@ -293,7 +339,12 @@ export async function itemRedraw(args: unknown, ctx: ToolContext): Promise<ToolR
   stored ??= await cutAndStore(ctx, drawn.png, stem, false);
   const { error } = await ctx.db
     .from("items")
-    .update({ cutout_path: stored?.image ?? `${stem}.png`, thumb_path: stored?.thumb ?? null, updated_at: new Date().toISOString() })
+    .update({
+      cutout_path: stored?.image ?? `${stem}.png`,
+      thumb_path: stored?.thumb ?? null,
+      ...(spec ? { redraw_spec: spec } : {}),
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", input.id)
     .eq("user_id", ctx.userId);
   if (error) return fail(`Redrawn, but the item was not updated: ${error.message}`);
