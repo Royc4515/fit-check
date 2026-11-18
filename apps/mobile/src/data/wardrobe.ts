@@ -29,7 +29,15 @@ export async function fetchWardrobe(): Promise<WardrobeData> {
   return wardrobeFromRows(itemsRes.data ?? [], pairsRes.data ?? []);
 }
 
-type PairRow = { item_a: string; item_b: string; weight: number | string };
+/**
+ * The items removed from the wardrobe (status `archived`), in load order. No query of its own: `fetchWardrobe`
+ * (and the preview snapshot) read every status, and the screens list only `active`.
+ */
+export function archivedOf(items: readonly Item[]): Item[] {
+  return items.filter((i) => i.status === "archived");
+}
+
+type PairRow ={ item_a: string; item_b: string; weight: number | string };
 
 /** Rows (from the tables or the preview snapshot) to wardrobe data, skipping and logging a malformed item. */
 function wardrobeFromRows(itemRows: readonly unknown[], pairRows: readonly PairRow[]): WardrobeData {

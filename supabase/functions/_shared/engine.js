@@ -153,9 +153,15 @@ function passesWeather(item, slot, req, layered) {
   if (slot === "top" && layered) return coolEnoughForAfternoon;
   return warmEnoughForMorning && coolEnoughForAfternoon;
 }
-function passesFormality(item, slot, req) {
-  const [lo, hi] = req.context.formality_range;
+function passesFormality(item, slot, context) {
+  const [lo, hi] = context.formality_range;
   return item.tags.formality >= lo - FORMALITY_SLACK[slot] && item.tags.formality <= hi + 1;
+}
+function passesContextRules(item, context) {
+  const slot = slotOf(item);
+  if (!slot) return true;
+  if (!passesFormality(item, slot, context)) return false;
+  return slot === "layer" || passesSlotRule(item, context[slot]);
 }
 function hardFilter(items, req) {
   const out = { top: [], bottom: [], shoes: [], layer: [] };
@@ -167,8 +173,7 @@ function hardFilter(items, req) {
     if (!slot) continue;
     if (slot === "layer" && !needsLayer) continue;
     if (!passesWeather(item, slot, req, needsLayer)) continue;
-    if (!passesFormality(item, slot, req)) continue;
-    if (slot !== "layer" && !passesSlotRule(item, req.context[slot])) continue;
+    if (!passesContextRules(item, req.context)) continue;
     out[slot].push(item);
   }
   return out;
@@ -712,6 +717,7 @@ export {
   outfitFormality,
   pairKey,
   pairScore,
+  passesContextRules,
   recencyPenalty,
   scoreOutfit,
   setFree,

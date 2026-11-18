@@ -2,15 +2,17 @@ import type { Availability } from "@fit-check/schema";
 import { WardrobeGate } from "../../components/WardrobeGate";
 import { setAvailability, setAvailabilityMany } from "../../data/feedback";
 import { archiveItem } from "../../data/items";
-import { useWardrobe } from "../../data/WardrobeProvider";
+import { useSetItemStatus, useWardrobe } from "../../data/WardrobeProvider";
 import { WardrobeView } from "../../features/wardrobe/WardrobeView";
 
 /**
- * Wardrobe: loads the items, then hands them to the view with the three writes it can make. Filters are local
+ * Wardrobe: loads the items, then hands them to the view with the writes it can make. Filters are local
  * state inside the view. The writes are the same data functions the item screen uses, with the same rules.
  */
 export default function Wardrobe() {
   const wardrobe = useWardrobe();
+  // The undo after a removal: optimistic (the tile is back at once), rolled back and rethrown when the write fails.
+  const setStatus = useSetItemStatus();
   if (wardrobe.status !== "ready") return <WardrobeGate state={wardrobe} />;
   const { patch, items } = wardrobe;
 
@@ -46,5 +48,13 @@ export default function Wardrobe() {
     patch((d) => ({ ...d, items: d.items.map((i) => (i.id === itemId ? { ...i, status: "archived" } : i)) }));
   };
 
-  return <WardrobeView all={items} onMove={move} onAvailability={changeAvailability} onArchive={archive} />;
+  return (
+    <WardrobeView
+      all={items}
+      onMove={move}
+      onAvailability={changeAvailability}
+      onArchive={archive}
+      onRestore={(itemId) => setStatus(itemId, "active")}
+    />
+  );
 }
