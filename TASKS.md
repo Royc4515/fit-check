@@ -37,8 +37,8 @@ Status: `todo` / `doing` / `review` / `done` / `blocked`. A model that fails a t
 | # | Task | Model | Status | Result |
 | --- | --- | --- | --- | --- |
 | 2.0 | Specs in DESIGN.md section 3 "שלב 2" | lead | done | |
-| 2.1 | Wardrobe: search, "for Shabbat" and formality filters, archive screen with restore, undo after archiving | sonnet | doing | |
-| 2.2 | Item: notes, wear history, manual re-cut | sonnet | doing | |
-| 2.3 | Add: queue of photos waiting for Claude | sonnet | doing | |
-| 2.4 | Insights content (wears, AI spend); Profile: language switch, archive row, sign-out | sonnet | doing | |
-| 2.5 | Independent verification of stage 2 and of the stage-1 fix rounds | sonnet | todo | |
+| 2.1 | Wardrobe: search, "for Shabbat" and formality filters, archive screen with restore, undo after archiving | opus (sonnet hit its weekly limit before writing anything) | review | 346a779 merged. Lead looked at search and archive at 390 he. Shabbat filter = engine's own rule check (new exported `passesContextRules`, engine behaviour unchanged, 82 tests pass); 32 of 82 items pass, incl. casual jackets and caps because the rules have no outerwear/accessory slot. Successful archive/restore/undo writes seen only against stubbed DB calls |
+| 2.2 | Item: notes, wear history, manual re-cut | opus | review | ad0ec51 merged. Wear history seen only with fixtures: the database has no `worn` wear at all (one `skipped`), so the real query has never returned rows. Real notes write and real re-cut not exercised |
+| 2.3 | Add: queue of photos waiting for Claude | opus | review | b95b37a merged. Real listing works in the preview and is empty (no pending photos); populated and failure states seen with a mocked list. No dismiss: storage has no delete policy |
+| 2.4 | Insights content (wears, AI spend); Profile: language switch, archive row, sign-out | opus | review | 8d0d799 merged. Wears section seen with injected fixture wears (real data has none); AI spend seen with gallery fixtures only (not in the preview snapshot). Language switch verified on web (live `dir` flip, persisted); native restart path not run. Real sign-out not run |
+| 2.5 | Independent verification of stage 2 and of the stage-1 fix rounds | sonnet x2 | doing | |
