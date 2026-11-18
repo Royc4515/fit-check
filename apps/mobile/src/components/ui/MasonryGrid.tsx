@@ -1,5 +1,13 @@
-import { useEffect, useMemo, useState, type ReactElement, type ReactNode } from "react";
-import { ScrollView, View, useWindowDimensions, type StyleProp, type ViewStyle } from "react-native";
+import { useEffect, useMemo, useState, type ComponentRef, type ReactElement, type ReactNode, type Ref } from "react";
+import {
+  ScrollView,
+  View,
+  useWindowDimensions,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
 import { layout as tokens, motion } from "../../theme/tokens";
 import { timing, useRtl } from "./interaction";
@@ -146,8 +154,19 @@ type Props<T> = {
   renderItem: (item: T, info: MasonryCellInfo) => ReactNode;
   /** Scrolls with the grid, above it (screen header, filters). Measured; may change height freely. */
   ListHeaderComponent?: ReactElement;
+  /**
+   * Under the header, pinned to the top of the viewport once scrolled to (the wardrobe's category row). Give it an
+   * opaque ground: tiles scroll beneath it.
+   */
+  StickyHeaderComponent?: ReactElement;
+  /** Under the sticky header, scrolling away with the content (swatches, active filters). */
+  ListSubheaderComponent?: ReactElement;
   ListFooterComponent?: ReactElement;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  /** The underlying ScrollView, e.g. to bring the sticky row back to the top after a re-filter. */
+  scrollRef?: Ref<ComponentRef<typeof ScrollView>>;
+  /** Every scroll event, after the grid's own windowing has seen it. */
+  onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
 };
 
 /**
@@ -176,8 +195,12 @@ export function MasonryGrid<T>({
   aspectOf,
   renderItem,
   ListHeaderComponent,
+  StickyHeaderComponent,
+  ListSubheaderComponent,
   ListFooterComponent,
   contentContainerStyle,
+  scrollRef,
+  onScroll,
 }: Props<T>) {
   const rtl = useRtl();
   const window = useWindowDimensions();
@@ -224,17 +247,25 @@ export function MasonryGrid<T>({
   const bottom = bucket * step - gridTop + screen * 2 + step;
   const visible = laid.cells.filter((c) => c.y + c.h + captionHeight >= top && c.y <= bottom);
 
+  // Children are positional for stickyHeaderIndices, so a missing header must not shift the sticky one's index.
+  const stickyIndex = StickyHeaderComponent ? (ListHeaderComponent ? 1 : 0) : undefined;
+
   return (
     <ScrollView
+      ref={scrollRef}
       onLayout={(e) => setViewportH(e.nativeEvent.layout.height)}
       onScroll={(e) => {
         const next = Math.max(0, Math.floor(e.nativeEvent.contentOffset.y / step));
         if (next !== bucket) setBucket(next);
+        onScroll?.(e);
       }}
       scrollEventThrottle={16}
+      stickyHeaderIndices={stickyIndex === undefined ? undefined : [stickyIndex]}
       contentContainerStyle={contentContainerStyle}
     >
       {ListHeaderComponent}
+      {StickyHeaderComponent}
+      {ListSubheaderComponent}
       <View onLayout={(e) => setGridTop(e.nativeEvent.layout.y)} style={{ width, height: laid.height, alignSelf: "center" }}>
         {visible.map((c) =>
           c.kind === "header" ? (

@@ -147,7 +147,42 @@
       "failed": "That didn't save. Try again.",
       "notInWardrobe": "Not in the wardrobe, don't forget: uniform · army boots · pyjamas.",
       "showAll": "Show the whole wardrobe",
-      "showUsual": "Only the usual"
+      "showUsual": "Only the usual",
+      "open": "Leaving for reserve duty",
+      "mode": "What is shown"
+    },
+    "categories": "Categories",
+    "colors": "Colours",
+    "colorSelected": "Colour: {{color}}",
+    "tileLabel": "{{name}}, {{type}}, {{color}}",
+    "tileLabelWhere": "{{name}}, {{type}}, {{color}}, {{where}}",
+    "tileActions": "Actions",
+    "activeFilters": "Active filters",
+    "clearFilters": "Clear filters",
+    "noMatchBody": "Nothing matches all of these filters together.",
+    "emptyTitle": "The wardrobe is empty",
+    "filter": {
+      "open": "Filter",
+      "openActive": "Filter, filters on",
+      "title": "Filter",
+      "clear": "Clear",
+      "show_one": "Show 1 item",
+      "show_other": "Show {{n}} items",
+      "facet": {
+        "type": "Type",
+        "season": "Season",
+        "availability": "Availability"
+      }
+    },
+    "actions": {
+      "availability": "Availability",
+      "open": "Open item",
+      "remove": "Remove from wardrobe",
+      "confirm": "It leaves the wardrobe and Today's suggestions.",
+      "confirmRemove": "Remove",
+      "keep": "Keep",
+      "failed": "That didn't save. Try again.",
+      "removeFailed": "The removal didn't save. Try again."
     }
   },
   "common": {

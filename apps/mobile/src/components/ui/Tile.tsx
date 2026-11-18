@@ -1,6 +1,7 @@
 import type { Item } from "@fit-check/schema";
 import { Image } from "expo-image";
-import { Pressable, Text, View } from "react-native";
+import type { ComponentRef } from "react";
+import { Platform, Pressable, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { cutoutUrl, ItemArt } from "../item-art/ItemArt";
 import { tileAspect, tileTone } from "../../theme/tileTone";
@@ -56,7 +57,15 @@ type Props = {
   onLongPress?: () => void;
   /** Defaults to the item's name (DESIGN.md section 6: an item image is labelled with its name). */
   accessibilityLabel?: string;
+  /**
+   * The image box's node (not the caption), for the shared-element flight to the item screen: the caller measures
+   * it on press and registers it so the item screen can fly back to it.
+   */
+  imageRef?: (node: ComponentRef<typeof View> | null) => void;
 };
+
+/** Web keys that conventionally open an element's context menu; the keyboard path to `onLongPress`. */
+const isMenuKey = (e: { key?: string; shiftKey?: boolean }) => e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey === true);
 
 /**
  * Item tile: a neutral ground chosen by the garment's colour (tileTone), the cutout `contain`ed with padding, no
@@ -76,6 +85,7 @@ export function Tile({
   onPress,
   onLongPress,
   accessibilityLabel,
+  imageRef,
 }: Props) {
   const { onPressIn, onPressOut, pressStyle, liftStyle } = usePressFeedback();
   const frame = FRAME[size];
@@ -114,7 +124,8 @@ export function Tile({
 
   const body = (
     <Animated.View style={pressStyle}>
-      <View style={box}>
+      {/* collapsable false: Android would otherwise flatten the box away and there would be nothing to measure. */}
+      <View ref={imageRef} collapsable={false} style={box}>
         {/* Shadow layer: same shape as the tile, invisible at rest (DESIGN.md section 1: no shadow at rest). */}
         <Animated.View
           style={[{ position: "absolute", top: 0, bottom: 0, start: 0, end: 0, borderRadius: frame.radius, backgroundColor: colors[tone] }, shadow.lift, liftStyle]}
@@ -157,9 +168,27 @@ export function Tile({
     );
   }
 
+  // Web: a long press has no keyboard or mouse equivalent of its own, so the context-menu key, Shift+F10 and a
+  // right click open the same thing. Props only exist where react-native-web reads them.
+  const webMenu: object =
+    Platform.OS === "web" && onLongPress
+      ? {
+          onKeyDown: (e: { key?: string; shiftKey?: boolean; preventDefault?: () => void }) => {
+            if (!isMenuKey(e)) return;
+            e.preventDefault?.();
+            onLongPress();
+          },
+          onContextMenu: (e: { preventDefault?: () => void }) => {
+            e.preventDefault?.();
+            onLongPress();
+          },
+        }
+      : {};
+
   return (
     <Pressable
       {...focusRingProps}
+      {...webMenu}
       onPress={
         onPress
           ? () => {
