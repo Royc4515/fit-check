@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ComponentRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { GestureDetector, GestureHandlerRootView, usePanGesture } from "react-native-gesture-handler";
@@ -8,6 +8,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { colors, layout, motion, shadow } from "../../theme/tokens";
 import { Button } from "./Button";
 import { timing } from "./interaction";
+import { headingProps } from "./Type";
 
 type Props = {
   open: boolean;
@@ -32,6 +33,54 @@ const HANDLE_H = 4;
 /** Desktop dialog entrance: 8px rise with the fade (DESIGN.md section 5 generic motion). */
 const RISE = 8;
 
+const TABBABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Web only. react-native-web's Modal already renders the one `role="dialog" aria-modal` element (it takes our
+ * `aria-label` / `aria-labelledby`) and traps focus with two empty `tabindex=0` sentinel divs on either side of it.
+ * Those sentinels are focusable, unnamed content for a screen reader, so they are taken out of the tab order and the
+ * accessibility tree, and the wrap-around they provided is done on Tab / Shift+Tab inside the dialog instead.
+ * Focus then moves to the dialog element itself, which now carries the name (a second inner node would be a second
+ * unnamed dialog). RNW's own focus listener still pulls back any focus that escapes by mouse or script.
+ * @param inner A node inside the Modal's dialog; anything that is not an element (native, not yet mounted) is ignored.
+ * @returns a function that removes the key handler, or undefined when nothing was adopted.
+ */
+function adoptModalDialog(inner: unknown): (() => void) | undefined {
+  if (!(inner instanceof HTMLElement)) return undefined;
+  // don't touch / matched by `aria-modal`, not `role="dialog"`: RNW only sets the role once its Modal reports itself
+  // active, which is after this runs.
+  const dialog = inner.closest<HTMLElement>('[aria-modal="true"]');
+  if (!dialog) return undefined;
+  // don't touch / the sentinels must stay in the DOM (RNW renders them, as role=presentation tabindex=0 siblings of
+  // the dialog's wrapper) but must not be reachable or announced.
+  dialog.parentElement?.parentElement?.querySelectorAll<HTMLElement>(':scope > [role="presentation"][tabindex]').forEach((s) => {
+    s.setAttribute("tabindex", "-1");
+    s.setAttribute("aria-hidden", "true");
+  });
+  dialog.tabIndex = -1;
+  dialog.focus();
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== "Tab") return;
+    const stops = Array.from(dialog.querySelectorAll<HTMLElement>(TABBABLE)).filter((el) => el.getClientRects().length > 0);
+    const first = stops[0];
+    const last = stops[stops.length - 1];
+    if (!first || !last) {
+      e.preventDefault();
+      return;
+    }
+    const at = document.activeElement;
+    if (e.shiftKey && (at === first || at === dialog)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && at === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+  dialog.addEventListener("keydown", onKeyDown);
+  return () => dialog.removeEventListener("keydown", onKeyDown);
+}
+
 /**
  * Bottom sheet (DESIGN.md sections 4-5). Rendered in a transparent RN `Modal`, so it sits above the tab bar and
  * every screen on native, and on web gets react-native-web's Escape handling, focus trap and focus return to the
@@ -44,6 +93,7 @@ const RISE = 8;
  */
 export function Sheet({ open, onClose, title, accessibilityLabel, footer, children }: Props) {
   const { t } = useTranslation();
+  const titleId = useId();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const reduce = useReducedMotion();
@@ -87,7 +137,16 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
       // Move focus into the dialog so keyboard users start inside it (RNW's trap keeps it there).
       // don't touch / next frame, not now: react-native-web's Modal portal attaches its content after this effect,
       // so `panel.current` is still null in the same tick and focus silently stayed on the opener.
-      if (Platform.OS === "web") requestAnimationFrame(() => panel.current?.focus());
+      if (Platform.OS === "web") {
+        let release: (() => void) | undefined;
+        const frame = requestAnimationFrame(() => {
+          release = adoptModalDialog(panel.current);
+        });
+        return () => {
+          cancelAnimationFrame(frame);
+          release?.();
+        };
+      }
     } else if (sliding) {
       const v = releaseV.get();
       releaseV.set(0);
@@ -137,6 +196,10 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
 
   const maxH = height * MAX_HEIGHT_SHARE;
   const name = title ?? accessibilityLabel;
+  // The dialog's name: the visible title when there is one (so what is read is what is seen), else the label.
+  // A typed object spread: RN's Modal types have no aria props, but react-native-web forwards them to its dialog.
+  const modalWebProps: { "aria-labelledby"?: string; "aria-label"?: string } =
+    Platform.OS !== "web" ? {} : title ? { "aria-labelledby": titleId } : { "aria-label": name };
 
   const header = (
     <View>
@@ -149,7 +212,7 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
         {/* don't touch / start-aligned box, not text alignment: react-native-web gives text dir="auto", so a Latin
             title ("Benetton Polo") hugged the close button's edge in an RTL sheet. */}
         <View style={{ flex: 1, alignItems: "flex-start" }}>
-          <Text accessibilityRole="header" className="font-body-semibold text-title text-ink" numberOfLines={1} style={{ maxWidth: "100%" }}>
+          <Text nativeID={titleId} {...headingProps(2)} className="font-body-semibold text-title text-ink" numberOfLines={1} style={{ maxWidth: "100%" }}>
             {title ?? ""}
           </Text>
         </View>
@@ -197,6 +260,7 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
 
   return (
     <Modal
+      {...modalWebProps}
       transparent
       visible
       animationType="none"
@@ -215,6 +279,10 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
                 scrimPressed.current = false;
               }}
               focusable={false}
+              // don't touch / the scrim is a mouse target only. On the web `focusable={false}` still leaves it a
+              // tabindex=0 unnamed div, so it is also taken out of the tab order and hidden from the tree.
+              tabIndex={-1}
+              aria-hidden
               accessibilityElementsHidden
               importantForAccessibility="no"
               style={{ flex: 1, backgroundColor: colors.scrim }}
@@ -223,11 +291,9 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
           <Animated.View style={[{ width: desktop ? Math.min(layout.dialogWidth, width - 2 * layout.gutter) : "100%" }, panelStyle]}>
             <View
               ref={panel}
-              tabIndex={-1}
-              role="dialog"
-              aria-modal
-              aria-label={name}
               accessibilityViewIsModal
+              // Native: the panel is the dialog. On the web the Modal's own element is (see modalWebProps).
+              accessibilityLabel={Platform.OS === "web" ? undefined : name}
               onLayout={(e) => sheetH.set(e.nativeEvent.layout.height)}
               className={`border-hairline bg-ivory ${desktop ? "rounded-lg border" : "rounded-t-lg border-t"}`}
               style={[{ maxHeight: maxH, overflow: "hidden" }, shadow.sheet]}

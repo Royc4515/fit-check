@@ -7,7 +7,7 @@ import { cutoutUrl, ItemArt } from "../item-art/ItemArt";
 import { tileAspect, tileTone } from "../../theme/tileTone";
 import { colors, motion, shadow } from "../../theme/tokens";
 import { Icon } from "./Icon";
-import { focusRingProps, selectionHaptic, usePressFeedback } from "./interaction";
+import { focusRingProps, selectionHaptic, usePressFeedback, webStateProps } from "./interaction";
 import { Skeleton } from "./Skeleton";
 import { useOriginVisibility } from "./originVisibility";
 import { Meta } from "./Type";
@@ -215,6 +215,7 @@ export function Tile({
       accessibilityRole={toggle ? "checkbox" : "button"}
       accessibilityLabel={label}
       accessibilityState={toggle ? { checked: selected } : { selected }}
+      {...webStateProps(toggle ? { checked: selected } : {})}
       // Screen readers cannot long-press reliably; expose it as the standard action too (DESIGN.md section 6).
       accessibilityActions={onLongPress ? [{ name: "longpress" }] : undefined}
       onAccessibilityAction={(e) => {

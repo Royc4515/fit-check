@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { colors, layout, motion } from "../../theme/tokens";
-import { focusRingProps, selectionHaptic, timing } from "./interaction";
+import { focusRingProps, selectionHaptic, timing, webStateProps } from "./interaction";
 
 export type Segment<K extends string> = { key: K; label: string };
 
@@ -43,6 +43,7 @@ function SegmentButton<K extends string>({
       accessibilityRole="radio"
       accessibilityLabel={segment.label}
       accessibilityState={{ checked: selected, disabled }}
+      {...webStateProps({ checked: selected, disabled })}
       className="flex-1 items-center justify-center"
       style={{ minHeight: layout.hit }}
     >
