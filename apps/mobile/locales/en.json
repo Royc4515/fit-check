@@ -6,13 +6,11 @@
     "title": "Today",
     "empty": "No outfit for today yet",
     "wearing": "Wearing it",
-    "swap": "Swap an item",
     "warmer": "Warmer",
     "cooler": "Cooler",
     "dressier": "Dressier",
     "casual": "More casual",
     "skip": "Skip",
-    "actions": "Actions",
     "dayType": {
       "weekday": "Weekday",
       "shabbat": "Shabbat",
@@ -39,14 +37,8 @@
       "shabbat": "Shabbat clothes by your rules."
     },
     "data": {
-      "feels": "Feels like",
-      "rain": "Rain",
-      "sky": "Sky"
+      "rain": "Rain"
     },
-    "swapThis": "Swap",
-    "swapClose": "Close",
-    "swapHint": "Pick an item to see alternatives.",
-    "swapDone": "Done",
     "noAlternatives": "Nothing else fits this slot today.",
     "allSkipped": "No more suggestions for today.",
     "undo": "Undo",
@@ -70,7 +62,20 @@
       "bottom": "trousers",
       "shoes": "shoes"
     },
-    "and": " and "
+    "and": " and ",
+    "allSkippedBody": "Undo the last skip to bring the previous suggestion back.",
+    "missingTitle": "The wardrobe isn't complete yet",
+    "emptyBody": "Nothing in the wardrobe fits today's rules and weather.",
+    "alternatives": "Alternatives",
+    "swapTo": "Swap for {{name}}",
+    "toItem": "Open item",
+    "adjustTitle": "Adjust",
+    "adjustTemp": "Temperature",
+    "adjustFormality": "Formality",
+    "tune": "Adjust the suggestion: warmer, cooler, formality, skip",
+    "pieceLabel": "{{type}}, {{name}}. Alternatives and details",
+    "heroLabel": "Today's outfit: {{pieces}}. Swipe sideways to skip to the next suggestion",
+    "weatherLabel": "Weather in {{place}}: {{weather}}. Change location"
   },
   "wardrobe": {
     "title": "Wardrobe",
@@ -493,7 +498,9 @@
       "status": "Status line",
       "sheet": "Sheet",
       "nav": "Navigation",
-      "masonry": "The wardrobe as masonry"
+      "masonry": "The wardrobe as masonry",
+      "flatLay": "Flat-lay",
+      "stepper": "Stepper"
     },
     "state": {
       "default": "Default",
@@ -597,6 +604,15 @@
       "info": "info",
       "ok": "ok",
       "error": "error"
+    },
+    "flatLay": {
+      "intro": "Combinations from the real wardrobe, 3 and 4 pieces. Same percentages at every width.",
+      "label": "Combination {{n}}"
+    },
+    "stepper": {
+      "label": "Temperature",
+      "less": "Cooler",
+      "more": "Warmer"
     }
   }
 }
