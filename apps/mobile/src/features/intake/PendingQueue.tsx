@@ -51,7 +51,7 @@ export function PendingQueue({ state, onRetry, now, spaced = true }: Props) {
   const count = state.status === "ready" ? state.photos.length : undefined;
 
   const cell = (photo: PendingPhoto) => {
-    const when = uploadedLabel(photo.uploadedAt, now, locale);
+    const when = uploadedLabel(photo.uploadedAt, now, locale, t);
     return (
       <>
         <PhotoTile

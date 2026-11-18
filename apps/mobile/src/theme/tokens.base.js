@@ -44,6 +44,8 @@ const fontSize = {
   meta: ["12px", { lineHeight: "18px" }],
   num: ["16px", { lineHeight: "22px" }],
   "num-sm": ["12px", { lineHeight: "18px" }],
+  // DESIGN.md 2026-11-19: the big figures of Insights (days, items, the month's total), in the mono face.
+  "num-lg": ["28px", { lineHeight: "34px" }],
 };
 
 // Scale of 4; screen gutter is 20 (the one exception), sections 48, cards 12.

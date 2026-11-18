@@ -517,3 +517,10 @@
 - Profile: language `Segmented` (stored on the device, wins over the device locale; web flips text, `dir` and tab order at once; native shows a restart note for direction), "Archive" row with count linking to `/archive` (route lands with the wardrobe work), "Sign out" with a confirmation sheet (preview: forgets the preview code and reloads to sign-in).
 - Outside the owned folders: root `_layout.tsx` computes `dir` per render from the active language; `useRtl` re-renders on a language change and on native reports the drawn direction; `kv.ts` gained plain settings; `preview.ts` exports `forgetCode`.
 - Look at: `design/screens/2026-11-19-insights-*` and `-profile-*`; the "fixture" insights shots use real items with synthetic worn wears injected in the test browser only (the real snapshot has no worn wear).
+
+## 2026-11-19 (stage 2 fix round: insights, intake, profile)
+
+- Insights "today" is the saved location's date (`wearsToday` in `data/insights.ts`, via `dayContext.localDate` and `resolveLocation`), the same as Today and as the date wears are written with; the window and strip end on it. An outfit row is now one button (name = date + garments, min height 44) that opens a sheet of the garments (`type · name`, chevron, each to `/item/<id>`); the small flat-lay is only a picture. Most worn: ties resolve by count, then latest wear date, then name; the label pluralises (`count`, he one/two/many/other) and stays on one line, the item name takes two lines at most.
+- AI spend is read by paging `.range()` in 1,000-row pages (cap 20 pages; if hit, a `Meta` line says the total is partial). Strip: app focus ring, empty squares outlined in `ink-faint` (4.8:1). New type token `num-lg` (28/34 Plex Mono, DESIGN.md section 2); widths on the 4-scale (`w-24`, `w-16`).
+- Hebrew relative times in the intake queue: "לפני דקה", "לפני שעה", "לפני שעתיים" are i18n strings (Intl added a stray numeral); other counts and English stay on Intl. Profile's archive count comes from `useArchivedCount()` (its own query is gone).
+- Look at: `design/screens/2026-11-19-insights-fixture-*`, `-insights-row-sheet-*`, `-intake-queue-seven-*`.

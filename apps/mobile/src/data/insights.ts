@@ -2,12 +2,14 @@ import { slotOf } from "@fit-check/engine";
 import { SLOTS, type Item, type Slot } from "@fit-check/schema";
 import { z } from "zod";
 import { supabase } from "../lib/supabase";
+import { readAllPages } from "../features/insights/pagedRead";
+import { localDate as dateInZone } from "./dayContext";
 import { daysBefore } from "./feedback";
+import { resolveLocation } from "./location";
 import { getSnapshot, isPreview } from "./preview";
 
 /**
- * Reads for the Insights screen and the Profile archive row: what was worn in the last 30 days, this month's AI
- * spend, and how many items are archived. Read-only. The arithmetic is in pure functions (summarizeWears,
+ * Reads for the Insights screen: what was worn in the last 30 days and this month's AI spend. Read-only. The arithmetic is in pure functions (summarizeWears,
  * summarizeSpend) so the screen, the gallery fixtures and the checks all share one definition of each number.
  */
 
@@ -24,12 +26,15 @@ export const GOOGLE_MONTHLY_CAP_USD = 8;
 /** From this share of the cap on, the spend line warns (DESIGN brief: "within 20% of it"). */
 export const CAP_WARN_SHARE = 0.8;
 
-/** The user's local calendar date, yyyy-mm-dd: a wear is logged on the day it was worn where the user is. */
-export function localDate(now: Date): string {
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+/**
+ * "Today" for Insights: the date in the saved location's time zone, the same one the Today screen uses and the one a
+ * wear is written with (dayContext.localDate with the location's zone). The device's own date is wrong around
+ * midnight whenever the device and the location are in different zones, and would hide a wear dated "tomorrow".
+ * Falls back to the default location (Israel) when the setting is unreadable, like Today does.
+ */
+export async function wearsToday(now: Date = new Date()): Promise<string> {
+  const { tz } = await resolveLocation();
+  return dateInZone(tz, now).date;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -102,16 +107,22 @@ export type WearSummary = {
   daysWorn: number;
   /** Distinct garments across those outfits. */
   distinctItems: number;
-  /** Most worn garment the wardrobe knows (ties: the one worn most recently); null when nothing was worn. */
+  /** Most worn garment the wardrobe knows (ties: see {@link summarizeWears}); null when nothing was worn. */
   mostWorn: { item: Item; count: number } | null;
   /** One entry per day, oldest first, so the newest lands at the end side of the strip. */
   days: { date: string; worn: boolean }[];
-  /** Worn outfits newest first, with their garments resolved and placed in a slot. */
-  outfits: { wearId: string; date: string; pieces: { slot: Slot; item: Item }[] }[];
+  /**
+   * Worn outfits newest first. `pieces` are the garments placed in a flat-lay slot (what the picture draws); `items`
+   * are all the outfit's garments the wardrobe knows, accessories and a second garment for a taken slot included (what
+   * the row's name and sheet list).
+   */
+  outfits: { wearId: string; date: string; pieces: { slot: Slot; item: Item }[]; items: Item[] }[];
 };
 
 /**
  * The wear numbers of DESIGN.md "שלב 2" ("תובנות"). Pure: the date and the data come in as arguments.
+ * Most worn garment, deterministic: the highest wear count in the window; on a tie the one worn most recently (latest
+ * wear date); on a further tie the item name in `localeCompare` order. Input order never decides.
  * @param worn - newest first, as fetchWornOutfits returns them.
  * @param items - the loaded wardrobe (archived items included, so an outfit with a since-archived garment still draws).
  */
@@ -128,16 +139,14 @@ export function summarizeWears(worn: readonly WornOutfit[], items: readonly Item
       if ((lastWorn.get(p.itemId) ?? "") < w.date) lastWorn.set(p.itemId, w.date);
     }
   }
-  let mostWorn: WearSummary["mostWorn"] = null;
+  const ranked: { item: Item; count: number; last: string }[] = [];
   for (const [id, count] of counts) {
     const item = byId.get(id);
-    if (!item) continue;
-    const better =
-      !mostWorn ||
-      count > mostWorn.count ||
-      (count === mostWorn.count && (lastWorn.get(id) ?? "") > (lastWorn.get(mostWorn.item.id) ?? ""));
-    if (better) mostWorn = { item, count };
+    if (item) ranked.push({ item, count, last: lastWorn.get(id) ?? "" });
   }
+  ranked.sort((a, b) => b.count - a.count || (a.last < b.last ? 1 : a.last > b.last ? -1 : 0) || a.item.name.localeCompare(b.item.name));
+  const top = ranked[0];
+  const mostWorn: WearSummary["mostWorn"] = top ? { item: top.item, count: top.count } : null;
   const strip = Array.from({ length: days }, (_, n) => {
     const date = daysBefore(today, days - 1 - n);
     return { date, worn: wornDates.has(date) };
@@ -146,6 +155,7 @@ export function summarizeWears(worn: readonly WornOutfit[], items: readonly Item
     wearId: w.wearId,
     date: w.date,
     pieces: placePieces(w.pieces, byId),
+    items: w.pieces.flatMap((p) => byId.get(p.itemId) ?? []),
   }));
   return { daysWorn: wornDates.size, distinctItems: counts.size, mostWorn, days: strip, outfits };
 }
@@ -193,25 +203,35 @@ export function monthStartUtc(now: Date): string {
 
 /**
  * `unavailable` in the design preview: its snapshot has no ai_calls, and numbers must not be invented.
- * Throws on a network or permission error.
+ * Reads every row of the month by paging (see readAllPages); `partial` is true when the page cap was hit, and the
+ * screen then says the total is partial. Throws on a network or permission error.
  */
-export async function fetchMonthSpend(now: Date): Promise<{ kind: "rows"; rows: AiCallRow[] } | { kind: "unavailable" }> {
+export async function fetchMonthSpend(
+  now: Date
+): Promise<{ kind: "rows"; rows: AiCallRow[]; partial: boolean } | { kind: "unavailable" }> {
   if (isPreview()) return { kind: "unavailable" };
-  // RLS ("read own ai calls") scopes this to the user; no user_id filter, so a broken policy would show, not hide.
-  const { data, error } = await supabase
-    .from("ai_calls")
-    .select("provider,task,cost_usd")
-    .gte("created_at", monthStartUtc(now))
-    .limit(20_000);
-  if (error) throw error;
+  const monthStart = monthStartUtc(now);
+  const { rows: raw, partial } = await readAllPages(async (from, to) => {
+    // RLS ("read own ai calls") scopes this to the user; no user_id filter, so a broken policy would show, not hide.
+    const { data, error } = await supabase
+      .from("ai_calls")
+      .select("provider,task,cost_usd")
+      .gte("created_at", monthStart)
+      // don't touch / a total order (id breaks created_at ties): range paging over an unstable order repeats or skips rows.
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return data ?? [];
+  });
   const rows: AiCallRow[] = [];
-  for (const raw of data ?? []) {
-    const parsed = AiCallRowSchema.safeParse(raw);
+  for (const r of raw) {
+    const parsed = AiCallRowSchema.safeParse(r);
     if (!parsed.success) continue;
-    const r = parsed.data;
-    rows.push({ provider: r.provider, task: r.task, cost_usd: r.cost_usd === null ? null : Number(r.cost_usd) });
+    const { provider, task, cost_usd } = parsed.data;
+    rows.push({ provider, task, cost_usd: cost_usd === null ? null : Number(cost_usd) });
   }
-  return { kind: "rows", rows };
+  return { kind: "rows", rows, partial };
 }
 
 /**
@@ -241,23 +261,4 @@ export function summarizeSpend(rows: readonly AiCallRow[], capUsd = GOOGLE_MONTH
 export function capLevel(spent: number, cap: number): "ok" | "near" | "over" {
   if (spent >= cap) return "over";
   return spent >= cap * CAP_WARN_SHARE ? "near" : "ok";
-}
-
-// ---------------------------------------------------------------------------------------------------------------
-// Archive
-// ---------------------------------------------------------------------------------------------------------------
-
-/**
- * How many items are archived, for Profile's archive row. Preview: counted in the snapshot, and null when it holds
- * none (the row then shows no count rather than a "0" the preview cannot vouch for). Throws on a network error.
- */
-export async function fetchArchivedCount(): Promise<number | null> {
-  if (isPreview()) {
-    const snap = await getSnapshot();
-    const n = snap.items.filter((row) => z.object({ status: z.literal("archived") }).safeParse(row).success).length;
-    return n > 0 ? n : null;
-  }
-  const { count, error } = await supabase.from("items").select("id", { count: "exact", head: true }).eq("status", "archived");
-  if (error) throw error;
-  return count ?? 0;
 }

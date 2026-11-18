@@ -1,34 +1,31 @@
-import type { Slot } from "@fit-check/schema";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, Text, View } from "react-native";
-import { Button, Display, EmptyState, FlatLay, flatLayTone, Meta, Skeleton, StatusLine, type FlatLayPiece } from "../../components/ui";
+import { Platform, Pressable, Text, View } from "react-native";
+import { Button, Display, EmptyState, FlatLay, ListRow, Meta, Sheet, Skeleton, StatusLine, type FlatLayPiece } from "../../components/ui";
+import { focusRingProps } from "../../components/ui/interaction";
 import type { WearSummary } from "../../data/insights";
+import { isRtl } from "../../i18n";
+import { colors, layout } from "../../theme/tokens";
+import { tokens } from "../../theme/tokens.base.js";
 import { spoken } from "../item/a11y";
-import { registerOrigin } from "../item/transition";
 import { longDate, ltr, shortDate, weekday } from "./format";
 
 /** Outfits listed before "show more" (brief: up to 10). */
 const FIRST_PAGE = 10;
-/** Width of an outfit's small flat-lay: two and a bit garments' worth, readable without crowding the date. */
-const OUTFIT_W = 120;
 /** Gap between the strip's day squares (spacing scale). */
 const DAY_GAP = 4;
-/** Height of the big mono numbers (display line). */
-const NUMBER_H = 34;
+/** Line height of the big mono numbers: the `num-lg` token's, so the skeleton and the figures have the same height. */
+const NUMBER_H = Number.parseInt(tokens.fontSize["num-lg"]?.[1].lineHeight ?? "34", 10);
 
 export type WearsState =
   | { kind: "loading" }
   | { kind: "error"; message: string; retry: () => void }
   | { kind: "ready"; summary: WearSummary };
 
-/** The origin scope of one listed outfit's garments, for the item screen's shared-element flight. */
-export const insightsScope = (wearId: string) => `insights:${wearId}`;
-
 type Props = {
   state: WearsState;
-  /** A garment was pressed: open its item, flying from that garment. */
-  onOpenItem: (scope: string, itemId: string) => void;
+  /** A garment was chosen in an outfit's sheet: open its item. */
+  onOpenItem: (itemId: string) => void;
   /** The empty state's one action (to Today, where wears are logged). */
   onEmptyAction: () => void;
 };
@@ -57,24 +54,39 @@ export function WearsSection({ state, onOpenItem, onEmptyAction }: Props) {
   );
 }
 
+type Outfit = WearSummary["outfits"][number];
+
 function WearsContent({ summary, onOpenItem }: { summary: WearSummary; onOpenItem: Props["onOpenItem"] }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === "en" ? "en" : "he";
   const [all, setAll] = useState(false);
+  const [open, setOpen] = useState<Outfit | null>(null);
   const shown = all ? summary.outfits : summary.outfits.slice(0, FIRST_PAGE);
+  // Closing first: the item route is pushed over a screen with no modal left on it.
+  const openItem = (id: string) => {
+    setOpen(null);
+    onOpenItem(id);
+  };
   return (
     <View>
-      <View className="flex-row" style={{ gap: 16 }}>
+      {/* Columns stretch to one height and each stacks from the bottom (justify-end), so the three labels share a baseline whatever the name above one wraps to. */}
+      <View className="flex-row items-stretch" style={{ gap: 16 }}>
         <Stat value={ltr(summary.daysWorn)} label={t("insights.wears.daysWorn")} />
         <Stat value={ltr(summary.distinctItems)} label={t("insights.wears.distinctItems")} />
-        <View className="flex-1 items-start">
-          {/* A name, not a figure: body type, kept to the numbers' height so the three labels line up. */}
-          <View className="items-start" style={{ minHeight: NUMBER_H, justifyContent: "flex-end" }}>
-            <Text className="font-body text-body text-ink" numberOfLines={2}>
-              {summary.mostWorn ? summary.mostWorn.item.name : t("insights.wears.mostWornNone")}
+        {/* The third stat is a name and a longer label ("הנלבש ביותר · 3 פעמים"), so it gets the wider column. */}
+        <View className="items-start justify-end" style={{ flex: 2 }}>
+          {summary.mostWorn ? (
+            // A name, not a figure: body type, two lines at most. Text direction LTR so a Latin name truncates at its end
+            // ("Detroit Jacket…", not "…Detroit Jacket"), and an explicit alignment to the start edge of the UI direction, so
+            // the block sits where the other two stats do.
+            <Text className="font-body text-body text-ink" numberOfLines={2} style={{ writingDirection: "ltr", textAlign: isRtl() ? "right" : "left" }}>
+              {summary.mostWorn.item.name}
             </Text>
-          </View>
-          <Meta>{summary.mostWorn ? t("insights.wears.mostWornCount", { n: ltr(summary.mostWorn.count) }) : t("insights.wears.mostWorn")}</Meta>
+          ) : (
+            <Text className="font-body text-body text-ink">{t("insights.wears.mostWornNone")}</Text>
+          )}
+          {/* One line, never wrapped mid-phrase: the column is wide enough for it. */}
+          <Meta numberOfLines={1}>{summary.mostWorn ? t("insights.wears.mostWornCount", { count: summary.mostWorn.count }) : t("insights.wears.mostWorn")}</Meta>
         </View>
       </View>
 
@@ -84,7 +96,7 @@ function WearsContent({ summary, onOpenItem }: { summary: WearSummary; onOpenIte
         <Meta>{t("insights.wears.recent")}</Meta>
         <View className="mt-2 border-t border-hairline">
           {shown.map((o) => (
-            <OutfitRow key={o.wearId} outfit={o} locale={locale} onOpenItem={onOpenItem} />
+            <OutfitRow key={o.wearId} outfit={o} locale={locale} onPress={() => setOpen(o)} />
           ))}
         </View>
         {!all && summary.outfits.length > FIRST_PAGE ? (
@@ -93,6 +105,13 @@ function WearsContent({ summary, onOpenItem }: { summary: WearSummary; onOpenIte
           </View>
         ) : null}
       </View>
+
+      <Sheet open={open !== null} onClose={() => setOpen(null)} title={open ? longDate(open.date, locale) : undefined} accessibilityLabel={open ? longDate(open.date, locale) : undefined}>
+        {/* Kept after close for the sheet's exit animation: `open` is null, so the last outfit is simply not drawn. */}
+        {open?.items.map((item) => (
+          <ListRow key={item.id} label={`${t(`item.subcategory.${item.tags.subcategory}`)} · ${item.name}`} onPress={() => openItem(item.id)} />
+        ))}
+      </Sheet>
     </View>
   );
 }
@@ -101,8 +120,8 @@ function Stat({ value, label }: { value: string; label: string }) {
   // items-start: on web a line that opens with digits or Latin takes LTR as its own direction and hugs the left edge
   // of a stretched box even in Hebrew. Shrunk to its content, the box itself sits at the start edge instead.
   return (
-    <View className="flex-1 items-start">
-      <Text className="font-mono text-display text-ink">{value}</Text>
+    <View className="flex-1 items-start justify-end">
+      <Text className="font-mono text-num-lg text-ink">{value}</Text>
       <Meta>{label}</Meta>
     </View>
   );
@@ -111,7 +130,9 @@ function Stat({ value, label }: { value: string; label: string }) {
 // Web: one tab stop for the strip (not 30), a group named by the summary; each square is an image named by its
 // date and state, reachable with a screen reader's reading cursor. Native: one element read as the summary.
 const stripGroupProps = (summary: string) =>
-  Platform.OS === "web" ? { role: "group" as const, "aria-label": summary, focusable: true } : { accessible: true, accessibilityLabel: summary };
+  Platform.OS === "web"
+    ? { role: "group" as const, "aria-label": summary, focusable: true, ...focusRingProps }
+    : { accessible: true, accessibilityLabel: summary };
 
 function DayStrip({ days, daysWorn, locale }: { days: WearSummary["days"]; daysWorn: number; locale: string }) {
   const { t } = useTranslation();
@@ -126,9 +147,10 @@ function DayStrip({ days, daysWorn, locale }: { days: WearSummary["days"]; daysW
             role="img"
             aria-label={t(d.worn ? "insights.wears.dayWorn" : "insights.wears.dayNotWorn", { date: longDate(d.date, locale) })}
             testID={`wear-day-${d.date}`}
-            // Filled ink = worn; a hairline outline = not worn. The difference is the fill, not a hue.
+            // Filled ink = worn; an ink-faint outline (4.8:1 on ivory) = not worn: the fill is the difference, and the
+            // empty square stays visible against the page (the hairline was 1.3:1).
             style={{ flex: 1, aspectRatio: 1, borderRadius: 2, borderWidth: 1 }}
-            className={d.worn ? "border-ink bg-ink" : "border-hairline"}
+            className={d.worn ? "border-ink bg-ink" : "border-ink-faint"}
           />
         ))}
       </View>
@@ -140,46 +162,40 @@ function DayStrip({ days, daysWorn, locale }: { days: WearSummary["days"]; daysW
   );
 }
 
-function OutfitRow({
-  outfit,
-  locale,
-  onOpenItem,
-}: {
-  outfit: WearSummary["outfits"][number];
-  locale: string;
-  onOpenItem: Props["onOpenItem"];
-}) {
+/**
+ * One worn outfit. The whole row is the button (DESIGN.md "תובנות": the small garments are under 44, so they are not
+ * targets): its name is the date and the garments' names, and it opens a sheet of the garments. The flat-lay is only
+ * a picture here, hidden from assistive tech, since the row already says what it shows.
+ */
+function OutfitRow({ outfit, locale, onPress }: { outfit: Outfit; locale: string; onPress: () => void }) {
   const { t } = useTranslation();
-  const scope = insightsScope(outfit.wearId);
   const pieces: FlatLayPiece[] = outfit.pieces.map((p, n) => ({
     slot: p.slot,
     item: p.item,
     index: String(n + 1).padStart(2, "0"),
-    accessibilityLabel: spoken(t("insights.wears.piece", { name: p.item.name })),
+    accessibilityLabel: p.item.name,
   }));
-  const tone = flatLayTone(pieces);
-  const pressed = (slot: Slot) => {
-    const id = pieces.find((p) => p.slot === slot)?.item.id;
-    if (id) onOpenItem(scope, id);
-  };
-  const label = spoken(t("insights.wears.outfitLabel", { date: longDate(outfit.date, locale), pieces: pieces.map((p) => p.item.name).join(", ") }));
+  const label = spoken(t("insights.wears.outfitLabel", { date: longDate(outfit.date, locale), pieces: outfit.items.map((i) => i.name).join(", ") }));
   return (
-    <View className="flex-row border-b border-hairline py-4" style={{ gap: 16 }}>
-      <View className="flex-1 items-start">
-        <Text className="font-mono text-num text-ink">{shortDate(outfit.date, locale)}</Text>
-        <Text className="font-body text-body-sm text-ink-soft">{weekday(outfit.date, locale)}</Text>
+    <Pressable
+      {...focusRingProps}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={t("insights.wears.rowHint")}
+      style={({ pressed }) => ({ minHeight: layout.hit, backgroundColor: pressed ? colors["ivory-deep"] : undefined })}
+      testID={`outfit-row-${outfit.wearId}`}
+    >
+      <View className="flex-row border-b border-hairline py-4" style={{ gap: 16 }}>
+        <View className="flex-1 items-start">
+          <Text className="font-mono text-num text-ink">{shortDate(outfit.date, locale)}</Text>
+          <Text className="font-body text-body-sm text-ink-soft">{weekday(outfit.date, locale)}</Text>
+        </View>
+        <View className="w-24" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden aria-hidden>
+          <FlatLay pieces={pieces} numbered={false} radius="md" pieceFocusable={false} accessibilityLabel={label} />
+        </View>
       </View>
-      <View style={{ width: OUTFIT_W }}>
-        <FlatLay
-          pieces={pieces}
-          numbered={false}
-          radius="md"
-          onPressPiece={pressed}
-          onPieceNode={(id, node) => registerOrigin(scope, id, node, { tone, loose: true })}
-          accessibilityLabel={label}
-        />
-      </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -190,7 +206,7 @@ function WearsSkeleton() {
       <View className="flex-row" style={{ gap: 16 }}>
         {[0, 1, 2].map((n) => (
           <View key={n} className="flex-1" style={{ gap: 4 }}>
-            <Skeleton height={NUMBER_H - 4} radius="sm" />
+            <Skeleton height={NUMBER_H} radius="sm" />
             <Skeleton height={14} width="70%" radius="sm" />
           </View>
         ))}
@@ -202,10 +218,10 @@ function WearsSkeleton() {
         {[0, 1, 2].map((n) => (
           <View key={n} className="flex-row" style={{ gap: 16 }}>
             <View className="flex-1" style={{ gap: 4 }}>
-              <Skeleton height={22} width={56} radius="sm" />
-              <Skeleton height={18} width={88} radius="sm" />
+              <Skeleton height={22} width={64} radius="sm" />
+              <Skeleton height={18} width={96} radius="sm" />
             </View>
-            <View style={{ width: OUTFIT_W }}>
+            <View className="w-24">
               <Skeleton aspect={1.25} />
             </View>
           </View>
