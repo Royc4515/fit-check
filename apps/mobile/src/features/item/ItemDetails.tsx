@@ -153,13 +153,20 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
       {imageStatus ? <View className="mb-6">{imageStatus}</View> : null}
 
       {edits ? (
-        <InlineText value={item.name} label={t("item.edit.name")} size="display-xl" onBegin={moveOn} onCommit={(name) => change({ name }, "identity")}>
-          <Display size="display-xl" style={align}>
+        <InlineText
+          value={item.name}
+          label={t("item.edit.name")}
+          size="display-xl"
+          headingLevel={1}
+          onBegin={moveOn}
+          onCommit={(name) => change({ name }, "identity")}
+        >
+          <Display size="display-xl" level={null} style={align}>
             {item.name}
           </Display>
         </InlineText>
       ) : (
-        <Display size="display-xl" style={align}>
+        <Display size="display-xl" level={1} style={align}>
           {item.name}
         </Display>
       )}

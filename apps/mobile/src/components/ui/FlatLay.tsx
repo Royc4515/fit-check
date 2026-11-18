@@ -90,6 +90,12 @@ type Props = {
   /** Press on a garment. Absent = the garments are pictures, not buttons. */
   onPressPiece?: (slot: Slot) => void;
   /**
+   * False takes the garments out of the web keyboard tab order (still pressable by pointer and touch, still named
+   * for screen readers). Use it when another control beside the picture does the same thing in reading order: the
+   * garments are painted in z-order, so Tab would otherwise walk them out of 01-04 order. Default true.
+   */
+  pieceFocusable?: boolean;
+  /**
    * Changes when the whole outfit is replaced by something that animates on its own (a skip). Then pieces swap
    * instantly instead of cross-fading one by one, so the old outfit never ghosts through the new one.
    */
@@ -125,7 +131,7 @@ export function flatLayTone(pieces: readonly Pick<FlatLayPiece, "item">[]): "til
  * When one garment changes (a swap) the old one fades out while the new one fades in and rises 8px, 180ms.
  * Reduced motion: opacity only. A garment without a photo shows its drawing (ItemArt).
  */
-export function FlatLay({ pieces, onPressPiece, instantKey, radius = "none", accessibilityLabel, contentStyle, numbered = true, onPieceNode }: Props) {
+export function FlatLay({ pieces, onPressPiece, pieceFocusable = true, instantKey, radius = "none", accessibilityLabel, contentStyle, numbered = true, onPieceNode }: Props) {
   const four = pieces.some((p) => p.slot === "layer");
   const tone = flatLayTone(pieces);
   const ordered = Z_ORDER.flatMap((slot) => pieces.filter((p) => p.slot === slot));
@@ -156,6 +162,7 @@ export function FlatLay({ pieces, onPressPiece, instantKey, radius = "none", acc
               place={place}
               instantKey={instantKey}
               onPress={onPressPiece}
+              focusable={pieceFocusable}
               onAspect={onAspect}
               // Until the photo's shape is known its box stands in; a flight then starts slightly off the cloth.
               drawn={onPieceNode ? drawnOf(place, p.item.cutout_path ? aspects[p.item.id] : DRAWING_ASPECT, !p.item.cutout_path) : null}
@@ -308,6 +315,7 @@ function Piece({
   place,
   instantKey,
   onPress,
+  focusable,
   onAspect,
   drawn,
   onNode,
@@ -316,6 +324,7 @@ function Piece({
   place: FlatLayPlacement;
   instantKey: string | number | undefined;
   onPress?: (slot: Slot) => void;
+  focusable: boolean;
   onAspect: (id: string, aspect: number) => void;
   /** Where the garment is drawn inside the box; with `onNode`, an invisible node is laid there for the flight. */
   drawn?: Percents | null;
@@ -394,6 +403,10 @@ function Piece({
   return (
     <Pressable
       {...focusRingProps}
+      // Both: native reads `focusable`; react-native-web renders a <button>, which Tab reaches whatever `focusable` says,
+      // so the web needs the explicit tabIndex.
+      focusable={focusable}
+      tabIndex={focusable ? undefined : -1}
       style={box}
       onPress={() => onPress(piece.slot)}
       onPressIn={onPressIn}

@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, TextInput, View } from "react-native";
 import { focusRingProps } from "../../components/ui";
-import { useTypeTracking } from "../../components/ui/Type";
+import { headingProps, useTypeTracking, type HeadingLevel } from "../../components/ui/Type";
 import { colors, layout } from "../../theme/tokens";
 import { spoken } from "./a11y";
 
@@ -21,6 +21,12 @@ type Props = {
   /** The typography of the field while editing, matching the text at rest so nothing jumps. */
   size: "display-xl" | "body-sm";
   disabled?: boolean;
+  /**
+   * The text is a heading (the item's name): at rest the button sits inside a heading of this level, so the outline
+   * keeps its title. While the field is open there is no heading: a heading that wraps a text input is announced
+   * as a heading containing a field. Put the text in `children` with `Display level={null}`, so it is not a second heading.
+   */
+  headingLevel?: HeadingLevel;
 };
 
 /** One line, always: a value saved from a field never carries a line break (Enter is "save", not "new line"). */
@@ -36,7 +42,7 @@ const SMALL_BOX_PULL = -8;
  * face and size, focused. Return (Enter) or blur saves, Escape (web) cancels. Nothing is saved when nothing changed.
  * The spoken name starts with the visible text (WCAG "label in name"), then says what it is and that it edits.
  */
-export function InlineText({ value, label, emptyText, onCommit, onBegin, children, size, disabled = false }: Props) {
+export function InlineText({ value, label, emptyText, onCommit, onBegin, children, size, disabled = false, headingLevel }: Props) {
   const { t, i18n } = useTranslation();
   const tracking = useTypeTracking();
   const [draft, setDraft] = useState<string | null>(null);
@@ -109,7 +115,7 @@ export function InlineText({ value, label, emptyText, onCommit, onBegin, childre
 
   const name = value ? t("item.editInline", { value, field: label }) : (emptyText ?? t("item.editInline", { value: t("item.empty"), field: label }));
   const small = size === "body-sm";
-  return (
+  const button = (
     <Pressable
       {...focusRingProps}
       onPress={start}
@@ -126,4 +132,5 @@ export function InlineText({ value, label, emptyText, onCommit, onBegin, childre
       <View>{children}</View>
     </Pressable>
   );
+  return headingLevel ? <View {...headingProps(headingLevel)}>{button}</View> : button;
 }
