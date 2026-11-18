@@ -3,8 +3,8 @@ import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Button, Chip, Meta, Sheet } from "../../components/ui";
-import { LEG_CHOICES, legOf, SLEEVE_CHOICES, subcategoryForLeg } from "../intake/tagRules";
-import { colorHexFor, colorPatch } from "./edit";
+import { LEG_CHOICES, legOf, SLEEVE_CHOICES } from "../intake/tagRules";
+import { colorHexFor, colorPatch, legPatch } from "./edit";
 import { spoken } from "./a11y";
 
 /** The editable tag fields of the item screen, one closed list each. */
@@ -32,6 +32,8 @@ type Props = {
   field: TagField | null;
   open: boolean;
   item: Item;
+  /** The item's tags when the screen opened: a pick back to them restores them exactly (edit.ts). */
+  baseline: ItemTags;
   /** One tag patch, already in the shape the old editor patched (normalised later, in one place). */
   onPick: (patch: Partial<ItemTags>) => void;
   onClose: () => void;
@@ -42,7 +44,7 @@ type Props = {
  * as chips, the current one selected. Choosing closes the sheet and saves at once. Seasons are the one multi-select:
  * they toggle in the sheet and save on "done", never leaving fewer than one.
  */
-export function TagSheet({ field, open, item, onPick, onClose }: Props) {
+export function TagSheet({ field, open, item, baseline, onPick, onClose }: Props) {
   const { t } = useTranslation();
   const title = field ? t(fieldLabelKey[field]) : "";
   const pick = (patch: Partial<ItemTags>) => {
@@ -73,7 +75,7 @@ export function TagSheet({ field, open, item, onPick, onClose }: Props) {
       title={title}
       footer={seasons ? <Button variant="ink" fullWidth label={t("item.done")} onPress={() => pick(changed ? { seasons: [...draft] } : {})} /> : undefined}
     >
-      {field && !seasons ? <Values field={field} item={item} onPick={pick} /> : null}
+      {field && !seasons ? <Values field={field} item={item} baseline={baseline} onPick={pick} /> : null}
       {seasons ? (
         <View style={{ gap: 16 }}>
           <ChipWrap>
@@ -97,7 +99,17 @@ function ChipWrap({ children }: { children: ReactNode }) {
   );
 }
 
-function Values({ field, item, onPick }: { field: Exclude<TagField, "seasons">; item: Item; onPick: (patch: Partial<ItemTags>) => void }) {
+function Values({
+  field,
+  item,
+  baseline,
+  onPick,
+}: {
+  field: Exclude<TagField, "seasons">;
+  item: Item;
+  baseline: ItemTags;
+  onPick: (patch: Partial<ItemTags>) => void;
+}) {
   const { t } = useTranslation();
   const { tags } = item;
   const list = <T extends string>(values: readonly T[], selected: T, label: (v: T) => string, patch: (v: T) => Partial<ItemTags>) => (
@@ -117,9 +129,9 @@ function Values({ field, item, onPick }: { field: Exclude<TagField, "seasons">; 
             <Chip
               key={c}
               label={t(`wardrobe.color.${c}`)}
-              swatch={colorHexFor(item, c)}
+              swatch={colorHexFor({ tags: baseline }, c)}
               selected={c === tags.color_name}
-              onPress={() => onPick(c === tags.color_name ? {} : colorPatch(item, c))}
+              onPress={() => onPick(c === tags.color_name ? {} : colorPatch({ tags: baseline }, c))}
             />
           ))}
         </ChipWrap>
@@ -131,7 +143,7 @@ function Values({ field, item, onPick }: { field: Exclude<TagField, "seasons">; 
     case "sleeve":
       return list(SLEEVE_CHOICES, tags.sleeve === "na" ? "short" : tags.sleeve, (v) => t(`item.sleeve.${v}`), (v) => ({ sleeve: v }));
     case "leg":
-      return list(LEG_CHOICES, legOf(tags), (v) => t(`item.leg.${v}`), (v) => ({ subcategory: subcategoryForLeg(v, tags, tags.subcategory) }));
+      return list(LEG_CHOICES, legOf(tags), (v) => t(`item.leg.${v}`), (v) => legPatch(tags, baseline, v));
     case "fit":
       return list(FITS, tags.fit, (v) => t(`item.fit.${v}`), (v) => ({ fit: v }));
     case "formality":

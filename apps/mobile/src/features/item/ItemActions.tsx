@@ -151,6 +151,12 @@ export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStat
     }
   };
 
+  /** Not removing after all: the confirm step and its failure line go together (an error belongs to its action). */
+  const keep = () => {
+    setConfirming(false);
+    setRemoveFailed(false);
+  };
+
   const remove = async () => {
     setRemoving(true);
     setRemoveFailed(false);
@@ -178,7 +184,7 @@ export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStat
             {removeFailed ? <StatusLine variant="error" message={t("item.edit.failed.removing")} /> : null}
             <View className="flex-row flex-wrap items-center" style={{ columnGap: 24, rowGap: 8 }}>
               <Button variant="ink" label={removing ? t("item.edit.removing") : t("item.actions.removeConfirm")} disabled={removing} onPress={() => void remove()} />
-              <Button variant="text" label={t("item.actions.keep")} disabled={removing} onPress={() => setConfirming(false)} />
+              <Button variant="text" label={t("item.actions.keep")} disabled={removing} onPress={keep} />
             </View>
           </View>
         ) : (
@@ -200,7 +206,11 @@ export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStat
           onTagsChange={(patch) => setDraftTags((cur) => normalizeTags({ ...cur, ...patch }))}
           colorHex={(c) => colorHexFor(item, c)}
           onSubmit={(spec) => void enhance(spec)}
-          onCancel={() => setComposerOpen(false)}
+          onCancel={() => {
+            // Closing the composer's sheet takes its failure line with it.
+            setDrawError(null);
+            setComposerOpen(false);
+          }}
           busy={drawing}
           error={drawError}
         />

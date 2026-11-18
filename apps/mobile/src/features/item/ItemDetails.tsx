@@ -47,7 +47,14 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
   const [failure, setFailure] = useState<Failure | null>(null);
   const [field, setField] = useState<TagField | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // The item as it was when the screen opened: a pick back to it restores it exactly (edit.ts colorPatch/legPatch).
+  const [baseline] = useState(item.tags);
   const { tags } = item;
+  /**
+   * An error line belongs to the action that produced it: any next action on these details (opening a sheet,
+   * starting or cancelling an inline edit, another availability pick) is a retry or a move on, and clears it.
+   */
+  const moveOn = () => setFailure(null);
   // Names are often Latin inside a Hebrew page; aligned to the page's start, not to the script's (web gives text
   // dir="auto"), so a wrapped English name does not hang off the far edge.
   const align = { textAlign: i18n.language === "en" ? "left" : "right" } as const;
@@ -75,6 +82,7 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
     : undefined;
 
   const openField = (f: TagField) => {
+    moveOn();
     setField(f);
     setSheetOpen(true);
   };
@@ -145,7 +153,7 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
       {imageStatus ? <View className="mb-6">{imageStatus}</View> : null}
 
       {edits ? (
-        <InlineText value={item.name} label={t("item.edit.name")} size="display-xl" onCommit={(name) => change({ name }, "identity")}>
+        <InlineText value={item.name} label={t("item.edit.name")} size="display-xl" onBegin={moveOn} onCommit={(name) => change({ name }, "identity")}>
           <Display size="display-xl" style={align}>
             {item.name}
           </Display>
@@ -157,7 +165,14 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
       )}
       <View className="mt-1">
         {edits ? (
-          <InlineText value={item.brand ?? ""} label={t("item.edit.brand")} size="body-sm" onCommit={(brand) => change({ brand }, "identity")}>
+          <InlineText
+            value={item.brand ?? ""}
+            label={t("item.edit.brand")}
+            emptyText={t("item.addBrand")}
+            size="body-sm"
+            onBegin={moveOn}
+            onCommit={(brand) => change({ brand }, "identity")}
+          >
             {item.brand ? (
               <Text className="font-body text-body-sm text-ink-soft">{item.brand}</Text>
             ) : (
@@ -200,6 +215,7 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
           field={field}
           open={sheetOpen}
           item={item}
+          baseline={baseline}
           onPick={(patch: Partial<ItemTags>) => field && change({ tags: patch }, field)}
           onClose={() => setSheetOpen(false)}
         />

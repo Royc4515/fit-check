@@ -84,18 +84,31 @@ export function useItemFlight(id: string | undefined, geometry: HeroGeometry, he
   // Height / width of the picture; 0 until known. A flat-lay origin knows it from the drawn rect.
   const aspect = useSharedValue(origin?.image ? origin.image.height / origin.image.width : 0);
   const scrollY = useSharedValue(0);
+  // The flying picture stays invisible until it has been drawn, then appears in the very frame the origin's picture
+  // goes: both are shared values set together, so the UI thread applies them in one frame (measured: before this the
+  // two showed together for one or two frames at take-off).
+  const copyVisible = useSharedValue(flies ? 0 : 1);
 
   useEffect(() => {
     fade.set(withTiming(1, timing(motion.stateMs)));
     contentFade.set(withDelay(CONTENT_DELAY_MS, withTiming(1, timing(motion.stateMs))));
-    if (flies) {
-      // The origin's own picture goes as its copy takes off, so there is never a second garment on screen.
-      if (originNode) hide(originNode);
-      progress.set(withTiming(1, timing(motion.screenMs)));
-    }
-  }, [fade, contentFade, progress, flies, originNode, hide]);
+    if (flies) progress.set(withTiming(1, timing(motion.screenMs)));
+  }, [fade, contentFade, progress, flies]);
 
+  /**
+   * The flying copy has painted its picture: only now does the origin's own picture go, so there is never a frame
+   * with no garment (hidden at mount, the origin tile showed empty for a frame before the copy's image was drawn;
+   * verification D5) nor one with two. Once per screen: a later reload of the picture (a new photo) changes nothing.
+   */
   const closing = useRef(false);
+  const copyShown = useRef(false);
+  const onCopyShown = useCallback(() => {
+    if (copyShown.current || !flies || closing.current) return;
+    copyShown.current = true;
+    copyVisible.set(1);
+    if (originNode) hide(originNode);
+  }, [flies, originNode, hide, copyVisible]);
+
   /** Landed: the copy sits exactly on the origin, so the origin shows again in the frame the screen goes. */
   const land = useCallback(() => {
     showAll();
@@ -175,7 +188,7 @@ export function useItemFlight(id: string | undefined, geometry: HeroGeometry, he
     const dx = start.cx - end.cx;
     const dy = start.cy - (end.cy - sy);
     return {
-      opacity: heroFollowsFade.get() ? fade.get() : 1,
+      opacity: (heroFollowsFade.get() ? fade.get() : 1) * copyVisible.get(),
       transform: [{ translateX: dx * (1 - k) }, { translateY: dy * (1 - k) }, { scale: s + (1 - s) * k }],
     };
   });
@@ -194,5 +207,5 @@ export function useItemFlight(id: string | undefined, geometry: HeroGeometry, he
   /** The picture's shape, once it has loaded (or 1 for a drawing): until then the flight scales by the box. */
   const onAspect = useCallback((a: number) => aspect.set(a), [aspect]);
 
-  return { close, groundStyle, originToneStyle, imageStyle, fadeStyle, contentStyle, onScroll, onAspect, origin };
+  return { close, groundStyle, originToneStyle, imageStyle, fadeStyle, contentStyle, onScroll, onAspect, onCopyShown, origin };
 }
