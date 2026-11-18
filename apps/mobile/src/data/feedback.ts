@@ -3,6 +3,7 @@ import { WEAR_READ_COLUMNS, WearRowSchema, type Availability, type CandidateOutf
 import { z } from "zod";
 import { supabase } from "../lib/supabase";
 import type { DayType } from "./dayContext";
+import { getSnapshot, isPreview, PreviewReadOnlyError } from "./preview";
 
 export type RecentWear = StylingRequest["recent_wears"][number];
 
@@ -32,23 +33,34 @@ export function daysBefore(date: string, days: number): string {
  * items: one bad row must not hide the rest. Throws on a network or permission error.
  */
 export async function fetchFeedback(today: string): Promise<FeedbackHistory> {
+  const from = daysBefore(today, RECENT_WEARS_DAYS);
+  // Design preview (web only, temporary): the snapshot's wears, in the same order, trimmed to the same window below.
+  if (isPreview()) return historyFromRows((await getSnapshot()).wears, from, today);
   const { data, error } = await supabase
     .from("wears")
     .select(WEAR_READ_COLUMNS)
-    .gte("worn_on", daysBefore(today, RECENT_WEARS_DAYS))
+    .gte("worn_on", from)
     .lte("worn_on", today)
     .order("worn_on", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw error;
+  return historyFromRows(data ?? [], from, today);
+}
 
+/**
+ * Wear rows, newest first, to history. The window check repeats the query's filter: the preview snapshot is cut on
+ * the server's UTC date, which can be a day off the user's local one.
+ */
+function historyFromRows(rows: readonly unknown[], from: string, today: string): FeedbackHistory {
   const history: FeedbackHistory = { recent: [], today: [], samples: [] };
-  for (const raw of data ?? []) {
+  for (const raw of rows) {
     const parsed = WearRowSchema.safeParse(raw);
     if (!parsed.success) {
       console.error("Skipping malformed wear row", parsed.error);
       continue;
     }
     const row = parsed.data;
+    if (row.worn_on < from || row.worn_on > today) continue;
     if (!row.outfits || !row.outfit_id) continue;
     const itemIds = row.outfits.outfit_items.map((i) => i.item_id);
     if (row.feedback === "worn") {
@@ -78,6 +90,8 @@ export async function recordFeedback(args: {
   /** The total adjustment (learned + today's taps) the outfit was chosen under; learning reads it back. */
   adjustment: DayAdjustment;
 }): Promise<TodayRecord> {
+  // Design preview: nothing is saved. Today's feedback hook reports the failure and changes nothing on screen.
+  if (isPreview()) throw new PreviewReadOnlyError("recordFeedback");
   const { userId, date, dayType, outfit, source, feedback, adjustment } = args;
   const created = await supabase
     .from("outfits")
@@ -114,6 +128,7 @@ export async function recordFeedback(args: {
 
 /** Turns a skip into a dislike (or back). Only the `wears` row changes; the outfit stays as it was. */
 export async function changeFeedback(wearId: string, feedback: WearFeedback): Promise<void> {
+  if (isPreview()) throw new PreviewReadOnlyError("changeFeedback");
   const { error } = await supabase.from("wears").update({ feedback }).eq("id", wearId);
   if (error) throw error;
 }
@@ -123,6 +138,7 @@ export async function changeFeedback(wearId: string, feedback: WearFeedback): Pr
  * (`on delete set null`), an orphan that still says "worn".
  */
 export async function deleteFeedback(record: TodayRecord): Promise<void> {
+  if (isPreview()) throw new PreviewReadOnlyError("deleteFeedback");
   const wear = await supabase.from("wears").delete().eq("id", record.wearId);
   if (wear.error) throw wear.error;
   const outfit = await supabase.from("outfits").delete().eq("id", record.outfitId);
@@ -132,6 +148,7 @@ export async function deleteFeedback(record: TodayRecord): Promise<void> {
 /** Writes learned pair weights. Upsert on the primary key, so a pair seen for the first time is inserted. */
 export async function savePairWeights(userId: string, updates: readonly PairUpdate[]): Promise<void> {
   if (updates.length === 0) return;
+  if (isPreview()) throw new PreviewReadOnlyError("savePairWeights");
   const now = new Date().toISOString();
   const { error } = await supabase.from("pair_weights").upsert(
     updates.map((u) => ({ user_id: userId, item_a: u.a, item_b: u.b, weight: u.weight, updated_at: now })),
@@ -151,12 +168,16 @@ const moveRow = (availability: Availability, { washed = false }: MoveOptions) =>
 
 /** Home, laundry, away (reserve duty) or lent. Only `home` items are ever suggested. */
 export async function setAvailability(itemId: string, availability: Availability, options: MoveOptions = {}): Promise<void> {
+  // Design preview: the item screen moves the control back and says the change did not save.
+  if (isPreview()) throw new PreviewReadOnlyError("setAvailability");
   const { error } = await supabase.from("items").update(moveRow(availability, options)).eq("id", itemId);
   if (error) throw error;
 }
 
 /** Worn wears per item since its last wash (SQL function wear_counts_since_wash, migration 0003; RLS applies). */
 export async function fetchWearCounts(itemIds: readonly string[]): Promise<Map<string, number>> {
+  // Design preview: only read after a wear was stored, which preview never does; an RPC as anon would see nothing.
+  if (isPreview()) return new Map();
   const { data, error } = await supabase.rpc("wear_counts_since_wash", { p_item_ids: [...itemIds] });
   if (error) throw error;
   const parsed = z.array(z.object({ item_id: z.string(), wears: z.number().int() })).parse(data ?? []);
@@ -169,6 +190,8 @@ export async function fetchWearCounts(itemIds: readonly string[]): Promise<Map<s
  */
 export async function setAvailabilityMany(itemIds: readonly string[], availability: Availability, options: MoveOptions = {}): Promise<void> {
   if (itemIds.length === 0) return;
+  // Design preview: the wardrobe screen puts every item back and reports the failure.
+  if (isPreview()) throw new PreviewReadOnlyError("setAvailabilityMany");
   const { error } = await supabase.from("items").update(moveRow(availability, options)).in("id", [...itemIds]);
   if (error) throw error;
 }

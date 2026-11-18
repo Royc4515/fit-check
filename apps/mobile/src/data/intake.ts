@@ -17,6 +17,7 @@ import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import type { z } from "zod";
 import { supabase } from "../lib/supabase";
+import { isPreview, PreviewReadOnlyError } from "./preview";
 
 /**
  * Long edge of the photo sent for detection and cropped from. 1600 keeps small details (logos, collars) for the
@@ -45,6 +46,8 @@ export async function preparePhoto(uri: string, width: number, height: number): 
 
 /** ArrayBuffer, not Blob: supabase-js on React Native cannot upload a Blob read from a file:// URI. */
 async function upload(bucket: string, path: string, uri: string): Promise<void> {
+  // Design preview (web only, temporary): no upload. Every intake step starts here or in invoke(), so this blocks them all.
+  if (isPreview()) throw new PreviewReadOnlyError(`upload to ${bucket}`);
   const bytes = await (await fetch(uri)).arrayBuffer();
   const { error } = await supabase.storage.from(bucket).upload(path, bytes, { contentType: "image/jpeg" });
   if (error) throw error;
@@ -111,6 +114,8 @@ async function invoke<T extends { ok: boolean }>(
   schema: z.ZodType<T>,
   fn: "intake-separate" | "intake-tag" | "intake-cutout" = "intake-separate"
 ): Promise<T | { ok: false; reason: string }> {
+  // Design preview: no Edge Function call, paid or not. "preview" has its own line in intake.reason.
+  if (isPreview()) return { ok: false, reason: "preview" };
   try {
     const { data, error } = await supabase.functions.invoke(fn, { body });
     if (error) {
@@ -183,6 +188,7 @@ export async function saveGarment(args: {
   /** The composer's spec when the saved image is a redraw, so a later redraw of this item starts from it. */
   redrawSpec?: RedrawSpec | null;
 }): Promise<string> {
+  if (isPreview()) throw new PreviewReadOnlyError("saveGarment");
   const externalId = `photo:${args.sourcePath.split("/").slice(-2).join("/")}`;
   const row = itemToInsertRow(
     {
