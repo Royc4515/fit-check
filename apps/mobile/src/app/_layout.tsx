@@ -59,6 +59,8 @@ function Routes() {
         <Stack.Screen name="wardrobe" />
         <Stack.Screen name="location" />
         <Stack.Screen name="intake" />
+        {/* Internal component gallery; not linked from any screen. */}
+        <Stack.Screen name="design-system" />
         {/* don't touch / transparent + no native animation: the item screen runs its own shared-element
             flight and fades its page in over the wardrobe. A default push would slide over that flight. */}
         <Stack.Screen

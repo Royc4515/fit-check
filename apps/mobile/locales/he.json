@@ -456,5 +456,134 @@
   },
   "preview": {
     "banner": "תצוגה לעיצוב בלבד · שום דבר לא נשמר"
+  },
+  "ui": {
+    "close": "סגירה",
+    "remove": "הסרת {{label}}",
+    "loading": "טוען"
+  },
+  "ds": {
+    "title": "מערכת עיצוב",
+    "intro": "כל רכיב, כל וריאנט וכל מצב. עמוד פנימי, לא מקושר מהאפליקציה.",
+    "section": {
+      "buttons": "כפתורים",
+      "chips": "צ'יפים",
+      "segmented": "בקר מקוטע",
+      "swatches": "גוונים",
+      "icons": "אייקונים",
+      "tiles": "אריחים",
+      "tones": "גווני אריח",
+      "rows": "שורות",
+      "empty": "מצב ריק",
+      "skeleton": "טעינה",
+      "status": "שורת סטטוס",
+      "sheet": "חלון תחתון",
+      "nav": "ניווט",
+      "masonry": "הארון כ-masonry"
+    },
+    "state": {
+      "default": "רגיל",
+      "selected": "נבחר",
+      "disabled": "מושבת",
+      "withIcon": "עם אייקון",
+      "notHome": "לא בבית",
+      "loading": "בטעינה",
+      "mini": "קטן",
+      "hero": "גדול",
+      "hint": "לחיצה: הקטנה ל-0.97 וצל מורם. מקלדת: טבעת מיקוד בדיו."
+    },
+    "button": {
+      "primary": "לובש",
+      "ink": "שמירה",
+      "outline": "ביטול",
+      "text": "לכל הפריטים",
+      "add": "הוספה",
+      "filter": "סינון",
+      "more": "עוד",
+      "back": "חזרה",
+      "filterActive": "סינון פעיל"
+    },
+    "chip": {
+      "summer": "קיץ",
+      "winter": "חורף",
+      "cotton": "כותנה",
+      "suggestion": "אולי פשתן?",
+      "removable": "נייבי"
+    },
+    "segmented": {
+      "label": "זמינות",
+      "two": {
+        "one": "בגד אחד",
+        "many": "כמה בגדים"
+      },
+      "twoLabel": "מצב הוספה"
+    },
+    "swatch": {
+      "none": "לא נבחר צבע",
+      "picked": "נבחר: {{name}}"
+    },
+    "tone": {
+      "tile": "tile · ברירת מחדל",
+      "tile-deep": "tile-deep · בהירים",
+      "tile-cool": "tile-cool · חול ואדמה"
+    },
+    "row": {
+      "location": "מיקום",
+      "locationValue": "ירושלים",
+      "credits": "קרדיטים לציור",
+      "language": "שפה",
+      "languageValue": "עברית"
+    },
+    "empty": {
+      "title": "עוד אין תובנות",
+      "body": "אחרי שבוע של לבישה יופיע כאן מה עובד ומה נשאר בארון.",
+      "action": "לארון"
+    },
+    "status": {
+      "info": "הארון מתעדכן ברקע",
+      "ok": "נרשם להיום",
+      "error": "ההעלאה נכשלה: אין חיבור לרשת",
+      "undo": "ביטול"
+    },
+    "sheet": {
+      "open": "פתיחת חלון",
+      "openLong": "חלון ארוך (גלילה)",
+      "title": "סינון",
+      "longTitle": "כל הצבעים",
+      "clear": "נקה",
+      "show_one": "הצג פריט אחד",
+      "show_two": "הצג {{n}} פריטים",
+      "show_other": "הצג {{n}} פריטים",
+      "season": "עונה",
+      "type": "סוג",
+      "intro": "גוררים את הידית למטה, מקישים על הרקע או לוחצים Escape כדי לסגור."
+    },
+    "nav": {
+      "today": "היום",
+      "wardrobe": "ארון",
+      "insights": "תובנות",
+      "profile": "פרופיל",
+      "add": "הוספה",
+      "mobile": "סרגל טאבים (מובייל)",
+      "desktop": "סרגל עליון (דסקטופ)",
+      "desktopOnly": "מוצג מרוחב 900 ומעלה. בטלפון יש סרגל טאבים."
+    },
+    "masonry": {
+      "all": "הכל",
+      "hint": "{{n}} פריטים, {{cols}} עמודות. החלפת קטגוריה מזיזה את האריחים למקומם החדש.",
+      "loading": "הארון נטען",
+      "category": "קטגוריה"
+    },
+    "variant": {
+      "primary": "primary",
+      "ink": "ink",
+      "outline": "outline",
+      "text": "text",
+      "icon": "icon",
+      "fullWidth": "fullWidth",
+      "info": "info",
+      "ok": "ok",
+      "error": "error"
+    }
   }
 }
