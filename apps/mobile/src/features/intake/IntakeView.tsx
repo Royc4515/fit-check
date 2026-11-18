@@ -166,8 +166,13 @@ export function IntakeView({ userId }: { userId: string }) {
     updateGarment(jobId, path, { enhancing: true, enhanceError: undefined });
     const result = await enhanceCutout(path, describeForRedraw(g.draft.tags, g.draft.name));
     if (!result.ok) return updateGarment(jobId, path, { enhancing: false, enhanceError: result.reason });
+    if (result.transparent) {
+      // Already cleared on the server (_shared/whitebg.ts): the redraw itself is the cutout.
+      updateGarment(jobId, path, { enhancing: false, enhanced: true, url: result.url, enhancedPath: result.path });
+      return syncSaved(jobId, path);
+    }
     updateGarment(jobId, path, { enhancing: false, enhanced: true, url: result.url, enhancedPath: result.path, cutting: true });
-    // The redraw comes on white; cut it out too so it sits on the same transparent ground as every other item.
+    // The redraw came back on white; cut it out on the worker so it sits on the same transparent ground as every other item.
     const cut = await removeBackground(result.path);
     updateGarment(
       jobId,
