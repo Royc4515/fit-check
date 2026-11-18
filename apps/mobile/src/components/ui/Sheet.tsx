@@ -54,6 +54,9 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
   const [mounted, setMounted] = useState(open);
   const [scrollable, setScrollable] = useState(false);
   const panel = useRef<ComponentRef<typeof View>>(null);
+  // don't touch / web: a sheet opened by a touch long press appears under the finger, and the browser's click on
+  // release lands on the scrim and closed it at once. Only a press that also started on the scrim closes the sheet.
+  const scrimPressed = useRef(false);
   // The scroll view shrinks to fit (flexShrink) once the sheet hits its cap; content taller than it = scrolling.
   const size = useRef({ viewport: 0, content: 0 });
   const measureScroll = () => {
@@ -206,7 +209,11 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
         <View style={{ flex: 1, justifyContent: desktop ? "center" : "flex-end", alignItems: desktop ? "center" : "stretch" }}>
           <Animated.View style={[{ position: "absolute", top: 0, bottom: 0, start: 0, end: 0 }, scrimStyle]}>
             <Pressable
-              onPress={onClose}
+              onPressIn={() => (scrimPressed.current = true)}
+              onPress={() => {
+                if (scrimPressed.current) onClose();
+                scrimPressed.current = false;
+              }}
               focusable={false}
               accessibilityElementsHidden
               importantForAccessibility="no"
