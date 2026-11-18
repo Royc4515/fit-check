@@ -8,8 +8,10 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { colors } from "../theme/tokens";
 import { useAppFonts } from "../theme/fonts";
 import { WardrobeProvider } from "../data/WardrobeProvider";
+import { isPreview } from "../data/preview";
+import { PreviewBanner } from "../components/PreviewBanner";
 import { takePendingConsent } from "../features/auth/oauthPending";
-import { SessionProvider, useSession } from "../features/auth/SessionProvider";
+import { SessionProvider, sessionUserId, useSession } from "../features/auth/SessionProvider";
 import { isRtl } from "../i18n";
 
 // ViewProps has no `dir` in RN's types, but react-native-web reads it. Spreading a typed object keeps this
@@ -35,7 +37,9 @@ function Routes() {
   }, [signedInNow, router]);
   // First storage read: render nothing rather than flash the sign-in screen at a signed-in user.
   if (session.status === "loading") return quiet;
-  const signedIn = session.status === "signedIn";
+  // The design preview counts as signed in for the guards; its data layer is read-only (data/preview.ts).
+  const userId = sessionUserId(session);
+  const signedIn = userId !== null;
 
   const stack = (
     <Stack
@@ -69,8 +73,8 @@ function Routes() {
   );
 
   // key = user id: a different user remounts the provider, so one user's wardrobe never shows for another.
-  return session.status === "signedIn" ? (
-    <WardrobeProvider key={session.session.user.id} userId={session.session.user.id}>
+  return userId !== null ? (
+    <WardrobeProvider key={userId} userId={userId}>
       {stack}
     </WardrobeProvider>
   ) : (
@@ -95,9 +99,12 @@ export default function RootLayout() {
           which shifted the outfit composition 8px out of its gutter in Hebrew. Harmless on native. */}
       <View {...directionProps} style={{ flex: 1 }}>
         <StatusBar style="dark" />
-        <SessionProvider>
-          <Routes />
-        </SessionProvider>
+        <View style={{ flex: 1 }}>
+          <SessionProvider>
+            <Routes />
+          </SessionProvider>
+        </View>
+        {isPreview() ? <PreviewBanner /> : null}
       </View>
     </GestureHandlerRootView>
   );
