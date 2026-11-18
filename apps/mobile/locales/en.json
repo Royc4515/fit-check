@@ -271,6 +271,28 @@
     "leg": {
       "long": "Long",
       "short": "Short"
+    },
+    "close": "Back",
+    "more": "More actions",
+    "editField": "{{field}}: {{value}}, edit",
+    "empty": "empty",
+    "addBrand": "Add brand",
+    "addMaterial": "Add material",
+    "saveFailed": "That didn't save, so it's back as it was. Try again.",
+    "done": "Done",
+    "seasonsHint": "At least one season.",
+    "formalityValue": "Formality {{n}} of 10",
+    "goesWithOutfit": "Outfit {{n}}: {{pieces}}",
+    "goesWithPiece": "{{type}}, {{name}}. Open",
+    "goesWithSelf": "{{type}}, {{name}}. This item",
+    "image": {
+      "keptUncut": "The background wasn't removed, so the photo is saved as it is."
+    },
+    "actions": {
+      "removeTitle": "Remove it from the wardrobe?",
+      "removeBody": "It disappears from the wardrobe and from suggestions. Its history stays, and it can be brought back.",
+      "removeConfirm": "Remove",
+      "keep": "Keep it"
     }
   },
   "auth": {
@@ -471,7 +493,8 @@
       "smooth_creases": "smooth creases",
       "true_colour": "true colour in daylight",
       "sharp_texture": "sharpen fabric and seams"
-    }
+    },
+    "startFrom": "Or start from a chosen detail"
   },
   "preview": {
     "banner": "Design preview only · nothing is saved"
