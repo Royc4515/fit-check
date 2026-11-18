@@ -345,6 +345,6 @@
 - MCP `item_redraw`: description is optional; without it, `details` from the same vocabulary build on the item's tags and the spec is stored. `fixes` and `notes` work in both modes.
 - `Chip`/`Row` moved from GarmentReview to `features/intake/ChoiceRow.tsx` (shared by intake, item editor and composer). Engine bundle regenerated; it now imports values from @fit-check/schema.
 - Deployed: migration 0005 applied; intake-separate v21 (one esbuild bundle, same flags as `scripts/bundle-mcp.sh`), checked to boot. Old app builds keep working (description path).
-- Not deployed yet: the mcp function. Its new `item_redraw` chips mode is in the source, but the 70 KB bundle was too large to paste reliably through the deploy tool in this session. Deployed v6 still works with a description. Next deploy: `scripts/bundle-mcp.sh` then deploy the bundle.
+- mcp v7 deployed later the same day (bundle from `scripts/bundle-mcp.sh`, checked: boots with the same 401 + WWW-Authenticate as before, deployed source identical to the bundle). `item_redraw` chips mode is live.
 - Look at: `design/screens/2026-11-18-redraw-composer.png` and `-open.png` (colour word open, a free note being typed, prompt shown).
 
