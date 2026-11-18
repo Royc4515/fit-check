@@ -1,7 +1,9 @@
 import "../../global.css";
-import "../i18n";
-import { Stack, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+// don't touch / first import on purpose: it initialises i18n and sets the document direction before any other module
+// (providers, screens) reads a translation or `isRtl()` at load time. `isRtl` rides on the same import.
+import { isRtl } from "../i18n";
+import { Stack, useRouter, useSegments } from "expo-router";
+import { useEffect, useSyncExternalStore } from "react";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -12,11 +14,13 @@ import { isPreview } from "../data/preview";
 import { PreviewBanner } from "../components/PreviewBanner";
 import { takePendingConsent } from "../features/auth/oauthPending";
 import { SessionProvider, sessionUserId, useSession } from "../features/auth/SessionProvider";
-import { isRtl } from "../i18n";
 
 // ViewProps has no `dir` in RN's types, but react-native-web reads it. Spreading a typed object keeps this
 // free of casts; the excess-property check does not apply to JSX spreads.
 const directionProps = { dir: isRtl() ? "rtl" : "ltr" };
+
+/** Nothing changes the mounted flag after hydration, so there is nothing to subscribe to. */
+const subscribeNever = () => () => {};
 
 const quiet = <View style={{ flex: 1, backgroundColor: colors["ivory"] }} />;
 
@@ -55,10 +59,10 @@ function Routes() {
       }}
     >
       <Stack.Protected guard={signedIn}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="wardrobe" />
+        <Stack.Screen name="(tabs)" />
         <Stack.Screen name="location" />
-        <Stack.Screen name="intake" />
+        {/* Internal component gallery; not linked from any screen. */}
+        <Stack.Screen name="design-system" />
         {/* don't touch / transparent + no native animation: the item screen runs its own shared-element
             flight and fades its page in over the wardrobe. A default push would slide over that flight. */}
         <Stack.Screen
@@ -93,8 +97,13 @@ export default function RootLayout() {
   // don't touch / render nothing until mounted. The web export is pre-rendered on a server whose locale is
   // not the user's, and React does not patch attributes (`dir`, inline styles) when hydrating, so SSR output
   // silently won in the wrong language/width. Locale and window size are client facts; skip server content.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // Derived, not set in an effect: the server snapshot is false and the client snapshot true, which is exactly
+  // "false while pre-rendering and hydrating, true once on the client", with no state update inside an effect.
+  const mounted = useSyncExternalStore(subscribeNever, () => true, () => false);
+  // The tabs (and the item screen above them) carry the preview banner themselves, stacked above the tab bar. Here
+  // only the screens outside them need it. Moving it in and out of this flow would resize the stack mid item flight.
+  const first = useSegments()[0];
+  const tabsOwnBanner = first === "(tabs)" || first === "item";
   // Quiet empty state while fonts load: no spinner, no skeleton (DESIGN.md section 1).
   if (!fontsLoaded || !mounted) return quiet;
 
@@ -110,7 +119,7 @@ export default function RootLayout() {
             <Routes />
           </SessionProvider>
         </View>
-        {isPreview() ? <PreviewBanner /> : null}
+        {isPreview() && !tabsOwnBanner ? <PreviewBanner /> : null}
       </View>
     </GestureHandlerRootView>
   );

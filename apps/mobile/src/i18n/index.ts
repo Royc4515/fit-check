@@ -1,5 +1,5 @@
 import { getLocales } from "expo-localization";
-import i18n from "i18next";
+import i18n, { use as registerPlugin } from "i18next";
 import { initReactI18next } from "react-i18next";
 import { I18nManager, Platform } from "react-native";
 import he from "../../locales/he.json";
@@ -11,7 +11,8 @@ export type Locale = (typeof SUPPORTED)[number];
 const device = getLocales()[0]?.languageCode;
 const initial: Locale = device === "en" ? "en" : "he";
 
-void i18n.use(initReactI18next).init({
+// i18next exports `use` bound to the default instance (aliased: a bare `use` call reads as the React hook); chaining on it registers the plugin on the default instance.
+void registerPlugin(initReactI18next).init({
   resources: { he: { translation: he }, en: { translation: en } },
   lng: initial,
   fallbackLng: "he",

@@ -6,13 +6,11 @@
     "title": "Today",
     "empty": "No outfit for today yet",
     "wearing": "Wearing it",
-    "swap": "Swap an item",
     "warmer": "Warmer",
     "cooler": "Cooler",
     "dressier": "Dressier",
     "casual": "More casual",
     "skip": "Skip",
-    "actions": "Actions",
     "dayType": {
       "weekday": "Weekday",
       "shabbat": "Shabbat",
@@ -39,14 +37,8 @@
       "shabbat": "Shabbat clothes by your rules."
     },
     "data": {
-      "feels": "Feels like",
-      "rain": "Rain",
-      "sky": "Sky"
+      "rain": "Rain"
     },
-    "swapThis": "Swap",
-    "swapClose": "Close",
-    "swapHint": "Pick an item to see alternatives.",
-    "swapDone": "Done",
     "noAlternatives": "Nothing else fits this slot today.",
     "allSkipped": "No more suggestions for today.",
     "undo": "Undo",
@@ -70,7 +62,20 @@
       "bottom": "trousers",
       "shoes": "shoes"
     },
-    "and": " and "
+    "and": " and ",
+    "allSkippedBody": "Undo the last skip to bring the previous suggestion back.",
+    "missingTitle": "The wardrobe isn't complete yet",
+    "emptyBody": "Nothing in the wardrobe fits today's rules and weather.",
+    "alternatives": "Alternatives",
+    "swapTo": "Swap for {{name}}",
+    "toItem": "Open item",
+    "adjustTitle": "Adjust",
+    "adjustTemp": "Temperature",
+    "adjustFormality": "Formality",
+    "tune": "Adjust the suggestion: warmer, cooler, formality, skip",
+    "pieceLabel": "{{type}}, {{name}}. Alternatives and details",
+    "heroLabel": "Today's outfit: {{pieces}}. Swipe sideways to skip to the next suggestion",
+    "weatherLabel": "Weather in {{place}}: {{weather}}. Change location"
   },
   "wardrobe": {
     "title": "Wardrobe",
@@ -142,18 +147,70 @@
       "failed": "That didn't save. Try again.",
       "notInWardrobe": "Not in the wardrobe, don't forget: uniform · army boots · pyjamas.",
       "showAll": "Show the whole wardrobe",
-      "showUsual": "Only the usual"
+      "showUsual": "Only the usual",
+      "open": "Leaving for reserve duty",
+      "mode": "What is shown"
+    },
+    "categories": "Categories",
+    "colors": "Colours",
+    "colorSelected": "Colour: {{color}}",
+    "tileLabel": "{{name}}, {{type}}, {{color}}",
+    "tileLabelWhere": "{{name}}, {{type}}, {{color}}, {{where}}",
+    "tileActions": "Actions",
+    "activeFilters": "Active filters",
+    "clearFilters": "Clear filters",
+    "noMatchBody": "Nothing matches all of these filters together.",
+    "emptyTitle": "The wardrobe is empty",
+    "filter": {
+      "open": "Filter",
+      "openActive": "Filter, filters on",
+      "title": "Filter",
+      "clear": "Clear",
+      "facet": {
+        "type": "Type",
+        "season": "Season",
+        "availability": "Availability"
+      }
+    },
+    "actions": {
+      "availability": "Availability",
+      "open": "Open item",
+      "remove": "Remove from wardrobe",
+      "confirm": "It leaves the wardrobe and Today's suggestions.",
+      "confirmRemove": "Remove",
+      "keep": "Keep",
+      "failed": "That didn't save. Try again.",
+      "removeFailed": "The removal didn't save. Try again."
     }
   },
   "common": {
     "loading": "Loading",
     "retry": "Retry",
-    "loadFailed": "Could not load your wardrobe"
+    "loadFailed": "Could not load your wardrobe",
+    "loadFailedBody": "Check your connection and try again.",
+    "back": "Back"
   },
   "nav": {
     "today": "Today",
     "wardrobe": "Wardrobe",
-    "addClothes": "Add clothes"
+    "addClothes": "Add clothes",
+    "add": "Add",
+    "insights": "Insights",
+    "profile": "Profile"
+  },
+  "profile": {
+    "title": "Profile",
+    "location": "Location",
+    "language": "Language",
+    "languageValue": "English"
+  },
+  "insights": {
+    "title": "Insights",
+    "empty": {
+      "title": "No insights yet",
+      "body": "Outfit history and spending on your wardrobe will appear here.",
+      "action": "Go to wardrobe"
+    }
   },
   "item": {
     "back": "Wardrobe",
@@ -249,7 +306,30 @@
     "leg": {
       "long": "Long",
       "short": "Short"
-    }
+    },
+    "close": "Back",
+    "more": "More actions",
+    "editField": "{{field}}: {{value}}, edit",
+    "empty": "empty",
+    "addBrand": "Add brand",
+    "addMaterial": "Add material",
+    "saveFailed": "That didn't save, so it's back as it was. Try again.",
+    "done": "Done",
+    "seasonsHint": "At least one season.",
+    "formalityValue": "Formality {{n}} of 10",
+    "goesWithOutfit": "Outfit {{n}}: {{pieces}}",
+    "goesWithPiece": "{{type}}, {{name}}. Open",
+    "goesWithSelf": "{{type}}, {{name}}. This item",
+    "image": {
+      "keptUncut": "The background wasn't removed, so the photo is saved as it is."
+    },
+    "actions": {
+      "removeTitle": "Remove it from the wardrobe?",
+      "removeBody": "It disappears from the wardrobe and from suggestions. Its history stays, and it can be brought back.",
+      "removeConfirm": "Remove",
+      "keep": "Keep it"
+    },
+    "editInline": "{{value}}, {{field}}, edit"
   },
   "auth": {
     "prompt": "Sign in to see your wardrobe",
@@ -334,7 +414,8 @@
       "labelPhoto": "Photograph the label",
       "labelling": "Reading the label",
       "skip": "Skip",
-      "cutting": "Removing the background"
+      "cutting": "Removing the background",
+      "photo": "Garment photo"
     },
     "duplicate": {
       "title": "This garment looks like one already in the wardrobe: {{name}}",
@@ -351,6 +432,23 @@
       "hint": "One photo per garment. Claude tags and adds them from the chat, no AI cost.",
       "done": "{{count}} photos are waiting for Claude. In the chat: \"add the clothes I uploaded\".",
       "failed": "{{count}} failed."
+    },
+    "modeLabel": "Add mode",
+    "photo": "The chosen photo",
+    "fail": {
+      "retry": "Try again",
+      "http": "The server returned an error ({{status}}).",
+      "preview": {
+        "upload": "Design preview only: the photo was not uploaded",
+        "save": "Design preview only: the garment was not saved",
+        "generic": "Design preview only: nothing was done"
+      },
+      "cut": "The background was not removed, the photo is kept as it is",
+      "redrawCut": "The background of the improved photo was not removed, it stays on white",
+      "sync": "The garment was saved, but it did not get the photo without the background",
+      "wholePhoto": "No separate garment was found, the full photo is kept",
+      "spec": "The photo was saved, but the improvement details were not saved",
+      "correction": "The garment was saved, but your corrections were not recorded"
     }
   },
   "oauth": {
@@ -362,8 +460,14 @@
     "request": "{{client}} is asking for access to your wardrobe.",
     "what": "It will be able to see, edit and remove your garments, as in the app. You can disconnect it anytime in Claude's settings.",
     "scopes": "Permissions: {{scopes}}",
+    "scopesTitle": "Permissions",
     "approve": "Approve",
     "deny": "Cancel"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "The link is wrong or the page no longer exists.",
+    "action": "Back to Today"
   },
   "redraw": {
     "title": "What will be drawn",
@@ -449,9 +553,186 @@
       "smooth_creases": "smooth creases",
       "true_colour": "true colour in daylight",
       "sharp_texture": "sharpen fabric and seams"
-    }
+    },
+    "startFrom": "Or start from a chosen detail"
   },
   "preview": {
     "banner": "Design preview only · nothing is saved"
+  },
+  "ui": {
+    "close": "Close",
+    "remove": "Remove {{label}}",
+    "loading": "Loading",
+    "imageFailed": "The image did not load"
+  },
+  "ds": {
+    "title": "Design system",
+    "intro": "Every component, every variant, every state. Internal page, not linked from the app.",
+    "section": {
+      "buttons": "Buttons",
+      "chips": "Chips",
+      "segmented": "Segmented control",
+      "swatches": "Swatches",
+      "icons": "Icons",
+      "tiles": "Tiles",
+      "tones": "Tile tones",
+      "rows": "Rows",
+      "empty": "Empty state",
+      "skeleton": "Loading",
+      "status": "Status line",
+      "sheet": "Sheet",
+      "nav": "Navigation",
+      "masonry": "The wardrobe as masonry",
+      "intake": "Add",
+      "flatLay": "Flat-lay",
+      "stepper": "Stepper"
+    },
+    "state": {
+      "default": "Default",
+      "selected": "Selected",
+      "disabled": "Disabled",
+      "withIcon": "With icon",
+      "notHome": "Not at home",
+      "loading": "Loading",
+      "mini": "Mini",
+      "hero": "Hero",
+      "hint": "Press: scale to 0.97 with a lifted shadow. Keyboard: ink focus ring."
+    },
+    "button": {
+      "primary": "Wearing",
+      "ink": "Save",
+      "outline": "Cancel",
+      "text": "All items",
+      "add": "Add",
+      "filter": "Filter",
+      "more": "More",
+      "back": "Back",
+      "filterActive": "Filter, active"
+    },
+    "chip": {
+      "summer": "Summer",
+      "winter": "Winter",
+      "cotton": "Cotton",
+      "suggestion": "Maybe linen?",
+      "removable": "Navy"
+    },
+    "segmented": {
+      "label": "Availability",
+      "two": {
+        "one": "One garment",
+        "many": "Several"
+      },
+      "twoLabel": "Add mode"
+    },
+    "swatch": {
+      "none": "No colour selected",
+      "picked": "Selected: {{name}}"
+    },
+    "tone": {
+      "tile": "tile · default",
+      "tile-deep": "tile-deep · light garments",
+      "tile-cool": "tile-cool · sand and earth"
+    },
+    "row": {
+      "location": "Location",
+      "locationValue": "Jerusalem",
+      "credits": "Redraw credits",
+      "language": "Language",
+      "languageValue": "English"
+    },
+    "empty": {
+      "title": "No insights yet",
+      "body": "After a week of wearing, this shows what works and what stays in the closet.",
+      "action": "To the wardrobe"
+    },
+    "status": {
+      "info": "The wardrobe is refreshing",
+      "ok": "Logged for today",
+      "error": "Upload failed: no connection",
+      "undo": "Undo"
+    },
+    "sheet": {
+      "open": "Open sheet",
+      "openLong": "Long sheet (scrolls)",
+      "title": "Filter",
+      "longTitle": "All colours",
+      "clear": "Clear",
+      "show_one": "Show 1 item",
+      "show_other": "Show {{n}} items",
+      "season": "Season",
+      "type": "Type",
+      "intro": "Drag the handle down, tap the backdrop or press Escape to close."
+    },
+    "nav": {
+      "today": "Today",
+      "wardrobe": "Wardrobe",
+      "insights": "Insights",
+      "profile": "Profile",
+      "add": "Add",
+      "mobile": "Tab bar (mobile)",
+      "desktop": "Top bar (desktop)",
+      "desktopOnly": "Shown from 900px wide. Phones use the tab bar."
+    },
+    "intake": {
+      "loading": "Loading sample items",
+      "jobs": "A card per photo",
+      "job": {
+        "waiting": "Waiting",
+        "uploading": "Uploading",
+        "separating": "Separating",
+        "cropping": "Cropping",
+        "done": "Done, with a resolution warning and a failed crop",
+        "network": "Failed: no connection (retry)",
+        "http": "Failed: server error (retry)",
+        "preview": "Failed: design preview (no retry)",
+        "limit": "Failed: daily limit (no retry)"
+      },
+      "review": "Review card",
+      "tagging": "Identifying and removing the background",
+      "proposed": "A proposal with fields worth checking (tap to try)",
+      "tagError": "Identifying failed",
+      "saveError": "Saving failed, server error",
+      "saveErrorPreview": "Saving failed, design preview",
+      "busy": "A write in flight: actions are inert",
+      "saved": "Saved",
+      "failures": "Failures that used to be silent",
+      "f2": "2. Background removal failed",
+      "f3": "3. The saved item missed a late cutout",
+      "f4": "4. Background removal of a redraw failed",
+      "f5": "5. The redraw's details were not saved",
+      "f6": "6. The whole photo is kept",
+      "f7": "7. The corrections were not saved",
+      "twoUp": "Two cards to a row (from 1200)",
+      "duplicate": "Duplicate card",
+      "duplicateAsk": "The duplicate question",
+      "duplicateFailed": "Replacing failed",
+      "replaced": "Replaced confirmation"
+    },
+    "masonry": {
+      "all": "All",
+      "hint": "{{n}} items, {{cols}} columns. Switching category moves tiles to their new place.",
+      "loading": "Loading the wardrobe",
+      "category": "Category"
+    },
+    "variant": {
+      "primary": "primary",
+      "ink": "ink",
+      "outline": "outline",
+      "text": "text",
+      "icon": "icon",
+      "fullWidth": "fullWidth",
+      "info": "info",
+      "ok": "ok",
+      "error": "error"
+    },
+    "flatLay": {
+      "intro": "Combinations from the real wardrobe, 3 and 4 pieces. Same percentages at every width.",
+      "label": "Combination {{n}}"
+    },
+    "stepper": {
+      "label": "Temperature",
+      "less": "Cooler",
+      "more": "Warmer"
+    }
   }
 }

@@ -1,28 +1,32 @@
 import { useTranslation } from "react-i18next";
-import { Pressable, Text, View } from "react-native";
+import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { WardrobeState } from "../data/WardrobeProvider";
-import { layout } from "../theme/tokens";
+import { EmptyState, Meta, ScreenColumn } from "./ui";
 
 /**
- * What a screen shows until the wardrobe is ready. DESIGN.md section 1: loading is a quiet empty page plus one
- * line of text; no spinner, no skeleton. Error adds the one action that can fix it.
+ * What a screen shows until the wardrobe is ready. DESIGN.md section 1: loading is an empty ivory page with one calm
+ * line low on it; no spinner, no skeleton (a layout hint would promise a screen shape that is not there yet).
+ * Error is an EmptyState with the one action that can fix it.
  */
 export function WardrobeGate({ state }: { state: Exclude<WardrobeState, { status: "ready" }> }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  if (state.status === "loading") {
+    return (
+      <View className="flex-1 items-center justify-end bg-ivory" style={{ paddingBottom: insets.bottom + 96 }}>
+        {/* Sentence-like text, so no English uppercase from the Meta default. */}
+        <Meta accessibilityLiveRegion="polite" style={{ textTransform: "none" }}>
+          {t("common.loading")}
+        </Meta>
+      </View>
+    );
+  }
   return (
-    <View className="flex-1 bg-ivory" style={{ paddingTop: insets.top + 32, paddingHorizontal: layout.gutter }}>
-      <Text className="font-body text-body text-ink-soft">
-        {state.status === "loading" ? t("common.loading") : t("common.loadFailed")}
-      </Text>
-      {state.status === "error" ? (
-        <Pressable onPress={state.reload} accessibilityRole="button" className="mt-4 self-start">
-          <View className="border-b border-hairline pb-1">
-            <Text className="font-body text-body-sm text-ink">{t("common.retry")}</Text>
-          </View>
-        </Pressable>
-      ) : null}
+    <View className="flex-1 bg-ivory" style={{ paddingTop: insets.top }}>
+      <ScreenColumn>
+        <EmptyState title={t("common.loadFailed")} body={t("common.loadFailedBody")} action={{ label: t("common.retry"), onPress: state.reload }} />
+      </ScreenColumn>
     </View>
   );
 }

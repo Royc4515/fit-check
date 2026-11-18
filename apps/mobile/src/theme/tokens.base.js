@@ -9,18 +9,26 @@ const colors = {
   "ivory-deep": "#EDE7DB",
   ink: "#1B1A17",
   "ink-soft": "#5A5750",
-  "ink-faint": "#A39F95",
+  // DESIGN.md v2: darkened from #A39F95, whose 2.4 contrast on ivory failed AA. Meta text everywhere gets darker.
+  "ink-faint": "#6E6A61",
   hairline: "#D9D3C6",
   accent: "#7A1F2B",
   "accent-ink": "#F6F2EA",
   ok: "#3F5A3C",
   warn: "#8A5A1E",
+  // Behind an open sheet. rgba, not hex: the scrim must let the screen read through.
+  scrim: "rgba(27,26,23,0.32)",
+  // Tile grounds, picked per garment by theme/tileTone.ts. Neutral on purpose: never derived from the garment.
+  tile: "#EDE7DB",
+  "tile-deep": "#DDD4C3",
+  "tile-cool": "#E6E3DC",
   transparent: "transparent",
 };
 
 // Font family keys map to the names registered in useFonts (see src/theme/fonts.ts).
 const fontFamily = {
-  display: ["FrankRuhlLibre_500Medium"],
+  // DESIGN.md 2026-11-18: the serif is 400, not 500 (a heavy display weight reads as undesigned).
+  display: ["FrankRuhlLibre_400Regular"],
   body: ["IBMPlexSansHebrew_400Regular"],
   "body-semibold": ["IBMPlexSansHebrew_600SemiBold"],
   mono: ["IBMPlexMono_400Regular"],
@@ -35,6 +43,7 @@ const fontSize = {
   "body-sm": ["14px", { lineHeight: "22px" }],
   meta: ["12px", { lineHeight: "18px" }],
   num: ["16px", { lineHeight: "22px" }],
+  "num-sm": ["12px", { lineHeight: "18px" }],
 };
 
 // Scale of 4; screen gutter is 20 (the one exception), sections 48, cards 12.
