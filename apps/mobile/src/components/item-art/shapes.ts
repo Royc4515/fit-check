@@ -10,7 +10,7 @@ import type { Subcategory } from "@fit-check/schema";
 export type Shape = {
   body: string;
   details?: string[];
-  dots?: Array<[number, number]>;
+  dots?: [number, number][];
   /** Pieces drawn on top of the body in the base colour (a buckle, a watch face). */
   overlays?: string[];
   /**

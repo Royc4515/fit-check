@@ -54,9 +54,13 @@ export default function SignIn() {
           {day?.hebrewDate ? <Text className="font-body text-body-sm text-ink-soft">{day.hebrewDate[locale]}</Text> : null}
         </View>
         <View className="mt-12">
-          <Display size="display-xl" accessibilityRole="header">
-            {t("app.name")}
-          </Display>
+          {/* don't touch / start-aligned box, not text alignment: react-native-web gives text dir="auto", so the Latin
+              name sat on the left edge of an RTL screen while everything else hugged the right. */}
+          <View style={{ alignItems: "flex-start" }}>
+            <Display size="display-xl" accessibilityRole="header">
+              {t("app.name")}
+            </Display>
+          </View>
           <Text className="mt-3 font-body text-body text-ink-soft">{t("auth.tagline")}</Text>
         </View>
         {/* The composition takes the free height and centres in it, so a tall screen has no dead band above the

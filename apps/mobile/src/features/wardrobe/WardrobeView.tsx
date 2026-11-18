@@ -47,6 +47,10 @@ const ltr = (s: string | number) => `⁦${s}⁩`;
 
 /** Section head inside the masonry: one display line (34) and 16 under it to the first tiles. */
 const SECTION_HEADER_H = 34 + 16;
+/** Visible gap from the last filter row (swatches or chips) to the first section heading under "all". */
+const HEADING_GAP = 24;
+/** Visible size of a swatch in the colour row (Swatch's default); the row around it is `layout.hit` high. */
+const SWATCH_VISIBLE = 24;
 /** Space kept between the last tiles and the floating bar's top edge while picking. */
 const UNDER_BAR = 32;
 
@@ -307,6 +311,12 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
     return value === undefined ? [] : [{ facet, value, label: t(`wardrobe.${facet}.${value}`) }];
   });
 
+  // Under "all" the first section heading sits 24 below what the eye reads as the last row above it. The swatch row's
+  // box is the 44 hit target around a 24 swatch, so 10 of that 24 is already inside the row; chips are 36 visible
+  // with their hit area outside the layout box, so they need the full 24. One category (no headings): 16 to the tiles.
+  const subheaderGap =
+    activeScope !== "all" || visible.length === 0 ? 16 : activeChips.length > 0 || swatches.length === 0 ? HEADING_GAP : HEADING_GAP - (layout.hit - SWATCH_VISIBLE) / 2;
+
   const subheader = (
     <View style={{ width: rowWidth, alignSelf: "center" }} className="pt-3">
       <SwatchRow swatches={swatches} selected={selection.color} onToggle={(name) => toggle("color", name)} inset={rowInset} />
@@ -323,7 +333,7 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
           ))}
         </ScrollView>
       ) : null}
-      <View style={{ height: activeScope === "all" && visible.length > 0 ? 24 : 16 }} />
+      <View style={{ height: subheaderGap }} />
     </View>
   );
 
