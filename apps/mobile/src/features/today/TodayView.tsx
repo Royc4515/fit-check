@@ -15,6 +15,7 @@ import {
   EmptyState,
   FLAT_LAY_ASPECT,
   FlatLay,
+  flatLayTone,
   LegendRow,
   Meta,
   StatusLine,
@@ -26,6 +27,7 @@ import type { DayContext } from "../../data/dayContext";
 import type { FeedbackHistory } from "../../data/feedback";
 import type { FeedbackActions, Laundered } from "../../data/useFeedback";
 import { layout } from "../../theme/tokens";
+import { flyFrom, registerOrigin } from "../item/transition";
 import { AdjustSheet, type Adjust } from "./AdjustSheet";
 import { explainOutfit } from "./explain";
 import { planToday, type Swaps } from "./outfit";
@@ -352,6 +354,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
             radius={desktop ? "md" : "none"}
             accessibilityLabel={heroLabel}
             contentStyle={swipe.style}
+            onPieceNode={(id, node) => registerOrigin("today", id, node, { tone: flatLayTone(pieces), loose: true })}
           />
         </View>
       </GestureDetector>
@@ -451,7 +454,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         }}
         onOpenItem={(id) => {
           setPieceOpen(false);
-          router.push(`/item/${id}`);
+          // The garment on the flat-lay is the shared element's origin: measured first, then the push.
+          void flyFrom("today", id).then(() => router.push(`/item/${id}`));
         }}
         onClose={() => setPieceOpen(false)}
       />
