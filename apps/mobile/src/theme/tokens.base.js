@@ -21,7 +21,7 @@ const colors = {
   // Tile grounds, picked per garment by theme/tileTone.ts. Neutral on purpose: never derived from the garment.
   tile: "#EDE7DB",
   "tile-deep": "#DDD4C3",
-  "tile-cool": "#E3E3DD",
+  "tile-cool": "#E6E3DC",
   transparent: "transparent",
 };
 

@@ -430,3 +430,11 @@
 - Library (additive): `Chip` `accessibilityLabel`/`accessibilityHint`/`onLongPress`/`stretch`; `Button` icon `surface`; `FlatLay` `numbered`, `onPieceNode`, exported `flatLayTone`.
 - Look at: `design/screens/2026-11-18-item-*` (top/tags/goes-with 390 he+en, bottom, shoes 360, no photo, sheets, rollback, name edit, overflow, remove confirm, composer states, 1280 he+en, flight strips from wardrobe/Today/goes-with and back).
 - Not verified: native (no emulator); real writes and the paid redraw (preview blocks them: the failure lines were seen, the success paths were not); price on the button (preview returns no quote).
+
+## 2026-11-18 (polish: sign-in, wardrobe gap, tile tone, lint)
+
+- Sign-in: the Latin app name is in a start-aligned box (same fix as Tile captions and Sheet titles), so it sits on the start edge in he and en.
+- Wardrobe "all": the first section heading is now 24 below the visible swatch row (the row is a 44 hit box around 24 swatches, so the spacer is 14); with active-filter chips it stays 24; sections keep 48 between them.
+- `tile-cool` #E3E3DD -> #E6E3DC (tokens.base.js, DESIGN.md section 2): less green next to the warm tiles. Beige tee and khaki chinos still read clearly against it (ground moved by 3 on red, 1 on blue).
+- Lint clean: the `mounted` flag in the root layout is `useSyncExternalStore` (server false, client true) instead of setState in an effect; the two `i18n` imports are one (kept first); `T[]` instead of `Array<T>`; `i18n.use` goes through the named `use` export.
+- Look at: `design/screens/2026-11-18-sign-in-idle-*`, `2026-11-18-wardrobe-all-*`.

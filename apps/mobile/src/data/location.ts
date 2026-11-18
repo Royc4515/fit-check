@@ -122,7 +122,7 @@ const GeocodingSchema = z.object({
  * City search through Open-Meteo's free geocoder. Its ids are GeoNames ids, which is what Hebcal wants.
  * Returns [] for short queries and on any failure: an empty list is an honest answer for a search box.
  */
-export async function searchCities(query: string, lang: "he" | "en"): Promise<Array<Extract<SavedLocation, { kind: "city" }>>> {
+export async function searchCities(query: string, lang: "he" | "en"): Promise<Extract<SavedLocation, { kind: "city" }>[]> {
   const q = query.trim();
   if (q.length < 2) return [];
   try {

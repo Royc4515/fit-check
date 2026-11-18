@@ -127,7 +127,7 @@ export function planToday(args: {
 
   let picked = next.items.flatMap((i) => byId.get(i.id) ?? []);
   let swapped = false;
-  for (const [slot, id] of Object.entries(swaps) as Array<[Slot, string]>) {
+  for (const [slot, id] of Object.entries(swaps) as [Slot, string][]) {
     const replacement = byId.get(id);
     if (!replacement || slotOf(replacement) !== slot || !picked.some((i) => slotOf(i) === slot)) continue;
     picked = picked.map((i) => (slotOf(i) === slot ? replacement : i));
