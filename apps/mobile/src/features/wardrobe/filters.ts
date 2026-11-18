@@ -1,4 +1,4 @@
-import { DEFAULT_CONTEXT_RULES, passesContextRules } from "@fit-check/engine";
+import { DEFAULT_CONTEXT_RULES, passesContextRules, slotOf } from "@fit-check/engine";
 import type { Item, Subcategory } from "@fit-check/schema";
 import { COLOR_HEX } from "../intake/palette";
 
@@ -34,10 +34,20 @@ export function formalityBand(formality: number): FormalityBand {
 /**
  * "לשבת": the item passes the engine's own Shabbat rules for its slot, the same check hardFilter makes before the
  * stylist sees anything, so the chip and the suggestions never disagree. Weather and availability are not part of
- * it (the availability row filters those); outerwear and accessories have no rules there and pass.
+ * it (the availability row filters those).
+ *
+ * Outerwear and accessories have no slot in the engine, so the engine lets every one of them through (a puffer at
+ * formality 4, a cap at 2). That is right for composing outfits and wrong for a filter that says "for Shabbat"
+ * (DESIGN.md "\"לשבת\" ומעילים ואביזרים"): here, and only here, such an item is judged as a layer, i.e. by the same
+ * formality gate (with the same slack) the engine applies to layers. The bound comes from the engine's own function
+ * and the context's rule data, not from a copied number.
  */
 export function fitsShabbat(item: Item): boolean {
-  return passesContextRules(item, DEFAULT_CONTEXT_RULES.shabbat);
+  const rules = DEFAULT_CONTEXT_RULES.shabbat;
+  if (slotOf(item) !== null) return passesContextRules(item, rules);
+  // don't touch / the layer stand-in is deliberate: a layer is judged on formality alone (no subcategory lists),
+  // which is exactly the gate a coat or a belt should meet. Judging them as "top" would apply the shirt whitelist.
+  return passesContextRules({ ...item, tags: { ...item.tags, category: "layer" } }, rules);
 }
 
 /**
@@ -98,10 +108,25 @@ function valuesOf(item: Item, facet: Facet): string[] {
   }
 }
 
-/** Lowercased, NFKC (full-width Latin, presentation forms), whitespace trimmed and collapsed. Hebrew has no case. */
-function normalize(s: string): string {
-  return s.normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
+/**
+ * Search folding: what the eye treats as the same letter must match. NFKC (full-width Latin, presentation forms),
+ * then NFD with the combining marks dropped (`ÉCOLE` finds `ecole`; Hebrew niqqud is also a combining mark and is
+ * dropped too, which is wanted: nobody types it), lowercase, the ASCII apostrophe and the Hebrew geresh (and the
+ * curly quotes a phone keyboard produces) folded to one character, the ASCII double quote and the Hebrew gershayim
+ * likewise (`צ'ינו` finds `צ׳ינו`, `ג"ינס` finds `ג״ינס`), whitespace collapsed and trimmed.
+ */
+export function normalizeSearch(s: string): string {
+  return s
+    .normalize("NFKC")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7]/g, "")
+    .toLowerCase()
+    .replace(/['\u05f3\u2018\u2019\u02bc\u2032]/g, "'")
+    .replace(/["\u05f4\u201c\u201d\u2033]/g, '"')
+    .replace(/\s+/g, " ")
+    .trim();
 }
+const normalize = normalizeSearch;
 
 /**
  * The wardrobe search (DESIGN.md "שלב 2", "חיפוש בארון"): a substring of the name or of the brand, any case, Hebrew
