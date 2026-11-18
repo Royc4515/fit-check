@@ -15,6 +15,7 @@ export { computeMasonry, MasonryGrid, type MasonryCellInfo, type MasonryLayout, 
 export { ScreenColumn } from "./ScreenColumn";
 export { ScreenHeader } from "./ScreenHeader";
 export { SearchField } from "./SearchField";
+export { PhotoTile } from "./PhotoTile";
 export { Segmented, type Segment } from "./Segmented";
 export { Sheet } from "./Sheet";
 export { Skeleton } from "./Skeleton";
