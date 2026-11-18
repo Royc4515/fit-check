@@ -26,7 +26,14 @@ export function StillLife() {
     </View>
   );
   return (
-    <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+    // Decoration: the app name and tagline carry the screen's meaning, so the drawings stay out of the accessibility
+    // tree (aria-hidden for web, the other two props for iOS and Android).
+    <View
+      aria-hidden
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{ flexDirection: "row", alignItems: "flex-start" }}
+    >
       <View style={{ width: "56%", paddingTop: 24 }}>{tile({ ...shirt, style: { ...shirt.style, width: "100%" } })}</View>
       <View style={{ flex: 1, marginStart: -8 }}>
         {tile(chinos)}
