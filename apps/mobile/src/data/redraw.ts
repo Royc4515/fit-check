@@ -59,13 +59,17 @@ export async function quoteRedraw(): Promise<IntakeQuoteResult> {
   }
 }
 
-/** Stores the spec of a redraw the item now shows. Logged, not thrown: the image is what matters, the spec is memory. */
-export async function saveRedrawSpec(itemId: string, spec: RedrawSpec): Promise<void> {
+/**
+ * Stores the spec of a redraw the item now shows. Logged, not thrown: the image is what matters, the spec is memory.
+ * @returns false when it was not saved, so a screen can say so; callers that do not care may ignore it.
+ */
+export async function saveRedrawSpec(itemId: string, spec: RedrawSpec): Promise<boolean> {
   // Design preview: a no-op that logs like a failed save, which is what callers already expect from this function.
   if (isPreview()) {
     console.error("redraw spec not saved", new PreviewReadOnlyError("saveRedrawSpec").message);
-    return;
+    return false;
   }
   const { error } = await supabase.from("items").update({ redraw_spec: spec }).eq("id", itemId);
   if (error) console.error("redraw spec not saved", error.message);
+  return !error;
 }
