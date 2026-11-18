@@ -1,6 +1,7 @@
 import { pairKey, type PairWeights } from "@fit-check/engine";
 import { ITEM_READ_COLUMNS, itemFromRow, type Item } from "@fit-check/schema";
 import { supabase } from "../lib/supabase";
+import { getSnapshot, isPreview } from "./preview";
 
 export type WardrobeData = { items: Item[]; pairWeights: PairWeights };
 
@@ -14,15 +15,26 @@ export type WardrobeData = { items: Item[]; pairWeights: PairWeights };
  * Throws on a network or permission error; callers decide whether stale cache is good enough.
  */
 export async function fetchWardrobe(): Promise<WardrobeData> {
+  // Design preview (web only, temporary): the same rows, from the read-only snapshot instead of the tables.
+  if (isPreview()) {
+    const snap = await getSnapshot();
+    return wardrobeFromRows(snap.items, snap.pair_weights);
+  }
   const [itemsRes, pairsRes] = await Promise.all([
     supabase.from("items").select(ITEM_READ_COLUMNS).order("created_at", { ascending: true }),
     supabase.from("pair_weights").select("item_a,item_b,weight"),
   ]);
   if (itemsRes.error) throw itemsRes.error;
   if (pairsRes.error) throw pairsRes.error;
+  return wardrobeFromRows(itemsRes.data ?? [], pairsRes.data ?? []);
+}
 
+type PairRow = { item_a: string; item_b: string; weight: number | string };
+
+/** Rows (from the tables or the preview snapshot) to wardrobe data, skipping and logging a malformed item. */
+function wardrobeFromRows(itemRows: readonly unknown[], pairRows: readonly PairRow[]): WardrobeData {
   const items: Item[] = [];
-  for (const row of itemsRes.data ?? []) {
+  for (const row of itemRows) {
     try {
       items.push(itemFromRow(row));
     } catch (error) {
@@ -30,8 +42,6 @@ export async function fetchWardrobe(): Promise<WardrobeData> {
     }
   }
 
-  const pairWeights: PairWeights = new Map(
-    (pairsRes.data ?? []).map((p) => [pairKey(p.item_a, p.item_b), Number(p.weight)])
-  );
+  const pairWeights: PairWeights = new Map(pairRows.map((p) => [pairKey(p.item_a, p.item_b), Number(p.weight)]));
   return { items, pairWeights };
 }

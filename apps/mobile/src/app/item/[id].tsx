@@ -17,7 +17,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { ItemArt } from "../../components/item-art/ItemArt";
 import { ItemDetails } from "../../features/item/ItemDetails";
 import type { ItemEdits } from "../../features/item/ItemEditor";
-import { useSession } from "../../features/auth/SessionProvider";
+import { sessionUserId, useSession } from "../../features/auth/SessionProvider";
 import { archiveItem, setItemImage, updateItemDetails } from "../../data/items";
 import { clearOrigin, getOrigin, measureCell, type Rect } from "../../features/item/transition";
 import { WardrobeGate } from "../../components/WardrobeGate";
@@ -39,7 +39,7 @@ const ease = Easing.bezier(...motion.easeOut);
  */
 export default function ItemScreen() {
   const wardrobe = useWardrobe();
-  const session = useSession();
+  const userId = sessionUserId(useSession());
   const { id } = useLocalSearchParams<{ id: string }>();
   if (wardrobe.status !== "ready") return <WardrobeGate state={wardrobe} />;
   const { patch } = wardrobe;
@@ -47,9 +47,9 @@ export default function ItemScreen() {
     patch((d) => ({ ...d, items: d.items.map((i) => (i.id === itemId ? fn(i) : i)) }));
   /** Writes first, then the local copy: an edit that did not save must not look saved. */
   const edits: ItemEdits | undefined =
-    session.status === "signedIn"
+    userId
       ? {
-          userId: session.session.user.id,
+          userId,
           save: async (itemId, e) => {
             await updateItemDetails(itemId, e);
             update(itemId, (i) => ({ ...i, name: e.name, brand: e.brand, tags: e.tags }));

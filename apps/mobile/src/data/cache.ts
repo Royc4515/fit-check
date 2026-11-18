@@ -2,6 +2,7 @@ import type { PairWeights } from "@fit-check/engine";
 import { ItemSchema } from "@fit-check/schema";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { z } from "zod";
+import { isPreview } from "./preview";
 import type { WardrobeData } from "./wardrobe";
 
 // Bump when the cached shape OR the engine's pairKey format changes: an old cache then reads as "no cache" instead of
@@ -20,6 +21,8 @@ const CachedSchema = z.object({
  * Every failure mode (no cache, corrupt JSON, old shape, storage error) returns null.
  */
 export async function readWardrobeCache(userId: string): Promise<WardrobeData | null> {
+  // Design preview: no cache either way, so the owner's wardrobe never lands in a visitor's browser storage.
+  if (isPreview()) return null;
   try {
     const raw = await AsyncStorage.getItem(keyFor(userId));
     if (raw === null) return null;
@@ -33,6 +36,7 @@ export async function readWardrobeCache(userId: string): Promise<WardrobeData | 
 }
 
 export async function writeWardrobeCache(userId: string, data: WardrobeData): Promise<void> {
+  if (isPreview()) return;
   try {
     // Stored as the engine's own [key, weight] entries; see VERSION for what invalidates them.
     await AsyncStorage.setItem(keyFor(userId), JSON.stringify({ items: data.items, pairs: [...data.pairWeights.entries()] }));
