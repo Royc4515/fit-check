@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CATEGORIES, ItemTagsSchema } from "./item-tags.ts";
+import { RedrawSpecSchema } from "./redraw-spec.ts";
 
 /** At most this many garments are taken from one photo: a bed covered in clothes is several photos, not one. */
 export const MAX_GARMENTS_PER_PHOTO = 6;
@@ -27,7 +28,10 @@ export type DetectedGarment = z.infer<typeof DetectedGarmentSchema>;
  * Input of the intake-separate Edge Function, two actions:
  * - detect (default): a photo the user already uploaded to `originals/{uid}/...`; garment detection. With `single`,
  *   only the main garment (front, centre) comes back.
- * - enhance: one cropped garment the app uploaded to `cutouts/{uid}/...`, redrawn by the paid image model.
+ * - enhance: one cropped garment the app uploaded to `cutouts/{uid}/...`, redrawn by the paid image model. Either
+ *   `spec` (the redraw composer, 2026-11-18; the server builds the prompt) or the older free `description`, kept so
+ *   an app build from before the composer still works.
+ * - quote: the price of one redraw and what is left of the month's Google budget, for the composer's button.
  */
 export const IntakeSeparateInputSchema = z.union([
   z.object({
@@ -36,7 +40,15 @@ export const IntakeSeparateInputSchema = z.union([
     // One-garment mode: return only the main garment and ignore what hangs behind or around it.
     single: z.boolean().optional(),
   }),
-  z.object({ action: z.literal("enhance"), cutout_path: z.string().min(3).max(300), description: z.string().min(2).max(400) }),
+  z
+    .object({
+      action: z.literal("enhance"),
+      cutout_path: z.string().min(3).max(300),
+      description: z.string().min(2).max(400).optional(),
+      spec: RedrawSpecSchema.optional(),
+    })
+    .refine((v) => (v.description === undefined) !== (v.spec === undefined), "exactly one of description and spec"),
+  z.object({ action: z.literal("quote") }),
 ]);
 export type IntakeSeparateInput = z.infer<typeof IntakeSeparateInputSchema>;
 
@@ -53,6 +65,13 @@ export const IntakeEnhanceResultSchema = z.union([
   z.object({ ok: z.literal(false), reason: z.string() }),
 ]);
 export type IntakeEnhanceResult = z.infer<typeof IntakeEnhanceResultSchema>;
+
+/** Price of one redraw and the month's remaining Google budget (null when spend cannot be read: treat as none left). */
+export const IntakeQuoteResultSchema = z.union([
+  z.object({ ok: z.literal(true), price_usd: z.number().nonnegative(), left_usd: z.number().nullable() }),
+  z.object({ ok: z.literal(false), reason: z.string() }),
+]);
+export type IntakeQuoteResult = z.infer<typeof IntakeQuoteResultSchema>;
 
 /**
  * Tagging models offered to intake-tag. Haiku is the CLAUDE.md default; Sonnet is on trial (Roy, 2026-11-09:

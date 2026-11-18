@@ -5,3 +5,4 @@ export * from "./stylist.ts";
 export * from "./db.ts";
 export * from "./external.ts";
 export * from "./intake.ts";
+export * from "./redraw-spec.ts";

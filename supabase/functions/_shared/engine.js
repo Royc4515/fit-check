@@ -565,11 +565,123 @@ function dueForLaundry(items, wearCounts) {
     return item.availability === "home" && limit !== void 0 && (wearCounts.get(item.id) ?? 0) >= limit;
   });
 }
+
+// packages/engine/src/redraw.ts
+import {
+  cleanFreeText,
+  detailDef,
+  detailsFor,
+  garmentOf,
+  MAX_REDRAW_DETAILS,
+  MAX_REDRAW_FREE,
+  REDRAW_FIX_FOR_ISSUE,
+  REDRAW_FIX_IDS
+} from "@fit-check/schema";
+var FREE_REPEAT_THRESHOLD = 2;
+var MAX_FREE_SUGGESTIONS = 3;
+var normalize = (s) => cleanFreeText(s).toLowerCase();
+function detailsFromText(text, offered) {
+  const hay = text.toLowerCase();
+  const best = /* @__PURE__ */ new Map();
+  for (const id of offered) {
+    const def = detailDef(id);
+    const len = Math.max(0, ...def.keywords.filter((k) => hay.includes(k)).map((k) => k.length));
+    if (len === 0) continue;
+    const key = def.group ?? id;
+    const cur = best.get(key);
+    if (!cur || len > cur.len) best.set(key, { id, len });
+  }
+  const picked = new Set([...best.values()].map((b) => b.id));
+  return offered.filter((id) => picked.has(id)).slice(0, MAX_REDRAW_DETAILS);
+}
+function suggestRedraw(input) {
+  const garment = garmentOf(input.tags);
+  const offered = detailsFor(garment.subcategory);
+  const sameType = (input.history ?? []).filter(
+    (h) => h.spec.garment.subcategory === garment.subcategory && (input.itemId == null || h.itemId !== input.itemId)
+  );
+  const uses = /* @__PURE__ */ new Map();
+  for (const h of sameType) for (const id of h.spec.details) uses.set(id, (uses.get(id) ?? 0) + 1);
+  let details;
+  let fixes;
+  let free;
+  if (input.previous) {
+    details = withGroupsUnique(input.previous.details.filter((id) => offered.includes(id)));
+    fixes = [...input.previous.fixes];
+    free = [...input.previous.free];
+  } else {
+    const text = [input.name, input.brand ?? "", input.description ?? ""].join(" ");
+    details = detailsFromText(text, offered);
+    fixes = REDRAW_FIX_IDS.filter((f) => (input.issues ?? []).some((i) => REDRAW_FIX_FOR_ISSUE[i] === f));
+    free = [];
+  }
+  const rank = (id) => details.includes(id) ? Number.MAX_SAFE_INTEGER : uses.get(id) ?? 0;
+  const ordered = [...offered].sort((a, b) => rank(b) - rank(a) || offered.indexOf(a) - offered.indexOf(b));
+  const counts = /* @__PURE__ */ new Map();
+  for (const h of sameType) {
+    for (const note of h.spec.free) {
+      const key = `${note.kind}:${normalize(note.text)}`;
+      const cur = counts.get(key);
+      counts.set(key, { note: cur?.note ?? note, n: (cur?.n ?? 0) + 1 });
+    }
+  }
+  const have = new Set(free.map((n) => `${n.kind}:${normalize(n.text)}`));
+  const freeSuggestions = [...counts.entries()].filter(([key, c]) => c.n >= FREE_REPEAT_THRESHOLD && !have.has(key)).sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0])).slice(0, MAX_FREE_SUGGESTIONS).map(([, c]) => c.note);
+  return {
+    spec: { v: 1, name: input.name.trim() || null, garment, details, fixes, free },
+    details: ordered,
+    fixes: [...REDRAW_FIX_IDS],
+    freeSuggestions
+  };
+}
+function withGroupsUnique(ids) {
+  const seen = /* @__PURE__ */ new Set();
+  return ids.filter((id) => {
+    const g = detailDef(id).group;
+    if (!g) return true;
+    if (seen.has(g)) return false;
+    seen.add(g);
+    return true;
+  });
+}
+function toggleDetail(spec, id) {
+  if (spec.details.includes(id)) return { ...spec, details: spec.details.filter((d) => d !== id) };
+  const group = detailDef(id).group;
+  const kept = group ? spec.details.filter((d) => detailDef(d).group !== group) : spec.details;
+  if (kept.length >= MAX_REDRAW_DETAILS) return spec;
+  return { ...spec, details: [...kept, id] };
+}
+function toggleFix(spec, id) {
+  return spec.fixes.includes(id) ? { ...spec, fixes: spec.fixes.filter((f) => f !== id) } : { ...spec, fixes: REDRAW_FIX_IDS.filter((f) => f === id || spec.fixes.includes(f)) };
+}
+function setFree(spec, note, replace) {
+  const text = cleanFreeText(note.text);
+  const rest = spec.free.filter((_, i) => i !== replace);
+  if (text.length < 2) return { ...spec, free: rest };
+  const clean = { kind: note.kind, text };
+  if (rest.some((n) => n.kind === clean.kind && normalize(n.text) === normalize(text))) return replace === void 0 ? spec : { ...spec, free: rest };
+  if (replace !== void 0 && replace >= 0 && replace < spec.free.length) {
+    return { ...spec, free: spec.free.map((n, i) => i === replace ? clean : n) };
+  }
+  if (spec.free.length >= MAX_REDRAW_FREE) return spec;
+  return { ...spec, free: [...spec.free, clean] };
+}
+function detailToFree(spec, id, text) {
+  const without = { ...spec, details: spec.details.filter((d) => d !== id) };
+  const next = setFree(without, { kind: "detail", text });
+  return next.free.length === without.free.length ? spec : next;
+}
+function withTags(spec, tags, name) {
+  const garment = garmentOf(tags);
+  const offered = detailsFor(garment.subcategory);
+  return { ...spec, name: name.trim() || null, garment, details: spec.details.filter((id) => offered.includes(id)) };
+}
 export {
   ADJUST_STEP,
   DEFAULT_CONTEXT_RULES,
   FEEDBACK,
   FORMALITY_SLACK,
+  FREE_REPEAT_THRESHOLD,
   LAUNDRY_AFTER_WEARS,
   LAYER_THRESHOLD_C,
   MMR_LAMBDA,
@@ -589,6 +701,8 @@ export {
   colorHarmony,
   combineAdjustments,
   contextFit,
+  detailToFree,
+  detailsFromText,
   dueForLaundry,
   feedbackUpdates,
   formalityConsistency,
@@ -600,8 +714,13 @@ export {
   pairScore,
   recencyPenalty,
   scoreOutfit,
+  setFree,
   skyGroup,
   slotOf,
+  suggestRedraw,
   summarizeDay,
-  swapOptions
+  swapOptions,
+  toggleDetail,
+  toggleFix,
+  withTags
 };

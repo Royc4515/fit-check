@@ -6,14 +6,17 @@ import {
   SUBCATEGORIES,
   SUBCATEGORY_TO_CATEGORY,
   type ItemTags,
+  type RedrawSpec,
   type TagProposal,
 } from "@fit-check/schema";
 import { Image } from "expo-image";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, View } from "react-native";
 import { TextAction } from "../../components/TextAction";
 import { cutoutUrl } from "../../components/item-art/ItemArt";
-import { colors } from "../../theme/tokens";
+import { RedrawComposer } from "../redraw/RedrawComposer";
+import { Row } from "./ChoiceRow";
 import { COLOR_HEX } from "./palette";
 import { hasSleeves, isBottom, LEG_CHOICES, legOf, normalizeTags, SLEEVE_CHOICES, subcategoryForLeg } from "./tagRules";
 
@@ -46,11 +49,14 @@ export type ReviewState = {
 
 type Props = {
   garment: ReviewState;
+  /** Detection's short description: the redraw composer reads collar, pockets and logos off it. */
+  description?: string;
   busy: boolean;
   onChange: (draft: Draft) => void;
   onSave: () => void;
   onSkip: () => void;
-  onEnhance: () => void;
+  /** Paid redraw with the composer's spec. */
+  onEnhance: (spec: RedrawSpec) => void;
   onLabel: () => void;
   onRetryTag: () => void;
   onRetake: () => void;
@@ -62,56 +68,13 @@ type Props = {
 /** Which uncertain flag belongs to which row: the tagger reports "color", the row edits color_name. */
 const UNCERTAIN_KEY = { subcategory: "subcategory", color_name: "color", pattern: "pattern", material: "material", fit: "fit" } as const;
 
-export function Chip({ label, selected, swatch, onPress }: { label: string; selected: boolean; swatch?: string; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      hitSlop={4}
-      // Same chip as the wardrobe filters (DESIGN.md section 3): selected is an ink fill, never the accent.
-      className={`flex-row items-center justify-center rounded border px-3 ${selected ? "border-ink bg-ink" : "border-hairline"}`}
-      style={{ minHeight: 34, gap: 6 }}
-    >
-      {swatch ? <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: swatch, borderWidth: 1, borderColor: colors.hairline }} /> : null}
-      <Text className={`font-body text-body-sm ${selected ? "text-ivory" : "text-ink-soft"}`}>{label}</Text>
-    </Pressable>
-  );
-}
-
-export function Row<T extends string>(props: {
-  title: string;
-  unsure: boolean;
-  values: readonly T[];
-  /** The tagger's value, shown first so the row opens on it (rows scroll sideways; the rest are off-screen). */
-  proposed: T | undefined;
-  selected: T;
-  label: (v: T) => string;
-  swatch?: (v: T) => string;
-  onPick: (v: T) => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <View className="mt-4">
-      <Text className="font-body text-meta text-ink-faint">
-        {props.title}
-        {props.unsure ? <Text className="text-ink-soft">{` · ${t("intake.review.unsure")}`}</Text> : null}
-      </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 8 }}>
-        {(props.proposed ? [props.proposed, ...props.values.filter((v) => v !== props.proposed)] : props.values).map((v) => (
-          <Chip key={v} label={props.label(v)} selected={v === props.selected} swatch={props.swatch?.(v)} onPress={() => props.onPick(v)} />
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
 /**
  * Review of one garment before it enters the wardrobe: the tagger's proposal as chips, one tap to change any field.
  * Fields the tagger was unsure of are marked, so the eye goes there first. Nothing is saved until "save".
  */
 export function GarmentReview({
   garment: g,
+  description,
   busy,
   onChange,
   onSave,
@@ -124,6 +87,7 @@ export function GarmentReview({
   onReplaceExisting,
 }: Props) {
   const { t, i18n } = useTranslation();
+  const [composing, setComposing] = useState(false);
   const d = g.draft;
   const unsure = new Set(g.proposal?.uncertain ?? []);
   const setTags = (patch: Partial<ItemTags>) => d && onChange({ ...d, tags: normalizeTags({ ...d.tags, ...patch }) });
@@ -304,11 +268,26 @@ export function GarmentReview({
             <TextAction label={g.labelling ? t("intake.review.labelling") : t("intake.review.labelPhoto")} disabled={busy || g.labelling} onPress={onLabel} />
           ) : null}
           {g.issues.length > 0 && !g.enhanced ? <TextAction label={t("intake.retake")} disabled={busy} onPress={onRetake} /> : null}
-          {d && !g.enhanced ? (
-            <TextAction label={g.enhancing ? t("intake.enhancing") : t("intake.enhance")} quiet disabled={g.enhancing} onPress={onEnhance} />
-          ) : null}
+          {d && !g.enhanced && !composing ? <TextAction label={t("intake.enhance")} quiet disabled={g.enhancing} onPress={() => setComposing(true)} /> : null}
           <TextAction label={t("intake.review.skip")} quiet disabled={busy} onPress={onSkip} />
         </View>
+      ) : null}
+
+      {d && composing && !g.saved && !g.enhanced ? (
+        <RedrawComposer
+          tags={d.tags}
+          name={d.name}
+          brand={d.brand}
+          description={description}
+          issues={g.issues}
+          itemId={g.itemId}
+          onTagsChange={(patch) => setTags(patch)}
+          // The proposal's measured hex stays on its own name; a different name takes the palette hex.
+          colorHex={(v) => (v === g.proposal?.tags.color_name ? g.proposal.tags.color_hex : COLOR_HEX[v])}
+          onSubmit={onEnhance}
+          onCancel={() => setComposing(false)}
+          busy={g.enhancing === true}
+        />
       ) : null}
     </View>
   );
