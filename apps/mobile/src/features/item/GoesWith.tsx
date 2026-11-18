@@ -8,6 +8,7 @@ import { layout } from "../../theme/tokens";
 import { getOutfitsWith } from "../today/outfit";
 import { outfitIndex } from "../today/pieces";
 import { registerOrigin } from "./transition";
+import { spoken } from "./a11y";
 
 /** One outfit surface: small enough that two and a bit show on a phone, so the row reads as scrollable. */
 const SURFACE_W = 160;
@@ -61,7 +62,7 @@ export function GoesWith({ item, items, pairWeights, onOpen, onSelf, bleed }: Pr
                 slot: p.slot,
                 item: full,
                 index: outfitIndex(outfit.items, p.id),
-                accessibilityLabel: self ? t("item.goesWithSelf", { type, name: full.name }) : t("item.goesWithPiece", { type, name: full.name }),
+                accessibilityLabel: spoken(self ? t("item.goesWithSelf", { type, name: full.name }) : t("item.goesWithPiece", { type, name: full.name })),
               },
             ];
           });
@@ -79,7 +80,7 @@ export function GoesWith({ item, items, pairWeights, onOpen, onSelf, bleed }: Pr
                 numbered={false}
                 onPressPiece={pressed}
                 onPieceNode={(id, node) => registerOrigin(scope, id, node, { tone, loose: true })}
-                accessibilityLabel={t("item.goesWithOutfit", { n: n + 1, pieces: pieces.map((p) => p.item.name).join(", ") })}
+                accessibilityLabel={spoken(t("item.goesWithOutfit", { n: n + 1, pieces: pieces.map((p) => p.item.name).join(", ") }))}
               />
             </View>
           );

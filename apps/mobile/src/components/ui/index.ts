@@ -11,6 +11,7 @@ export { Icon, type IconName } from "./Icon";
 export { focusRingProps, selectionHaptic, usePressFeedback } from "./interaction";
 export { LegendRow } from "./LegendRow";
 export { ListRow } from "./ListRow";
+export { setOriginHidden, useOriginVisibility } from "./originVisibility";
 export { computeMasonry, MasonryGrid, type MasonryCellInfo, type MasonryLayout, type MasonrySection } from "./MasonryGrid";
 export { ScreenColumn } from "./ScreenColumn";
 export { ScreenHeader } from "./ScreenHeader";

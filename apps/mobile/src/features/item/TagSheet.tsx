@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { Button, Chip, Meta, Sheet } from "../../components/ui";
 import { LEG_CHOICES, legOf, SLEEVE_CHOICES, subcategoryForLeg } from "../intake/tagRules";
 import { colorHexFor, colorPatch } from "./edit";
+import { spoken } from "./a11y";
 
 /** The editable tag fields of the item screen, one closed list each. */
 export type TagField = "subcategory" | "color" | "pattern" | "material" | "sleeve" | "leg" | "fit" | "seasons" | "formality";
@@ -143,7 +144,7 @@ function Values({ field, item, onPick }: { field: Exclude<TagField, "seasons">; 
                   key={n}
                   stretch
                   label={`⁦${n}⁩`}
-                  accessibilityLabel={t("item.formalityValue", { n })}
+                  accessibilityLabel={spoken(t("item.formalityValue", { n }))}
                   selected={n === tags.formality}
                   onPress={() => onPick(n === tags.formality ? {} : { formality: n })}
                 />
