@@ -14,6 +14,7 @@ import {
 } from "@fit-check/schema/item-tags.ts";
 import { cutout } from "../_shared/ai/modal.ts";
 import { ENHANCE_MODEL, enhanceGarment } from "../_shared/ai/gemini.ts";
+import { whiteToTransparent } from "../_shared/whitebg.ts";
 import { MONTHLY_GOOGLE_BUDGET_USD, monthlyGoogleSpend } from "../_shared/ai/budget.ts";
 import { sniffImageType } from "../_shared/media.ts";
 import type { ToolContent, ToolContext, ToolResult } from "./tools.ts";
@@ -280,8 +281,16 @@ export async function itemRedraw(args: unknown, ctx: ToolContext): Promise<ToolR
   const stem = crop.replace(/\.jpg$/, `-enhanced-${Date.now()}`);
   const up = await ctx.db.storage.from("cutouts").upload(`${stem}.png`, drawn.png, { contentType: sniffImageType(drawn.png, "image/png") });
   if (up.error) return fail(`Could not store the redraw: ${up.error.message}`);
+  // Roy, 2026-11-18: clear the white background right away, locally and free; the worker is only the fallback for
+  // a redraw the check declined (and it was disabled that day, which left redraws on white).
+  const clear = await whiteToTransparent(drawn.png).catch(() => null);
+  let stored: { image: string; thumb: string | null } | null = null;
+  if (clear) {
+    const put = await ctx.db.storage.from("cutouts").upload(`${stem}-cutout.png`, clear, { contentType: "image/png", upsert: true });
+    if (!put.error) stored = { image: `${stem}-cutout.png`, thumb: null };
+  }
   // A redraw shows one garment on white: plain cutout, no SAM.
-  const stored = await cutAndStore(ctx, drawn.png, stem, false);
+  stored ??= await cutAndStore(ctx, drawn.png, stem, false);
   const { error } = await ctx.db
     .from("items")
     .update({ cutout_path: stored?.image ?? `${stem}.png`, thumb_path: stored?.thumb ?? null, updated_at: new Date().toISOString() })
