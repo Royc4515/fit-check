@@ -6,13 +6,11 @@
     "title": "היום",
     "empty": "עוד אין הצעה להיום",
     "wearing": "לובש",
-    "swap": "החלף פריט",
     "warmer": "יותר חם",
     "cooler": "יותר קר",
     "dressier": "יותר רשמי",
     "casual": "פחות רשמי",
     "skip": "דלג",
-    "actions": "פעולות",
     "dayType": {
       "weekday": "יום חול",
       "shabbat": "שבת",
@@ -39,14 +37,8 @@
       "shabbat": "בגדי שבת לפי הכללים שלך."
     },
     "data": {
-      "feels": "מרגיש כמו",
-      "rain": "גשם",
-      "sky": "שמיים"
+      "rain": "גשם"
     },
-    "swapThis": "החלף",
-    "swapClose": "סגור",
-    "swapHint": "בחר פריט כדי לראות חלופות.",
-    "swapDone": "סיום",
     "noAlternatives": "אין היום חלופה מתאימה לפריט הזה.",
     "allSkipped": "אין עוד הצעות להיום.",
     "undo": "ביטול",
@@ -70,7 +62,20 @@
       "bottom": "מכנסיים",
       "shoes": "נעליים"
     },
-    "and": " ו"
+    "and": " ו",
+    "allSkippedBody": "ביטול הדילוג האחרון יחזיר את ההצעה הקודמת.",
+    "missingTitle": "הארון עוד לא שלם",
+    "emptyBody": "אף שילוב בארון לא עומד היום בכללים ובמזג האוויר.",
+    "alternatives": "חלופות",
+    "swapTo": "החלפה ל{{name}}",
+    "toItem": "לפריט",
+    "adjustTitle": "כוונון",
+    "adjustTemp": "טמפרטורה",
+    "adjustFormality": "רשמיות",
+    "tune": "כוונון ההצעה: חם, קר, רשמי, דילוג",
+    "pieceLabel": "{{type}}, {{name}}. חלופות ופרטים",
+    "heroLabel": "התלבושת להיום: {{pieces}}. החלקה הצידה מדלגת להצעה הבאה",
+    "weatherLabel": "מזג האוויר ב{{place}}: {{weather}}. שינוי מיקום"
   },
   "wardrobe": {
     "title": "ארון",
@@ -479,7 +484,9 @@
       "status": "שורת סטטוס",
       "sheet": "חלון תחתון",
       "nav": "ניווט",
-      "masonry": "הארון כ-masonry"
+      "masonry": "הארון כ-masonry",
+      "flatLay": "Flat-lay",
+      "stepper": "מונה צעדים"
     },
     "state": {
       "default": "רגיל",
@@ -584,6 +591,15 @@
       "info": "info",
       "ok": "ok",
       "error": "error"
+    },
+    "flatLay": {
+      "intro": "שילובים מהארון האמיתי, 3 ו-4 חלקים. אותם אחוזים בכל רוחב.",
+      "label": "שילוב {{n}}"
+    },
+    "stepper": {
+      "label": "טמפרטורה",
+      "less": "יותר קר",
+      "more": "יותר חם"
     }
   }
 }

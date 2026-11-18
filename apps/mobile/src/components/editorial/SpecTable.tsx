@@ -12,7 +12,7 @@ export function SpecTable({ rows }: { rows: SpecRow[] }) {
           <Text className="font-body text-body-sm text-ink-faint" style={{ width: "34%" }}>
             {r.label}
           </Text>
-          {/* Start-aligned box, not text alignment: digit-only values are dir="auto" on web (see DataStrip). */}
+          {/* Start-aligned box, not text alignment: digit-only values are dir="auto" on web (see Tile caption). */}
           <View style={{ flex: 1, alignItems: "flex-start" }}>{typeof r.value === "string" ? <Text className="font-body text-body text-ink">{r.value}</Text> : r.value}</View>
         </View>
       ))}

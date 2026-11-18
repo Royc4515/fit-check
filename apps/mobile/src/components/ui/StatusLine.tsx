@@ -12,29 +12,50 @@ const LOOK = {
   error: { icon: "error", iconColor: "warn", text: "text-warn" },
 } as const satisfies Record<StatusVariant, { icon: IconName; iconColor: "ink-soft" | "ok" | "warn"; text: string }>;
 
+type Action = { label: string; onPress: () => void };
+
 type Props = {
   variant?: StatusVariant;
   message: string;
   /** One recovery or follow-up action, e.g. "retry" or "undo". */
-  action?: { label: string; onPress: () => void };
+  action?: Action;
+  /**
+   * A second, different answer to the same message (Today's skip: "didn't like it" beside "undo"). With it, both
+   * actions move to their own row under the message, aligned with the text: two of them never fit beside it.
+   */
+  secondaryAction?: Action;
+  /** A write is in flight: the actions are inert, the message stays readable. */
+  disabled?: boolean;
 };
+
+const ICON = 20;
+const GAP = 8;
 
 /**
  * One-line status (saved, failed, offline): icon + text + optional text action. Each variant has its own glyph so
  * the meaning never rests on colour (DESIGN.md section 1). Errors are announced as alerts; the rest politely.
  */
-export function StatusLine({ variant = "info", message, action }: Props) {
+export function StatusLine({ variant = "info", message, action, secondaryAction, disabled = false }: Props) {
   const look = LOOK[variant];
-  return (
-    <View
-      accessibilityRole={variant === "error" ? "alert" : undefined}
-      accessibilityLiveRegion={variant === "error" ? "assertive" : "polite"}
-      className="flex-row items-center"
-      style={{ gap: 8, minHeight: layout.hit }}
-    >
+  const a11y = {
+    accessibilityRole: variant === "error" ? ("alert" as const) : undefined,
+    accessibilityLiveRegion: variant === "error" ? ("assertive" as const) : ("polite" as const),
+  };
+  const line = (
+    <View className="flex-row items-center" style={{ gap: GAP, minHeight: layout.hit }}>
       <Icon name={look.icon} color={look.iconColor} />
       <Text className={`flex-1 font-body text-body-sm ${look.text}`}>{message}</Text>
-      {action ? <Button variant="text" label={action.label} onPress={action.onPress} /> : null}
+      {action && !secondaryAction ? <Button variant="text" label={action.label} onPress={action.onPress} disabled={disabled} /> : null}
+    </View>
+  );
+  if (!action || !secondaryAction) return <View {...a11y}>{line}</View>;
+  return (
+    <View {...a11y}>
+      {line}
+      <View className="flex-row flex-wrap" style={{ paddingStart: ICON + GAP, columnGap: 24 }}>
+        <Button variant="text" label={action.label} onPress={action.onPress} disabled={disabled} />
+        <Button variant="text" label={secondaryAction.label} onPress={secondaryAction.onPress} disabled={disabled} />
+      </View>
     </View>
   );
 }
