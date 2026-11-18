@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient, authenticate } from "../_shared/auth.ts";
 import { IntakeSeparateInputSchema } from "@fit-check/schema/intake.ts";
-import { detectGarments, enhanceGarment } from "../_shared/ai/gemini.ts";
+import { buildRedrawPrompt, redrawPrompt, type RedrawSpec } from "@fit-check/schema/redraw-spec.ts";
+import { detectGarments, ENHANCE_PRICE_USD, enhanceGarment } from "../_shared/ai/gemini.ts";
 import { whiteToTransparent } from "../_shared/whitebg.ts";
 import { MONTHLY_GOOGLE_BUDGET_USD, monthlyGoogleSpend } from "../_shared/ai/budget.ts";
 import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
@@ -14,10 +15,13 @@ import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
  *   (paid key first, free as fallback) returns per garment a box, a rough category, a description and the problems
  *   with the shot (hidden, overlapping, cut off, creased, blurry, dark). Under a cent per photo. The app crops the real photo itself and uploads the
  *   crops; doing it here needed an image library that crashed the Edge runtime at boot.
- * - enhance { cutout_path, description }: on request only, the paid image model redraws one crop the app uploaded
- *   to `cutouts/{uid}/...` as a complete, clean product photo (`...-enhanced-<ts>.png`), its white
+ * - enhance { cutout_path, spec | description }: on request only, the paid image model redraws one crop the app uploaded
+ *   to `cutouts/{uid}/...` as a complete, clean product photo (`...-enhanced-<ts>.png`). `spec` comes from the redraw
+ *   composer and the prompt is built here from it; `description` is the pre-composer free text, its white
  *   background removed on the spot (_shared/whitebg.ts; `transparent: false` when that check declined). While the project has no
  *   billing it answers reason "billing_required" and the crop stays as it is.
+ * - quote {}: one redraw's price and what is left of the month's Google budget, so the composer's button can say it.
+ *   No AI call, no ai_calls row.
  * Nothing is written to `items`; the user confirms and tags on the next screen.
  *
  * Auth: the caller's Supabase JWT, verified locally (_shared/auth.ts). Storage runs as the service role; ownPath()
@@ -67,11 +71,18 @@ Deno.serve(async (req) => {
   if (!parsed.success) return json(400, { ok: false, reason: "bad_input" });
   const input = parsed.data;
 
+  if (input.action === "quote") {
+    const spent = await monthlyGoogleSpend();
+    const left = spent === null ? null : Math.max(0, Math.round((MONTHLY_GOOGLE_BUDGET_USD - spent) * 100) / 100);
+    return json(200, { ok: true, price_usd: ENHANCE_PRICE_USD, left_usd: left });
+  }
+
   const used = await countAiCalls(userId, "separate", new Date(Date.now() - 24 * 3600 * 1000));
   if (used === null || used >= DAILY_DETECT_LIMIT + DAILY_ENHANCE_LIMIT) return json(429, { ok: false, reason: "daily_limit" });
 
   return input.action === "enhance"
-    ? await enhance(supabase, userId, input.cutout_path, input.description)
+    ? // The input schema guarantees exactly one of the two.
+      await enhance(supabase, userId, input.cutout_path, input.spec ?? input.description ?? "")
     : await detect(supabase, userId, input.original_path, input.single ?? false);
 });
 
@@ -99,7 +110,7 @@ async function detect(supabase: SupabaseClient, userId: string, path: string, si
   return json(200, { ok: true, garments: result.garments });
 }
 
-async function enhance(supabase: SupabaseClient, userId: string, cutoutPath: string, description: string): Promise<Response> {
+async function enhance(supabase: SupabaseClient, userId: string, cutoutPath: string, garment: RedrawSpec | string): Promise<Response> {
   const mediaType = mediaOf(cutoutPath);
   if (!ownPath(userId, cutoutPath) || !mediaType || cutoutPath.includes("-enhanced")) return json(400, { ok: false, reason: "bad_input" });
   const spent = await monthlyGoogleSpend();
@@ -108,7 +119,8 @@ async function enhance(supabase: SupabaseClient, userId: string, cutoutPath: str
   const bytes = await download(supabase, "cutouts", cutoutPath);
   if (!bytes) return json(400, { ok: false, reason: "not_found" });
 
-  const result = await enhanceGarment(bytes, mediaType, description);
+  const prompt = typeof garment === "string" ? redrawPrompt(garment) : buildRedrawPrompt(garment);
+  const result = await enhanceGarment(bytes, mediaType, prompt);
   await logAiCall(userId, result.log);
   if (!result.png) {
     console.error("enhance failed", result.log.error);

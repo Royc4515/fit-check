@@ -17,6 +17,7 @@ import {
 import { sniffImageType } from "../_shared/media.ts";
 import { outfitLog, outfitToday } from "./outfit.ts";
 import { intakeDismiss, intakePending, itemCreate, itemRecrop, itemRecut, itemRedraw } from "./photos.ts";
+import { REDRAW_DETAIL_IDS, REDRAW_FIX_IDS } from "@fit-check/schema/redraw-spec.ts";
 
 /**
  * The Fit Check tools offered to Claude over MCP (Roy, 2026-11-17: "a full MCP to run the app and site from Claude").
@@ -500,12 +501,30 @@ export const TOOLS: Tool[] = [
     title: "AI redraw of a garment (paid)",
     description:
       "Redraws a photo garment as a clean product image (Google image model, about $0.034, counted against the $8 monthly cap) and sets it as " +
-      "its image. Write the description yourself from the photo, in English: colour, fabric, collar, pockets, logos, sleeves " +
-      "(e.g. \"white cotton oxford shirt, button-down collar, chest pocket with a small red flag logo, long sleeves\"). Ask Roy first.",
+      "its image. Two ways: (a) write the description yourself from the photo, in English: colour, fabric, collar, pockets, logos, sleeves " +
+      "(e.g. \"white cotton oxford shirt, button-down collar, chest pocket with a small red flag logo, long sleeves\"); or (b) leave description " +
+      "out and pick details from the app's vocabulary, built on the item's tags and stored for the app's next redraw. Either way, fixes " +
+      "(remove_behind = drop the garment behind it, complete_hidden, smooth_creases, true_colour, sharp_texture) and up to two short notes " +
+      "(may be Hebrew) can be added. Ask Roy first.",
     inputSchema: {
       type: "object",
-      properties: { id: { type: "string", format: "uuid" }, description: { type: "string", minLength: 10, maxLength: 400 } },
-      required: ["id", "description"],
+      properties: {
+        id: { type: "string", format: "uuid" },
+        description: { type: "string", minLength: 10, maxLength: 400 },
+        details: { type: "array", items: { type: "string", enum: [...REDRAW_DETAIL_IDS] }, maxItems: 6, description: "Only without description; must fit the garment type, one per group (one collar, one sole...)." },
+        fixes: { type: "array", items: { type: "string", enum: [...REDRAW_FIX_IDS] } },
+        notes: {
+          type: "array",
+          maxItems: 2,
+          items: {
+            type: "object",
+            properties: { kind: { type: "string", enum: ["detail", "fix"] }, text: { type: "string", minLength: 2, maxLength: 60 } },
+            required: ["kind", "text"],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ["id"],
       additionalProperties: false,
     },
     annotations: { openWorldHint: true },

@@ -1,4 +1,4 @@
-import type { DetectedGarment } from "@fit-check/schema";
+import type { DetectedGarment, RedrawSpec } from "@fit-check/schema";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useRef, useState } from "react";
@@ -10,7 +10,6 @@ import { TextLink } from "../../components/TextLink";
 import { useWardrobe } from "../../data/WardrobeProvider";
 import {
   cropGarment,
-  describeForRedraw,
   detectPhoto,
   enhanceCutout,
   MIN_USEFUL_EDGE,
@@ -25,6 +24,7 @@ import {
   type PreparedPhoto,
 } from "../../data/intake";
 import { setItemImage } from "../../data/items";
+import { saveRedrawSpec } from "../../data/redraw";
 import { layout } from "../../theme/tokens";
 import { GarmentReview, type Draft, type ReviewState } from "./GarmentReview";
 
@@ -41,6 +41,8 @@ type Garment = DetectedGarment &
     /** The redraw with its background removed (the redraw comes on white). */
     enhancedCutoutPath?: string;
     enhancedThumbPath?: string;
+    /** The composer's spec of the redraw now shown, stored on the item so its next redraw starts there. */
+    redrawSpec?: RedrawSpec;
     model?: string;
   };
 type Job = { id: string; preview: string; status: JobStatus; garments: Garment[]; skipped: number; lowRes: boolean; reason?: string };
@@ -159,13 +161,17 @@ export function IntakeView({ userId }: { userId: string }) {
     if (!redrawn) await syncSaved(jobId, path);
   };
 
-  /** Paid redraw, on request only, described from the confirmed tags (not detection's guess). */
-  const enhance = async (jobId: string, path: string) => {
+  /** Paid redraw, on request only, from the composer's spec (built on the confirmed tags, not detection's guess). */
+  const enhance = async (jobId: string, path: string, spec: RedrawSpec) => {
     const g = findGarment(jobId, path);
     if (!g?.draft) return;
     updateGarment(jobId, path, { enhancing: true, enhanceError: undefined });
-    const result = await enhanceCutout(path, describeForRedraw(g.draft.tags, g.draft.name));
+    const result = await enhanceCutout(path, spec);
     if (!result.ok) return updateGarment(jobId, path, { enhancing: false, enhanceError: result.reason });
+    updateGarment(jobId, path, { redrawSpec: spec });
+    // Saved while the redraw ran: the item exists already, so the spec goes on it directly.
+    const savedId = findGarment(jobId, path)?.itemId;
+    if (savedId) void saveRedrawSpec(savedId, spec);
     if (result.transparent) {
       // Already cleared on the server (_shared/whitebg.ts): the redraw itself is the cutout.
       updateGarment(jobId, path, { enhancing: false, enhanced: true, url: result.url, enhancedPath: result.path });
@@ -211,6 +217,7 @@ export function IntakeView({ userId }: { userId: string }) {
         tags: g.draft.tags,
         proposal: g.proposal ?? null,
         model: g.model ?? null,
+        redrawSpec: g.enhancedPath ? g.redrawSpec : null,
       });
       updateGarment(jobId, path, { saving: false, saved: true, itemId });
       if (wardrobe.status === "ready") wardrobe.reload();
@@ -400,7 +407,8 @@ export function IntakeView({ userId }: { userId: string }) {
                   onChange={(draft) => updateGarment(job.id, g.path, { draft })}
                   onSave={() => void save(job.id, g.path)}
                   onSkip={() => updateGarment(job.id, g.path, { skipped: true })}
-                  onEnhance={() => void enhance(job.id, g.path)}
+                  description={g.description}
+                  onEnhance={(spec) => void enhance(job.id, g.path, spec)}
                   onLabel={() => void addLabel(job.id, g.path)}
                   onRetryTag={() => void tag(job.id, g)}
                   onRetake={() => void pick(true)}
