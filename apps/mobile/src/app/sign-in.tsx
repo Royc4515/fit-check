@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Monogram } from "../components/brand/Monogram";
 import { StillLife } from "../components/brand/StillLife";
+import { Button, Display, StatusLine } from "../components/ui";
 import { useDayContext } from "../data/useDayContext";
 import { signInWithGoogle } from "../features/auth/signIn";
 import { layout } from "../theme/tokens";
 
 /**
- * Sign-in. One primary action, no icon (DESIGN.md section 2). Google is the only provider (PRD section 2).
- * Shown only while signed out; the root layout's route guard keeps signed-in users away from it.
+ * Sign-in, laid out as a magazine cover (DESIGN.md section 8, Kinfolk): the app name is the one serif moment, the
+ * still life is the one object, and the Google button is the screen's single primary action in the thumb zone.
+ * Google is the only provider (PRD section 2). Shown only while signed out; the root layout's route guard keeps
+ * signed-in users away from it. A cancelled sign-in shows nothing; only a real failure gets a message.
  */
 export default function SignIn() {
   const { t, i18n } = useTranslation();
@@ -41,7 +44,7 @@ export default function SignIn() {
           alignSelf: "center",
           paddingHorizontal: layout.gutter,
           paddingTop: insets.top + 32,
-          paddingBottom: insets.bottom + 48,
+          paddingBottom: insets.bottom + 32,
         }}
       >
         <View className="flex-row items-center justify-between">
@@ -50,26 +53,22 @@ export default function SignIn() {
               fallback with wide gaps between words. Mono is for numbers only. */}
           {day?.hebrewDate ? <Text className="font-body text-body-sm text-ink-soft">{day.hebrewDate[locale]}</Text> : null}
         </View>
-        <View className="mt-12 border-t border-hairline pt-6">
-          <Text className="font-display text-display-xl text-ink">{t("app.name")}</Text>
+        <View className="mt-12">
+          <Display size="display-xl" accessibilityRole="header">
+            {t("app.name")}
+          </Display>
           <Text className="mt-3 font-body text-body text-ink-soft">{t("auth.tagline")}</Text>
         </View>
         {/* The composition takes the free height and centres in it, so a tall screen has no dead band above the
-            button (the "half-empty screen" complaint). */}
-        <View style={{ flexGrow: 1, justifyContent: "center", paddingVertical: 32 }}>
-          <StillLife />
+            button. Capped width: one object in a lot of air, not a poster. */}
+        <View style={{ flexGrow: 1, justifyContent: "center", paddingVertical: 48 }}>
+          <View style={{ width: "72%", alignSelf: "center" }}>
+            <StillLife />
+          </View>
         </View>
         <Text className="mb-3 font-body text-body-sm text-ink-soft">{t("auth.prompt")}</Text>
-        {failed ? <Text className="mb-3 font-body text-body-sm text-warn">{t("auth.failed")}</Text> : null}
-        <Pressable
-          onPress={() => void onPress()}
-          disabled={busy}
-          accessibilityRole="button"
-          className="items-center justify-center rounded bg-accent"
-          style={{ height: 48, opacity: busy ? 0.6 : 1 }}
-        >
-          <Text className="font-body-semibold text-body text-accent-ink">{t("auth.google")}</Text>
-        </Pressable>
+        {failed ? <StatusLine variant="error" message={t("auth.failed")} /> : null}
+        <Button variant="primary" fullWidth label={t("auth.google")} onPress={() => void onPress()} disabled={busy} />
       </View>
     </ScrollView>
   );

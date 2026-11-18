@@ -1,16 +1,11 @@
-import { Link, type Href } from "expo-router";
-import { Text, View } from "react-native";
+import { useRouter, type Href } from "expo-router";
+import { Button } from "./ui";
 
 /**
- * Secondary action per DESIGN.md section 2: ink text with a hairline underline 4px below. The underline is a
- * bordered wrapper because RN cannot offset or color text-decoration.
+ * Compatibility wrapper: a library text `Button` that navigates to `href`. Navigation goes through the router rather
+ * than a `Link`, because Button owns its own press handling and focus ring.
  */
 export function TextLink({ href, label }: { href: Href; label: string }) {
-  return (
-    <Link href={href} accessibilityRole="link">
-      <View className="border-b border-hairline pb-1">
-        <Text className="font-body text-body-sm text-ink">{label}</Text>
-      </View>
-    </Link>
-  );
+  const router = useRouter();
+  return <Button variant="text" label={label} onPress={() => router.push(href)} />;
 }
