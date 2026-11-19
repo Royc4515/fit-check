@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { AppState } from "react-native";
 import { supabase } from "../lib/supabase";
 import { settingGet, settingGetNow, settingSet } from "./kv";
-import { OBSERVANCE_KEY, observanceFromProfile, parseObservance, storedObservance } from "./observance";
+import { OBSERVANCE_KEY, observanceFromProfile, parseObservance, profileReadResult, storedObservance } from "./observance";
 import { isPreview, PreviewReadOnlyError } from "./preview";
 
 /**
@@ -16,8 +17,13 @@ const failureListeners = new Set<(failed: boolean) => void>();
 // The value this session has seen last, so a screen mounted after a change starts from it and not from storage.
 let current: boolean | null = null;
 let failed = false;
-// The profile is asked once per app start; a second screen mounting does not ask again.
-let profileAsked = false;
+// The profile is asked until one read has answered (a value, or "no row"); a failed read is asked again on the next
+// mount or return to the app, and a read already on its way is not doubled.
+let profileAnswered = false;
+let profileReading: Promise<void> | null = null;
+let readFailureLogged = false;
+// User changes this session: a read that started before the latest one must not undo it (profileReadResult).
+let changeCount = 0;
 
 /** The stored setting, read once; web reads it synchronously so the first paint already follows it. */
 function initial(): boolean {
@@ -39,17 +45,32 @@ function setFailed(next: boolean) {
  * Reads the profile's value once and, when it has one, puts it in charge (and on the device). No row, a missing column
  * or any error leaves the device value in charge; the error is logged once.
  */
-async function syncFromProfile(): Promise<void> {
-  if (profileAsked) return;
-  profileAsked = true;
-  try {
-    const { data, error } = await supabase.from("profile").select("observes_shabbat").maybeSingle();
-    if (error) console.warn("observes_shabbat not read from the profile; the device setting stands", error.message);
-    const value = observanceFromProfile(data, error);
-    if (value !== null && value !== current) apply(value);
-  } catch (error) {
-    console.warn("observes_shabbat not read from the profile; the device setting stands", error);
-  }
+function syncFromProfile(): Promise<void> {
+  if (profileAnswered) return Promise.resolve();
+  if (profileReading) return profileReading;
+  const startedAt = changeCount;
+  const logFailure = (why: unknown) => {
+    if (readFailureLogged) return;
+    readFailureLogged = true;
+    console.warn("observes_shabbat not read from the profile; the device setting stands", why);
+  };
+  profileReading = (async () => {
+    try {
+      const { data, error } = await supabase.from("profile").select("observes_shabbat").maybeSingle();
+      if (error) {
+        logFailure(error.message);
+        return;
+      }
+      profileAnswered = true;
+      const value = profileReadResult(observanceFromProfile(data, error), startedAt, changeCount);
+      if (value !== null && value !== current) apply(value);
+    } catch (error) {
+      logFailure(error);
+    } finally {
+      profileReading = null;
+    }
+  })();
+  return profileReading;
 }
 
 /** The signed-in user's id, or null (signed out, or design preview). */
@@ -64,6 +85,7 @@ async function userId(): Promise<string | null> {
  * back to what it was and the failure is published (useObservanceFailed); preview rejects the write like every write.
  */
 export async function setObservesShabbat(observes: boolean): Promise<void> {
+  changeCount++;
   const before = current ?? initial();
   setFailed(false);
   apply(observes);
@@ -101,9 +123,14 @@ export function useObservesShabbat(): boolean {
       });
     }
     void syncFromProfile();
+    // Back in the app after a failed read (offline at start): ask again.
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void syncFromProfile();
+    });
     return () => {
       active = false;
       listeners.delete(setObserves);
+      sub.remove();
     };
   }, []);
   return observes;
