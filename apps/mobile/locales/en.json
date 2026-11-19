@@ -102,7 +102,19 @@
       "yomKippur": "For Yom Kippur"
     },
     "plannedForecast": "{{day}} · {{range}} · Rain {{rain}}",
-    "plannedNoForecast": "No forecast yet"
+    "plannedNoForecast": "No forecast yet",
+    "occasion": {
+      "title": "What's on today",
+      "titlePlanned": "What's on that day",
+      "type": {
+        "date": "Date",
+        "interview": "Interview",
+        "event": "Event"
+      },
+      "fromCalendar": "from the calendar",
+      "cancel": "Cancel",
+      "failed": "The occasion wasn't saved."
+    }
   },
   "wardrobe": {
     "title": "Wardrobe",

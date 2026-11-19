@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import wardrobeJson from "../../../../../packages/engine/__fixtures__/wardrobe.json";
 import type { FeedbackHistory, TodayRecord } from "../../data/feedback";
 import type { DayInput } from "./outfit";
-import { planDays, type DayPlan } from "./plans";
+import { defaultAdjustment, planDays, type DayPlan } from "./plans";
 
 // Not imported from data/feedback: that module talks to Supabase, and this runner never loads React Native.
 const EMPTY_HISTORY: FeedbackHistory = { recent: [], today: [], ahead: [], samples: [] };
@@ -47,7 +47,7 @@ describe("planDays", () => {
 
   it("Shabbat sees Friday's shown look as worn on Friday", () => {
     const [fri, sat] = plan([friday, shabbat]);
-    expect(sat!.history.recent[0]).toEqual({ date: friday.date, item_ids: ids(fri!), context_key: null });
+    expect(sat!.history.recent[0]).toEqual({ date: friday.date, item_ids: ids(fri!), context_key: null, context_type: "weekday" });
   });
 
   it("Friday's recorded wear counts once, not twice", () => {
@@ -102,5 +102,28 @@ describe("planDays", () => {
     const after = plan([rhEve, rh1, rh2], { ...EMPTY_HISTORY, ahead: [worn(rh1.date, ids(d1!))] });
     expect(after[1]!.plan.kind).toBe("worn");
     expect(ids(after[2]!)).toEqual(ids(d2!));
+  });
+});
+
+describe("what is on the day (DESIGN.md 4.5)", () => {
+  it("an occasion overrides the calendar, Shabbat included, and its rules apply", () => {
+    const [, sat] = plan([friday, { ...shabbat, occasion: "interview" }]);
+    expect(sat!.plan.req.context.type).toBe("interview");
+    const [fri] = plan([{ ...friday, occasion: "date" }]);
+    expect(fri!.plan.req.context.type).toBe("date");
+  });
+  it("an occasion takes no festive step on top", () => {
+    expect(defaultAdjustment({ festive: true, occasion: "event" })).toEqual({ temp_steps: 0, formality_steps: 0 });
+    expect(defaultAdjustment({ festive: true }).formality_steps).toBe(1);
+  });
+  it("an earlier day's look is remembered in its own context", () => {
+    const [, sat] = plan([{ ...friday, occasion: "date" }, shabbat]);
+    expect(sat!.history.recent[0]!.context_type).toBe("date");
+  });
+  it("a date planned after three date wears does not repeat them", () => {
+    const first = plan([{ ...friday, occasion: "date" }])[0]!;
+    const blocked = ids(first);
+    const history: FeedbackHistory = { ...EMPTY_HISTORY, recent: [{ date: "2026-10-01", item_ids: blocked, context_key: null, context_type: "date" }] };
+    expect(ids(plan([{ ...friday, occasion: "date" }], history)[0]!)).not.toEqual(blocked);
   });
 });

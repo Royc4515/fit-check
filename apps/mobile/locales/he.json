@@ -102,7 +102,19 @@
       "yomKippur": "ליום כיפור"
     },
     "plannedForecast": "{{day}} · {{range}} · גשם {{rain}}",
-    "plannedNoForecast": "אין עדיין תחזית"
+    "plannedNoForecast": "אין עדיין תחזית",
+    "occasion": {
+      "title": "מה יש היום",
+      "titlePlanned": "מה יש באותו יום",
+      "type": {
+        "date": "דייט",
+        "interview": "ראיון",
+        "event": "אירוע"
+      },
+      "fromCalendar": "מהיומן",
+      "cancel": "ביטול",
+      "failed": "ההקשר לא נשמר."
+    }
   },
   "wardrobe": {
     "title": "ארון",

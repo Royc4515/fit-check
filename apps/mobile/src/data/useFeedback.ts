@@ -1,5 +1,5 @@
 import { applyPairUpdates, dueForLaundry, feedbackUpdates, type DayAdjustment, type PairWeights } from "@fit-check/engine";
-import type { Availability, CandidateOutfit, Item, WearFeedback } from "@fit-check/schema";
+import type { Availability, CandidateOutfit, ContextType, Item, WearFeedback } from "@fit-check/schema";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WardrobeData } from "./wardrobe";
 import type { DayType } from "./dayContext";
@@ -20,7 +20,7 @@ import {
  * The day an answer is for, when it is not today: a planned day after today's candle lighting (DESIGN.md "שלב 4.1").
  * Its date goes into `outfits.created_for_date` and `wears.worn_on`, its day type into `outfits.context_type`.
  */
-export type FeedbackTarget = { date: string; dayType: DayType };
+export type FeedbackTarget = { date: string; dayType: ContextType };
 
 export type FeedbackActions = {
   wear: (outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment, target?: FeedbackTarget) => Promise<void>;
@@ -181,7 +181,9 @@ export function useFeedback(args: {
           const ahead = record.date !== date;
           setHistory((h) => ({
             // A planned day's wear is not "recent" for today; the planning counts it on its own date.
-            recent: ahead ? (h?.recent ?? []) : [{ date, item_ids: record.itemIds, context_key: null }, ...(h?.recent ?? [])],
+            recent: ahead
+              ? (h?.recent ?? [])
+              : [{ date, item_ids: record.itemIds, context_key: null, context_type: target.dayType }, ...(h?.recent ?? [])],
             today: ahead ? (h?.today ?? []) : [...(h?.today ?? []), record],
             ahead: ahead ? [...(h?.ahead ?? []), record] : (h?.ahead ?? []),
             samples: [{ wearId: record.wearId, adjustment }, ...(h?.samples ?? [])],

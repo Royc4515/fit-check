@@ -17,12 +17,18 @@ export type Explanation = {
  * (PLAN.md phase B) and stays as its fallback when the model's output fails validation. Split in two because a
  * pull quote only works when it is one sentence.
  */
-export function explainOutfit(t: TFunction, ctx: Pick<DayContext, "weather" | "dayType">, outfit: CandidateOutfit, dayLabel: string): Explanation {
+export function explainOutfit(
+  t: TFunction,
+  ctx: Pick<DayContext, "weather" | "dayType"> & { occasion?: string },
+  outfit: CandidateOutfit,
+  dayLabel: string
+): Explanation {
   const w = ctx.weather;
   const lead = w ? t("today.explain.base", { day: dayLabel, min: w.temp_min_c, max: w.temp_max_c }) : t("today.explain.noWeather", { day: dayLabel });
   const notes: string[] = [];
   if (outfit.items.some((i) => i.slot === "layer")) notes.push(t("today.explain.layer"));
   if (w && w.rain_probability >= RAIN_MENTION) notes.push(t("today.explain.rain"));
-  if (ctx.dayType !== "weekday") notes.push(t("today.explain.shabbat"));
+  // An occasion's look follows the occasion's rules, not Shabbat's (DESIGN.md "שלב 4.5" item 2).
+  if (!ctx.occasion && ctx.dayType !== "weekday") notes.push(t("today.explain.shabbat"));
   return { lead, notes };
 }

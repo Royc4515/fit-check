@@ -1,7 +1,7 @@
 import { FESTIVE_FORMALITY_STEPS, NO_ADJUSTMENT, type DayAdjustment, type PairWeights } from "@fit-check/engine";
 import type { Item } from "@fit-check/schema";
 import type { FeedbackHistory, RecentWear, TodayRecord } from "../../data/feedback";
-import { planToday, type DayInput, type Swaps, type TodayPlan } from "./outfit";
+import { contextTypeOf, planToday, type DayInput, type Swaps, type TodayPlan } from "./outfit";
 
 /** One day's plan on Today: today first, then each planned phone-free day (DESIGN.md "שלב 4.1"). */
 export type DayPlan = {
@@ -22,8 +22,9 @@ export type DayPlan = {
  * day's taps, not a hidden term: the sheet and the "adjusted for today" line show it, and reset or "more casual"
  * take it back.
  */
-export function defaultAdjustment(day: Pick<DayInput, "festive">): DayAdjustment {
-  return day.festive ? { temp_steps: 0, formality_steps: FESTIVE_FORMALITY_STEPS } : NO_ADJUSTMENT;
+export function defaultAdjustment(day: Pick<DayInput, "festive" | "occasion">): DayAdjustment {
+  // An occasion is chosen outright and brings its own rules: no festive step on top (as the shared planDay rules).
+  return day.festive && !day.occasion ? { temp_steps: 0, formality_steps: FESTIVE_FORMALITY_STEPS } : NO_ADJUSTMENT;
 }
 
 /** The look a day stands for in the planning of the days after it: recorded if worn, else the one shown. */
@@ -79,7 +80,7 @@ export function planDays(args: {
       const prev = out[j]!;
       if (j === 0 && prev.plan.kind === "worn") continue;
       const look = lookOf(prev.plan);
-      if (look) earlier.push({ date: prev.day.date, item_ids: look, context_key: null });
+      if (look) earlier.push({ date: prev.day.date, item_ids: look, context_key: null, context_type: contextTypeOf(prev.day) });
     }
     const dayHistory: FeedbackHistory = { recent: [...earlier, ...history.recent], today: records, ahead: [], samples: history.samples };
     const adjustment = adjustments[k];

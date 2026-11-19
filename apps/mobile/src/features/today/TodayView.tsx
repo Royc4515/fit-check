@@ -30,12 +30,13 @@ import { focusRingProps } from "../../components/ui/interaction";
 import type { DayContext } from "../../data/dayContext";
 import type { FeedbackHistory } from "../../data/feedback";
 import { chainTabLabels, defaultTab, type ChainTabLabel } from "../../data/shabbatTimes";
+import type { OccasionsState } from "../../data/occasions";
 import type { FeedbackActions, FeedbackTarget, Laundered } from "../../data/useFeedback";
 import { layout, motion } from "../../theme/tokens";
 import { flyFrom, registerOrigin } from "../item/transition";
 import { AdjustSheet, type Adjust } from "./AdjustSheet";
 import { explainOutfit } from "./explain";
-import type { DayInput, Swaps, TodayPlan } from "./outfit";
+import { contextTypeOf, type DayInput, type Swaps, type TodayPlan } from "./outfit";
 import { PieceSheet } from "./PieceSheet";
 import { defaultAdjustment, planDays } from "./plans";
 import { outfitIndex, SLOT_ORDER } from "./pieces";
@@ -61,6 +62,8 @@ type Props = {
   clock: string;
   /** The AI stylist (stage B). Absent or returning null means the engine's order and template text are used. */
   stylist?: (input: StylistInput) => Promise<StylistOutput | null>;
+  /** What is on each date on screen, and how to change it (DESIGN.md "שלב 4.5"). */
+  occasions: OccasionsState;
 };
 
 /** Waits for taps (nudges, swaps) to settle before asking the stylist, so a burst of taps costs one call. */
@@ -153,7 +156,7 @@ type StatusItem = {
  * view (DESIGN.md section 3 "היום" item 8). A failed "wearing it" is the only status that stays in the bar, next to
  * the button it belongs to. Desktop (>= 900): two columns, nothing floats.
  */
-export function TodayView({ items, pairWeights, day, history, actions, busy, failedOn, laundered, stylist, clock }: Props) {
+export function TodayView({ items, pairWeights, day, history, actions, busy, failedOn, laundered, stylist, clock, occasions }: Props) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -165,10 +168,10 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // the list is just today and the screen is exactly what it was before the tabs.
   const days = useMemo<DayInput[]>(
     () => [
-      { date: day.date, weather: day.weather, dayType: day.dayType, festive: day.festive, yomKippur: day.yomKippur },
-      ...day.chain.map((d) => ({ date: d.date, weather: d.weather, dayType: d.dayType, yomKippur: d.yomKippur })),
+      { date: day.date, weather: day.weather, dayType: day.dayType, festive: day.festive, yomKippur: day.yomKippur, occasion: occasions.byDate[day.date]?.type },
+      ...day.chain.map((d) => ({ date: d.date, weather: d.weather, dayType: d.dayType, yomKippur: d.yomKippur, occasion: occasions.byDate[d.date]?.type })),
     ],
-    [day]
+    [day, occasions.byDate]
   );
   const tabLabels = useMemo(() => chainTabLabels(day.chain), [day.chain]);
   const hasTabs = day.chain.length > 0;
@@ -189,7 +192,10 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const selectedDate = [chosenTab, openingTab].find((d) => d !== null && days.some((x) => x.date === d)) ?? day.date;
   const sel = Math.max(0, days.findIndex((d) => d.date === selectedDate));
   const planned = sel > 0 ? day.chain[sel - 1]! : null;
-  const target: FeedbackTarget | undefined = planned ? { date: planned.date, dayType: planned.dayType } : undefined;
+  // A planned day's answers go on its date; a day with an occasion records the occasion's context (4.5 item 6).
+  const occasion = days[sel]!.occasion ?? null;
+  const target: FeedbackTarget | undefined =
+    planned || occasion ? { date: selectedDate, dayType: contextTypeOf(days[sel]!) } : undefined;
   const failed = failedOn !== null && failedOn === selectedDate;
 
   // Session-only nudges and swaps (see engine/adjust.ts), per day. Swaps belong to one suggestion: anything that
@@ -243,6 +249,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   /** A day's name in the explanation: the holiday's own name on a Yom Tov, else its day type. */
   const dayLabelOf = (k: number, lng: "he" | "en" = locale) => {
     const d = days[k]!;
+    // The explanation names the occasion instead of the day type (DESIGN.md "שלב 4.5" item 2).
+    if (d.occasion) return t(`today.occasion.type.${d.occasion}`, { lng });
     const holiday = k === 0 ? day.holiday : (day.chain[k - 1]?.holiday ?? null);
     // A festive weekday (the switch off) is still called by its holiday's name.
     return holiday && (d.dayType === "holiday" || d.festive) ? holiday[lng] : t(`today.dayType.${d.dayType}`, { lng });
@@ -255,6 +263,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const asked = useRef(new Set<string>());
   const labelHe = (k: number) => {
     const d = days[k]!;
+    if (d.occasion) return `${d.date} ${t(`today.occasion.type.${d.occasion}`, { lng: "he" })}`;
     const holiday = k === 0 ? day.holiday : (day.chain[k - 1]?.holiday ?? null);
     return `${d.date} ${holiday?.he ?? t(`today.dayType.${d.dayType}`, { lng: "he" })}`;
   };
@@ -292,7 +301,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     const byId = new Map(items.map((i) => [i.id, i.name]));
     const w = dayWeather;
     return {
-      context_type: days[sel]!.dayType,
+      context_type: contextTypeOf(days[sel]!),
       date_label_he: labelHe(sel),
       weather_summary: w
         ? `${w.temp_min_c}-${w.temp_max_c}C, ${Math.round(w.rain_probability * 100)}% chance of rain, ${w.sky}`
@@ -384,7 +393,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
 
   const hebrew = day.hebrewDate?.[locale];
   const w = day.weather;
-  const template = outfit ? explainOutfit(t, { weather: dayWeather, dayType: days[sel]!.dayType }, outfit, dayLabel) : null;
+  const template = outfit ? explainOutfit(t, { weather: dayWeather, dayType: days[sel]!.dayType, occasion: occasion ?? undefined }, outfit, dayLabel) : null;
   // The stylist's sentence replaces the template lead only for the outfit it actually chose (not after a swap).
   const explanation =
     template && plan.kind === "suggestion" && plan.styled && styled
@@ -475,6 +484,25 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         {barStatusLines}
       </View>
     ) : null;
+  // What is on the day (4.5 item 2): first among the status lines, with its label and, unless set by hand, where it
+  // came from; "cancel" clears it. A failed write takes its place, with "try again" (item 4).
+  const occasionRow = occasions.byDate[selectedDate] ?? null;
+  const occasionFailed = occasions.failed?.date === selectedDate ? occasions.failed : null;
+  const occasionText = occasionRow
+    ? [t(`today.occasion.type.${occasionRow.type}`), occasionRow.label, occasionRow.source === "calendar" ? t("today.occasion.fromCalendar") : undefined]
+        .filter((part): part is string => Boolean(part))
+        .reduce((first, second) => t("today.timesJoin", { first, second }))
+    : null;
+  const occasionLine = occasionFailed ? (
+    <StatusLine variant="error" message={t("today.occasion.failed")} action={{ label: t("common.retry"), onPress: occasionFailed.retry }} />
+  ) : occasionText ? (
+    <StatusLine
+      variant="info"
+      message={occasionText}
+      action={{ label: t("today.occasion.cancel"), onPress: () => occasions.choose(selectedDate, null) }}
+      disabled={busy}
+    />
+  ) : null;
   // Yom Kippur with no non-leather shoe at home: the look comes without shoes, and says so (PRD section 7).
   const noShoesLine =
     days[sel]!.yomKippur && outfit && !outfit.items.some((i) => i.slot === "shoes") ? (
@@ -808,6 +836,13 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         adjustment={adjustment}
         onAdjust={adjust}
         onReset={resetAdjust}
+        occasion={occasion}
+        occasionTitle={t(planned ? "today.occasion.titlePlanned" : "today.occasion.title")}
+        onOccasion={(type) => {
+          setAdjustOpen(false);
+          resetSwaps();
+          occasions.choose(selectedDate, type);
+        }}
         onSkip={
           plan.kind === "suggestion"
             ? () => {
@@ -847,6 +882,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
             <View style={{ flex: 1 }}>
               <Reveal index={0}>{masthead}</Reveal>
               {plannedForecast ? <View className="mt-6">{plannedForecast}</View> : null}
+              {occasionLine ? <View className="mt-6">{occasionLine}</View> : null}
               {skipStatus && outfit ? (
                 <View className="mt-6" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
                   {lineOf(skipStatus)}
@@ -913,6 +949,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
                   {/* Everything between masthead and hero, measured as one block for the hero's cap. */}
                   <View onLayout={(e) => setAboveHeroHeight(e.nativeEvent.layout.height)}>
                     {forecastSlot}
+                    {occasionLine ? <View className="mt-6 px-5">{occasionLine}</View> : null}
                     {skipStatus ? (
                       <View className="mt-6 px-5" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
                         {lineOf(skipStatus)}
