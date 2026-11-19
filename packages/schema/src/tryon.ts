@@ -55,6 +55,18 @@ export const TryonQuoteResponseSchema = z.object({
   budget_usd: usd,
   /** An image for exactly these garments (and this figure and model) is stored; render would return it for free. */
   cached: z.boolean(),
+  /**
+   * The stored image's short-lived signed URL, present exactly when `cached`. The sheet opens with `quote`, the only
+   * call it makes without a press, so it shows a stored image from here and never needs `render` (which could pay).
+   */
+  image_url: z.string().url().optional(),
+  expires_in_s: z.number().int().positive().optional(),
+}).superRefine((q, ctx) => {
+  const hasUrl = q.image_url !== undefined && q.expires_in_s !== undefined;
+  const hasNone = q.image_url === undefined && q.expires_in_s === undefined;
+  if (q.cached ? !hasUrl : !hasNone) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "image_url and expires_in_s are present exactly when cached" });
+  }
 });
 export type TryonQuoteResponse = z.infer<typeof TryonQuoteResponseSchema>;
 
