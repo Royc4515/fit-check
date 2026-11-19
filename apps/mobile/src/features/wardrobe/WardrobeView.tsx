@@ -147,6 +147,17 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive, onRestore
   const anyFilter = sheetActive || selection.color !== undefined || activeScope !== "all";
   const queryActive = query.trim() !== "";
 
+  // Under a filter or search, a category with no match is a dead tab that opens an empty state. Counted through the
+  // same applyFilters/matchesQuery the grid uses, per category, ignoring the current scope (the tabs are the scope).
+  const narrowing = sheetActive || selection.color !== undefined || queryActive || (packing && !packAll);
+  const shownCategories = useMemo(() => {
+    if (!narrowing) return categories;
+    const pool = packing && !packAll ? listed(all).filter(isReserveItem) : listed(all);
+    const matching = new Set(applyFilters(pool.filter((i) => matchesQuery(i, query)), selection).map((i) => i.tags.category));
+    // don't touch / the selected tab stays even when empty, so the selection never vanishes under the reader
+    return categories.filter((c) => matching.has(c) || c === activeScope);
+  }, [narrowing, categories, all, packing, packAll, query, selection, activeScope]);
+
   const changeQuery = (text: string) => {
     settle();
     setQuery(text);
@@ -311,8 +322,8 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive, onRestore
   }, [activeScope, visible, t]);
 
   const tabs = useMemo<TextTab<CategoryScope>[]>(
-    () => [{ key: "all", label: t("wardrobe.all") }, ...categories.map((c) => ({ key: c, label: t(`wardrobe.category.${c}`) }))],
-    [categories, t]
+    () => [{ key: "all", label: t("wardrobe.all") }, ...shownCategories.map((c) => ({ key: c, label: t(`wardrobe.category.${c}`) }))],
+    [shownCategories, t]
   );
 
   const actionsItem = actionsId ? (all.find((i) => i.id === actionsId) ?? null) : null;

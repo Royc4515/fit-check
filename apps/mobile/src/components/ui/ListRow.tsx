@@ -1,7 +1,9 @@
 import { Pressable, Text, View } from "react-native";
 import { colors, layout } from "../../theme/tokens";
+import { layoutRtl } from "../../i18n";
 import { Icon } from "./Icon";
 import { focusRingProps, webStateProps } from "./interaction";
+import { textDirection } from "./textDirection";
 
 type Props = {
   label: string;
@@ -25,20 +27,26 @@ type Props = {
  */
 export function ListRow({ label, value, onPress, disabled = false, meta, selected }: Props) {
   const choice = selected !== undefined;
+  // don't touch / explicit direction per string: react-native-web leaves it to the first strong character of the
+  // whole text, and in an RTL row a Latin run was truncated from its start ("…roit Jacket"). Dominant script, not first
+  // strong: "חולצה · Carhartt WIP…" opens with a short Hebrew word. Start-aligned box,
+  // not textAlign, so a Latin name still hugs the row's start edge (same reason as Tile's caption).
+  const fallback = layoutRtl() ? "rtl" : "ltr";
+  const dirOf = (text: string) => ({ writingDirection: textDirection(text, fallback), maxWidth: "100%" }) as const;
   const content = (
     <View className="flex-row items-center border-b border-hairline py-3" style={{ minHeight: layout.hit, gap: 12 }}>
-      <View className="flex-1">
-        <Text className="font-body text-body text-ink" numberOfLines={1}>
+      <View className="flex-1" style={{ alignItems: "flex-start" }}>
+        <Text className="font-body text-body text-ink" numberOfLines={1} style={dirOf(label)}>
           {label}
         </Text>
         {meta ? (
-          <Text className="font-body text-meta text-ink-soft" numberOfLines={2}>
+          <Text className="font-body text-meta text-ink-soft" numberOfLines={2} style={dirOf(meta)}>
             {meta}
           </Text>
         ) : null}
       </View>
       {value ? (
-        <Text className="font-body text-body-sm text-ink-soft" numberOfLines={1}>
+        <Text className="font-body text-body-sm text-ink-soft" numberOfLines={1} style={dirOf(value)}>
           {value}
         </Text>
       ) : null}
