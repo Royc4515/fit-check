@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-19 (MCP bundle survives the deploy transport)
+
+- What failed: the first production deploy of the mcp bundle was refused ("Unterminated regexp literal"). The deploy tool carries the bundle as a JSON string; esbuild's default ASCII output had written non-ASCII characters as `\uXXXX`, and the label's single-line regex held `\u2028` / `\u2029`, which decoded to raw line terminators. Production was unchanged.
+- Fix: `day-context.ts` checks line breaks by code point (no regex, no escapes); `redraw-spec.ts` `cleanFreeText` uses `\x00-\x1f` instead of `\u0000-\u001f`; `scripts/bundle-mcp.sh` passes `--charset=utf8`. `engine.js` had no escapes.
+- Guard: `scripts/bundle-mcp.sh` now fails if the bundle holds a backslash-u sequence, a raw U+2028/U+2029 or a control character U+0000-U+0008.
+
 ## 2026-11-19 (Friday is for Shabbat: fixes from the independent verification)
 
 - Day-tab change: one cross-fade in motion.state, the two looks at the same time (was a fade out then a fade in, about 440 ms: a garment's fade restarted when its old layer was cleared). The forecast line's slot is held on the today tab, so the hero keeps its box (390: 354 px at y 309 throughout, was 388 -> 354 and 275 -> 309); when status lines differ the hero keeps its size until the fade ends.
