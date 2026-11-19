@@ -1063,6 +1063,12 @@
       "away": "reserve duty",
       "lent": "lent",
       "home": "home"
+    },
+    "slotTitle": {
+      "top": "Top",
+      "bottom": "Trousers",
+      "shoes": "Shoes",
+      "layer": "Layer"
     }
   }
 }
