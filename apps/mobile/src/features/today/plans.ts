@@ -1,7 +1,7 @@
 import { FESTIVE_FORMALITY_STEPS, NO_ADJUSTMENT, type DayAdjustment, type PairWeights } from "@fit-check/engine";
-import type { Item } from "@fit-check/schema";
+import type { Item, OccasionType } from "@fit-check/schema";
 import type { FeedbackHistory, RecentWear, TodayRecord } from "../../data/feedback";
-import { planToday, type DayInput, type Swaps, type TodayPlan } from "./outfit";
+import { contextTypeOf, planToday, type DayInput, type Swaps, type TodayPlan } from "./outfit";
 
 /** One day's plan on Today: today first, then each planned phone-free day (DESIGN.md "שלב 4.1"). */
 export type DayPlan = {
@@ -22,8 +22,37 @@ export type DayPlan = {
  * day's taps, not a hidden term: the sheet and the "adjusted for today" line show it, and reset or "more casual"
  * take it back.
  */
-export function defaultAdjustment(day: Pick<DayInput, "festive">): DayAdjustment {
-  return day.festive ? { temp_steps: 0, formality_steps: FESTIVE_FORMALITY_STEPS } : NO_ADJUSTMENT;
+export function defaultAdjustment(day: Pick<DayInput, "festive" | "occasion">): DayAdjustment {
+  // An occasion is chosen outright and brings its own rules: no festive step on top (as the shared planDay rules).
+  return day.festive && !day.occasion ? { temp_steps: 0, formality_steps: FESTIVE_FORMALITY_STEPS } : NO_ADJUSTMENT;
+}
+
+/**
+ * Whether a day's occasion (date, interview, event) may decide its look (DESIGN.md "שלב 4.5" item 3, corrected
+ * 19.11): on a weekday, yes; on Shabbat or a holiday for someone who keeps them, only after that date's havdalah
+ * (a date on Saturday night gets a date look; the Shabbat look itself stays Shabbat's), and never on a date without
+ * a havdalah (the first day of a two-day holiday). A planned day's tab ("for Shabbat", "for the holiday") never.
+ * With the observance switch off, Shabbat and holidays already reach here as weekdays, so the occasion always wins.
+ * Pure: the time comes in as data.
+ *
+ * @param args.tab "today", or "planned" for a tab after it.
+ * @param args.dayType The calendar's day type for that date, after the observance switch (dayTypeFor).
+ * @param args.havdalahToday That date's havdalah `HH:MM` when it falls on that date (shabbatTimes `end`), else null.
+ * @param args.now The local time `HH:MM`.
+ */
+export function occasionMayApply(args: { tab: "today" | "planned"; dayType: DayInput["dayType"]; havdalahToday: string | null; now: string }): boolean {
+  if (args.tab === "planned") return false;
+  if (args.dayType === "weekday") return true;
+  // Zero-padded `HH:MM` strings compare in time order.
+  return args.havdalahToday !== null && args.now >= args.havdalahToday;
+}
+
+/** The occasion that decides a day's look: the stored one when it may apply (occasionMayApply), else none. */
+export function occasionInEffect(
+  occasion: OccasionType | null | undefined,
+  args: Parameters<typeof occasionMayApply>[0]
+): OccasionType | undefined {
+  return occasion && occasionMayApply(args) ? occasion : undefined;
 }
 
 /** The look a day stands for in the planning of the days after it: recorded if worn, else the one shown. */
@@ -79,7 +108,7 @@ export function planDays(args: {
       const prev = out[j]!;
       if (j === 0 && prev.plan.kind === "worn") continue;
       const look = lookOf(prev.plan);
-      if (look) earlier.push({ date: prev.day.date, item_ids: look, context_key: null });
+      if (look) earlier.push({ date: prev.day.date, item_ids: look, context_key: null, context_type: contextTypeOf(prev.day) });
     }
     const dayHistory: FeedbackHistory = { recent: [...earlier, ...history.recent], today: records, ahead: [], samples: history.samples };
     const adjustment = adjustments[k];
