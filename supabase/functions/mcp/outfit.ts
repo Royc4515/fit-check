@@ -4,6 +4,7 @@ import type { Item } from "@fit-check/schema/item.ts";
 import { StylingRequestSchema, type StylingRequest } from "@fit-check/schema/context.ts";
 import { OpenMeteoHourlySchema } from "@fit-check/schema/external.ts";
 import {
+  adjustRequest,
   DEFAULT_CONTEXT_RULES,
   dueForLaundry,
   feedbackUpdates,
@@ -14,7 +15,10 @@ import {
   summarizeDay,
   type PairWeights,
 } from "../_shared/engine.js";
+import { planDay } from "@fit-check/schema/day-context.ts";
 import type { ToolContext, ToolResult } from "./tools.ts";
+import { loadObservesShabbat, loadOccasionRows } from "./context.ts";
+import { israelDate } from "./time.ts";
 
 /**
  * Today's outfit and wear logging over MCP (Roy, 2026-11-17, phase 2).
@@ -47,9 +51,6 @@ const LogInput = z.object({
   date: z.string().date().optional(),
   day_type: z.enum(["weekday", "shabbat", "holiday"]).optional(),
 });
-
-const israelDate = (now = new Date()) =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 
 function daysBefore(date: string, days: number): string {
   const [y, m, d] = date.split("-").map(Number) as [number, number, number];
@@ -129,21 +130,34 @@ const publicUrl = (ctx: ToolContext, path: string | null) =>
 export async function outfitToday(args: unknown, ctx: ToolContext): Promise<ToolResult> {
   const input = TodayInput.parse(args ?? {});
   const date = input.date ?? israelDate();
-  const [dayType, weather, wardrobe, history] = await Promise.all([
+  const [dayType, weather, wardrobe, history, occasionRows, observesShabbat] = await Promise.all([
     input.day_type ? Promise.resolve(input.day_type) : dayTypeOf(date),
     weatherFor(date, input.lat ?? DEFAULT_PLACE.lat, input.lon ?? DEFAULT_PLACE.lon),
     loadWardrobe(ctx),
     loadHistory(ctx, date),
+    loadOccasionRows(ctx, date),
+    loadObservesShabbat(ctx),
   ]);
-  const req = StylingRequestSchema.parse({
-    today: date,
-    // Holidays share the Shabbat rules (PRD section 7), as in the app.
-    context: DEFAULT_CONTEXT_RULES[dayType === "weekday" ? "weekday" : dayType],
-    weather: weather ?? FALLBACK_WEATHER,
-    recent_wears: history.recent,
-    anchor_item_id: input.anchor_item_id ?? null,
-    max_candidates: 8,
+  const occasion = occasionRows[0] ?? null;
+  const plan = planDay({
+    dayType,
+    dayTypeForced: input.day_type !== undefined,
+    occasion: occasion && occasion.source !== "hebcal" ? { type: occasion.type, label: occasion.label, source: occasion.source } : null,
+    observesShabbat,
   });
+  // Rule sets come from the engine's DEFAULT_CONTEXT_RULES (holidays share the Shabbat rules, PRD section 7, as in
+  // the app); "one step dressier" is the engine's own formality adjustment, not scoring re-implemented here.
+  const req = adjustRequest(
+    StylingRequestSchema.parse({
+      today: date,
+      context: DEFAULT_CONTEXT_RULES[plan.rules],
+      weather: weather ?? FALLBACK_WEATHER,
+      recent_wears: history.recent,
+      anchor_item_id: input.anchor_item_id ?? null,
+      max_candidates: 8,
+    }),
+    { temp_steps: 0, formality_steps: plan.formality_steps },
+  );
   const same = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
   const byId = new Map(wardrobe.items.map((i) => [i.id, i]));
   const candidates = generateCandidates(wardrobe.items, req, wardrobe.weights)
@@ -168,7 +182,9 @@ export async function outfitToday(args: unknown, ctx: ToolContext): Promise<Tool
         text: JSON.stringify(
           {
             date,
-            day_type: dayType,
+            day_type: plan.rules,
+            context_used: plan.reason,
+            calendar_day_type: dayType,
             weather: weather ?? { ...FALLBACK_WEATHER, note: "forecast unavailable; mild default used" },
             already_answered_today: history.answeredToday.length,
             how_to_answer:
