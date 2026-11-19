@@ -1,14 +1,18 @@
 import type { PairWeights } from "@fit-check/engine";
 import { AVAILABILITIES, type Availability, type Item, type ItemTags } from "@fit-check/schema";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useNavigation, usePreventRemove } from "expo-router";
+import { useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { SpecTable, type SpecRow } from "../../components/editorial/SpecTable";
 import { Chip, Display, Meta, Segmented, StatusLine } from "../../components/ui";
+import { reasonOf } from "../../data/intake";
+import { failureMessage } from "../intake/failure";
 import { hasSleeves, isBottom, legOf } from "../intake/tagRules";
 import { NOTES_COUNTER_FROM, NOTES_MAX, type ItemChange, type ItemEdits } from "./edit";
 import { GoesWith } from "./GoesWith";
-import { InlineText } from "./InlineText";
+import { InlineText, NotesPencil } from "./InlineText";
+import { useTextWriting } from "./useTextWriting";
 import { fieldLabelKey, TagSheet, type TagField } from "./TagSheet";
 import { useItemWears } from "./useItemWears";
 import { WearHistory } from "./WearHistory";
@@ -21,7 +25,7 @@ const ltr = (s: string) => `⁦${s}⁩`;
  * A status line under the part of the screen it is about: the name, the availability, or the very tag row that
  * failed (under the chip that just rolled back, not at the end of a table that may be below the fold).
  */
-type Failure = { where: "identity" | "availability" | "notes" | TagField };
+type Failure = { where: "availability" | TagField };
 
 type Props = {
   item: Item;
@@ -36,6 +40,12 @@ type Props = {
   onScrollTop: () => void;
   /** Phone layout: "goes with" runs to the screen edges. */
   bleed: boolean;
+  /**
+   * Filled with the writing's `requestLeave`: every way out the screen starts itself (its back button, hardware back,
+   * another item, removal) goes through it, so an open change is saved first and the screen only goes once it is
+   * saved (DESIGN.md section 4, "יציאה מהמסך עם שינוי פתוח ותקין").
+   */
+  leaveRef?: MutableRefObject<((proceed: () => void) => void) | null>;
 };
 
 /**
@@ -44,7 +54,7 @@ type Props = {
  * choice (no edit mode, no save button); the notes, edited in place; the wear history; "goes with". Saves are optimistic upstream (the item route rolls back a failed write);
  * this component only says that it failed, next to what failed.
  */
-export function ItemDetails({ item, items, pairWeights, onAvailability, edits, imageStatus, onOpenOther, onScrollTop, bleed }: Props) {
+export function ItemDetails({ item, items, pairWeights, onAvailability, edits, imageStatus, onOpenOther, onScrollTop, bleed, leaveRef }: Props) {
   const { t } = useTranslation();
   const [failure, setFailure] = useState<Failure | null>(null);
   // A write can fail after the screen is gone (back right after an edit): the wardrobe store is still rolled back by
@@ -59,6 +69,26 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
   const fail = (where: Failure["where"]) => {
     if (mounted.current) setFailure({ where });
   };
+  const itemId = item.id;
+  const save = edits?.save;
+  const saveText = useCallback((c: ItemChange) => (save ? save(itemId, c) : Promise.resolve()), [save, itemId]);
+  const failureText = useCallback(
+    (error: unknown) => {
+      const reason = reasonOf(error);
+      const why = reason === "preview" || reason.startsWith("http_") ? failureMessage(t, reason) : t("item.writing.failedUnknown");
+      return t("item.writing.failed", { reason: why });
+    },
+    [t]
+  );
+  const writing = useTextWriting(edits ? saveText : null, failureText);
+  const { requestLeave, holds } = writing;
+  useEffect(() => {
+    if (leaveRef) leaveRef.current = requestLeave;
+  }, [leaveRef, requestLeave]);
+  // Ways out the screen does not start itself (the browser's back, a swipe, a route reset) are held by the navigator
+  // while anything typed could be lost, and released through the same decision: one save, then the same action.
+  const navigation = useNavigation();
+  usePreventRemove(holds, ({ data }) => requestLeave(() => navigation.dispatch(data.action)));
   const [field, setField] = useState<TagField | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   // The item as it was when the screen opened: a pick back to it restores it exactly (edit.ts colorPatch/legPatch).
@@ -171,12 +201,13 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
 
       {edits ? (
         <InlineText
+          field="name"
           value={item.name}
+          writing={writing}
           label={t("item.edit.name")}
+          editLabel={t("item.writing.editName")}
           size="display-xl"
           headingLevel={1}
-          onBegin={moveOn}
-          onCommit={(name) => change({ name }, "identity")}
         >
           <Display size="display-xl" level={null} style={align}>
             {item.name}
@@ -190,26 +221,22 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
       <View className="mt-1">
         {edits ? (
           <InlineText
+            field="brand"
             value={item.brand ?? ""}
+            writing={writing}
             label={t("item.edit.brand")}
+            editLabel={t("item.writing.editBrand")}
             emptyText={t("item.addBrand")}
             size="body-sm"
-            onBegin={moveOn}
-            onCommit={(brand) => change({ brand }, "identity")}
           >
-            {item.brand ? (
-              <Text className="font-body text-body-sm text-ink-soft">{item.brand}</Text>
-            ) : (
-              <View className="border-b border-hairline pb-1">
-                <Text className="font-body text-body-sm text-ink-faint">{t("item.addBrand")}</Text>
-              </View>
-            )}
+            <Text className="font-body text-body-sm text-ink-soft" style={align}>
+              {item.brand}
+            </Text>
           </InlineText>
         ) : item.brand ? (
           <Text className="font-body text-body-sm text-ink-soft">{item.brand}</Text>
         ) : null}
       </View>
-      {failed("identity", t("item.saveFailed"))}
 
       <View className="mt-12">
         <Meta>{t("item.where")}</Meta>
@@ -230,41 +257,39 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
         <SpecTable rows={rows} />
       </View>
 
-      {/* Notes: free text edited in place like the name, several lines, saved when the field is left. Read-only and
-          empty, there is nothing to show. */}
+      {/* Notes: free text written in place (DESIGN.md section 4), the pencil at the end of the heading row. Read-only
+          and empty, there is nothing to show. */}
       {edits || item.notes ? (
         <View className="mt-12">
-          <Display>{t("item.notes.title")}</Display>
+          <View className="flex-row items-center justify-between" style={{ gap: 8 }}>
+            <Display>{t("item.notes.title")}</Display>
+            {edits ? <NotesPencil writing={writing} value={item.notes ?? ""} label={t("item.writing.editNotes")} /> : null}
+          </View>
           <View className="mt-4">
             {edits ? (
               <InlineText
+                field="notes"
                 value={item.notes ?? ""}
+                writing={writing}
                 label={t("item.notes.title")}
+                editLabel={t("item.writing.editNotes")}
                 emptyText={t("item.notes.add")}
                 placeholder={t("item.notes.add")}
                 size="body"
                 multiline
                 maxLength={NOTES_MAX}
                 counterFrom={NOTES_COUNTER_FROM}
-                onBegin={moveOn}
-                onCommit={(notes) => change({ notes }, "notes")}
+                pencilElsewhere
               >
-                {item.notes ? (
-                  <Text className="font-body text-body text-ink" style={align}>
-                    {item.notes}
-                  </Text>
-                ) : (
-                  <View className="border-b border-hairline pb-1">
-                    <Text className="font-body text-body text-ink-faint">{t("item.notes.add")}</Text>
-                  </View>
-                )}
+                <Text className="font-body text-body text-ink" style={align}>
+                  {item.notes}
+                </Text>
               </InlineText>
             ) : (
               <Text className="font-body text-body text-ink" style={align}>
                 {item.notes}
               </Text>
             )}
-            {failed("notes", t("item.saveFailed"))}
           </View>
         </View>
       ) : null}

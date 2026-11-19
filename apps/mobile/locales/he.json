@@ -27,7 +27,15 @@
       "storm": "סופת רעמים"
     },
     "noWeather": "אין כרגע נתוני מזג אוויר",
-    "candles": "כניסת שבת {{time}}",
+    "candles": "כניסת שבת {{time}}",
+    "candlesOther": "הדלקת נרות {{time}}",
+    "shabbatEnd": "צאת שבת {{time}}",
+    "shabbatEndTomorrow": "צאת שבת מחר {{time}}",
+    "holidayEnd": "צאת החג {{time}}",
+    "holidayEndTomorrow": "צאת החג מחר {{time}}",
+    "fastEnd": "צאת הצום {{time}}",
+    "fastEndTomorrow": "צאת הצום מחר {{time}}",
+    "timesJoin": "{{first}} · {{second}}",
     "credits": "מזג אוויר: Open-Meteo · לוח עברי: Hebcal",
     "explain": {
       "base": "{{day}}, מרגיש כמו {{min}} עד {{max}} מעלות.",
@@ -55,7 +63,7 @@
       "reset": "איפוס",
       "learned": "מותאם לך מהלבישות האחרונות: {{parts}}"
     },
-    "keepHome": "השאר בבית",
+    "keepHome": "אל תעביר לכביסה",
     "missing": "כדי להרכיב תלבושת חסרים בארון {{what}}. צלם אותם ותקבל הצעה.",
     "missingSlot": {
       "top": "חולצות",
@@ -449,6 +457,15 @@
       "confirmBody": "התמונה המשופרת תוחלף בחיתוך מהצילום המקורי.",
       "confirm": "חתוך מחדש",
       "cancel": "ביטול"
+    },
+    "writing": {
+      "editName": "עריכת שם",
+      "editBrand": "עריכת מותג",
+      "editNotes": "עריכת הערות",
+      "saved": "נשמר",
+      "failed": "לא נשמר. {{reason}}",
+      "failedUnknown": "בדוק את החיבור ונסה שוב.",
+      "retry": "נסה שוב"
     }
   },
   "auth": {
@@ -470,7 +487,9 @@
     "selected": "נבחר",
     "back": "היום",
     "label": "מיקום: {{place}}",
-    "genericCandles": "זמני השבת לפי קואורדינטות (18 דקות לפני השקיעה)"
+    "currentMeta": "מזג האוויר וזמני השבת לפי המקום שבו אתה נמצא",
+    "currentWithPlace": "מיקום נוכחי · {{place}}",
+    "osmCredit": "שמות מקומות: © OpenStreetMap"
   },
   "intake": {
     "title": "הוספת בגדים",
@@ -700,12 +719,16 @@
     "close": "סגירה",
     "remove": "הסרת {{label}}",
     "loading": "טוען",
-    "imageFailed": "התמונה לא נטענה"
+    "imageFailed": "התמונה לא נטענה",
+    "save": "שמירה",
+    "cancel": "ביטול",
+    "saving": "שומר"
   },
   "ds": {
     "title": "מערכת עיצוב",
     "intro": "כל רכיב, כל וריאנט וכל מצב. עמוד פנימי, לא מקושר מהאפליקציה.",
     "section": {
+      "metaLink": "קישור מטא",
       "buttons": "כפתורים",
       "chips": "צ'יפים",
       "segmented": "בקר מקוטע",
@@ -723,7 +746,7 @@
       "intake": "הוספה",
       "flatLay": "Flat-lay",
       "stepper": "מונה צעדים",
-      "item": "מסך פריט: לבישות",
+      "item": "מסך פריט: כתיבה במקום ולבישות",
       "insights": "תובנות"
     },
     "item": {
@@ -731,7 +754,13 @@
       "once": "לבישה אחת",
       "never": "עוד לא נלבש",
       "loading": "טעינה",
-      "failed": "כישלון"
+      "failed": "כישלון",
+      "writingRest": "מנוחה",
+      "writingEditing": "כתיבה, עם שינוי",
+      "writingSaved": "אחרי שמירה",
+      "writingFailed": "השמירה נכשלה",
+      "writingFixtureWord": "חולצה",
+      "writingFixtureNote": "לכבס בכביסה עדינה, בלי מייבש."
     },
     "state": {
       "default": "רגיל",

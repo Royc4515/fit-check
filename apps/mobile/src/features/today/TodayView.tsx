@@ -77,16 +77,22 @@ const DESKTOP_GAP = 64;
 const DESKTOP_GUTTER = 32;
 /** Mobile layout, wide windows (>= this): the flat-lay is a centred card, not full-bleed, and capped to fit above the bar. */
 const CARD_MIN_WIDTH = 600;
-/** Air between the flat-lay's bottom edge and the floating bar's top edge at scroll top. */
-const HERO_BAR_GAP = 8;
-/** Never smaller than this when capping (a short window would otherwise shrink the hero to a thumbnail). */
+/**
+ * Air kept between the flat-lay's bottom edge and whatever ends the free space at scroll top: the floating bar's top,
+ * or the bottom of the scene (the tab bar's top) when there is no bar (DESIGN.md section 3 "היום" item 2).
+ */
+const HERO_CLEARANCE = 16;
+/**
+ * The 4:5 composition is never narrower than this when capping (a short window would otherwise shrink the hero to
+ * a thumbnail); below it the hero keeps this size and the page scrolls.
+ */
 const HERO_MIN = 240;
 /** Mobile layout's scroll padding above the masthead, and the space between masthead and flat-lay (see its comment). */
 const MOBILE_TOP = 24;
 const MOBILE_HERO_GAP = 16;
 
 /** DOM ids of the places focus is sent to after an action (web only; see the focus effect in TodayView). */
-const FOCUS_BAR_STATUS = "today-bar-status";
+const FOCUS_WORN_STATUS = "today-worn-status";
 const FOCUS_SKIP_STATUS = "today-skip-status";
 const FOCUS_WEAR = "today-wear";
 /** The first thing in a container that a keyboard can reach: react-native-web gives every live pressable tabindex 0. */
@@ -108,8 +114,10 @@ type StatusItem = {
  *
  * Masthead (title, dateline, weather that opens the location), the flat-lay of the outfit (tap a garment to swap
  * it, swipe to skip), its numbered legend, the reason as a pull quote, and a floating bar in the thumb zone with
- * "wearing it" (the screen's one accent) and `tune` for the rest. Statuses (worn, skipped, failed, laundry) replace
- * or join the bar so they are seen where the hand already is. Desktop (>= 900): two columns, nothing floats.
+ * "wearing it" (the screen's one accent) and `tune` for the rest. Once the outfit is worn the bar is gone and the
+ * worn and laundry lines take the skip line's place between masthead and flat-lay, so the whole flat-lay stays in
+ * view (DESIGN.md section 3 "היום" item 8). A failed "wearing it" is the only status that stays in the bar, next to
+ * the button it belongs to. Desktop (>= 900): two columns, nothing floats.
  */
 export function TodayView({ items, pairWeights, day, history, actions, busy, failed, laundered, stylist }: Props) {
   const { t, i18n } = useTranslation();
@@ -127,13 +135,18 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const [piece, setPiece] = useState<{ slot: Slot; item: Item } | null>(null);
   const [pieceOpen, setPieceOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
+  // The floating bar's measured height; 0 = not rendered or not measured yet (reset when the bar leaves, so a bar that
+  // comes back is never capped against its old height).
   const [barHeight, setBarHeight] = useState(0);
-  // Desktop: the scene's height (under the top nav), to cap the flat-lay so it is never cut off.
+  // The scene's height (desktop: under the top nav; mobile: down to the tab bar's top), to cap the flat-lay.
   const [viewportHeight, setViewportHeight] = useState(0);
-  // Mobile layout: the masthead's height, to cap the flat-lay so the whole surface clears the floating bar.
+  // Mobile layout: what stands above the flat-lay, measured, so the cap follows every line that joins it. The
+  // masthead (a Friday adds the times row) and the status stack (skip, worn, laundry and failure lines); null =
+  // not measured yet. Sizes, not positions: on web onLayout comes from a ResizeObserver, which a move does not fire.
   const [mastheadHeight, setMastheadHeight] = useState(0);
-  // Where focus goes once the action that was just taken has settled (web). The bar's button is replaced by a status
-  // line when it works, and a focused element that unmounts drops focus to <body>.
+  const [aboveHeroHeight, setAboveHeroHeight] = useState<number | null>(null);
+  // Where focus goes once the action that was just taken has settled (web). The button the hand was on is replaced by
+  // a status line when it works, and a focused element that unmounts drops focus to <body>.
   const [focusRequest, setFocusRequest] = useState<{ after: "wear" | "skip" | "undo"; n: number } | null>(null);
   const focusHandled = useRef(0);
   const requestFocus = (after: "wear" | "skip" | "undo") => setFocusRequest((cur) => ({ after, n: (cur?.n ?? 0) + 1 }));
@@ -320,20 +333,31 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   );
   const statusLines = statuses.map(lineOf);
   // The skip line lives above the hero, not in the bar: it can stay all day, and a bar that grows with it would
-  // cover a sixth of the phone. The bar keeps a constant height (worn, laundry and failure still replace or join it).
+  // cover a sixth of the phone.
   const skipStatus = statuses.find((s) => s.key === "skip");
-  const barStatusLines = statuses.filter((s) => s.key !== "skip").map(lineOf);
-  // One focusable wrapper (tabIndex -1: reachable by script, not by Tab) so focus has a place to land when the line
-  // has no action of its own (a failure), and screen readers read the whole line when it arrives.
+  // Worn: the bar is gone (nothing left to press), so the worn line, the laundry line and any failure of undo or
+  // keep-home take the skip line's slot above the hero. Pinned to the bottom they covered the shoes (Roy, 19.11).
+  const wornLines = plan.kind === "worn" ? statuses.map(lineOf) : [];
+  // What stays in the bar is a failed "wearing it", beside the button that failed.
+  const barStatusLines = plan.kind === "suggestion" ? statuses.filter((s) => s.key === "failed").map(lineOf) : [];
   const barStatusLine =
     barStatusLines.length > 0 ? (
-      <View nativeID={FOCUS_BAR_STATUS} tabIndex={-1} style={{ gap: 8 }}>
+      <View tabIndex={-1} style={{ gap: 8 }}>
         {barStatusLines}
       </View>
     ) : null;
+  // One focusable wrapper (tabIndex -1: reachable by script, not by Tab) so focus has a place to land when a line
+  // has no action of its own, and screen readers read the whole stack when it arrives.
+  const wornStatus = (className: string) =>
+    wornLines.length > 0 ? (
+      <View className={className} nativeID={FOCUS_WORN_STATUS} tabIndex={-1} style={{ gap: 8 }}>
+        {wornLines}
+      </View>
+    ) : null;
 
-  // After wear / skip / undo the bar's button (or the status line) the hand was on is gone: send focus to the new
-  // status line's first action (undo), or the line itself when it has none, and back to "wearing it" after an undo.
+  // After wear / skip / undo the button (or the status line) the hand was on is gone: send focus to the new status
+  // line's first action (undo), or the wrapper when it has none, and back to "wearing it" (in the bar again) after
+  // an undo.
   // Waits for `busy` to end: a pressable that is still disabled is not a place to put focus.
   const planKind = plan.kind;
   const tuneLabel = t("today.tune");
@@ -347,7 +371,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
       const el = document.getElementById(id);
       return el ? (el.querySelector<HTMLElement>(FIRST_TABBABLE) ?? el) : null;
     };
-    const targetId = planKind === "worn" ? FOCUS_BAR_STATUS : after === "skip" && hasSkipStatus ? FOCUS_SKIP_STATUS : FOCUS_WEAR;
+    const targetId = planKind === "worn" ? FOCUS_WORN_STATUS : after === "skip" && hasSkipStatus ? FOCUS_SKIP_STATUS : FOCUS_WEAR;
     within(targetId)?.focus();
     // don't touch / a skip taken from the adjust sheet finishes while the sheet is still sliding away, and on unmount
     // the sheet's Modal hands focus back to its opener (the tune button), over what was just set. Look again after
@@ -391,15 +415,27 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     ? `${w.temp_min_c}–${w.temp_max_c}°, ${t("today.data.rain")} ${Math.round(w.rain_probability * 100)}%, ${t(`today.sky.${w.sky}`)}`
     : t("today.noWeather");
 
+  // Spec DESIGN.md section 3 "היום" item 1: the entry line is named by the day, the end joins it only when it is
+  // today or tomorrow (data/shabbatTimes.ts decides that).
+  const entryLine = day.candles ? t(day.candles.kind === "shabbat" ? "today.candles" : "today.candlesOther", { time: ltr(day.candles.time) }) : null;
+  // "tomorrow" only when the end is tomorrow's and today is not a Friday: on a Friday every calendar prints just
+  // "Shabbat ends 17:17", on any other day a bare time would read as ending before the candles (DESIGN.md "היום").
+  const endTomorrow = day.end?.day === "tomorrow" && day.candles?.kind !== "shabbat";
+  const endKeys = {
+    shabbat: ["today.shabbatEnd", "today.shabbatEndTomorrow"],
+    holiday: ["today.holidayEnd", "today.holidayEndTomorrow"],
+    fast: ["today.fastEnd", "today.fastEndTomorrow"],
+  } as const;
+  const endLine = day.end ? t(endKeys[day.end.kind][endTomorrow ? 1 : 0], { time: ltr(day.end.time) }) : null;
+  const timesLine = entryLine && endLine ? t("today.timesJoin", { first: entryLine, second: endLine }) : (entryLine ?? endLine);
+
   const masthead = (
     <View>
       <Display size="display-xl" level={1}>
         {t("today.title")}
       </Display>
       <Text className="mt-2 font-body text-body-sm text-ink-soft">{hebrew ? `${hebrew} · ${gregorian}` : gregorian}</Text>
-      {day.candleLighting ? (
-        <Text className="mt-1 font-body text-body-sm text-ink-soft">{t("today.candles", { time: ltr(day.candleLighting) })}</Text>
-      ) : null}
+      {timesLine ? <Text className="mt-1 font-body text-body-sm text-ink-soft">{timesLine}</Text> : null}
       <Pressable
         {...focusRingProps}
         onPress={() => router.push("/location")}
@@ -417,13 +453,24 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     </View>
   );
 
-  // Mobile layout in a window wide enough to show side margins (600-899): the flat-lay becomes a centred card whose
-  // whole 4:5 surface clears the floating bar at scroll top (N8: at 899x800 it was 700 high and sat under the bar).
-  // Below 600 it stays full-bleed. The cap uses the measured space; until measured, the column width applies.
+  // Mobile layout: the whole flat-lay is on screen at scroll top, measured, not tuned (DESIGN.md section 3 "היום"
+  // item 2). Paddings tuned to 390 and 360 broke with every extra line (N8, then the laundry, failure and Shabbat
+  // times lines). Free space = from the hero's top edge to the floating bar's top, or to the scene's bottom (the tab
+  // bar's top) when there is no bar, minus HERO_CLEARANCE.
+  // The bar is there exactly when there is a suggestion to wear (barContent below).
+  const hasBar = !desktop && plan.kind === "suggestion";
+  // don't touch / a bar that left (worn) must not keep capping the hero with its old height, and one that comes back
+  // (undo) must not be capped against a stale one before it is measured again.
+  if (!hasBar && barHeight !== 0) setBarHeight(0);
+  const measured = viewportHeight > 0 && mastheadHeight > 0 && aboveHeroHeight !== null && (!hasBar || barHeight > 0);
+  const heroTop = insets.top + MOBILE_TOP + mastheadHeight + (aboveHeroHeight ?? 0) + MOBILE_HERO_GAP;
+  const heroSpace = viewportHeight - (hasBar ? barHeight : 0) - heroTop - HERO_CLEARANCE;
+  // 600-899, a window wide enough for side margins: the flat-lay is a centred card as wide as the space allows.
+  // Below 600 it stays full-bleed and full width, and only its height is capped (FlatLay lays the composition out in
+  // a centred 4:5 frame). Until measured, both render as before (column width, plain 4:5), so first paint does not jump.
   const card = !desktop && width >= CARD_MIN_WIDTH;
-  const heroFits = (viewportHeight - barHeight - (insets.top + MOBILE_TOP) - mastheadHeight - MOBILE_HERO_GAP - HERO_BAR_GAP) / FLAT_LAY_ASPECT;
-  const cardWidth =
-    card && viewportHeight > 0 && mastheadHeight > 0 && barHeight > 0 ? Math.max(HERO_MIN, Math.min(layout.maxContentWidth, heroFits)) : null;
+  const cardWidth = card && measured ? Math.max(HERO_MIN, Math.min(layout.maxContentWidth, heroSpace / FLAT_LAY_ASPECT)) : null;
+  const heroMaxHeight = !desktop && !card && measured ? Math.max(HERO_MIN * FLAT_LAY_ASPECT, heroSpace) : undefined;
 
   const hero =
     pieces.length > 0 ? (
@@ -439,6 +486,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
             radius={desktop || card ? "md" : "none"}
             accessibilityLabel={heroLabel}
             contentStyle={swipe.style}
+            maxHeight={heroMaxHeight}
             onPieceNode={(id, node) => registerOrigin("today", id, node, { tone: flatLayTone(pieces), loose: true })}
           />
         </View>
@@ -511,8 +559,6 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
           />
         </View>
       </>
-    ) : plan.kind === "worn" ? (
-      <>{barStatusLine}</>
     ) : null;
 
   const empty =
@@ -592,6 +638,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
                   {lineOf(skipStatus)}
                 </View>
               ) : null}
+              {outfit ? wornStatus("mt-6") : null}
               {outfit ? (
                 <>
                   <Reveal index={2}>
@@ -599,9 +646,11 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
                   </Reveal>
                   <Reveal index={3}>
                     <View className="mt-12">{quote}</View>
-                    <View className="mt-8">
-                      <ActionBar floating={false}>{barContent}</ActionBar>
-                    </View>
+                    {barContent ? (
+                      <View className="mt-8">
+                        <ActionBar floating={false}>{barContent}</ActionBar>
+                      </View>
+                    ) : null}
                     <View className="mt-12">{credits}</View>
                   </Reveal>
                 </>
@@ -616,16 +665,15 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     );
   }
 
-  const hasBar = barContent !== null;
   return (
     <View className="flex-1 bg-ivory" onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}>
       <View style={{ flex: 1, width: "100%", maxWidth: layout.maxContentWidth, alignSelf: "center" }}>
         <ScrollView
           contentContainerStyle={{
-            // 24 above and 16 between masthead and hero (not 32 and 32): the whole 4:5 flat-lay must clear the floating
-            // bar at scroll top on a 390x844 and a 360x800 phone (it overlapped by 13 and 20px before).
+            // 24 above and 16 between masthead and hero (not 32 and 32): kept from when they were tuned so the flat-lay
+            // cleared the bar; the cap is measured now, and these keep the default day's hero at full 4:5 size.
             paddingTop: insets.top + MOBILE_TOP,
-            // Nothing may end under the floating bar: its measured height (worn and failure lines join it) plus air.
+            // Nothing may end under the floating bar: its measured height (a failure line joins it) plus air.
             // No bottom inset otherwise: the tab bar under the screen owns it.
             paddingBottom: (hasBar ? barHeight : 0) + UNDER_BAR,
           }}
@@ -638,11 +686,15 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
           {outfit ? (
             <>
               <Reveal index={1}>
-                {skipStatus ? (
-                  <View className="mt-6 px-5" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
-                    {lineOf(skipStatus)}
-                  </View>
-                ) : null}
+                {/* Everything between masthead and hero, measured as one block for the hero's cap. */}
+                <View onLayout={(e) => setAboveHeroHeight(e.nativeEvent.layout.height)}>
+                  {skipStatus ? (
+                    <View className="mt-6 px-5" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
+                      {lineOf(skipStatus)}
+                    </View>
+                  ) : null}
+                  {wornStatus("mt-6 px-5")}
+                </View>
                 <View style={{ marginTop: MOBILE_HERO_GAP, ...(cardWidth ? { width: cardWidth, alignSelf: "center" as const } : null) }}>{hero}</View>
               </Reveal>
               <Reveal index={2}>

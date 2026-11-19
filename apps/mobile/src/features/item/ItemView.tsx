@@ -2,7 +2,7 @@ import type { PairWeights } from "@fit-check/engine";
 import type { Availability, Item } from "@fit-check/schema";
 import { Image, type ImageLoadEventData } from "expo-image";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BackHandler, Platform, View, useWindowDimensions } from "react-native";
 import Animated, { useAnimatedRef } from "react-native-reanimated";
@@ -61,7 +61,12 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
   // so it lands on Today, the app's opening screen.
   const goBack = useCallback(() => (router.canGoBack() ? router.back() : router.replace("/")), [router]);
   const flight = useItemFlight(id, geo, heroTone, goBack);
-  const { close, onAspect, onCopyShown } = flight;
+  const { close: fly, onAspect, onCopyShown } = flight;
+  // Every way out this screen starts asks the text writing first (DESIGN.md section 4, "כתיבה במקום"): an open change
+  // is saved, and the flight back starts only once it is saved; a failed save keeps the screen. ItemDetails fills it.
+  const leaveWriting = useRef<((proceed: () => void) => void) | null>(null);
+  const leave = useCallback((proceed: () => void) => (leaveWriting.current ? leaveWriting.current(proceed) : proceed()), []);
+  const close = useCallback(() => leave(() => void fly()), [leave, fly]);
   const scroll = useAnimatedRef<Animated.ScrollView>();
   const [actionsOpen, setActionsOpen] = useState(false);
   const [imageStatus, setImageStatus] = useState<ImageStatus | null>(null);
@@ -85,10 +90,11 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
   }, [item, onAspect, onCopyShown]);
 
   /** Another item from "goes with": measure the pressed garment first so the next screen flies from it. */
-  const openOther = async (scope: string, otherId: string) => {
-    await flyFrom(scope, otherId);
-    router.push({ pathname: "/item/[id]", params: { id: otherId } });
-  };
+  const openOther = (scope: string, otherId: string) =>
+    // This screen stays mounted under the next one, so no navigator event would hold it: ask first.
+    leave(() => {
+      void flyFrom(scope, otherId).then(() => router.push({ pathname: "/item/[id]", params: { id: otherId } }));
+    });
 
   const { ground, pad } = geo;
   const originTone = flight.origin?.tone;
@@ -153,9 +159,10 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
       onAvailability={onAvailability}
       edits={edits}
       imageStatus={status}
-      onOpenOther={(scope, otherId) => void openOther(scope, otherId)}
+      onOpenOther={openOther}
       onScrollTop={() => scroll.current?.scrollTo({ y: 0, animated: true })}
       bleed={!geo.desktop}
+      leaveRef={leaveWriting}
     />
   ) : (
     <Display level={1}>{t("item.notFound")}</Display>
@@ -198,7 +205,16 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
           order, so Back and More are the first two stops, then the details (verification N2). The layers (zIndex)
           keep the paint order: the flying picture over the text, the buttons over the picture. */}
       {geo.desktop ? buttons : null}
-      <Animated.ScrollView ref={scroll} onScroll={flight.onScroll} scrollEventThrottle={16} contentContainerStyle={{ paddingBottom: insets.bottom + BOTTOM_AIR }}>
+      <Animated.ScrollView
+        ref={scroll}
+        onScroll={flight.onScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: insets.bottom + BOTTOM_AIR }}
+        // Native writing (DESIGN.md section 4): iOS insets the scroll by the keyboard and keeps the focused field in
+        // view; a tap on "שמירה" with the keyboard up must press it, not only dismiss the keyboard.
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+      >
         {geo.desktop ? null : buttons}
         <View style={column}>
           <Animated.View style={[{ paddingHorizontal: geo.desktop ? 0 : layout.gutter }, flight.contentStyle]}>{details}</Animated.View>

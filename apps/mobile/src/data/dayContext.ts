@@ -1,7 +1,10 @@
 import { summarizeDay, type DayWeather } from "@fit-check/engine";
 import { HebcalConverterSchema, HebcalItemsSchema, OpenMeteoHourlySchema } from "@fit-check/schema";
+import { candleLightingMinutes } from "./candleLighting";
 import { cacheGet, cacheSet } from "./kv";
-import { resolveLocation, type ResolvedLocation } from "./location";
+import { nextDate, shabbatTimes, type ShabbatTimes } from "./shabbatTimes";
+import { placeNameFor, resolveLocation, type ResolvedLocation } from "./location";
+import type { PlaceLang } from "./placeName";
 
 /**
  * What kind of day it is, from the real world: Israel-local date, Hebrew date and holidays from Hebcal, and the
@@ -21,15 +24,20 @@ export type DayContext = {
   date: string;
   /** 0 = Sunday ... 6 = Saturday, in that time zone. */
   weekday: number;
-  /** City name for a chosen city; null for the default or "current location" (the screen labels those). */
+  /**
+   * City name for a chosen city, or the settlement name of "current location" when it could be found; null for the
+   * default, and for a current location with no name (the screen labels those).
+   */
   place: string | null;
   usesCurrentLocation: boolean;
   hebrewDate: { he: string; en: string } | null;
   weather: DayWeather | null;
   dayType: DayType;
   holiday: { he: string; en: string } | null;
-  /** "HH:MM" when candles are lit today (Friday or a holiday eve), else null. */
-  candleLighting: string | null;
+  /** Candle lighting today ("shabbat" on a Friday, "other" for a holiday eve or night), else null. */
+  candles: ShabbatTimes["candles"];
+  /** The end of Shabbat or the holiday, only when it falls today or tomorrow (see shabbatTimes). */
+  end: ShabbatTimes["end"];
 };
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -53,10 +61,21 @@ function stripNiqqud(s: string): string {
   return s.replace(/[֑-ׇ]/g, "");
 }
 
+// Requests in flight, by URL. Today's data is loaded by every mounted screen that uses useDayContext and again on each
+// reload (location or place-name change) before the first answer has reached the cache; without sharing, the same
+// Hebcal or Open-Meteo URL went out twice per load. Dropped on settle, so a later load asks again.
+const inFlight = new Map<string, Promise<unknown>>();
+
 async function getJson(url: string): Promise<unknown> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${res.status} ${url}`);
-  return res.json();
+  const shared = inFlight.get(url);
+  if (shared) return shared;
+  const request = (async () => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${res.status} ${url}`);
+    return res.json();
+  })().finally(() => inFlight.delete(url));
+  inFlight.set(url, request);
+  return request;
 }
 
 async function loadWeather(date: string, loc: ResolvedLocation): Promise<DayWeather | null> {
@@ -94,52 +113,69 @@ async function loadHebrewDate(date: string): Promise<DayContext["hebrewDate"]> {
   }
 }
 
-async function loadCalendar(date: string, loc: ResolvedLocation): Promise<Pick<DayContext, "holiday" | "candleLighting"> & { yomtov: boolean }> {
-  const key = `fitcheck:hebcal:v2:${date}:${loc.geonameid ?? placeKey(loc)}`;
-  type Cal = { holiday: DayContext["holiday"]; candleLighting: string | null; yomtov: boolean };
+async function loadCalendar(date: string, loc: ResolvedLocation): Promise<Pick<DayContext, "holiday" | "candles" | "end"> & { yomtov: boolean }> {
+  // Coordinates carry the candle minutes in the key: the minutes depend on the point (city boundary), and v4 drops the
+  // entries from before the end-of-Shabbat fields (and, before v3, those computed with Hebcal's coordinate default).
+  const minutes = loc.geonameid ? null : candleLightingMinutes(loc);
+  const key = `fitcheck:hebcal:v4:${date}:${loc.geonameid ?? `${placeKey(loc)}:b${minutes}`}`;
+  type Cal = { holiday: DayContext["holiday"]; candles: DayContext["candles"]; end: DayContext["end"]; yomtov: boolean };
   const cached = await cacheGet<Cal>(key, 24 * HOUR);
   if (cached) return cached;
   try {
-    // A GeoNames id gets the city's own customs (Jerusalem: 40 minutes); coordinates get the generic 18.
+    // A GeoNames id gets the city's own custom from Hebcal (Jerusalem 40, Haifa 30). Coordinates get no city custom
+    // (20 in Israel, 18 abroad), so the app sends the local custom itself as b= (PRD.md, candle lighting).
     const where = loc.geonameid
       ? `geonameid=${loc.geonameid}`
-      : `latitude=${loc.lat}&longitude=${loc.lon}&tzid=${encodeURIComponent(loc.tz)}`;
+      : `latitude=${loc.lat}&longitude=${loc.lon}&tzid=${encodeURIComponent(loc.tz)}&b=${minutes}`;
     // i=on is the Israel holiday schedule; it is correct only inside Israel (one day of Yom Tov, not two).
     const israel = loc.tz === "Asia/Jerusalem" ? "&i=on" : "";
-    const url = `https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&min=on${israel}&c=on&M=on&${where}&start=${date}&end=${date}&lg=he`;
+    // end=tomorrow: the end of Shabbat or of a one-day holiday falls on the next day when candles are lit today.
+    const tomorrow = nextDate(date) ?? date;
+    const url = `https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&min=on${israel}&c=on&M=on&${where}&start=${date}&end=${tomorrow}&lg=he`;
     const { items } = HebcalItemsSchema.parse(await getJson(url));
-    const yomtovItem = items.find((i) => i.yomtov === true);
-    const majorItem = yomtovItem ?? items.find((i) => i.category === "holiday");
-    const candles = items.find((i) => i.category === "candles");
+    const times = shabbatTimes(items, date);
     const value: Cal = {
-      // Detect Yom Tov from the `yomtov` flag, never from the title (Hebcal docs).
-      yomtov: yomtovItem !== undefined,
-      holiday: majorItem ? { he: stripNiqqud(majorItem.hebrew ?? majorItem.title), en: majorItem.title_orig ?? majorItem.title } : null,
-      candleLighting: candles ? candles.date.slice(11, 16) : null,
+      // Detect Yom Tov from the `yomtov` flag, never from the title (Hebcal docs). Only today's events count, so
+      // tomorrow's holiday (now in the response) can never change today's day type.
+      yomtov: times.yomtov,
+      holiday: times.holiday ? { he: stripNiqqud(times.holiday.hebrew ?? times.holiday.title), en: times.holiday.title_orig ?? times.holiday.title } : null,
+      candles: times.candles,
+      end: times.end,
     };
     await cacheSet(key, value);
     return value;
   } catch (error) {
     console.warn("Hebcal unavailable", error);
-    return { holiday: null, candleLighting: null, yomtov: false };
+    return { holiday: null, candles: null, end: null, yomtov: false };
   }
 }
 
-/** Loads today's context for the saved location; never throws. */
-export async function loadDayContext(now: Date = new Date()): Promise<DayContext> {
+/**
+ * Loads today's context for the saved location; never throws. `lang` is the app language, used only for the place
+ * name of "my current location" (Nominatim answers in it).
+ */
+export async function loadDayContext(now: Date = new Date(), lang: PlaceLang = "he"): Promise<DayContext> {
   const loc = await resolveLocation();
   const { date, weekday } = localDate(loc.tz, now);
+  // Started now, in parallel with the three loads below, never before them.
+  const namePromise = loc.kind === "current" ? placeNameFor(loc, lang) : Promise.resolve(null);
   const [weather, hebrewDate, cal] = await Promise.all([loadWeather(date, loc), loadHebrewDate(date), loadCalendar(date, loc)]);
+  // don't touch / the name is NOT in the Promise.all: a slow or blocked geocoder (3 s cap) must not hold back the
+  // weather, the date or the Shabbat times. We take it only if it has already settled; otherwise the screen says
+  // "current location" now, and useDayContext reloads when the lookup stores its result (onPlaceNameChange).
+  // The already-resolved null is second in the race, so a settled name wins the tie.
+  const placeName = await Promise.race([namePromise, Promise.resolve(null)]);
   const dayType: DayType = cal.yomtov ? "holiday" : weekday === 6 ? "shabbat" : "weekday";
   return {
     date,
     weekday,
-    place: loc.label,
+    place: loc.label ?? placeName,
     usesCurrentLocation: loc.geonameid === null,
     hebrewDate,
     weather,
     dayType,
     holiday: cal.holiday,
-    candleLighting: cal.candleLighting,
+    candles: cal.candles,
+    end: cal.end,
   };
 }
