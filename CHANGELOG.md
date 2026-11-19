@@ -553,3 +553,8 @@
 - Stage 2 of `docs/REDESIGN_PLAN.md` is complete on `claude/gifted-goldberg-9498c1` (PR #23): wardrobe search, Shabbat and formality filters, archive with restore and undo; item notes, wear history, guarded re-cut; the intake queue; Insights; Profile language switch, archive row and sign-out. No migration, no Edge Function change. `packages/engine` exports `passesContextRules` (behaviour unchanged).
 - Two independent verifications (`docs/redesign-checklist-stage2.md`, `docs/redesign-checklist-recheck.md`) found a live regression from stage 1 (the screen under the item modal disappeared during the flight), a re-cut that would have replaced AI redraws, races in optimistic edits, and keyboard and focus gaps. All fixed; `apps/mobile` now has a vitest suite (21 tests) for the pure logic.
 - Not verified: Android, real writes, the first real wear, a real `ai_calls` read. `TASKS.md` "Open after stage 2" lists them.
+
+## 2026-11-19 (Today: worn state)
+
+- After "לובש" the floating bar is gone and the worn line ("נרשם · ביטול") and the laundry line take the skip line's slot between masthead and flat-lay, so the shoes are no longer covered (DESIGN.md section 3 "היום" item 8). A failed "לובש" still shows in the bar. Focus after a wear lands on the worn-status wrapper (`today-worn-status`), after an undo on the button, back in the bar.
+- Look at: `features/today/TodayView.tsx` (`wornStatus`, `barStatusLine`, the focus effect). Not verified: native, a real write (checked on web with the preview writes stubbed in a throwaway build).
