@@ -12,6 +12,7 @@ import {
   EmptyState,
   MasonryGrid,
   ScreenHeader,
+  SearchField,
   Segmented,
   StatusLine,
   TextTabs,
@@ -20,6 +21,7 @@ import {
   type MasonrySection,
   type TextTab,
 } from "../../components/ui";
+import { useLastRemoved } from "../../data/WardrobeProvider";
 import { tileAspect } from "../../theme/tileTone";
 import { layout, masonryColumnsFor } from "../../theme/tokens";
 import { measureCell, registerCell, setOrigin } from "../item/transition";
@@ -33,6 +35,7 @@ import {
   inScope,
   isReserveItem,
   listed,
+  matchesQuery,
   presentCategories,
   SHEET_FACETS,
   swatchesOf,
@@ -42,6 +45,12 @@ import {
 } from "./filters";
 import { ItemActionsSheet } from "./ItemActionsSheet";
 import { SwatchRow } from "./SwatchRow";
+
+/**
+ * Takes no space and paints nothing but stays in the accessibility tree. A 1px clipped box rather than
+ * `display: none` / opacity 0 / `aria-hidden`, which would remove it from screen readers too.
+ */
+const VISUALLY_HIDDEN = { position: "absolute", width: 1, height: 1, margin: -1, overflow: "hidden", padding: 0 } as const;
 
 const ltr = (s: string | number) => `⁦${s}⁩`;
 
@@ -62,7 +71,12 @@ type Props = {
   onAvailability?: (id: string, next: Availability, prev: Availability) => Promise<void>;
   /** Removes an item from the wardrobe (archive); rejects when the write failed. */
   onArchive?: (id: string) => Promise<void>;
+  /** Puts an archived item back (the undo after a removal); optimistic in the container, rejects when the write failed. */
+  onRestore?: (id: string) => Promise<void>;
 };
+
+/** The desktop header keeps the search field open at this width (DESIGN.md "שלב 2", "חיפוש בארון"). */
+const SEARCH_W = 280;
 
 /**
  * "ארון" (DESIGN.md section 3). Pure presentation; app/(tabs)/wardrobe.tsx supplies the items and the writes.
@@ -74,8 +88,12 @@ type Props = {
  * Reserve duty (PRD 4): the backpack turns the grid into a picker of what usually goes (or everything); the picked
  * items become `away` and are never suggested. While anything is away, a line under the header says so and offers
  * "back, to the laundry" (the usual case after a weekend on base), "back, clean" and "add more".
+ *
+ * Stage 2: `search` swaps the title row for a search field (always open on desktop) that narrows by name or brand on
+ * top of the category and filters; the sheet gains "for Shabbat" and formality; a removal from the long-press sheet
+ * leaves an undo line pinned under the category row until the next action.
  */
-export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) {
+export function WardrobeView({ all, onMove, onAvailability, onArchive, onRestore }: Props) {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -93,6 +111,11 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
   // The actions sheet keeps the id it was opened for, so its title does not vanish under the closing animation.
   const [actionsId, setActionsId] = useState<string | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [removed, setRemoved] = useLastRemoved();
+  // Every other action on the screen ends the undo offer (DESIGN.md "ארכיון": "עד הפעולה הבאה").
+  const settle = useCallback(() => setRemoved(null), [setRemoved]);
 
   const [packing, setPacking] = useState(false);
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
@@ -115,11 +138,40 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
     const scoped = inScope(all, activeScope);
     return packing && !packAll ? scoped.filter(isReserveItem) : scoped;
   }, [all, activeScope, packing, packAll]);
-  const visible = useMemo(() => applyFilters(base, selection), [base, selection]);
-  const swatches = useMemo(() => swatchesOf(applyFilters(base, selection, "color"), selection.color), [base, selection]);
-  const facets = useMemo(() => deriveFacets(base, SHEET_FACETS, selection), [base, selection]);
+  // The search narrows the scope like a facet would, so the swatches and the sheet's chips offer only what can match.
+  const searched = useMemo(() => base.filter((i) => matchesQuery(i, query)), [base, query]);
+  const visible = useMemo(() => applyFilters(searched, selection), [searched, selection]);
+  const swatches = useMemo(() => swatchesOf(applyFilters(searched, selection, "color"), selection.color), [searched, selection]);
+  const facets = useMemo(() => deriveFacets(searched, SHEET_FACETS, selection), [searched, selection]);
   const sheetActive = SHEET_FACETS.some((f) => selection[f] !== undefined);
   const anyFilter = sheetActive || selection.color !== undefined || activeScope !== "all";
+  const queryActive = query.trim() !== "";
+
+  // Under a filter or search, a category with no match is a dead tab that opens an empty state. Counted through the
+  // same applyFilters/matchesQuery the grid uses, per category, ignoring the current scope (the tabs are the scope).
+  const narrowing = sheetActive || selection.color !== undefined || queryActive || (packing && !packAll);
+  const shownCategories = useMemo(() => {
+    if (!narrowing) return categories;
+    const pool = packing && !packAll ? listed(all).filter(isReserveItem) : listed(all);
+    const matching = new Set(applyFilters(pool.filter((i) => matchesQuery(i, query)), selection).map((i) => i.tags.category));
+    // don't touch / the selected tab stays even when empty, so the selection never vanishes under the reader
+    return categories.filter((c) => matching.has(c) || c === activeScope);
+  }, [narrowing, categories, all, packing, packAll, query, selection, activeScope]);
+
+  const changeQuery = (text: string) => {
+    settle();
+    setQuery(text);
+  };
+  const openSearch = () => {
+    settle();
+    setSearchOpen(true);
+  };
+  // Close = clear: a hidden query still narrowing the grid would read as missing clothes.
+  const closeSearch = () => {
+    settle();
+    setQuery("");
+    setSearchOpen(false);
+  };
 
   // A re-filter while deep in the grid would leave the reader in the middle of a different list: bring the sticky
   // row back to the top, where the new result starts. Never scrolls down, and never above the header.
@@ -127,15 +179,45 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
     if (scrollY.current > stickyY.current) scrollRef.current?.scrollTo({ y: stickyY.current, animated: false });
   }, [activeScope, selection, packing, packAll]);
 
-  const toggle = (facet: "color" | SheetFacet, value: string) =>
+  const toggle = (facet: "color" | SheetFacet, value: string) => {
+    settle();
     setSelection((prev) => ({ ...prev, [facet]: prev[facet] === value ? undefined : value }));
-  const clearSheet = () => setSelection((prev) => ({ color: prev.color }));
+  };
+  const clearSheet = () => {
+    settle();
+    setSelection((prev) => ({ color: prev.color }));
+  };
   const clearAll = () => {
+    settle();
     setSelection({});
     setScope("all");
   };
   // The row's "נקה" keeps the category: it is the screen's scope (the tab the reader chose), not a filter on it.
-  const clearFilters = () => setSelection({});
+  const clearFilters = () => {
+    settle();
+    setSelection({});
+  };
+  const changeScope = (next: CategoryScope) => {
+    settle();
+    setScope(next);
+  };
+
+  const archiveFromSheet = onArchive
+    ? (item: Item) =>
+        onArchive(item.id).then(() => {
+          setRemoved({ id: item.id, name: item.name, failed: false });
+        })
+    : undefined;
+  // Optimistic in the container: the tile is back at once and the line goes; a failed write brings the line back as an error.
+  const undoRemove = () => {
+    if (!removed || !onRestore) return;
+    const { id, name } = removed;
+    setRemoved(null);
+    onRestore(id).catch((error: unknown) => {
+      console.error("Restore failed", error);
+      setRemoved({ id, name, failed: true });
+    });
+  };
   const filtersActive = sheetActive || selection.color !== undefined;
 
   const run = (ids: string[], next: Availability, after?: () => void) => {
@@ -161,6 +243,7 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
     []
   );
   const startPacking = () => {
+    settle();
     setFailed(false);
     setPacking(true);
   };
@@ -174,18 +257,23 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
 
   const openItem = useCallback(
     async (id: string) => {
+      settle();
       // Measure first, push second: the item screen needs the rect on its very first frame to start the flight
       // from exactly where the tile is. If measuring fails it just fades in, which is still correct.
       const rect = await measureCell(id);
       if (rect) setOrigin(id, rect);
       router.push({ pathname: "/item/[id]", params: { id } });
     },
-    [router]
+    [router, settle]
   );
-  const openActions = useCallback((id: string) => {
-    setActionsId(id);
-    setActionsOpen(true);
-  }, []);
+  const openActions = useCallback(
+    (id: string) => {
+      settle();
+      setActionsId(id);
+      setActionsOpen(true);
+    },
+    [settle]
+  );
 
   const typeOf = useCallback((i: Item) => t(`item.subcategory.${i.tags.subcategory}`), [t]);
   const renderItem = useCallback(
@@ -234,43 +322,90 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
   }, [activeScope, visible, t]);
 
   const tabs = useMemo<TextTab<CategoryScope>[]>(
-    () => [{ key: "all", label: t("wardrobe.all") }, ...categories.map((c) => ({ key: c, label: t(`wardrobe.category.${c}`) }))],
-    [categories, t]
+    () => [{ key: "all", label: t("wardrobe.all") }, ...shownCategories.map((c) => ({ key: c, label: t(`wardrobe.category.${c}`) }))],
+    [shownCategories, t]
   );
 
   const actionsItem = actionsId ? (all.find((i) => i.id === actionsId) ?? null) : null;
   const pickedLine = picked.size > 0 ? t("wardrobe.reserve.picked", { count: picked.size, n: ltr(picked.size) }) : t("wardrobe.reserve.pickHint");
 
+  const searchField = (
+    <SearchField
+      value={query}
+      onChangeText={changeQuery}
+      placeholder={t("wardrobe.search.placeholder")}
+      // Opened by the search button on a phone: typing starts at once. On desktop the field is just there; taking the
+      // focus on every visit would steal the keyboard from the page.
+      autoFocus={!desktop}
+      onEscape={closeSearch}
+    />
+  );
+
+  const titleRow = (
+    <ScreenHeader
+      title={t("wardrobe.title")}
+      count={visible.length}
+      safeArea={!desktop}
+      actions={
+        <>
+          {desktop ? (
+            <View className="flex-row items-center" style={{ width: SEARCH_W + (queryActive ? layout.hit : 0) }}>
+              <View className="flex-1">{searchField}</View>
+              {queryActive ? <Button variant="icon" icon="close" accessibilityLabel={t("wardrobe.search.clear")} onPress={closeSearch} /> : null}
+            </View>
+          ) : (
+            <Button variant="icon" icon="search" accessibilityLabel={t("wardrobe.search.open")} onPress={openSearch} />
+          )}
+          <Button
+            variant="icon"
+            icon="tune"
+            dot={sheetActive}
+            accessibilityLabel={t(sheetActive ? "wardrobe.filter.openActive" : "wardrobe.filter.open")}
+            expanded={filterOpen}
+            onPress={() => {
+              settle();
+              setFilterOpen(true);
+            }}
+          />
+          {onMove ? (
+            <Button
+              variant="icon"
+              icon="backpack"
+              selected={packing}
+              accessibilityLabel={t("wardrobe.reserve.open")}
+              onPress={() => (packing ? stopPacking() : startPacking())}
+              disabled={busy}
+            />
+          ) : null}
+        </>
+      }
+    />
+  );
+
   const header = (
     // The sticky row starts where the header ends; that is where a re-filter scrolls back to. The 8 below keeps the
     // icons' keyboard focus ring (4 outside the button) clear of the sticky row, which paints over what precedes it.
     <View style={{ width: contentW, alignSelf: "center", paddingBottom: 8 }} onLayout={(e) => (stickyY.current = e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
-      <ScreenHeader
-        title={t("wardrobe.title")}
-        count={visible.length}
-        safeArea={!desktop}
-        actions={
-          <>
-            <Button
-              variant="icon"
-              icon="tune"
-              dot={sheetActive}
-              accessibilityLabel={t(sheetActive ? "wardrobe.filter.openActive" : "wardrobe.filter.open")}
-              onPress={() => setFilterOpen(true)}
-            />
-            {onMove ? (
-              <Button
-                variant="icon"
-                icon="backpack"
-                selected={packing}
-                accessibilityLabel={t("wardrobe.reserve.open")}
-                onPress={() => (packing ? stopPacking() : startPacking())}
-                disabled={busy}
-              />
-            ) : null}
-          </>
-        }
-      />
+      {searchOpen && !desktop ? (
+        // The title row, replaced: field, the live count, close. Same top spacing as the header it stands in for.
+        <View className="flex-row items-center" style={{ paddingTop: insets.top + 32, gap: 8 }}>
+          {/* The screen keeps its level-1 heading while the visible title is out of the way (one h1 per page). */}
+          <Display size="display-xl" level={1} style={VISUALLY_HIDDEN}>
+            {t("wardrobe.title")}
+          </Display>
+          <View className="flex-1">{searchField}</View>
+          <Text
+            className="font-mono text-num-sm text-ink-soft"
+            accessibilityLabel={t("wardrobe.search.results", { count: visible.length })}
+            accessibilityLiveRegion="polite"
+          >
+            {ltr(visible.length)}
+          </Text>
+          <Button variant="icon" icon="close" accessibilityLabel={t("wardrobe.search.close")} onPress={closeSearch} />
+        </View>
+      ) : (
+        titleRow
+      )}
       {packing ? (
         <View className="mt-6">
           <Segmented
@@ -306,8 +441,19 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
   const sticky = (
     <View className="bg-ivory pt-4">
       <View style={{ width: rowWidth, alignSelf: "center" }}>
-        <TextTabs tabs={tabs} value={activeScope} onChange={setScope} accessibilityLabel={t("wardrobe.categories")} inset={rowInset} />
+        <TextTabs tabs={tabs} value={activeScope} onChange={changeScope} accessibilityLabel={t("wardrobe.categories")} inset={rowInset} />
       </View>
+      {removed ? (
+        // In the sticky part on purpose: a long press usually happens deep in the grid, where a line in the header
+        // would be scrolled out of sight. Pinned under the categories it is the top of the grid wherever one is.
+        <View style={{ width: contentW, alignSelf: "center" }} className="pt-2">
+          {removed.failed ? (
+            <StatusLine variant="error" message={t("wardrobe.removed.undoFailed")} action={{ label: t("common.retry"), onPress: undoRemove }} />
+          ) : (
+            <StatusLine variant="ok" message={t("wardrobe.removed.message")} action={{ label: t("wardrobe.removed.undo"), onPress: undoRemove }} />
+          )}
+        </View>
+      ) : null}
     </View>
   );
 
@@ -342,7 +488,7 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
           </ScrollView>
           {/* Outside the scrolling part so clear-all is always in view, whatever the chips' count or width. */}
           <View style={{ paddingEnd: rowInset }}>
-            <Button variant="text" label={t("wardrobe.filter.clear")} onPress={clearFilters} />
+            <Button variant="text" label={t("wardrobe.clearFilters")} onPress={clearFilters} />
           </View>
         </View>
       ) : null}
@@ -355,6 +501,13 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
       <View style={{ width: contentW, alignSelf: "center" }}>
         {items.length === 0 ? (
           <EmptyState title={t("wardrobe.emptyTitle")} body={t("wardrobe.empty")} action={{ label: t("nav.addClothes"), onPress: () => router.push("/intake") }} />
+        ) : queryActive ? (
+          <EmptyState
+            // An isolated run: a Latin query inside the Hebrew sentence must not drag the quotes to the wrong side.
+            title={t("wardrobe.search.noMatch", { query: `⁨${query.trim()}⁩` })}
+            body={t(anyFilter ? "wardrobe.search.noMatchFiltered" : "wardrobe.search.noMatchBody")}
+            action={{ label: t("wardrobe.search.clear"), onPress: () => changeQuery("") }}
+          />
         ) : (
           <EmptyState
             title={t("wardrobe.noMatch")}
@@ -421,7 +574,7 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive }: Props) 
         open={actionsOpen}
         onClose={() => setActionsOpen(false)}
         onAvailability={onAvailability ? (item, next) => onAvailability(item.id, next, item.availability) : undefined}
-        onArchive={onArchive ? (item) => onArchive(item.id) : undefined}
+        onArchive={archiveFromSheet}
         onOpenItem={(item) => {
           setActionsOpen(false);
           void openItem(item.id);

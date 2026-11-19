@@ -1,14 +1,54 @@
+import { DEFAULT_CONTEXT_RULES, passesContextRules, slotOf } from "@fit-check/engine";
 import type { Item, Subcategory } from "@fit-check/schema";
 import { COLOR_HEX } from "../intake/palette";
 
 /** One filter dimension. Selection is single-value per facet; facets combine with AND. */
-export const FACETS = ["type", "season", "color", "availability"] as const;
+export const FACETS = ["type", "season", "color", "availability", "context", "formality"] as const;
 export type Facet = (typeof FACETS)[number];
 export type Selection = Partial<Record<Facet, string>>;
 
-/** The facets that live in the filter sheet; colour has its own row of swatches on the screen. */
-export const SHEET_FACETS = ["type", "season", "availability"] as const satisfies readonly Facet[];
+/**
+ * The facets that live in the filter sheet, in row order; colour has its own row of swatches on the screen. The
+ * stage 2 rows (context, formality; DESIGN.md "שלב 2: תוספות") come after the original three.
+ */
+export const SHEET_FACETS = ["type", "season", "availability", "context", "formality"] as const satisfies readonly Facet[];
 export type SheetFacet = (typeof SHEET_FACETS)[number];
+
+/**
+ * Formality bands for the "רשמיות" row (DESIGN.md "שלב 2"): casual 1-4, in between 5-7, formal 8-10. Upper bounds,
+ * in reading order.
+ */
+export const FORMALITY_BANDS = [
+  { band: "casual", max: 4 },
+  { band: "mid", max: 7 },
+  { band: "formal", max: 10 },
+] as const;
+export type FormalityBand = (typeof FORMALITY_BANDS)[number]["band"];
+const FORMALITY_ORDER: readonly string[] = FORMALITY_BANDS.map((b) => b.band);
+
+/** The band of a 1-10 formality score. */
+export function formalityBand(formality: number): FormalityBand {
+  return FORMALITY_BANDS.find((b) => formality <= b.max)?.band ?? "formal";
+}
+
+/**
+ * "לשבת": the item passes the engine's own Shabbat rules for its slot, the same check hardFilter makes before the
+ * stylist sees anything, so the chip and the suggestions never disagree. Weather and availability are not part of
+ * it (the availability row filters those).
+ *
+ * Outerwear and accessories have no slot in the engine, so the engine lets every one of them through (a puffer at
+ * formality 4, a cap at 2). That is right for composing outfits and wrong for a filter that says "for Shabbat"
+ * (DESIGN.md "\"לשבת\" ומעילים ואביזרים"): here, and only here, such an item is judged as a layer, i.e. by the same
+ * formality gate (with the same slack) the engine applies to layers. The bound comes from the engine's own function
+ * and the context's rule data, not from a copied number.
+ */
+export function fitsShabbat(item: Item): boolean {
+  const rules = DEFAULT_CONTEXT_RULES.shabbat;
+  if (slotOf(item) !== null) return passesContextRules(item, rules);
+  // don't touch / the layer stand-in is deliberate: a layer is judged on formality alone (no subcategory lists),
+  // which is exactly the gate a coat or a belt should meet. Judging them as "top" would apply the shirt whitelist.
+  return passesContextRules({ ...item, tags: { ...item.tags, category: "layer" } }, rules);
+}
 
 /**
  * Garment types for the type filter (Roy, 2026-11-10: shirts, T-shirts and overshirts apart). Coarser than the 19
@@ -61,7 +101,41 @@ function valuesOf(item: Item, facet: Facet): string[] {
       return [item.tags.color_name];
     case "availability":
       return [item.availability];
+    case "context":
+      return fitsShabbat(item) ? ["shabbat"] : [];
+    case "formality":
+      return [formalityBand(item.tags.formality)];
   }
+}
+
+/**
+ * Search folding: what the eye treats as the same letter must match. NFKC (full-width Latin, presentation forms),
+ * then NFD with the combining marks dropped (`ÉCOLE` finds `ecole`; Hebrew niqqud is also a combining mark and is
+ * dropped too, which is wanted: nobody types it), lowercase, the ASCII apostrophe and the Hebrew geresh (and the
+ * curly quotes a phone keyboard produces) folded to one character, the ASCII double quote and the Hebrew gershayim
+ * likewise (`צ'ינו` finds `צ׳ינו`, `ג"ינס` finds `ג״ינס`), whitespace collapsed and trimmed.
+ */
+export function normalizeSearch(s: string): string {
+  return s
+    .normalize("NFKC")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7]/g, "")
+    .toLowerCase()
+    .replace(/['\u05f3\u2018\u2019\u02bc\u2032]/g, "'")
+    .replace(/["\u05f4\u201c\u201d\u2033]/g, '"')
+    .replace(/\s+/g, " ")
+    .trim();
+}
+const normalize = normalizeSearch;
+
+/**
+ * The wardrobe search (DESIGN.md "שלב 2", "חיפוש בארון"): a substring of the name or of the brand, any case, Hebrew
+ * or Latin. An empty or all-space query matches everything.
+ */
+export function matchesQuery(item: Pick<Item, "name" | "brand">, query: string): boolean {
+  const q = normalize(query);
+  if (q === "") return true;
+  return normalize(item.name).includes(q) || (item.brand !== null && normalize(item.brand).includes(q));
 }
 
 /** Only `active` items belong in the wardrobe; `virtual` (pre-purchase) and `archived` never show. */
@@ -98,15 +172,21 @@ export function deriveFacets<F extends Facet>(
       const values =
         facet === "type"
           ? TYPE_ORDER.filter((v) => counts.has(v))
-          : [...counts.entries()]
-              // Tie-break on the value so the chip order never depends on input order.
-              .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-              .map(([v]) => v);
+          : facet === "formality"
+            ? FORMALITY_ORDER.filter((v) => counts.has(v))
+            : [...counts.entries()]
+                // Tie-break on the value so the chip order never depends on input order.
+                .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                .map(([v]) => v);
+      // The context row is one chip: it earns its place when it narrows the set (some items pass, some do not).
+      const narrows =
+        facet === "context" ? values.length === 1 && (counts.get(values[0] ?? "") ?? 0) < items.length : values.length >= 2;
       const wanted = selection[facet];
       if (wanted !== undefined && !values.includes(wanted)) values.push(wanted);
-      return { facet, values };
+      return { facet, values, narrows };
     })
-    .filter((f) => f.values.length >= 2 || selection[f.facet] !== undefined);
+    .filter((f) => f.narrows || selection[f.facet] !== undefined)
+    .map(({ facet, values }) => ({ facet, values }));
 }
 
 /** Items matching every selected facet (AND across facets). `except` ignores one facet, e.g. for its own options. */

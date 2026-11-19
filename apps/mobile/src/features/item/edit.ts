@@ -2,16 +2,27 @@ import type { ColorName, Item, ItemTags } from "@fit-check/schema";
 import { COLOR_HEX } from "../intake/palette";
 import { normalizeTags, subcategoryForLeg, type LegLength } from "../intake/tagRules";
 
-/** What `updateItemDetails` writes: the whole editable identity of an item in one row update. */
-export type ItemDetailsPayload = { name: string; brand: string | null; tags: ItemTags };
+/**
+ * The editable identity of an item (`updateItemDetails`) and its notes (`updateItemNotes`) after one change. The
+ * route writes only the part that differs from the server-confirmed state (editQueue.ts).
+ */
+export type ItemDetailsPayload = { name: string; brand: string | null; tags: ItemTags; notes: string | null };
 
-/** One edit made on the item screen: a field of the identity, or a patch of tags (one tag, or the redraw's words). */
-export type ItemChange = { name: string } | { brand: string } | { tags: Partial<ItemTags> };
+/** One edit made on the item screen: a field of the identity, a patch of tags (one tag, or the redraw's words), or the notes. */
+export type ItemChange = { name: string } | { brand: string } | { tags: Partial<ItemTags> } | { notes: string };
+
+/** Notes are a few lines, not a diary (DESIGN.md "שלב 2"); the field stops here and shows a counter from NOTES_COUNTER_FROM. */
+export const NOTES_MAX = 500;
+export const NOTES_COUNTER_FROM = 400;
 
 /** The item screen's writes, injected so the screen also renders read-only (no session) and in the design gallery. */
 export type ItemEdits = {
-  /** Saves the full payload; resolves after the write. Throws on failure (the caller rolls back and says so). */
-  save: (itemId: string, edit: ItemDetailsPayload) => Promise<void>;
+  /**
+   * Saves one change, applied to the item as it is shown at that moment (pending edits included, see editQueue.ts),
+   * not to the caller's render copy. Optimistic: shown at once. Resolves after the write; rejects after the change
+   * was rolled back (only its own fields), so the caller can say so.
+   */
+  save: (itemId: string, change: ItemChange) => Promise<void>;
   setImage: (itemId: string, cutoutPath: string, thumbPath: string | null) => Promise<void>;
   archive: (itemId: string) => Promise<void>;
   userId: string;
@@ -21,15 +32,19 @@ export type ItemEdits = {
  * The payload for "the item as it is now, plus one change": exactly what the old all-fields editor saved when that
  * one field was the only thing touched. Name and brand are trimmed, an empty name keeps the old one and an empty
  * brand is null; a tag patch goes through `normalizeTags` (category from subcategory, sleeve "na", modesty flags),
- * and tags that were not touched are written back as they are, unnormalised, as the editor did.
+ * and tags that were not touched are written back as they are, unnormalised, as the editor did. Notes keep their
+ * inner line breaks; the ends are trimmed, an empty note is null, and anything past NOTES_MAX is cut. Untouched
+ * notes are carried as stored.
  * @returns the payload, or null when the change would write what is already stored (nothing to save).
  */
-export function editPayload(item: Pick<Item, "name" | "brand" | "tags">, change: ItemChange): ItemDetailsPayload | null {
+export function editPayload(item: Pick<Item, "name" | "brand" | "tags" | "notes">, change: ItemChange): ItemDetailsPayload | null {
   const name = ("name" in change ? change.name : item.name).trim() || item.name;
   const brand = ("brand" in change ? change.brand : (item.brand ?? "")).trim() || null;
   const tags = "tags" in change ? normalizeTags({ ...item.tags, ...change.tags }) : item.tags;
-  const same = name === item.name && brand === item.brand && JSON.stringify(tags) === JSON.stringify(item.tags);
-  return same ? null : { name, brand, tags };
+  const notes = "notes" in change ? change.notes.trim().slice(0, NOTES_MAX).trim() || null : item.notes;
+  const same =
+    name === item.name && brand === item.brand && notes === item.notes && JSON.stringify(tags) === JSON.stringify(item.tags);
+  return same ? null : { name, brand, tags, notes };
 }
 
 /*

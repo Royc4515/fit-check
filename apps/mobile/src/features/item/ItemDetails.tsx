@@ -1,15 +1,17 @@
 import type { PairWeights } from "@fit-check/engine";
 import { AVAILABILITIES, type Availability, type Item, type ItemTags } from "@fit-check/schema";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { SpecTable, type SpecRow } from "../../components/editorial/SpecTable";
 import { Chip, Display, Meta, Segmented, StatusLine } from "../../components/ui";
 import { hasSleeves, isBottom, legOf } from "../intake/tagRules";
-import { editPayload, type ItemChange, type ItemEdits } from "./edit";
+import { NOTES_COUNTER_FROM, NOTES_MAX, type ItemChange, type ItemEdits } from "./edit";
 import { GoesWith } from "./GoesWith";
 import { InlineText } from "./InlineText";
 import { fieldLabelKey, TagSheet, type TagField } from "./TagSheet";
+import { useItemWears } from "./useItemWears";
+import { WearHistory } from "./WearHistory";
 import { spoken } from "./a11y";
 
 /** Numbers stay LTR inside Hebrew text (DESIGN.md section 2). */
@@ -19,13 +21,13 @@ const ltr = (s: string) => `⁦${s}⁩`;
  * A status line under the part of the screen it is about: the name, the availability, or the very tag row that
  * failed (under the chip that just rolled back, not at the end of a table that may be below the fold).
  */
-type Failure = { where: "identity" | "availability" | TagField };
+type Failure = { where: "identity" | "availability" | "notes" | TagField };
 
 type Props = {
   item: Item;
   items: Item[];
   pairWeights: PairWeights;
-  onAvailability?: (itemId: string, next: Availability, prev: Availability) => Promise<void>;
+  onAvailability?: (itemId: string, next: Availability) => Promise<void>;
   /** Absent in read-only contexts (no session): every chip is then plain text. */
   edits?: ItemEdits;
   /** A status about the picture (replacing, cutout fallback), shown first, right under the hero. */
@@ -37,18 +39,31 @@ type Props = {
 };
 
 /**
- * Everything under the hero (DESIGN.md section 3 "פריט" items 2-5): the name and brand, edited in place; where the
- * item is; every tag as a chip in a labelled row, each opening its closed list in a sheet and saving on choice (no
- * edit mode, no save button); "goes with". Saves are optimistic upstream (the item route rolls back a failed write);
+ * Everything under the hero (DESIGN.md section 3 "פריט" items 2-5 and "שלב 2"): the name and brand, edited in place;
+ * where the item is; every tag as a chip in a labelled row, each opening its closed list in a sheet and saving on
+ * choice (no edit mode, no save button); the notes, edited in place; the wear history; "goes with". Saves are optimistic upstream (the item route rolls back a failed write);
  * this component only says that it failed, next to what failed.
  */
 export function ItemDetails({ item, items, pairWeights, onAvailability, edits, imageStatus, onOpenOther, onScrollTop, bleed }: Props) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [failure, setFailure] = useState<Failure | null>(null);
+  // A write can fail after the screen is gone (back right after an edit): the wardrobe store is still rolled back by
+  // the edit queue (editQueue.ts), only the line here has nobody left to show it to.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const fail = (where: Failure["where"]) => {
+    if (mounted.current) setFailure({ where });
+  };
   const [field, setField] = useState<TagField | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   // The item as it was when the screen opened: a pick back to it restores it exactly (edit.ts colorPatch/legPatch).
   const [baseline] = useState(item.tags);
+  const wears = useItemWears(item.id);
   const { tags } = item;
   /**
    * An error line belongs to the action that produced it: any next action on these details (opening a sheet,
@@ -56,27 +71,29 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
    */
   const moveOn = () => setFailure(null);
   // Names are often Latin inside a Hebrew page; aligned to the page's start, not to the script's (web gives text
-  // dir="auto"), so a wrapped English name does not hang off the far edge.
-  const align = { textAlign: i18n.language === "en" ? "left" : "right" } as const;
+  // dir="auto"), so a wrapped English name does not hang off the far edge. Logical `start`: resolved from the layout
+  // direction, which on native is the drawn one even before a restart (verification D9).
+  const align = { textAlign: "start" } as const;
 
-  /** The one save path: "the item as it is now + this change", built exactly like the old editor's payload. */
+  /**
+   * The one save path: the change goes to the item route, which applies it to the item as currently shown (pending
+   * edits included) and queues the write; a no-op change resolves at once without a write.
+   */
   const change = (c: ItemChange, where: Failure["where"]) => {
     if (!edits) return;
-    const payload = editPayload(item, c);
-    if (!payload) return;
     setFailure(null);
-    edits.save(item.id, payload).catch((error: unknown) => {
+    edits.save(item.id, c).catch((error: unknown) => {
       console.error("Item save failed", error);
-      setFailure({ where });
+      fail(where);
     });
   };
 
   const changeAvailability = onAvailability
     ? (next: Availability) => {
         setFailure(null);
-        onAvailability(item.id, next, item.availability).catch((error: unknown) => {
+        onAvailability(item.id, next).catch((error: unknown) => {
           console.error("Availability update failed", error);
-          setFailure({ where: "availability" });
+          fail("availability");
         });
       }
     : undefined;
@@ -201,7 +218,7 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
             segments={AVAILABILITIES.map((a) => ({ key: a, label: t(`wardrobe.availability.${a}`) }))}
             value={item.availability}
             onChange={(a) => changeAvailability?.(a)}
-            disabled={!changeAvailability}
+            disabled={!onAvailability}
             accessibilityLabel={spoken(t("item.where"))}
           />
         </View>
@@ -211,6 +228,49 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
 
       <View className="mt-8">
         <SpecTable rows={rows} />
+      </View>
+
+      {/* Notes: free text edited in place like the name, several lines, saved when the field is left. Read-only and
+          empty, there is nothing to show. */}
+      {edits || item.notes ? (
+        <View className="mt-12">
+          <Display>{t("item.notes.title")}</Display>
+          <View className="mt-4">
+            {edits ? (
+              <InlineText
+                value={item.notes ?? ""}
+                label={t("item.notes.title")}
+                emptyText={t("item.notes.add")}
+                placeholder={t("item.notes.add")}
+                size="body"
+                multiline
+                maxLength={NOTES_MAX}
+                counterFrom={NOTES_COUNTER_FROM}
+                onBegin={moveOn}
+                onCommit={(notes) => change({ notes }, "notes")}
+              >
+                {item.notes ? (
+                  <Text className="font-body text-body text-ink" style={align}>
+                    {item.notes}
+                  </Text>
+                ) : (
+                  <View className="border-b border-hairline pb-1">
+                    <Text className="font-body text-body text-ink-faint">{t("item.notes.add")}</Text>
+                  </View>
+                )}
+              </InlineText>
+            ) : (
+              <Text className="font-body text-body text-ink" style={align}>
+                {item.notes}
+              </Text>
+            )}
+            {failed("notes", t("item.saveFailed"))}
+          </View>
+        </View>
+      ) : null}
+
+      <View className="mt-12">
+        <WearHistory itemId={item.id} items={items} state={wears.state} onRetry={wears.retry} />
       </View>
 
       <View className="mt-12">

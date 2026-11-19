@@ -63,6 +63,54 @@ export async function uploadForClaude(userId: string, photo: PreparedPhoto, inde
   return path;
 }
 
+/** One photo waiting in `cutouts/{uid}/pending/`. `uploadedAt` is ISO; null only when neither storage nor the name says. */
+export type PendingPhoto = { path: string; url: string; uploadedAt: string | null };
+export type PendingListResult = { ok: true; photos: PendingPhoto[] } | { ok: false; reason: string };
+
+// don't touch / same folder, extension filter and page size as intakePending in supabase/functions/mcp/photos.ts, so
+// the app counts exactly the photos Claude will be shown. The list also returns the folder placeholder object.
+const PENDING_IMAGE = /\.(jpe?g|png|webp)$/i;
+const PENDING_LIMIT = 100;
+/** `<epoch ms>-<index>.jpg` from uploadForClaude, or `<epoch ms>-requeued.jpg` from the MCP's item_recrop. */
+const PENDING_STAMP = /^(\d{12,})-/;
+
+/**
+ * The photos parked for Claude (uploadForClaude), newest first, with public URLs. A read: allowed in the design
+ * preview too, because the `cutouts` bucket is publicly readable (0001_init.sql "cutouts public read").
+ * Newest first is requested from storage, not only sorted here, so a queue over the page size still shows what was
+ * just sent. Never throws: a storage error with an HTTP status is `http_<status>`, anything else `network`.
+ * @param userId - the folder owner; the list is `<userId>/pending`.
+ */
+export async function listPendingForClaude(userId: string): Promise<PendingListResult> {
+  const folder = `${userId}/pending`;
+  try {
+    const { data, error } = await supabase.storage
+      .from("cutouts")
+      .list(folder, { limit: PENDING_LIMIT, sortBy: { column: "created_at", order: "desc" } });
+    if (error) {
+      const reason = reasonOf(error);
+      return { ok: false, reason: reason === "upload" ? "network" : reason };
+    }
+    const photos = (data ?? [])
+      .filter((f) => PENDING_IMAGE.test(f.name))
+      .map((f): PendingPhoto => {
+        const path = `${folder}/${f.name}`;
+        const stamp = PENDING_STAMP.exec(f.name)?.[1];
+        // Normalised to toISOString(): storage answers with a `+00:00` offset, and the sort below compares text.
+        const stored = f.created_at ? Date.parse(f.created_at) : NaN;
+        const ms = Number.isFinite(stored) ? stored : stamp ? Number(stamp) : NaN;
+        const uploadedAt = Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+        return { path, url: supabase.storage.from("cutouts").getPublicUrl(path).data.publicUrl, uploadedAt };
+      })
+      // Unknown times go last; ISO strings in UTC compare correctly as text.
+      .sort((a, b) => (b.uploadedAt ?? "").localeCompare(a.uploadedAt ?? ""));
+    return { ok: true, photos };
+  } catch (error) {
+    console.error("Listing pending photos failed", error);
+    return { ok: false, reason: "network" };
+  }
+}
+
 /** Uploads a prepared photo to the private `originals` bucket under the user's folder; returns its path. */
 export async function uploadOriginal(userId: string, photo: PreparedPhoto, index: number): Promise<string> {
   const path = `${userId}/${Date.now()}-${index}.jpg`;

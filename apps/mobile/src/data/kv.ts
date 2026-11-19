@@ -22,3 +22,40 @@ export async function cacheSet<T>(key: string, value: T): Promise<void> {
     // Full or blocked storage costs us the cache, nothing else.
   }
 }
+
+/**
+ * A plain device setting with no expiry (the chosen language). Null for missing or unreadable: a setting that cannot
+ * be read means the default, never a broken screen.
+ */
+export async function settingGet(key: string): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** Stores a device setting. Blocked storage only loses it for the next start; the choice still applies now. */
+export async function settingSet(key: string, value: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(key, value);
+  } catch {
+    // Nothing to do: the caller has already applied the value in memory.
+  }
+}
+
+/**
+ * Web only: the same setting, read synchronously, so a stored language is in force before the first render (no flash
+ * of the device language, no direction flip after paint). Null on native, during the static export's server render,
+ * and when storage is blocked.
+ */
+export function settingGetNow(key: string): string | null {
+  if (typeof window === "undefined" || typeof window.localStorage === "undefined") return null;
+  try {
+    // don't touch / AsyncStorage's web build is window.localStorage under the very same key (async-storage 2.2,
+    // lib/module/AsyncStorage.js), so this reads what settingSet wrote. Re-check when that package is upgraded.
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}

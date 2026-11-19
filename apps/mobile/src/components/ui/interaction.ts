@@ -1,7 +1,8 @@
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
 import { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated";
-import { isRtl } from "../../i18n";
+import { useTranslation } from "react-i18next";
+import { layoutRtl } from "../../i18n";
 import { motion } from "../../theme/tokens";
 
 /** The one easing DESIGN.md allows, built once. */
@@ -65,9 +66,14 @@ export function selectionHaptic(): void {
   if (Platform.OS !== "web") void Haptics.selectionAsync();
 }
 
-/** Layout direction of the active locale. Read at render; changing language reloads the app on native anyway. */
+/**
+ * The direction the layout is drawn in, re-rendering when the language changes (Profile switches it live on web;
+ * on native the drawn direction only changes after a restart, see i18n layoutRtl).
+ */
 export function useRtl(): boolean {
-  return isRtl();
+  // Subscribes this component to language changes; the value itself comes from layoutRtl.
+  useTranslation();
+  return layoutRtl();
 }
 
 // Reduced motion has no scale, so the press still needs a visible answer. Opacity is the only motion allowed then.

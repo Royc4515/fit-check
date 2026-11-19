@@ -27,6 +27,8 @@ import { layout } from "../../theme/tokens";
 import { failureMessage, isRetryable } from "./failure";
 import { GarmentReview, type Draft, type ReviewState } from "./GarmentReview";
 import { JobCard, type JobStatus } from "./JobCard";
+import { PendingQueue } from "./PendingQueue";
+import { usePendingQueue } from "./usePendingQueue";
 
 /** A garment from a photo: its crop, the tagger's proposal and the user's edits, and where it is in the flow. */
 type Garment = DetectedGarment &
@@ -304,6 +306,7 @@ export function IntakeView({ userId }: { userId: string }) {
   };
 
   const [forClaude, setForClaude] = useState<ClaudeRun>(null);
+  const queue = usePendingQueue(userId);
   // The photos that did not upload, so "try again" re-sends only those.
   const claudeFailedRef = useRef<PickedAsset[]>([]);
 
@@ -326,6 +329,8 @@ export function IntakeView({ userId }: { userId: string }) {
     }
     claudeFailedRef.current = failedAssets;
     setForClaude({ sent, failed: failedAssets.length, reason });
+    // The new photos appear in the queue without leaving the screen.
+    queue.reload();
   };
 
   /** Parks photos for Claude (MCP intake_pending): upload only, no detection or tagging, so no paid call. */
@@ -463,6 +468,7 @@ export function IntakeView({ userId }: { userId: string }) {
             {t("intake.forClaude.hint")}
           </Meta>
           {claudeLine}
+          <PendingQueue state={queue.state} onRetry={queue.reload} now={queue.checkedAt} />
         </View>
 
         <View className="mt-12" style={{ gap: CARD_GAP }}>

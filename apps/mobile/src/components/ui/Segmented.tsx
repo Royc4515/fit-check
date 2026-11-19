@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { colors, layout, motion } from "../../theme/tokens";
 import { focusRingProps, selectionHaptic, timing, webStateProps } from "./interaction";
+import { useRovingGroup } from "./roving";
 
 export type Segment<K extends string> = { key: K; label: string };
 
@@ -23,11 +24,14 @@ function SegmentButton<K extends string>({
   selected,
   onPress,
   disabled,
+  roving,
 }: {
   segment: Segment<K>;
   selected: boolean;
   onPress: () => void;
   disabled: boolean;
+  /** Web keyboard props of the group (tabindex, arrow keys); empty on native. */
+  roving: object;
 }) {
   const on = useSharedValue(selected ? 1 : 0);
   useEffect(() => {
@@ -38,6 +42,7 @@ function SegmentButton<K extends string>({
   return (
     <Pressable
       {...focusRingProps}
+      {...roving}
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="radio"
@@ -62,20 +67,25 @@ function SegmentButton<K extends string>({
  * not only a colour). The underline fades in 180ms. Radio semantics: exactly one is always chosen.
  */
 export function Segmented<K extends string>({ segments, value, onChange, accessibilityLabel, disabled = false }: Props<K>) {
+  const choose = (key: K) => {
+    if (key === value) return;
+    selectionHaptic();
+    onChange(key);
+  };
+  // WAI-ARIA radiogroup keys on web: one tab stop, arrows move and choose (a radio group selects as focus moves).
+  const { itemProps } = useRovingGroup(
+    segments.length,
+    segments.findIndex((s) => s.key === value),
+    (i) => {
+      const s = segments[i];
+      if (s) choose(s.key);
+    },
+    disabled
+  );
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={accessibilityLabel} className="flex-row border-b border-hairline">
-      {segments.map((s) => (
-        <SegmentButton
-          key={s.key}
-          segment={s}
-          selected={s.key === value}
-          disabled={disabled}
-          onPress={() => {
-            if (s.key === value) return;
-            selectionHaptic();
-            onChange(s.key);
-          }}
-        />
+      {segments.map((s, i) => (
+        <SegmentButton key={s.key} segment={s} selected={s.key === value} disabled={disabled} roving={itemProps(i)} onPress={() => choose(s.key)} />
       ))}
     </View>
   );

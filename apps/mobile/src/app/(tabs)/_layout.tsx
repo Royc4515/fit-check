@@ -1,9 +1,11 @@
-import { Tabs } from "expo-router";
+import { Tabs, useIsFocused } from "expo-router";
+import { useRef, type ComponentRef } from "react";
 import { View } from "react-native";
 import { PreviewBanner } from "../../components/PreviewBanner";
 import { isPreview } from "../../data/preview";
 import { SceneLayout } from "../../features/shell/SceneGate";
 import { ShellTabBar, useIsDesktop } from "../../features/shell/ShellTabBar";
+import { underModalProps, useFocusReturnUnderModal } from "../../features/shell/underModal";
 import { colors } from "../../theme/tokens";
 
 /**
@@ -12,12 +14,18 @@ import { colors } from "../../theme/tokens";
  */
 export default function TabsLayout() {
   const desktop = useIsDesktop();
+  // This layout is the root stack's (tabs) screen: unfocused exactly while a modal route (item, location, archive) is
+  // on top. The tabs stay painted under it (the item page fades in over them) but leave the tab order and the tree.
+  const covered = !useIsFocused();
+  const root = useRef<ComponentRef<typeof View>>(null);
+  useFocusReturnUnderModal(root, covered);
   return (
-    <View style={{ flex: 1, backgroundColor: colors["ivory"] }}>
+    <View ref={root} {...underModalProps(covered)} style={{ flex: 1, backgroundColor: colors["ivory"] }}>
       <Tabs
-        // don't touch / visited tabs stay mounted (state and scroll survive); SceneLayout takes the blurred ones out
-        // of the web tab order. React Activity (`activityEnabled`) was tried and does nothing for a tab navigator.
-        screenLayout={({ children }) => <SceneLayout>{children}</SceneLayout>}
+        // don't touch / visited tabs stay mounted (state and scroll survive); SceneLayout takes the ones behind another
+        // selected tab out of the web tab order. React Activity (`activityEnabled`) was tried and does nothing for a
+        // tab navigator.
+        screenLayout={({ route, children }) => <SceneLayout routeKey={route.key}>{children}</SceneLayout>}
         tabBar={(props) => <ShellTabBar {...props} />}
         screenOptions={{
           headerShown: false,
