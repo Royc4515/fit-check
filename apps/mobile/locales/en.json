@@ -102,7 +102,19 @@
       "yomKippur": "For Yom Kippur"
     },
     "plannedForecast": "{{day}} · {{range}} · Rain {{rain}}",
-    "plannedNoForecast": "No forecast yet"
+    "plannedNoForecast": "No forecast yet",
+    "occasion": {
+      "title": "What's on today",
+      "type": {
+        "date": "Date",
+        "interview": "Interview",
+        "event": "Event"
+      },
+      "fromCalendar": "from the calendar",
+      "cancel": "Cancel",
+      "cancelLabel": "Cancel the occasion: {{type}}",
+      "failed": "The occasion wasn't saved."
+    }
   },
   "wardrobe": {
     "title": "Wardrobe",
@@ -271,6 +283,7 @@
       "bodyPreview": "The preview closes and you return to the sign-in screen.",
       "confirm": "Sign out",
       "cancel": "Cancel",
+      "cancelLabel": "Cancel the occasion: {{type}}",
       "failed": "Sign-out failed. Try again."
     }
   },

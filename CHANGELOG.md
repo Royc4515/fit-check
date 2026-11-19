@@ -8,6 +8,13 @@
 - Money: `monthlyGoogleSpend` now counts the try-on model; the cap is checked as spend + this call's price, before the figure (figure + outfit together), again before the outfit, and the stored image is looked for again right before paying. Shown price about $0.055 an image (not $0.034: that is the output image alone; input images and possible thinking are added), $0.047 once for the figure.
 - Look at: `supabase/functions/tryon/handler.ts`, `_shared/ai/tryon.ts` (prompts, tuck rule at formality 7), `handler_test.ts`. Built and tested with stubs only: not deployed, never called against Google, nothing spent.
 
+## 2026-11-19 (Today: what is on today)
+
+- The adjust sheet starts with "מה יש היום" (on a planned tab "מה יש באותו יום"): date, interview, event as chips; choosing closes the sheet and changes the look, the chosen chip clears it. The occasion shows first among the status lines above the hero ("ראיון · ראיון עבודה · מהיומן" · ביטול), measured with the hero (DESIGN.md "שלב 4.5").
+- The occasion's rules override the calendar's for its date (no festive step on top); the wear is recorded in its context, the stylist request carries it and the explanation names it. Rows of `contexts` are read per date on screen (newest wins, shared schema), cached on the device, and written by hand optimistically: upsert first, then the other occasion types removed, as the MCP server does; a failure rolls back with "נסה שוב".
+- Look at: `data/occasionRows.ts` (pure, tested), `data/occasions.ts`, the occasion line in `TodayView.tsx`, `AdjustSheet.tsx`. Unverified here: a real write (preview rejects writes); the MCP and the app writing the same date at the same moment.
+- Fixes after the independent verification: (1) precedence corrected in DESIGN.md "שלב 4.5" items 1 and 3 and PRD 7.1: with the switch on, Shabbat and holidays keep their rules until the day's havdalah and the occasion applies only after it, never on a date without a havdalah and never on a planned day's tab (no chips, no line there); `occasionMayApply` / `occasionInEffect` in `features/today/plans.ts`, tested. The MCP server is unchanged. (2) A read that started before the user changed a date no longer overwrites that date (`mergeOccasionRead`, tested). (3) After "ביטול" on the occasion line focus goes to `tune`; its accessible name says "ביטול ההקשר: ראיון".
+
 ## 2026-11-19 (Yom Kippur: only a shoe known not to be leather)
 
 - A shoe tagged `unknown` material is no longer offered on Yom Kippur: only one whose material is known and is not leather or suede (`YOM_KIPPUR_DENIED_SHOE_MATERIALS`). With none, the look comes without shoes and the line reads "אין בארון נעל שמסומנת כלא מעור. הלוק מוצע בלי נעליים."

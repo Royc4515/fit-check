@@ -1,10 +1,11 @@
 import type { PairWeights } from "@fit-check/engine";
 import type { Item } from "@fit-check/schema";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { WardrobeGate } from "../../components/WardrobeGate";
 import { localTime, type DayContext } from "../../data/dayContext";
 import { useDayContext } from "../../data/useDayContext";
 import { useFeedback } from "../../data/useFeedback";
+import { useOccasions } from "../../data/occasions";
 import { requestStyle } from "../../data/stylist";
 import type { WardrobeData } from "../../data/wardrobe";
 import { useWardrobe } from "../../data/WardrobeProvider";
@@ -43,6 +44,9 @@ function Today(props: {
   // On the eve of Shabbat or a holiday the history reaches the last planned day, so what was recorded ahead shows.
   const until = day.chain.at(-1)?.date ?? day.date;
   const feedback = useFeedback({ userId, date: day.date, dayType: day.dayType, until, items, pairWeights, patch });
+  // What is on each date on screen (DESIGN.md "שלב 4.5"): today and the planned days.
+  const dates = useMemo(() => [day.date, ...day.chain.map((d) => d.date)], [day]);
+  const occasions = useOccasions(userId, dates);
   // The clock when the screen opened, in the location's zone: it picks the opening tab (three hours before candles).
   const [clock] = useState(() => localTime(day.tz));
   // Wait for today's answers so an outfit already marked worn never flashes as a fresh suggestion.
@@ -58,6 +62,7 @@ function Today(props: {
       failedOn={feedback.failedOn}
       laundered={feedback.laundered}
       stylist={requestStyle}
+      occasions={occasions}
       clock={clock}
     />
   );
