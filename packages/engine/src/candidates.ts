@@ -16,7 +16,10 @@ import { scoreOutfit, type PairWeights } from "./scoring";
 
 function lastWornIndex(item: Item, req: StylingRequest): number {
   // recent_wears is most-recent-first; a lower index means worn more recently.
-  const idx = req.recent_wears.findIndex((w) => w.item_ids.includes(item.id));
+  // don't touch / wears dated after req.today are skipped, as recencyPenalty skips them: a Shabbat outfit recorded on
+  // Friday is ahead of Friday's plan, and counting it pushed its garments out of Friday's pre-rank (a hidden reserve
+  // the screen never explained). ISO dates compare as strings.
+  const idx = req.recent_wears.filter((w) => w.date <= req.today).findIndex((w) => w.item_ids.includes(item.id));
   // don't touch / a finite sentinel, not Infinity: Infinity - Infinity is NaN, which made the
   // sort comparator skip the id tiebreak for every never-worn pair and leak DB row order into results.
   return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
@@ -158,7 +161,14 @@ export function generateCandidates(items: Item[], req: StylingRequest, weights: 
     }
   }
   const bottoms = bySlot.bottom.length === 1 ? bySlot.bottom : preRank(bySlot.bottom, req, PER_SLOT_LIMIT.bottom);
-  const shoes = bySlot.shoes.length === 1 ? bySlot.shoes : preRank(bySlot.shoes, req, PER_SLOT_LIMIT.shoes);
+  // An optional shoe slot with nothing in it (Yom Kippur with no non-leather shoe) yields outfits without shoes; the
+  // caller says so. Never a shoe the rules ruled out.
+  const shoes: Array<Item | null> =
+    bySlot.shoes.length === 0 && req.context.shoes.optional
+      ? [null]
+      : bySlot.shoes.length === 1
+        ? bySlot.shoes
+        : preRank(bySlot.shoes, req, PER_SLOT_LIMIT.shoes);
   const layers: Array<Item | null> =
     bySlot.layer.length === 0 ? [null] : bySlot.layer.length === 1 ? bySlot.layer : preRank(bySlot.layer, req, PER_SLOT_LIMIT.layer);
 
@@ -168,7 +178,7 @@ export function generateCandidates(items: Item[], req: StylingRequest, weights: 
     for (const b of bottoms) {
       for (const s of shoes) {
         for (const l of layers) {
-          const combo = l ? [t, b, s, l] : [t, b, s];
+          const combo = [t, b, s, l].filter((i): i is Item => i !== null);
           // The band is enforced on the whole outfit: a casual shoe is fine under a formal shirt and trousers.
           const f = outfitFormality(combo);
           if (f < lo - OUTFIT_FORMALITY_TOLERANCE || f > hi + OUTFIT_FORMALITY_TOLERANCE) continue;

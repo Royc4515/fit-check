@@ -6,6 +6,9 @@
     "title": "היום",
     "empty": "עוד אין הצעה להיום",
     "wearing": "לובש",
+    "wearOnShabbat": "אלבש בשבת",
+    "wearOnHoliday": "אלבש בחג",
+    "wearOnYomKippur": "אלבש ביום כיפור",
     "warmer": "יותר חם",
     "cooler": "יותר קר",
     "dressier": "יותר רשמי",
@@ -53,6 +56,10 @@
     "dislike": "לא אהבתי את השילוב",
     "status": {
       "worn": "נרשם: זה מה שלבשת היום.",
+      "wornShabbat": "נרשם: זה הלוק שלך לשבת.",
+      "wornHoliday": "נרשם: זה הלוק שלך לחג.",
+      "wornYomKippur": "נרשם: זה הלוק שלך ליום כיפור.",
+      "noLeatherFreeShoes": "אין בארון נעל שאינה מעור. הלוק מוצע בלי נעליים.",
       "skipped": "דילגת על ההצעה הקודמת.",
       "disliked": "נרשם שהשילוב הקודם לא עבד.",
       "failed": "הפעולה לא נשמרה. נסה שוב.",
@@ -83,7 +90,19 @@
     "tune": "כוונון ההצעה: חם, קר, רשמי, דילוג",
     "pieceLabel": "{{type}}, {{name}}. חלופות ופרטים",
     "heroLabel": "התלבושת להיום: {{pieces}}. החלקה הצידה מדלגת להצעה הבאה",
-    "weatherLabel": "מזג האוויר ב{{place}}: {{weather}}. שינוי מיקום"
+    "heroLabelPlanned": "{{tab}}: {{pieces}}. החלקה הצידה מדלגת להצעה הבאה",
+    "weatherLabel": "מזג האוויר ב{{place}}: {{weather}}. שינוי מיקום",
+    "tabs": {
+      "label": "הלוק לפי יום",
+      "today": "היום",
+      "shabbat": "לשבת",
+      "holiday": "לחג",
+      "holidayDay1": "לחג א׳",
+      "holidayDay2": "לחג ב׳",
+      "yomKippur": "ליום כיפור"
+    },
+    "plannedForecast": "{{day}} · {{range}} · גשם {{rain}}",
+    "plannedNoForecast": "אין עדיין תחזית"
   },
   "wardrobe": {
     "title": "ארון",
@@ -243,6 +262,10 @@
     "languageHe": "עברית",
     "languageEn": "English",
     "languageRestart": "כיוון הפריסה יתחלף אחרי הפעלה מחדש של האפליקציה.",
+    "observance": "שומר שבת וחג",
+    "observanceYes": "כן",
+    "observanceNo": "לא",
+    "observanceMeta": "זמני כניסה ויציאה, לוק מתוכנן מראש לשבת ולחג, וכללי לבוש של שבת",
     "archive": "ארכיון",
     "signOut": {
       "button": "התנתקות",
@@ -477,6 +500,7 @@
   "location": {
     "title": "מיקום",
     "hint": "לפי המיקום נקבעים מזג האוויר וזמני השבת.",
+    "hintWeatherOnly": "לפי המיקום נקבע מזג האוויר.",
     "current": "המיקום הנוכחי שלי",
     "currentShort": "מיקום נוכחי",
     "default": "תל אביב",
@@ -488,7 +512,9 @@
     "back": "היום",
     "label": "מיקום: {{place}}",
     "currentMeta": "מזג האוויר וזמני השבת לפי המקום שבו אתה נמצא",
+    "currentMetaWeatherOnly": "מזג האוויר לפי המקום שבו אתה נמצא",
     "currentWithPlace": "מיקום נוכחי · {{place}}",
+    "currentNoPermission": "מיקום נוכחי · אין הרשאה",
     "osmCredit": "שמות מקומות: © OpenStreetMap"
   },
   "intake": {
@@ -732,6 +758,8 @@
       "buttons": "כפתורים",
       "chips": "צ'יפים",
       "segmented": "בקר מקוטע",
+      "textTabs": "לשוניות טקסט",
+      "crossFade": "החלפה בדהייה",
       "swatches": "גוונים",
       "icons": "אייקונים",
       "tiles": "אריחים",
@@ -790,6 +818,18 @@
       "cotton": "כותנה",
       "suggestion": "אולי פשתן?",
       "removable": "נייבי"
+    },
+    "textTabs": {
+      "label": "דוגמת לשוניות",
+      "two": "שתי לשוניות",
+      "four": "ארבע לשוניות",
+      "he": "עברית",
+      "en": "אנגלית"
+    },
+    "crossFade": {
+      "toggle": "החלפה",
+      "a": "הלוק של היום: פולו, ג׳ינס, סניקרס.",
+      "b": "הלוק לשבת: חולצה לבנה, מכנסי אלגנט, נעלי ערב."
     },
     "segmented": {
       "label": "זמינות",

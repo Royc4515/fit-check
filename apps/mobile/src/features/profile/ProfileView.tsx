@@ -1,11 +1,13 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, Text, View } from "react-native";
+import { AppState, ScrollView, Text, View } from "react-native";
 import { Button, ListRow, Meta, ScreenColumn, ScreenHeader, Segmented, Sheet, StatusLine } from "../../components/ui";
-import { cachedPlaceName, getSavedLocation, onLocationChange, onPlaceNameChange, type SavedLocation } from "../../data/location";
+import { cachedPlaceName, getSavedLocation, onLocationChange, onPlaceNameChange, readLocationFacts, type SavedLocation } from "../../data/location";
+import { locationNotice, type LocationFacts } from "../../data/locationNotice";
 import { isPreview } from "../../data/preview";
 import { useArchivedCount } from "../../data/WardrobeProvider";
+import { setObservesShabbat, useObservesShabbat } from "../../data/useObservance";
 import { needsRestartForDirection, setLanguage, type Locale } from "../../i18n";
 import { signOut } from "../auth/signOut";
 import { useIsDesktop } from "../shell/ShellTabBar";
@@ -33,30 +35,44 @@ export function ProfileView() {
   const preview = isPreview();
 
   const [currentName, setCurrentName] = useState<string | null>(null);
+  const [facts, setFacts] = useState<Pick<LocationFacts, "permission" | "hasStoredFix"> | null>(null);
 
   useEffect(() => {
     let active = true;
-    // Cache only, no network: the name is looked up by Today; this row shows what is already known for this language.
+    // Cache only, no network and no permission prompt: the name is looked up by Today; this row shows what is already
+    // known for this language, and whether "current" can be used at all (data/locationNotice.ts).
     const load = () =>
-      void Promise.all([getSavedLocation(), cachedPlaceName(language)]).then(([s, name]) => {
+      void Promise.all([getSavedLocation(), cachedPlaceName(language), readLocationFacts()]).then(([s, name, f]) => {
         if (!active) return;
         setSaved(s);
         setCurrentName(name);
+        setFacts(f);
       });
     load();
     const off = onLocationChange(load);
     const offName = onPlaceNameChange(load);
+    // The permission is changed outside the app (browser or phone settings): read it again on return.
+    const sub = AppState.addEventListener("change", (state) => state === "active" && load());
     return () => {
       active = false;
       off();
       offName();
+      sub.remove();
     };
   }, [language]);
 
-  const currentLabel = currentName === null ? t("location.currentShort") : t("location.currentWithPlace", { place: currentName });
+  const noPermission = saved !== null && facts !== null && locationNotice({ saved: saved.kind, ...facts }) === "noPermission";
+  // A name looked up earlier would describe where the user was, not where Today now looks: leave it out.
+  const currentLabel = noPermission
+    ? t("location.currentNoPermission")
+    : currentName === null
+      ? t("location.currentShort")
+      : t("location.currentWithPlace", { place: currentName });
   const place = saved === null ? "" : saved.kind === "city" ? saved.name : saved.kind === "current" ? currentLabel : t("location.default");
 
   const chooseLanguage = (next: Locale) => void setLanguage(next).then(setRestart);
+  // "Keeps Shabbat and holidays" (DESIGN.md "שלב 4.1" item 10): stored on the device like the language, live everywhere.
+  const observes = useObservesShabbat();
 
   const closeSignOut = () => {
     setSignOutOpen(false);
@@ -87,6 +103,19 @@ export function ProfileView() {
                 onChange={chooseLanguage}
               />
               {restart ? <Meta style={{ textTransform: "none" }}>{t("profile.languageRestart")}</Meta> : null}
+            </View>
+            <View className="border-b border-hairline py-3" style={{ gap: 8 }}>
+              <Text className="font-body text-body text-ink">{t("profile.observance")}</Text>
+              <Segmented<"yes" | "no">
+                accessibilityLabel={t("profile.observance")}
+                segments={[
+                  { key: "yes", label: t("profile.observanceYes") },
+                  { key: "no", label: t("profile.observanceNo") },
+                ]}
+                value={observes ? "yes" : "no"}
+                onChange={(next) => void setObservesShabbat(next === "yes")}
+              />
+              <Meta style={{ textTransform: "none" }}>{t("profile.observanceMeta")}</Meta>
             </View>
             <ListRow label={t("profile.archive")} value={archived === null ? undefined : String(archived)} onPress={() => router.push("/archive")} />
           </View>

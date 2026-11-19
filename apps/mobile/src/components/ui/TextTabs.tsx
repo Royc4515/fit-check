@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { colors, layout, motion } from "../../theme/tokens";
 import { focusRingProps, selectionHaptic, timing, webStateProps } from "./interaction";
@@ -15,7 +15,18 @@ type Props<K extends string> = {
   accessibilityLabel: string;
   /** Start and end padding of the scrolling row, so the first tab lines up with the screen's gutter. */
   inset?: number;
+  /**
+   * Ids for the WAI-ARIA tabs pattern: each tab gets `<prefix>-tab-<key>` and `aria-controls` the panel
+   * `<prefix>-panel` (render it with `TabPanel`). Without it the row is as before: tabs that filter what is below
+   * (the wardrobe's category row), with no panel to name.
+   */
+  idPrefix?: string;
 };
+
+/** The DOM id of one tab of a row with `idPrefix`. */
+export const tabIdOf = (idPrefix: string, key: string) => `${idPrefix}-tab-${key}`;
+/** The DOM id of the panel a row with `idPrefix` controls. */
+export const panelIdOf = (idPrefix: string) => `${idPrefix}-panel`;
 
 const UNDERLINE = 2;
 /**
@@ -30,13 +41,17 @@ function TabButton<K extends string>({
   selected,
   onPress,
   roving,
+  idPrefix,
 }: {
   tab: TextTab<K>;
   selected: boolean;
   onPress: () => void;
   /** Web keyboard props of the row (tabindex, arrow keys); empty on native. */
   roving: object;
+  idPrefix?: string;
 }) {
+  // A typed object spread: RN's Pressable types have no aria-controls; react-native-web forwards it.
+  const panel: { "aria-controls"?: string } = idPrefix && Platform.OS === "web" ? { "aria-controls": panelIdOf(idPrefix) } : {};
   const on = useSharedValue(selected ? 1 : 0);
   useEffect(() => {
     on.set(withTiming(selected ? 1 : 0, timing(motion.stateMs)));
@@ -46,6 +61,8 @@ function TabButton<K extends string>({
     <Pressable
       {...focusRingProps}
       {...roving}
+      {...panel}
+      nativeID={idPrefix ? tabIdOf(idPrefix, tab.key) : undefined}
       onPress={onPress}
       accessibilityRole="tab"
       accessibilityLabel={tab.label}
@@ -75,7 +92,7 @@ function TabButton<K extends string>({
  * activates the tab (automatic activation: the grid under the tabs re-filters instantly, so there is no cost in
  * following the focus, and one key press fewer for the reader).
  */
-export function TextTabs<K extends string>({ tabs, value, onChange, accessibilityLabel, inset = 0 }: Props<K>) {
+export function TextTabs<K extends string>({ tabs, value, onChange, accessibilityLabel, inset = 0, idPrefix }: Props<K>) {
   const choose = (key: K) => {
     if (key === value) return;
     selectionHaptic();
@@ -103,7 +120,7 @@ export function TextTabs<K extends string>({ tabs, value, onChange, accessibilit
         style={{ marginBottom: -1 }}
       >
         {tabs.map((tab, i) => (
-          <TabButton key={tab.key} tab={tab} selected={tab.key === value} roving={itemProps(i)} onPress={() => choose(tab.key)} />
+          <TabButton key={tab.key} tab={tab} selected={tab.key === value} roving={itemProps(i)} idPrefix={idPrefix} onPress={() => choose(tab.key)} />
         ))}
       </ScrollView>
     </View>

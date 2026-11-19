@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, Text, View } from "react-native";
-import { Button, Display, EmptyState, FlatLay, ListRow, Meta, Sheet, Skeleton, StatusLine, type FlatLayPiece } from "../../components/ui";
+import { Button, Display, EmptyState, FlatLay, Meta, Sheet, Skeleton, StatusLine, type FlatLayPiece } from "../../components/ui";
 import { focusRingProps } from "../../components/ui/interaction";
 import type { WearSummary } from "../../data/insights";
 import { isRtl } from "../../i18n";
@@ -9,6 +9,7 @@ import { colors, layout } from "../../theme/tokens";
 import { tokens } from "../../theme/tokens.base.js";
 import { spoken } from "../item/a11y";
 import { longDate, ltr, shortDate, weekday } from "./format";
+import { OutfitItemRow } from "./OutfitItemRow";
 
 /** Outfits listed before "show more" (brief: up to 10). */
 const FIRST_PAGE = 10;
@@ -109,7 +110,7 @@ function WearsContent({ summary, onOpenItem }: { summary: WearSummary; onOpenIte
       <Sheet open={open !== null} onClose={() => setOpen(null)} title={open ? longDate(open.date, locale) : undefined} accessibilityLabel={open ? longDate(open.date, locale) : undefined}>
         {/* Kept after close for the sheet's exit animation: `open` is null, so the last outfit is simply not drawn. */}
         {open?.items.map((item) => (
-          <ListRow key={item.id} label={`${t(`item.subcategory.${item.tags.subcategory}`)} · ${item.name}`} onPress={() => openItem(item.id)} />
+          <OutfitItemRow key={item.id} type={t(`item.subcategory.${item.tags.subcategory}`)} name={item.name} onPress={() => openItem(item.id)} />
         ))}
       </Sheet>
     </View>

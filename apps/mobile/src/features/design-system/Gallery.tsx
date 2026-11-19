@@ -8,6 +8,7 @@ import { Monogram } from "../../components/brand/Monogram";
 import {
   Button,
   Chip,
+  CrossFade,
   Display,
   Meta,
   EmptyState,
@@ -25,6 +26,7 @@ import {
   Stepper,
   Swatch,
   TabBar,
+  TextTabs,
   Tile,
   TILE_CAPTION_HEIGHT,
   TopNav,
@@ -103,6 +105,25 @@ function Wrap({ children, gap = 16 }: { children: ReactNode; gap?: number }) {
 }
 
 /**
+ * The CrossFade toggle, with its own state: a toggle in the gallery's state re-rendered the whole page on the same
+ * frame as the fade and the browser dropped every frame of it.
+ */
+function CrossFadeDemo() {
+  const { t } = useTranslation();
+  const [faded, setFaded] = useState(false);
+  return (
+    <View style={{ gap: 16, maxWidth: layout.maxContentWidth }}>
+      <CrossFade swapKey={faded ? "b" : "a"}>
+        <Text className="font-body text-body text-ink">{t(faded ? "ds.crossFade.b" : "ds.crossFade.a")}</Text>
+      </CrossFade>
+      <View className="items-start">
+        <Button variant="outline" label={t("ds.crossFade.toggle")} onPress={() => setFaded((f) => !f)} />
+      </View>
+    </View>
+  );
+}
+
+/**
  * /design-system: every ui/ component in every variant and state, on ivory, fed by the real wardrobe. Internal
  * (not linked anywhere); it is how a screen task checks a component before using it. The whole page is the
  * MasonryGrid's header, which doubles as the demo of a grid under a scrolling screen header.
@@ -132,6 +153,8 @@ export function Gallery() {
   const [nav, setNav] = useState<NavKey>("today");
   const [category, setCategory] = useState<Category | "all">("all");
   const [status, setStatus] = useState<"info" | "ok" | "error">("error");
+  const [twoTab, setTwoTab] = useState("today");
+  const [fourTab, setFourTab] = useState("day1");
 
   const toggleChip = (k: string) =>
     setChips((cur) => {
@@ -323,6 +346,44 @@ export function Gallery() {
             />
           </Demo>
         </View>
+      </Block>
+
+      <Block title={t("ds.section.textTabs")}>
+        {/* Today's day tabs in both languages (the page's own direction applies to both rows). */}
+        <View style={{ gap: 24, maxWidth: layout.maxContentWidth }}>
+          {(["he", "en"] as const).map((lng) => (
+            <View key={lng} style={{ gap: 16 }}>
+              <Demo label={`${t("ds.textTabs.two")} · ${t(`ds.textTabs.${lng}`)}`}>
+                <TextTabs
+                  accessibilityLabel={t("ds.textTabs.label")}
+                  tabs={[
+                    { key: "today", label: t("today.tabs.today", { lng }) },
+                    { key: "shabbat", label: t("today.tabs.shabbat", { lng }) },
+                  ]}
+                  value={twoTab}
+                  onChange={setTwoTab}
+                />
+              </Demo>
+              <Demo label={`${t("ds.textTabs.four")} · ${t(`ds.textTabs.${lng}`)}`}>
+                <TextTabs
+                  accessibilityLabel={t("ds.textTabs.label")}
+                  tabs={[
+                    { key: "today", label: t("today.tabs.today", { lng }) },
+                    { key: "day1", label: t("today.tabs.holidayDay1", { lng }) },
+                    { key: "day2", label: t("today.tabs.holidayDay2", { lng }) },
+                    { key: "shabbat", label: t("today.tabs.shabbat", { lng }) },
+                  ]}
+                  value={fourTab}
+                  onChange={setFourTab}
+                />
+              </Demo>
+            </View>
+          ))}
+        </View>
+      </Block>
+
+      <Block title={t("ds.section.crossFade")}>
+        <CrossFadeDemo />
       </Block>
 
       <Block title={t("ds.section.swatches")}>

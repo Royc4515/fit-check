@@ -87,3 +87,21 @@ export function decideLeave(s: LeaveState): LeaveDecision {
   if (held) return { kind: "stay", field: held };
   return { kind: "leave" };
 }
+
+/**
+ * What removing the item from the wardrobe must do first (DESIGN.md section 4, "כתיבה במקום"): the same rule as
+ * leaving, because the archive closes the screen. Archiving while an open change is unsaved would throw the typed
+ * text away (an independent check found exactly that):
+ * - `archive`: nothing typed can be lost (no field open, or it is unchanged, or an emptied name); archive now;
+ * - `save-first`: the open field is changed and valid; one write, and the archive only after it succeeded;
+ * - `wait`: a save is already on its way; archive when it succeeds, never write twice;
+ * - `stay`: an earlier save failed while its field was closed; nothing is archived, the field reopens with its text.
+ * A failed save never archives: the screen stays with the field, the typed text and the error line.
+ */
+export type RemoveDecision = { kind: "archive" } | Exclude<LeaveDecision, { kind: "leave" }>;
+
+/** See `RemoveDecision`. Pure; `decideLeave` owns the rule, this only renames its "go" outcome. */
+export function decideRemove(s: LeaveState): RemoveDecision {
+  const d = decideLeave(s);
+  return d.kind === "leave" ? { kind: "archive" } : d;
+}

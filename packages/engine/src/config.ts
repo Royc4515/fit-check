@@ -11,6 +11,28 @@ export const SCORING_WEIGHTS = {
   pair_weight: 0.2,
 } as const;
 
+/**
+ * Shabbat and holiday colour preference for the top (Roy, 2026-11-19; DESIGN.md "שלב 4.1" item 7). Not a rule: a
+ * white shirt is preferred, light colours and stripes pass without a penalty, dark colours and loud patterns lose a
+ * little. Added to the weighted score of shabbat and holiday contexts only; every other context scores as before.
+ * The bonus is smaller than one recently-worn item (RECENCY.item_penalty * 0.25 = 0.125), so a white shirt worn
+ * yesterday does not come straight back.
+ */
+export const SHABBAT_COLOR = {
+  contexts: ["shabbat", "holiday"] as readonly ContextType[],
+  /** color_name "white". */
+  white_top: 0.06,
+  /** HSL lightness of color_hex below this reads as dark (navy #1F2A44 is 0.19, mid blue #3B5B8C 0.39). */
+  dark_lightness: 0.3,
+  dark_top: -0.03,
+  /**
+   * Patterns that read loud on a Shabbat shirt. The tag schema has one `stripes` value (no thin/wide), so stripes are
+   * treated as the thin ones and stay neutral; `print` is already denied by the Shabbat context rules.
+   */
+  loud_patterns: ["check", "print"] as readonly string[],
+  loud_top: -0.03,
+} as const;
+
 export const RECENCY = {
   /** Days during which a worn item is penalized. */
   item_window_days: 3,
@@ -31,6 +53,12 @@ export const FEEDBACK = {
  * user wants warmer clothes, so the day is treated as colder, not the other way round.
  */
 export const ADJUST_STEP = { temp_c: 3, formality: 1 } as const;
+
+/**
+ * A holiday for someone who does not keep Shabbat and holidays (the profile switch off, DESIGN.md "שלב 4.1" item 10):
+ * weekday rules, "a bit more festive". Steps of the adjust sheet's "dressier", taken by default and shown as taken.
+ */
+export const FESTIVE_FORMALITY_STEPS = 1;
 
 /**
  * Wears before a garment goes to the wash (Roy's rules, 2026-11-08). Counted since the item's last wash.
@@ -107,73 +135,96 @@ export const DEFAULT_CONTEXT_RULES: Record<ContextType, ContextRules> = {
   weekday: {
     type: "weekday",
     formality_range: [3, 6],
-    top: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [] },
-    bottom: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [] },
-    shoes: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [] },
+    top: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [], deny_materials: [], optional: false },
+    bottom: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [], deny_materials: [], optional: false },
+    shoes: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [], deny_materials: [], optional: false },
     styling: "outfit",
     no_repeat_with_key: false,
   },
   shabbat: {
     type: "shabbat",
     formality_range: [7, 10],
-    top: { allow_subcategories: ["button_down"], deny_subcategories: [], deny_patterns: ["print"] },
-    bottom: { allow_subcategories: ["chinos", "trousers"], deny_subcategories: ["jeans", "shorts"], deny_patterns: [] },
-    shoes: { allow_subcategories: ["dress_shoes", "boots"], deny_subcategories: ["sneakers", "sandals"], deny_patterns: [] },
+    top: { allow_subcategories: ["button_down"], deny_subcategories: [], deny_patterns: ["print"], deny_materials: [], optional: false },
+    bottom: { allow_subcategories: ["chinos", "trousers"], deny_subcategories: ["jeans", "shorts"], deny_patterns: [], deny_materials: [], optional: false },
+    shoes: { allow_subcategories: ["dress_shoes", "boots"], deny_subcategories: ["sneakers", "sandals"], deny_patterns: [], deny_materials: [], optional: false },
     styling: "outfit",
     no_repeat_with_key: false,
   },
   holiday: {
     type: "holiday",
     formality_range: [7, 10],
-    top: { allow_subcategories: ["button_down"], deny_subcategories: [], deny_patterns: ["print"] },
-    bottom: { allow_subcategories: ["chinos", "trousers"], deny_subcategories: ["jeans", "shorts"], deny_patterns: [] },
-    shoes: { allow_subcategories: ["dress_shoes", "boots"], deny_subcategories: ["sneakers", "sandals"], deny_patterns: [] },
+    top: { allow_subcategories: ["button_down"], deny_subcategories: [], deny_patterns: ["print"], deny_materials: [], optional: false },
+    bottom: { allow_subcategories: ["chinos", "trousers"], deny_subcategories: ["jeans", "shorts"], deny_patterns: [], deny_materials: [], optional: false },
+    shoes: { allow_subcategories: ["dress_shoes", "boots"], deny_subcategories: ["sneakers", "sandals"], deny_patterns: [], deny_materials: [], optional: false },
     styling: "outfit",
     no_repeat_with_key: false,
   },
   reserve: {
     type: "reserve",
     formality_range: [1, 10],
-    top: { allow_subcategories: ["tshirt"], deny_subcategories: [], deny_patterns: [] },
-    bottom: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [] },
-    shoes: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [] },
+    top: { allow_subcategories: ["tshirt"], deny_subcategories: [], deny_patterns: [], deny_materials: [], optional: false },
+    bottom: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [], deny_materials: [], optional: false },
+    shoes: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [], deny_materials: [], optional: false },
     styling: "packing_list",
     no_repeat_with_key: false,
   },
   date: {
     type: "date",
     formality_range: [5, 7],
-    top: { allow_subcategories: ["button_down", "polo"], deny_subcategories: [], deny_patterns: ["print"] },
-    bottom: { allow_subcategories: ["jeans", "chinos"], deny_subcategories: ["shorts"], deny_patterns: [] },
-    shoes: { allow_subcategories: ["boots", "sneakers", "dress_shoes"], deny_subcategories: ["sandals"], deny_patterns: [], min_formality: 4 },
+    top: { allow_subcategories: ["button_down", "polo"], deny_subcategories: [], deny_patterns: ["print"], deny_materials: [], optional: false },
+    bottom: { allow_subcategories: ["jeans", "chinos"], deny_subcategories: ["shorts"], deny_patterns: [], deny_materials: [], optional: false },
+    shoes: { allow_subcategories: ["boots", "sneakers", "dress_shoes"], deny_subcategories: ["sandals"], deny_patterns: [], deny_materials: [], optional: false, min_formality: 4 },
     styling: "outfit",
     no_repeat_with_key: true,
   },
   interview: {
     type: "interview",
     formality_range: [5, 9],
-    top: { allow_subcategories: ["button_down", "polo"], deny_subcategories: [], deny_patterns: ["print"] },
-    bottom: { allow_subcategories: ["chinos", "trousers", "jeans"], deny_subcategories: ["shorts"], deny_patterns: [] },
-    shoes: { allow_subcategories: ["dress_shoes", "boots", "sneakers"], deny_subcategories: ["sandals"], deny_patterns: [], min_formality: 4 },
+    top: { allow_subcategories: ["button_down", "polo"], deny_subcategories: [], deny_patterns: ["print"], deny_materials: [], optional: false },
+    bottom: { allow_subcategories: ["chinos", "trousers", "jeans"], deny_subcategories: ["shorts"], deny_patterns: [], deny_materials: [], optional: false },
+    shoes: { allow_subcategories: ["dress_shoes", "boots", "sneakers"], deny_subcategories: ["sandals"], deny_patterns: [], deny_materials: [], optional: false, min_formality: 4 },
     styling: "outfit",
     no_repeat_with_key: false,
   },
   event: {
     type: "event",
     formality_range: [6, 9],
-    top: { allow_subcategories: ["button_down"], deny_subcategories: [], deny_patterns: [] },
-    bottom: { allow_subcategories: ["chinos", "trousers"], deny_subcategories: ["shorts"], deny_patterns: [] },
-    shoes: { allow_subcategories: ["dress_shoes", "boots"], deny_subcategories: ["sandals", "sneakers"], deny_patterns: [] },
+    top: { allow_subcategories: ["button_down"], deny_subcategories: [], deny_patterns: [], deny_materials: [], optional: false },
+    bottom: { allow_subcategories: ["chinos", "trousers"], deny_subcategories: ["shorts"], deny_patterns: [], deny_materials: [], optional: false },
+    shoes: { allow_subcategories: ["dress_shoes", "boots"], deny_subcategories: ["sandals", "sneakers"], deny_patterns: [], deny_materials: [], optional: false },
     styling: "outfit",
     no_repeat_with_key: false,
   },
   trip: {
     type: "trip",
     formality_range: [1, 10],
-    top: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [] },
-    bottom: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [] },
-    shoes: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [] },
+    top: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [], deny_materials: [], optional: false },
+    bottom: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [], deny_materials: [], optional: false },
+    shoes: { allow_subcategories: [], deny_subcategories: [], deny_patterns: [], deny_materials: [], optional: false },
     styling: "packing_list",
     no_repeat_with_key: false,
+  },
+};
+
+/** Shoe materials that are not worn on Yom Kippur (PRD section 7, "יום כיפור"). */
+export const YOM_KIPPUR_DENIED_SHOE_MATERIALS = ["leather", "suede"] as const;
+
+/**
+ * Yom Kippur (PRD section 7, "יום כיפור", 19.11.2026): the holiday rules, except that no leather or suede shoe is
+ * offered and any other shoe is (canvas sneakers included, whatever its formality); with none in the wardrobe the
+ * outfit goes without shoes. The white-shirt preference applies as on Shabbat (SHABBAT_COLOR reads `type`).
+ *
+ * don't touch / `type` stays "holiday": ContextType mirrors the database enum `context_type`, and a Yom Kippur wear is
+ * stored as a holiday. Yom Kippur is a rule set the planner picks by date, not a new context type.
+ */
+export const YOM_KIPPUR_RULES: ContextRules = {
+  ...DEFAULT_CONTEXT_RULES.holiday,
+  shoes: {
+    allow_subcategories: [],
+    deny_subcategories: [],
+    deny_patterns: [],
+    deny_materials: [...YOM_KIPPUR_DENIED_SHOE_MATERIALS],
+    min_formality: 1,
+    optional: true,
   },
 };
