@@ -347,8 +347,7 @@
         "style": "Stylist",
         "receipt": "Receipts"
       }
-    },
-    "back": "Back to profile"
+    }
   },
   "item": {
     "back": "Wardrobe",
@@ -1016,7 +1015,6 @@
     "loadFailed": "Your outfits could not be loaded"
   },
   "outfit": {
-    "back": "Back",
     "more": "More actions",
     "unnamed": "Untitled outfit",
     "nameLabel": "Outfit name",
@@ -1049,7 +1047,8 @@
       "title": "Remove this outfit from your outfits?",
       "body": "It will no longer show in Outfits. Wears already recorded stay in Insights.",
       "confirm": "Remove",
-      "failed": "The outfit was not removed. {{reason}}"
+      "failed": "The outfit was not removed. {{reason}}",
+      "removing": "Removing"
     },
     "renameFailed": "The name was not saved. {{reason}}",
     "notFound": {
@@ -1057,6 +1056,13 @@
       "body": "It may have been removed from your outfits.",
       "action": "To outfits"
     },
-    "loadFailed": "This outfit could not be loaded"
+    "loadFailed": "This outfit could not be loaded",
+    "meta": "{{context}} · {{rest}}",
+    "where": {
+      "laundry": "laundry",
+      "away": "reserve duty",
+      "lent": "lent",
+      "home": "home"
+    }
   }
 }

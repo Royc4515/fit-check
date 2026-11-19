@@ -35,7 +35,10 @@ export const TYPE_SEPARATOR = " · ";
  * type: the caption names what is there.
  * @param typeOf - the garment type in the active language (`item.subcategory.<sub>`).
  */
-export function outfitCaption(outfit: Pick<SavedOutfit, "name" | "pieces">, typeOf: (subcategory: string) => string): { text: string; named: boolean } {
+export function outfitCaption(
+  outfit: { name: string | null; pieces: readonly { item: Pick<Item, "tags"> }[] },
+  typeOf: (subcategory: string) => string
+): { text: string; named: boolean } {
   if (outfit.name) return { text: outfit.name, named: true };
   return { text: outfit.pieces.map((p) => typeOf(p.item.tags.subcategory)).join(TYPE_SEPARATOR), named: false };
 }
