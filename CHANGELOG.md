@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-19 (Friday is for Shabbat: every phone-free day planned ahead)
+
+- On a day with candle lighting Today shows tabs ("היום", then "לשבת" / "לחג" / "לחג א׳", "לחג ב׳") inside the measured hero block (DESIGN.md "שלב 4.1"). Each tab is its own day: Shabbat or holiday rules, its own forecast line, "אלבש בשבת" records the wear on that date (laundry at press time, undo brings it back), its own stylist request when the tab is first opened. A later day sees the earlier looks as worn; a garment recorded for a later day is not offered earlier. Opens on the planned day from three hours before candle lighting or once today is worn.
+- Hebcal is asked for date..date+3 (`phoneFreeChain`, cache v5), the forecast for 4 days (cache v3). Engine: a Shabbat colour term (white top preferred; `SHABBAT_COLOR` in config) and a fix: a wear dated after `req.today` no longer lowers its garments' pre-rank.
+- Profile: "שומר שבת וחג" (device setting, `useObservesShabbat` / `getObservesShabbat`). Off: no times, no tabs, no "לשבת" filter, short location hint, weekday rules; a Yom Tov is a weekday one "dressier" step up (shown in the adjust sheet).
+- Look at: `features/today/plans.ts` (pure, tested), `data/shabbatTimes.ts`, `useFeedback` (one hook, `target` per action), the tab block in `TodayView.tsx`. Checked in the browser on the read-only preview (writes stubbed locally in a throwaway build).
+- Unverified: native; real writes and the real `wear_counts_since_wash` SQL; the stylist's answer for a planned day (blocked in preview: the template text shows). The MCP tools do not know the observance switch. The location screen's current-location meta still mentions Shabbat times with the switch off (that row belongs to another task).
+
 ## 2026-11-19 (OpenStreetMap credit from the keyboard)
 
 - `ui/MetaLink` is a real anchor on web (new tab, noopener): Enter, middle-click and copy-link work; native keeps Linking. Before, only a click opened it.
