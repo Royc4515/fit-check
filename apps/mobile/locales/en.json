@@ -28,6 +28,10 @@
     },
     "noWeather": "No weather data right now",
     "candles": "Shabbat begins {{time}}",
+    "candlesOther": "Candle lighting {{time}}",
+    "shabbatEnd": "Shabbat ends {{time}}",
+    "holidayEnd": "Holiday ends {{time}}",
+    "timesJoin": "{{first}} · {{second}}",
     "credits": "Weather: Open-Meteo · Hebrew calendar: Hebcal",
     "explain": {
       "base": "{{day}}, feels like {{min}} to {{max}} degrees.",

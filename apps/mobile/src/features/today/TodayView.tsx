@@ -404,15 +404,19 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     ? `${w.temp_min_c}–${w.temp_max_c}°, ${t("today.data.rain")} ${Math.round(w.rain_probability * 100)}%, ${t(`today.sky.${w.sky}`)}`
     : t("today.noWeather");
 
+  // Spec DESIGN.md section 3 "היום" item 1: the entry line is named by the day, the end joins it only when it is
+  // today or tomorrow (data/shabbatTimes.ts decides that).
+  const entryLine = day.candles ? t(day.candles.kind === "shabbat" ? "today.candles" : "today.candlesOther", { time: ltr(day.candles.time) }) : null;
+  const endLine = day.end ? t(day.end.kind === "shabbat" ? "today.shabbatEnd" : "today.holidayEnd", { time: ltr(day.end.time) }) : null;
+  const timesLine = entryLine && endLine ? t("today.timesJoin", { first: entryLine, second: endLine }) : (entryLine ?? endLine);
+
   const masthead = (
     <View>
       <Display size="display-xl" level={1}>
         {t("today.title")}
       </Display>
       <Text className="mt-2 font-body text-body-sm text-ink-soft">{hebrew ? `${hebrew} · ${gregorian}` : gregorian}</Text>
-      {day.candleLighting ? (
-        <Text className="mt-1 font-body text-body-sm text-ink-soft">{t("today.candles", { time: ltr(day.candleLighting) })}</Text>
-      ) : null}
+      {timesLine ? <Text className="mt-1 font-body text-body-sm text-ink-soft">{timesLine}</Text> : null}
       <Pressable
         {...focusRingProps}
         onPress={() => router.push("/location")}

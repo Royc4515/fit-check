@@ -563,3 +563,9 @@
 
 - "My current location" now lights candles by the local custom: `candleLightingMinutes` (pure, `apps/mobile/src/data/candleLighting.ts`) returns 40 inside Jerusalem's municipal boundary, 30 inside Haifa's or Zikhron Ya'akov's, 20 elsewhere in Israel, 18 abroad, and `loadCalendar` sends it as `b=`. Before, Hebcal gave coordinates its own default (20 in Israel): Jerusalem showed 16:17 instead of 15:57 on 2026-11-20. Chosen cities (`geonameid`) are unchanged. Cache key bumped to `hebcal:v3`.
 - Boundaries are simplified OpenStreetMap relations (about 100 m edge accuracy) in `candleLightingBounds.ts`. Look at: the header there for sources, and `candleLighting.test.ts` for the landmark points. A place within ~100 m of a city border can land on the wrong side.
+
+## 2026-11-19 (Today: end of Shabbat, candle lighting named by the day)
+
+- The times row under the date now follows DESIGN.md section 3 "היום" item 1: "כניסת שבת" only on a Friday, "הדלקת נרות" on any other candle-lighting day, plus "צאת שבת" / "צאת החג" when the end is today, or tomorrow when candles are lit today (never further away). Pure logic in `data/shabbatTimes.ts`, tested on 13 saved real Hebcal responses (`data/__fixtures__`). `loadCalendar` asks Hebcal for today and tomorrow, but day type and holiday still come from today's events only; cache key is `hebcal:v4`. `DayContext.candleLighting` became `candles` and `end`.
+- Hebcal facts: Chanukah candles are `holiday` events, not `candles`, so a weekday Chanukah night shows no line; Yom Kippur ends with an ordinary `havdalah` item; Rosh Hashana 2027 (Sat-Sun) is two days even in Israel, so its eve (a Friday) shows no end.
+- Look at: `TodayView.tsx` (`timesLine`). Not verified: native.

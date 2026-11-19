@@ -28,6 +28,10 @@
     },
     "noWeather": "אין כרגע נתוני מזג אוויר",
     "candles": "כניסת שבת {{time}}",
+    "candlesOther": "הדלקת נרות {{time}}",
+    "shabbatEnd": "צאת שבת {{time}}",
+    "holidayEnd": "צאת החג {{time}}",
+    "timesJoin": "{{first}} · {{second}}",
     "credits": "מזג אוויר: Open-Meteo · לוח עברי: Hebcal",
     "explain": {
       "base": "{{day}}, מרגיש כמו {{min}} עד {{max}} מעלות.",
