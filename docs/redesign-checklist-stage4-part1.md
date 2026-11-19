@@ -50,3 +50,13 @@ OFF (Fri 11-20, Sat 11-21): no times row, no tabs, weekday look (polo + jeans + 
 No BLOCKER found.
 ### Not verifiable here
 Real writes; Saturday-evening state of a recorded look (state lives in memory only); the stylist's reasoning request for a planned tab (no function call seen in preview, only the snapshot POST); F2 "current saved + permission denied" (Chromium gives prompt/granted, not denied); native; screen-reader speech; Open-Meteo independent fetch (daily limit on my curl; compared to the app's own response).
+
+## Recheck after the fix round (a42f834)
+
+### verify4b at a42f834
+1 FIXED for equal status lines: Fri 14:00, 390/360 he, both directions: ~195-200 ms, both layers cross at once (opMin+opMax=1), hero 309,354 (390) / 309,310 (360) constant. Reduced motion: no intermediate frames. With a recorded Shabbat (patched dist-stub copy, writes stubbed): hero top shifts instantly 377 <-> 309 (status line above the hero), and the hero box stays at the larger height (488 / 427) during the 180 ms fade and snaps to the final 354/359 at its end (390; 360: 450->310, 383->315): visible bottom-edge jump (S_during_390_4.png). MINOR.
+2 FIXED: YK eve 2027-10-10 tabs "היום","ליום כיפור" / "Today","For Yom Kippur"; button "אלבש ביום כיפור" / "I'll wear it on Yom Kippur". Look: button-down Calvin Klein, Zara Navy trousers, Adidas running ultraboost sneakers, Zara grey knit. Shoe material (from snapshot) = unknown (open point: passes). Every dress shoe in the wardrobe is leather/suede, Salomon boots mixed; so the only non-leather option is that unknown sneaker. Erev Pesach: "לחג" look button-down + trousers + Brown Suede Penny Loafers + knit; Friday: same kind (Calvin Klein, trousers, suede loafers, knit): the rule did not leak.
+3 PASS: tabs have ids today-day-tab-<date>, aria-controls=today-day-panel; role=tabpanel id today-day-panel with aria-labelledby = selected tab id, follows selection. Wardrobe row: arrows, Home/End select הכל..אביזרים correctly, look unchanged.
+4 PASS: /design-system has "לשוניות טקסט"/"Text tabs" and "החלפה בדהייה"/"Cross-fade", no console errors at 390 he and 1280 en.
+5 PASS: Thu hero 249..736 (390), 249..692 (360); Fri 13:17 default היום, 13:18 לשבת; OFF Friday: no times row, only the bottom nav tablist; item edit/cancel/back ok (13 tiles); filter sheet (ON) has לשבת; insights/archive/profile/location/design-system: no console or page errors. `pnpm turbo run lint test --force`: exit 0, 8/8, 0 cached; schema 42, engine 104, mobile 269 (lint = expo lint + tsc --noEmit).
+

@@ -645,3 +645,10 @@
 - `docs/REDESIGN_PLAN.md` now has "Stage 4 - from a finished redesign to a daily habit": Friday for Shabbat, Android, a morning notification on the device, manual contexts, reserve packing, hardening, clean-up. It rests on an inventory of the PRD against the code made the same day. Nothing in it is started; it waits for Roy's go.
 - Look at: the stage 4 table and the "Not in stage 4" table; `TASKS.md` "Open after stage 3".
 
+## 2026-11-19 (stage 4 part 1 closed; stage 5 planned)
+
+- Independent verification of Shabbat planning, the observance switch and the hardening items, and a recheck after the fix round: `docs/redesign-checklist-stage4-part1.md`. No blocker and no major defect; open minors are in `TASKS.md`.
+- `supabase/functions/_shared/engine.js` rebuilt from the engine (`scripts/bundle-engine.sh`): the white-shirt preference, the future-dated wear fix and the Yom Kippur rule set are now in the bundle the `mcp` function runs. `supabase/config.toml` now lists `mcp` and `design-preview` with `verify_jwt = false`, as deployed.
+- `docs/REDESIGN_PLAN.md` "Stage 5": hand-built and saved outfits with favourites (a "לוקים" place in the bottom bar, Insights moves into the profile), alternatives after wearing, the algorithm's judgement, and a try-on experiment. Decisions and their reasons are there.
+- To deploy with this merge: migration 0006, then the `mcp` function from `scripts/bundle-mcp.sh` with verify_jwt off.
+
