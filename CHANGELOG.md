@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-11-19 (OpenStreetMap credit from the keyboard)
+
+- `ui/MetaLink` is a real anchor on web (new tab, noopener): Enter, middle-click and copy-link work; native keeps Linking. Before, only a click opened it.
+- The location screen now shows "no location permission" when "current" is saved but the permission was refused later (Today shows the default city then).
+- Checked live: Nominatim answers with `access-control-allow-origin: *`.
+## 2026-11-19 (Today: the flat-lay always fits, measured)
+
+- Today on phones: the whole flat-lay is on screen at scroll top whatever stands above it (Friday times row, skip, worn, laundry and failure lines), per DESIGN.md section 3 "היום" item 2. The free space is measured (masthead and the status stack above the hero by size, the floating bar or, without it, the scene down to the tab bar) minus 16, instead of paddings tuned to 390 and 360.
+- Below 600 the surface stays full width and gets shorter; the composition sits in a centred 4:5 frame (new optional `FlatLay` `maxHeight`; other callers unchanged). 600-899: the card cap now also works with no bar (worn, including opening already worn); the bar height resets to 0 when the bar leaves.
+- Look at: the cap block in `features/today/TodayView.tsx` (`heroSpace`, `cardWidth`, `heroMaxHeight`), the frame in `components/ui/FlatLay.tsx`. Native not run (no emulator).
+
+## 2026-11-19 (place name for the current location)
+
+- "My current location" now shows the settlement name: Today's weather line, the profile row ("Current location · Ramat Gan") and the meta of the location screen row. Web asks Nominatim (rounded to 3 decimals, only after a move over 300 m or a language change, 3 s cap, cached on the device); native uses the device geocoder (not run here: no emulator). No name falls back to "current location" and never delays the weather.
+- New `ui/MetaLink` (a meta line that opens an address, 44 hit area, in the gallery) for the OpenStreetMap credit on the location screen (web only).
+- Look at: `data/placeName.ts` (pure rules, tested with real Nominatim fixtures), `placeNameFor` in `data/location.ts`, `loadDayContext` in `data/dayContext.ts`.
+
 ## 2026-11-06
 
 - Repo scaffolded: monorepo (pnpm + turbo), `packages/schema`, `packages/engine` with tests on the real wardrobe fixture, first Supabase migration, Edge Function stubs, Modal worker stub, Expo app skeleton with i18n (he/en) and design tokens.
@@ -553,3 +570,38 @@
 - Stage 2 of `docs/REDESIGN_PLAN.md` is complete on `claude/gifted-goldberg-9498c1` (PR #23): wardrobe search, Shabbat and formality filters, archive with restore and undo; item notes, wear history, guarded re-cut; the intake queue; Insights; Profile language switch, archive row and sign-out. No migration, no Edge Function change. `packages/engine` exports `passesContextRules` (behaviour unchanged).
 - Two independent verifications (`docs/redesign-checklist-stage2.md`, `docs/redesign-checklist-recheck.md`) found a live regression from stage 1 (the screen under the item modal disappeared during the flight), a re-cut that would have replaced AI redraws, races in optimistic edits, and keyboard and focus gaps. All fixed; `apps/mobile` now has a vitest suite (21 tests) for the pure logic.
 - Not verified: Android, real writes, the first real wear, a real `ai_calls` read. `TASKS.md` "Open after stage 2" lists them.
+
+## 2026-11-19 (Today: worn state)
+
+- After "לובש" the floating bar is gone and the worn line ("נרשם · ביטול") and the laundry line take the skip line's slot between masthead and flat-lay, so the shoes are no longer covered (DESIGN.md section 3 "היום" item 8). A failed "לובש" still shows in the bar. Focus after a wear lands on the worn-status wrapper (`today-worn-status`), after an undo on the button, back in the bar.
+- Look at: `features/today/TodayView.tsx` (`wornStatus`, `barStatusLine`, the focus effect). Not verified: native, a real write (checked on web with the preview writes stubbed in a throwaway build).
+
+## 2026-11-19 (Shabbat times: current location)
+
+- "My current location" now lights candles by the local custom: `candleLightingMinutes` (pure, `apps/mobile/src/data/candleLighting.ts`) returns 40 inside Jerusalem's municipal boundary, 30 inside Haifa's or Zikhron Ya'akov's, 20 elsewhere in Israel, 18 abroad, and `loadCalendar` sends it as `b=`. Before, Hebcal gave coordinates its own default (20 in Israel): Jerusalem showed 16:17 instead of 15:57 on 2026-11-20. Chosen cities (`geonameid`) are unchanged. Cache key bumped to `hebcal:v3`.
+- Boundaries are simplified OpenStreetMap relations (about 100 m edge accuracy) in `candleLightingBounds.ts`. Look at: the header there for sources, and `candleLighting.test.ts` for the landmark points. A place within ~100 m of a city border can land on the wrong side.
+
+## 2026-11-19 (Today: end of Shabbat, candle lighting named by the day)
+
+- The times row under the date now follows DESIGN.md section 3 "היום" item 1: "כניסת שבת" only on a Friday, "הדלקת נרות" on any other candle-lighting day, plus "צאת שבת" / "צאת החג" when the end is today, or tomorrow when candles are lit today (never further away). Pure logic in `data/shabbatTimes.ts`, tested on 13 saved real Hebcal responses (`data/__fixtures__`). `loadCalendar` asks Hebcal for today and tomorrow, but day type and holiday still come from today's events only; cache key is `hebcal:v4`. `DayContext.candleLighting` became `candles` and `end`.
+- Hebcal facts: Chanukah candles are `holiday` events, not `candles`, so a weekday Chanukah night shows no line; Yom Kippur ends with an ordinary `havdalah` item; Rosh Hashana 2027 (Sat-Sun) is two days even in Israel, so its eve (a Friday) shows no end.
+- Look at: `TodayView.tsx` (`timesLine`). Not verified: native.
+## 2026-11-19 (item: explicit save for name, brand and notes)
+
+- Writing in place follows DESIGN.md section 4 "כתיבה במקום": nothing saves on blur. At rest a pencil (`edit`, 20 in a 44 box) at the end of the name and brand lines and of the notes heading; empty brand / notes are dashed "add" chips; tapping the text also opens writing. Writing: new library `EditField` (ivory, 1px ink, radius 6, padding 12, caret at the end) with "שמירה" (ink, disabled when unchanged or an empty name) and "ביטול"; notes counter from 400 on the same row. Enter saves name/brand, Ctrl/Cmd+Enter saves notes, Escape cancels. One field at a time: switching saves a changed valid field (an empty name is cancelled). Leaving the screen (back, hardware back, browser back, goes-with) saves a changed valid field through the edit queue.
+- After a save "נשמר" for 2 seconds in a polite live region (light haptic on native); a failed save reopens the field with the typed text and an error line with "נסה שוב". Focus returns to the field's pencil.
+- Web keeps the button row above the on-screen keyboard (`visualViewport`); native relies on `automaticallyAdjustKeyboardInsets` and `keyboardShouldPersistTaps="handled"` on the item scroll view (unverified, no emulator).
+- Pure decisions in `features/item/writing.ts` with tests; state in `useTextWriting.ts`; gallery fixtures (rest, writing, saved, failed) in the item block of `/design-system`.
+- Look at: `design/screens/2026-11-19-item-writing-*`.
+
+## 2026-11-19 (Today: tomorrow on a holiday's end, fast ends on Yom Kippur)
+
+- The end in the times row says "מחר" / "tomorrow" when it is tomorrow's and today is not a Friday ("הדלקת נרות 18:54 · צאת החג מחר 19:53"); on a Friday it stays "כניסת שבת 16:18 · צאת שבת 17:17". Yom Kippur says "צאת הצום" / "Fast ends". `shabbatTimes` returns `end.day` and `end.kind: "fast"`; Yom Kippur is detected by `title_orig === "Yom Kippur"` (English whatever `lg` is) on the day the havdalah belongs to. New fixture: Yom Kippur day.
+- Labels use no-break spaces, so on a narrow screen the row breaks only at " · ".
+- Double Hebcal request: `getJson` (`dayContext.ts`) now shares an in-flight request per URL. A plain cold load in a fresh browser sent each URL once, so the doubling was not reproduced; the likely paths are `useDayContext` mounted in two screens (Today, sign-in) and its reloads on location or place-name events, both before the first answer reaches the cache.
+- Look at: `TodayView.tsx` (`endKeys`). Not verified: native.
+## 2026-11-19 (item writing: leaving waits for the save)
+
+- Leaving the item screen with an open, changed, valid field saves it first; the screen goes (with its flight back) only after the save succeeded. While saving "שמירה" reads "שומר" and is inert; a failed save keeps the screen with the field, the typed text, the error line and "נסה שוב". One write per leave. Unchanged or invalid (emptied name) open fields are dropped and do not block. Covered: the back button, Android back, browser back and other navigator removals (`usePreventRemove`), "goes with", and closing after removal. Decision in `writing.ts` `decideLeave` with tests.
+- A failed save puts focus back in the reopened field (caret at the end). A failure while another field is open keeps its text and error line until it is saved or cancelled; leaving then reopens it instead of losing it.
+- Name and brand text at rest are no longer tab stops; the pencil is the only keyboard and screen-reader control.

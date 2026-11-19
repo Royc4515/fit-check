@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, Text, View } from "react-native";
 import { Button, ListRow, Meta, ScreenColumn, ScreenHeader, Segmented, Sheet, StatusLine } from "../../components/ui";
-import { getSavedLocation, onLocationChange, type SavedLocation } from "../../data/location";
+import { cachedPlaceName, getSavedLocation, onLocationChange, onPlaceNameChange, type SavedLocation } from "../../data/location";
 import { isPreview } from "../../data/preview";
 import { useArchivedCount } from "../../data/WardrobeProvider";
 import { needsRestartForDirection, setLanguage, type Locale } from "../../i18n";
@@ -32,19 +32,29 @@ export function ProfileView() {
   const [signOutState, setSignOutState] = useState<"idle" | "busy" | "failed">("idle");
   const preview = isPreview();
 
+  const [currentName, setCurrentName] = useState<string | null>(null);
+
   useEffect(() => {
     let active = true;
-    const load = () => void getSavedLocation().then((s) => active && setSaved(s));
+    // Cache only, no network: the name is looked up by Today; this row shows what is already known for this language.
+    const load = () =>
+      void Promise.all([getSavedLocation(), cachedPlaceName(language)]).then(([s, name]) => {
+        if (!active) return;
+        setSaved(s);
+        setCurrentName(name);
+      });
     load();
     const off = onLocationChange(load);
+    const offName = onPlaceNameChange(load);
     return () => {
       active = false;
       off();
+      offName();
     };
-  }, []);
+  }, [language]);
 
-  const place =
-    saved === null ? "" : saved.kind === "city" ? saved.name : saved.kind === "current" ? t("location.currentShort") : t("location.default");
+  const currentLabel = currentName === null ? t("location.currentShort") : t("location.currentWithPlace", { place: currentName });
+  const place = saved === null ? "" : saved.kind === "city" ? saved.name : saved.kind === "current" ? currentLabel : t("location.default");
 
   const chooseLanguage = (next: Locale) => void setLanguage(next).then(setRestart);
 

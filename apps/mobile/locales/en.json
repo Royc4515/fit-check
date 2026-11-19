@@ -27,7 +27,15 @@
       "storm": "Thunderstorm"
     },
     "noWeather": "No weather data right now",
-    "candles": "Shabbat begins {{time}}",
+    "candles": "Shabbat begins {{time}}",
+    "candlesOther": "Candle lighting {{time}}",
+    "shabbatEnd": "Shabbat ends {{time}}",
+    "shabbatEndTomorrow": "Shabbat ends tomorrow {{time}}",
+    "holidayEnd": "Holiday ends {{time}}",
+    "holidayEndTomorrow": "Holiday ends tomorrow {{time}}",
+    "fastEnd": "Fast ends {{time}}",
+    "fastEndTomorrow": "Fast ends tomorrow {{time}}",
+    "timesJoin": "{{first}} · {{second}}",
     "credits": "Weather: Open-Meteo · Hebrew calendar: Hebcal",
     "explain": {
       "base": "{{day}}, feels like {{min}} to {{max}} degrees.",
@@ -55,7 +63,7 @@
       "reset": "Reset",
       "learned": "Tuned to you from recent wears: {{parts}}"
     },
-    "keepHome": "Keep it home",
+    "keepHome": "Keep out of the laundry",
     "missing": "To build an outfit the wardrobe still needs {{what}}. Photograph them to get a suggestion.",
     "missingSlot": {
       "top": "tops",
@@ -442,6 +450,15 @@
       "confirmBody": "The improved picture will be replaced by a cutout of the original photo.",
       "confirm": "Cut out again",
       "cancel": "Cancel"
+    },
+    "writing": {
+      "editName": "Edit name",
+      "editBrand": "Edit brand",
+      "editNotes": "Edit notes",
+      "saved": "Saved",
+      "failed": "Not saved. {{reason}}",
+      "failedUnknown": "Check the connection and try again.",
+      "retry": "Try again"
     }
   },
   "auth": {
@@ -463,7 +480,9 @@
     "selected": "Selected",
     "back": "Today",
     "label": "Location: {{place}}",
-    "genericCandles": "Shabbat times by coordinates (18 minutes before sunset)"
+    "currentMeta": "Weather and Shabbat times for where you are",
+    "currentWithPlace": "Current location · {{place}}",
+    "osmCredit": "Place names: © OpenStreetMap"
   },
   "intake": {
     "title": "Add clothes",
@@ -691,12 +710,16 @@
     "close": "Close",
     "remove": "Remove {{label}}",
     "loading": "Loading",
-    "imageFailed": "The image did not load"
+    "imageFailed": "The image did not load",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saving": "Saving"
   },
   "ds": {
     "title": "Design system",
     "intro": "Every component, every variant, every state. Internal page, not linked from the app.",
     "section": {
+      "metaLink": "Meta link",
       "buttons": "Buttons",
       "chips": "Chips",
       "segmented": "Segmented control",
@@ -714,7 +737,7 @@
       "intake": "Add",
       "flatLay": "Flat-lay",
       "stepper": "Stepper",
-      "item": "Item screen: wears",
+      "item": "Item screen: writing in place and wears",
       "insights": "Insights"
     },
     "item": {
@@ -722,7 +745,13 @@
       "once": "One wear",
       "never": "Not worn yet",
       "loading": "Loading",
-      "failed": "Failed"
+      "failed": "Failed",
+      "writingRest": "At rest",
+      "writingEditing": "Writing, changed",
+      "writingSaved": "After saving",
+      "writingFailed": "Save failed",
+      "writingFixtureWord": "shirt",
+      "writingFixtureNote": "Gentle wash, no dryer."
     },
     "state": {
       "default": "Default",
