@@ -483,7 +483,7 @@
     "selected": "נבחר",
     "back": "היום",
     "label": "מיקום: {{place}}",
-    "genericCandles": "זמני השבת לפי קואורדינטות (18 דקות לפני השקיעה)",
+    "currentMeta": "מזג האוויר וזמני השבת לפי המקום שבו אתה נמצא",
     "currentWithPlace": "מיקום נוכחי · {{place}}",
     "osmCredit": "שמות מקומות: © OpenStreetMap"
   },

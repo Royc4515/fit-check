@@ -476,7 +476,7 @@
     "selected": "Selected",
     "back": "Today",
     "label": "Location: {{place}}",
-    "genericCandles": "Shabbat times by coordinates (18 minutes before sunset)",
+    "currentMeta": "Weather and Shabbat times for where you are",
     "currentWithPlace": "Current location · {{place}}",
     "osmCredit": "Place names: © OpenStreetMap"
   },
