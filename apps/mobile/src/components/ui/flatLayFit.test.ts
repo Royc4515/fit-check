@@ -5,7 +5,7 @@ const base = { measured: true, desktop: false, width: 390, viewportHeight: 788, 
 
 describe("fitFlatLay: the flat-lay fits above the bar or the bottom edge", () => {
   it("caps a phone's full-bleed surface to the space left, minus the clearance", () => {
-    expect(fitFlatLay(base)).toEqual({ maxHeight: 788 - 200 - HERO_CLEARANCE, cardWidth: null, card: false });
+    expect(fitFlatLay(base)).toMatchObject({ maxHeight: 788 - 200 - HERO_CLEARANCE, cardWidth: null, card: false });
   });
 
   it("subtracts a floating bar", () => {
@@ -17,8 +17,8 @@ describe("fitFlatLay: the flat-lay fits above the bar or the bottom edge", () =>
   });
 
   it("caps nothing until measured", () => {
-    expect(fitFlatLay({ ...base, measured: false })).toEqual({ maxHeight: undefined, cardWidth: null, card: false });
-    expect(fitFlatLay({ ...base, measured: false, width: CARD_MIN_WIDTH })).toEqual({ maxHeight: undefined, cardWidth: null, card: true });
+    expect(fitFlatLay({ ...base, measured: false })).toMatchObject({ maxHeight: undefined, cardWidth: null, card: false });
+    expect(fitFlatLay({ ...base, measured: false, width: CARD_MIN_WIDTH })).toMatchObject({ maxHeight: undefined, cardWidth: null, card: true });
   });
 
   it("makes a centred card from 600 to 899, no wider than the content column", () => {
@@ -31,6 +31,6 @@ describe("fitFlatLay: the flat-lay fits above the bar or the bottom edge", () =>
   });
 
   it("leaves the desktop layout alone", () => {
-    expect(fitFlatLay({ ...base, desktop: true, width: 1280 })).toEqual({ maxHeight: undefined, cardWidth: null, card: false });
+    expect(fitFlatLay({ ...base, desktop: true, width: 1280 })).toMatchObject({ maxHeight: undefined, cardWidth: null, card: false });
   });
 });

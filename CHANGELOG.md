@@ -24,18 +24,21 @@
 
 - "שומר שבת וחג" now lives on `profile.observes_shabbat` (migration 0006) with the device copy shown at once; the profile's answer replaces it when it arrives (no row, a missing column or any read error: the device decides, logged once). A change is written to the profile (upsert, so the first write creates the row) optimistically and rolls back with an error line and "נסה שוב" when it fails (DESIGN.md "שלב 4.5" item 7).
 - Look at: `data/useObservance.ts` (the only place that knows where the setting lives), `observanceFromProfile` in `data/observance.ts` (tested), the error line in `ProfileView.tsx`. Unverified: a real profile write (preview rejects writes).
+- Fixes after the independent verification: a profile read that started before the user changed the switch no longer flips it back (`profileReadResult`, tested); a failed read (offline at start) is asked again on the next mount or return to the app instead of never, and a read on its way is not doubled.
 
 ## 2026-11-19 (Today: alternatives after wearing, and a tap cue)
 
 - After "לובש" a garment still opens its sheet with up to three alternatives, under "לבשת משהו אחר?"; choosing one corrects the record in one action (undo, then wear, serialised in `useFeedback.correct`), so laundry and learning follow the corrected outfit; if the second step fails the day is back to a suggestion with the failure line. Planned-day tabs too (DESIGN.md "שלב 5.1").
 - A one-time line "אפשר להקיש על כל בגד כדי להחליף אותו · הבנתי" above the hero until the first tap on a garment or "הבנתי" (device flag), measured with the hero. Legend rows end with `swap_horiz` (Material Symbols Rounded 300, svg-300@0.49.0) and read "החלפת {{name}}".
 - Look at: `correct` in `data/useFeedback.ts`, the worn branch of PieceSheet's `onSwap` in `TodayView.tsx`, `LegendRow` `trailingIcon`. Unverified: the real laundry SQL after a correction; a garment moved to the laundry by a wear made before a reload is not brought back by a later correction (the laundry line is session state, as for undo).
+- Fixes after the independent verification: (1) a correction records the corrected wear FIRST and only then deletes the earlier one (`retireEarlier`), so a failure never leaves the day without a record; a failed record keeps the worn look with "התיקון לא נשמר. הלבישה הקודמת נשארה."; a failed delete shows the corrected look with "הלבישה הקודמת לא נמחקה." and a retry of the delete alone; with two worn records the newest is shown (`data/correction.ts`, tested). (2) The tap hint shows only when the flat-lay keeps its floor with it (`tapHintFit`, tested), else it waits for another visit. (3) After "הבנתי" focus goes to the first legend row; legend rows read "החלפת טי-שרט: ...". (4) An archived garment in a worn outfit stays in its correction (the wardrobe holds archived items; tested).
 
 ## 2026-11-19 (Today: what is on today)
 
 - The adjust sheet starts with "מה יש היום" (on a planned tab "מה יש באותו יום"): date, interview, event as chips; choosing closes the sheet and changes the look, the chosen chip clears it. The occasion shows first among the status lines above the hero ("ראיון · ראיון עבודה · מהיומן" · ביטול), measured with the hero (DESIGN.md "שלב 4.5").
 - The occasion's rules override the calendar's for its date (no festive step on top); the wear is recorded in its context, the stylist request carries it and the explanation names it. Rows of `contexts` are read per date on screen (newest wins, shared schema), cached on the device, and written by hand optimistically: upsert first, then the other occasion types removed, as the MCP server does; a failure rolls back with "נסה שוב".
 - Look at: `data/occasionRows.ts` (pure, tested), `data/occasions.ts`, the occasion line in `TodayView.tsx`, `AdjustSheet.tsx`. Unverified here: a real write (preview rejects writes); the MCP and the app writing the same date at the same moment.
+- Fixes after the independent verification: (1) precedence corrected in DESIGN.md "שלב 4.5" items 1 and 3 and PRD 7.1: with the switch on, Shabbat and holidays keep their rules until the day's havdalah and the occasion applies only after it, never on a date without a havdalah and never on a planned day's tab (no chips, no line there); `occasionMayApply` / `occasionInEffect` in `features/today/plans.ts`, tested. The MCP server is unchanged. (2) A read that started before the user changed a date no longer overwrites that date (`mergeOccasionRead`, tested). (3) After "ביטול" on the occasion line focus goes to `tune`; its accessible name says "ביטול ההקשר: ראיון".
 
 ## 2026-11-19 (Yom Kippur: only a shoe known not to be leather)
 
@@ -46,6 +49,19 @@
 
 - A complete outfit (the same item ids) worn in one of the last three wears of a context whose rules set `no_repeat_with_key` (today only `date`) is not offered for it again (PRD 7.1, DESIGN.md "שלב 4.5" item 5). `NO_REPEAT_LAST_WEARS = 3` in `packages/engine/config.ts`; the recent wears carry an optional `context_type`; nothing about a person is stored.
 - Look at: `noRepeatOutfits` in `packages/engine/src/candidates.ts`, `date-no-repeat.test.ts`. The app passes the context with each wear from "what is on today" on.
+- Fix after the independent verification: the last three are chosen by date inside `noRepeatOutfits` (stable sort, newest first), not by trusting the caller's order; a test with shuffled input, and one that fails if the rule line in `generateCandidates` is removed.
+
+## 2026-11-19 (Spec: an outfit on a figure, first slice)
+
+- DESIGN.md "שלב 5.3": the "על דמות" entry under the legend on Today, the sheet (price and the month's remaining budget before every generation, no spinner, no automatic generation), the fixed faceless figure, and the `tryon` function's contract (quote / render / rerender, typed errors, the shared monthly cap, a row in `ai_calls`, the image stored by a hash of the item ids; no table, no migration).
+- The plan said the entry sits on the saved-outfit screen; it moves to Today, which exists, so the test does not wait for round B.
+- Spec only: nothing built, nothing deployed, nothing spent.
+
+## 2026-11-19 (Try-on: decided from the research)
+
+- The research cost nothing (web sources only). Decision: one generated image of the whole outfit on a neutral figure, on demand; per-garment on-figure renders are dropped; no separate experiment, the first slice of the feature is the test. Reasons and prices: `docs/REDESIGN_PLAN.md` "Stage 5", "Try-on".
+- Side finding: `gemini-embedding-2` takes images and has a free tier; it becomes stage 5.5.
+- Look at: the plan section, `TASKS.md` rows 5.3 and 5.5, the try-on line in `CLAUDE.md`. Nothing was built and nothing was spent.
 
 ## 2026-11-19 (MCP bundle survives the deploy transport)
 
