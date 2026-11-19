@@ -6,6 +6,8 @@
     "title": "Today",
     "empty": "No outfit for today yet",
     "wearing": "Wearing it",
+    "wearOnShabbat": "I'll wear it on Shabbat",
+    "wearOnHoliday": "I'll wear it on the holiday",
     "warmer": "Warmer",
     "cooler": "Cooler",
     "dressier": "Dressier",
@@ -53,6 +55,8 @@
     "dislike": "Didn't like the combination",
     "status": {
       "worn": "Logged: this is what you wore today.",
+      "wornShabbat": "Logged: this is your outfit for Shabbat.",
+      "wornHoliday": "Logged: this is your outfit for the holiday.",
       "skipped": "You skipped the previous suggestion.",
       "disliked": "Noted: the previous combination didn't work.",
       "failed": "That didn't save. Try again.",
@@ -83,7 +87,17 @@
     "tune": "Adjust the suggestion: warmer, cooler, formality, skip",
     "pieceLabel": "{{type}}, {{name}}. Alternatives and details",
     "heroLabel": "Today's outfit: {{pieces}}. Swipe sideways to skip to the next suggestion",
-    "weatherLabel": "Weather in {{place}}: {{weather}}. Change location"
+    "weatherLabel": "Weather in {{place}}: {{weather}}. Change location",
+    "tabs": {
+      "label": "Outfit by day",
+      "today": "Today",
+      "shabbat": "For Shabbat",
+      "holiday": "For the holiday",
+      "holidayDay1": "Holiday, day 1",
+      "holidayDay2": "Holiday, day 2"
+    },
+    "plannedForecast": "{{day}} · {{range}} · Rain {{rain}}",
+    "plannedNoForecast": "No forecast yet"
   },
   "wardrobe": {
     "title": "Wardrobe",

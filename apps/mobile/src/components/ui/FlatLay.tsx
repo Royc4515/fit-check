@@ -100,6 +100,12 @@ type Props = {
    * instantly instead of cross-fading one by one, so the old outfit never ghosts through the new one.
    */
   instantKey?: string | number;
+  /**
+   * Changes when the outfit is replaced by another one in place (Today's day tabs): every garment cross-fades in
+   * motion.state with no movement (no 8px rise), and under reduced motion the change is immediate. Wins over
+   * `instantKey` when both change in the same render.
+   */
+  fadeKey?: string | number;
   /** `none` full-bleed on phones; `md` (6) as a framed image in the desktop column. */
   radius?: "none" | "md";
   /** Lists the pieces; the surface is a group, its garments stay individually reachable. */
@@ -137,7 +143,7 @@ export function flatLayTone(pieces: readonly Pick<FlatLayPiece, "item">[]): "til
  * When one garment changes (a swap) the old one fades out while the new one fades in and rises 8px, 180ms.
  * Reduced motion: opacity only. A garment without a photo shows its drawing (ItemArt).
  */
-export function FlatLay({ pieces, onPressPiece, pieceFocusable = true, instantKey, radius = "none", accessibilityLabel, contentStyle, numbered = true, onPieceNode, maxHeight }: Props) {
+export function FlatLay({ pieces, onPressPiece, pieceFocusable = true, instantKey, fadeKey, radius = "none", accessibilityLabel, contentStyle, numbered = true, onPieceNode, maxHeight }: Props) {
   const four = pieces.some((p) => p.slot === "layer");
   const tone = flatLayTone(pieces);
   const ordered = Z_ORDER.flatMap((slot) => pieces.filter((p) => p.slot === slot));
@@ -192,6 +198,7 @@ export function FlatLay({ pieces, onPressPiece, pieceFocusable = true, instantKe
               piece={p}
               place={place}
               instantKey={instantKey}
+              fadeKey={fadeKey}
               onPress={onPressPiece}
               focusable={pieceFocusable}
               onAspect={onAspect}
@@ -339,12 +346,15 @@ function GarmentImage({ item, place, onAspect }: { item: TileItem; place: FlatLa
   );
 }
 
-type Layers = { cur: TileItem; prev: TileItem | null; instantKey: string | number | undefined };
+type Key = string | number | undefined;
+/** `still`: the last change came with a new fadeKey, so it cross-fades without the rise. */
+type Layers = { cur: TileItem; prev: TileItem | null; instantKey: Key; fadeKey: Key; still: boolean };
 
 function Piece({
   piece,
   place,
   instantKey,
+  fadeKey,
   onPress,
   focusable,
   onAspect,
@@ -353,7 +363,8 @@ function Piece({
 }: {
   piece: FlatLayPiece;
   place: FlatLayPlacement;
-  instantKey: string | number | undefined;
+  instantKey: Key;
+  fadeKey: Key;
   onPress?: (slot: Slot) => void;
   focusable: boolean;
   onAspect: (id: string, aspect: number) => void;
@@ -365,19 +376,27 @@ function Piece({
   const { onPressIn, onPressOut, pressStyle } = usePressFeedback();
   // The item screen hides this garment while its shared-element copy flies to or from here.
   const { attach: attachOrigin, style: originStyle } = useOriginVisibility(onNode);
-  const [layers, setLayers] = useState<Layers>({ cur: piece.item, prev: null, instantKey });
+  const [layers, setLayers] = useState<Layers>({ cur: piece.item, prev: null, instantKey, fadeKey, still: false });
   // Derived during render (not in an effect) so the outgoing garment is still mounted in the very commit the new
   // one arrives; an effect would paint one frame with the new garment at full opacity first.
-  if (layers.cur.id !== piece.item.id || layers.instantKey !== instantKey) {
-    const instant = layers.instantKey !== instantKey;
-    setLayers({ cur: piece.item, prev: instant || layers.cur.id === piece.item.id ? null : layers.cur, instantKey });
+  if (layers.cur.id !== piece.item.id || layers.instantKey !== instantKey || layers.fadeKey !== fadeKey) {
+    const still = layers.fadeKey !== fadeKey;
+    const instant = !still && layers.instantKey !== instantKey;
+    setLayers({ cur: piece.item, prev: instant || layers.cur.id === piece.item.id ? null : layers.cur, instantKey, fadeKey, still });
   }
   // 1 = settled. A fresh mount enters too: a piece that appears (a layer added) should not pop in.
   const p = useSharedValue(0);
   const prevId = layers.prev?.id ?? null;
   const curId = layers.cur.id;
+  const still = layers.still;
   useEffect(() => {
     const clear = () => setLayers((l) => (l.prev ? { ...l, prev: null } : l));
+    // Reduced motion: a tab change replaces the outfit at once (DESIGN.md "שלב 4.1" item 3).
+    if (reduce && still) {
+      p.set(1);
+      clear();
+      return;
+    }
     p.set(0);
     p.set(
       withTiming(1, timing(motion.stateMs), (finished) => {
@@ -385,11 +404,11 @@ function Piece({
         if (finished) scheduleOnRN(clear);
       })
     );
-  }, [p, curId, prevId]);
+  }, [p, curId, prevId, reduce, still]);
 
   const enter = useAnimatedStyle(() => ({
     opacity: p.get(),
-    transform: [{ translateY: reduce ? 0 : (1 - p.get()) * RISE }],
+    transform: [{ translateY: reduce || still ? 0 : (1 - p.get()) * RISE }],
   }));
   const leave = useAnimatedStyle(() => ({ opacity: 1 - p.get() }));
 

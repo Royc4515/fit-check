@@ -11,7 +11,7 @@ import {
 import { StylingRequestSchema, type CandidateOutfit, type Item, type Slot, type StylingRequest } from "@fit-check/schema";
 import type { FeedbackHistory, RecentWear, TodayRecord } from "../../data/feedback";
 import type { DayType } from "../../data/dayContext";
-import { israelDate } from "../../data/dayContext";
+import { israelDate } from "../../data/localDate";
 
 type Weather = { temp_min_c: number; temp_max_c: number; rain_probability: number };
 
