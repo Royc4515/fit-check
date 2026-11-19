@@ -6,6 +6,7 @@ import { Button, ListRow, Meta, ScreenColumn, ScreenHeader, Segmented, Sheet, St
 import { cachedPlaceName, getSavedLocation, onLocationChange, onPlaceNameChange, type SavedLocation } from "../../data/location";
 import { isPreview } from "../../data/preview";
 import { useArchivedCount } from "../../data/WardrobeProvider";
+import { setObservesShabbat, useObservesShabbat } from "../../data/useObservance";
 import { needsRestartForDirection, setLanguage, type Locale } from "../../i18n";
 import { signOut } from "../auth/signOut";
 import { useIsDesktop } from "../shell/ShellTabBar";
@@ -57,6 +58,8 @@ export function ProfileView() {
   const place = saved === null ? "" : saved.kind === "city" ? saved.name : saved.kind === "current" ? currentLabel : t("location.default");
 
   const chooseLanguage = (next: Locale) => void setLanguage(next).then(setRestart);
+  // "Keeps Shabbat and holidays" (DESIGN.md "שלב 4.1" item 10): stored on the device like the language, live everywhere.
+  const observes = useObservesShabbat();
 
   const closeSignOut = () => {
     setSignOutOpen(false);
@@ -87,6 +90,19 @@ export function ProfileView() {
                 onChange={chooseLanguage}
               />
               {restart ? <Meta style={{ textTransform: "none" }}>{t("profile.languageRestart")}</Meta> : null}
+            </View>
+            <View className="border-b border-hairline py-3" style={{ gap: 8 }}>
+              <Text className="font-body text-body text-ink">{t("profile.observance")}</Text>
+              <Segmented<"yes" | "no">
+                accessibilityLabel={t("profile.observance")}
+                segments={[
+                  { key: "yes", label: t("profile.observanceYes") },
+                  { key: "no", label: t("profile.observanceNo") },
+                ]}
+                value={observes ? "yes" : "no"}
+                onChange={(next) => void setObservesShabbat(next === "yes")}
+              />
+              <Meta style={{ textTransform: "none" }}>{t("profile.observanceMeta")}</Meta>
             </View>
             <ListRow label={t("profile.archive")} value={archived === null ? undefined : String(archived)} onPress={() => router.push("/archive")} />
           </View>

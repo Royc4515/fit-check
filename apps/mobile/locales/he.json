@@ -257,6 +257,10 @@
     "languageHe": "עברית",
     "languageEn": "English",
     "languageRestart": "כיוון הפריסה יתחלף אחרי הפעלה מחדש של האפליקציה.",
+    "observance": "שומר שבת וחג",
+    "observanceYes": "כן",
+    "observanceNo": "לא",
+    "observanceMeta": "זמני כניסה ויציאה, לוק מתוכנן מראש לשבת ולחג, וכללי לבוש של שבת",
     "archive": "ארכיון",
     "signOut": {
       "button": "התנתקות",
@@ -491,6 +495,7 @@
   "location": {
     "title": "מיקום",
     "hint": "לפי המיקום נקבעים מזג האוויר וזמני השבת.",
+    "hintWeatherOnly": "לפי המיקום נקבע מזג האוויר.",
     "current": "המיקום הנוכחי שלי",
     "currentShort": "מיקום נוכחי",
     "default": "גבעת שמואל",
