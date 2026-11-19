@@ -109,7 +109,6 @@
     "swapPiece": "החלפת {{name}}",
     "occasion": {
       "title": "מה יש היום",
-      "titlePlanned": "מה יש באותו יום",
       "type": {
         "date": "דייט",
         "interview": "ראיון",
@@ -117,6 +116,7 @@
       },
       "fromCalendar": "מהיומן",
       "cancel": "ביטול",
+      "cancelLabel": "ביטול ההקשר: {{type}}",
       "failed": "ההקשר לא נשמר."
     }
   },
@@ -290,6 +290,7 @@
       "bodyPreview": "התצוגה המקדימה תיסגר ותחזור למסך הכניסה.",
       "confirm": "התנתק",
       "cancel": "ביטול",
+      "cancelLabel": "ביטול ההקשר: {{type}}",
       "failed": "ההתנתקות נכשלה. נסה שוב."
     }
   },

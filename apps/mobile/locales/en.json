@@ -109,7 +109,6 @@
     "swapPiece": "Swap {{name}}",
     "occasion": {
       "title": "What's on today",
-      "titlePlanned": "What's on that day",
       "type": {
         "date": "Date",
         "interview": "Interview",
@@ -117,6 +116,7 @@
       },
       "fromCalendar": "from the calendar",
       "cancel": "Cancel",
+      "cancelLabel": "Cancel the occasion: {{type}}",
       "failed": "The occasion wasn't saved."
     }
   },
@@ -287,6 +287,7 @@
       "bodyPreview": "The preview closes and you return to the sign-in screen.",
       "confirm": "Sign out",
       "cancel": "Cancel",
+      "cancelLabel": "Cancel the occasion: {{type}}",
       "failed": "Sign-out failed. Try again."
     }
   },
