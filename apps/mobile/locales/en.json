@@ -482,6 +482,7 @@
     "label": "Location: {{place}}",
     "currentMeta": "Weather and Shabbat times for where you are",
     "currentWithPlace": "Current location · {{place}}",
+    "currentNoPermission": "Current location · no permission",
     "osmCredit": "Place names: © OpenStreetMap"
   },
   "intake": {
