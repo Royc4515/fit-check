@@ -91,12 +91,12 @@ Plan and reasons: `docs/REDESIGN_PLAN.md` "Stage 4". Stage 3 merged as PR #24.
 
 | # | Task | Model | Status | Result |
 | --- | --- | --- | --- | --- |
-| 4.1 | Friday is for Shabbat: two outfits on a Friday and on a holiday eve ("היום" / "לשבת") | opus (engine) + sonnet (screen) | doing | Roy: white preferred by weight, any light colour or stripe is fine; no hard colour rule |
+| 4.1 | Friday is for Shabbat: on a day with candle lighting Today shows, beside today's outfit, one outfit for each day until havdalah (Roy: "both days"), each planned and recorded on its own date. Spec: DESIGN.md "שלב 4.1" | opus | doing | Roy: white preferred by weight, any light colour or stripe is fine; no hard colour rule |
 | 4.2 | A way to verify after the preview ends on 2026-11-25: extend it, or a fixture session | lead decision with Roy | deferred | Roy decides near 2026-11-25 |
 | 4.3 | Android: first APK, native pass, one fix round | Roy builds; sonnet fixes | deferred | Roy: after the web app is final |
 | 4.4 | Morning notification scheduled on the device; Fridays three hours before candle lighting | sonnet | deferred | Waits for 4.3 |
-| 4.5 | Manual context for today: date, interview, event | sonnet | doing | |
+| 4.5 | Manual context for today: date, interview, event | sonnet | next, after 4.1 (same files: Today, the plan, the wear record) | |
 | 4.6 | Reserve duty: packing count and shortage warning | sonnet | waiting | Needs the number of white T-shirts for a weekend |
-| 4.7 | Hardening: `useFeedback` races, missing unit tests, offline wear history, 90-day window, stage 3 minors | opus (races) + sonnet | doing | |
+| 4.7 | Hardening. Now (4.7a, files 4.1 does not touch): "remove from wardrobe" saves open text first; the refused-location message stays visible; the Insights sheet row drawn left-to-right in Hebrew; unit tests for the wardrobe filters, intake tag rules and Insights summaries. After 4.1 (4.7b): the `useFeedback` races, offline wear history, the 90-day window, the hero's one-frame jump | sonnet now, opus for the races | doing (4.7a) | |
 | 4.8 | Clean-up: design preview, `redraw-five`, config and docs drift, bucket listing | sonnet, each with Roy's go | partly | `redraw-five` removed from the repo (lead decision, Roy: "whatever you think"); Roy can delete the deployed copy in the dashboard. The rest waits for the end |
 
