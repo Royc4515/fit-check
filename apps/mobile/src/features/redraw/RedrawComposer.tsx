@@ -25,12 +25,12 @@ import {
   type RedrawFree,
   type RedrawSpec,
 } from "@fit-check/schema";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, Text, TextInput, View } from "react-native";
 import { Button, Chip, focusRingProps, Meta, Sheet, StatusLine } from "../../components/ui";
 import { fetchRedrawHistory, previousSpec, quoteRedraw } from "../../data/redraw";
-import { colors } from "../../theme/tokens";
+import { colors, layout } from "../../theme/tokens";
 import { hasSleeves, SLEEVE_CHOICES } from "../intake/tagRules";
 import { spoken } from "../item/a11y";
 
@@ -43,6 +43,36 @@ type Editing = { kind: RedrawFree["kind"]; index?: number; fromDetail?: RedrawDe
 
 /** Details shown before "more": the ranked list puts the likely ones first, the rest is one tap away. */
 const FIRST_DETAILS = 8;
+// A garment word is a body line over its underline, about 32 high and 20-97 wide. Its button is a real 44 box (the
+// Pressable itself: hitSlop does nothing in react-native-web), grown by padding and taken back by an equal negative
+// margin so the sentence lays out exactly as before (verification P2-D3).
+const WORD_PULL_Y = -6;
+const WORD_PAD_X = 12;
+
+type Node = ComponentRef<typeof View>;
+
+/**
+ * Web: focuses the first button inside a wrapper view. The library Chip takes no ref, and after a note is added its
+ * field unmounts, which dropped focus to <body> with the dialog still open (verification N4).
+ */
+function focusButtonIn(node: Node | null): void {
+  if (Platform.OS !== "web" || !(node instanceof HTMLElement)) return;
+  node.querySelector<HTMLElement>('[role="button"]')?.focus();
+}
+
+/**
+ * Web: a long-press chip says what the long press does, and that "+ Other…" is the button route to it (verification
+ * P2-D6). The library Chip has no prop for a description, so it is set on its button from a wrapper view.
+ */
+function LongPressDescribed({ description, children }: { description: string; children: ReactNode }) {
+  const ref = useRef<Node>(null);
+  useEffect(() => {
+    const node = ref.current;
+    if (Platform.OS !== "web" || !(node instanceof HTMLElement)) return;
+    node.querySelector('[role="button"]')?.setAttribute("aria-description", description);
+  });
+  return <View ref={ref}>{children}</View>;
+}
 
 type Props = {
   tags: ItemTags;
@@ -78,7 +108,7 @@ type Props = {
  * the confirmation, nothing is added before it and nothing taken away.
  */
 export function RedrawComposer(props: Props) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [suggestion, setSuggestion] = useState<RedrawSuggestion | null>(null);
   const [choices, setChoices] = useState<Choices | null>(null);
   const [quote, setQuote] = useState<IntakeQuoteResult | null>(null);
@@ -87,7 +117,20 @@ export function RedrawComposer(props: Props) {
   const [allDetails, setAllDetails] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const align = { textAlign: i18n.language === "en" ? "left" : "right" } as const;
+  // Logical start: follows the drawn direction, also on native before a restart (verification D9).
+  const align = { textAlign: "start" } as const;
+  // The "+ Other…" chip of each kind: where focus goes when a note field closes, so it stays inside the dialog on the
+  // control that adds the next note.
+  const otherDetail = useRef<Node>(null);
+  const otherFix = useRef<Node>(null);
+  // Which kind's note field just closed; read once the field is gone (a ref: nothing to render from it).
+  const refocus = useRef<RedrawFree["kind"] | null>(null);
+  useEffect(() => {
+    const kind = refocus.current;
+    if (!kind || editing) return;
+    refocus.current = null;
+    focusButtonIn((kind === "detail" ? otherDetail : otherFix).current);
+  }, [editing]);
 
   // Suggestions are computed once, when the history arrives: re-ranking chips under the user's finger as they tap
   // would move the chip they were about to press.
@@ -164,12 +207,17 @@ export function RedrawComposer(props: Props) {
       ? detailToFree(spec, editing.fromDetail, editing.text)
       : setFree(spec, { kind: editing.kind, text: editing.text }, editing.index);
     update(next);
-    setEditing(null);
+    closeNote();
   };
   const removeNote = () => {
     if (editing?.index !== undefined) update(setFree(spec, { kind: editing.kind, text: "" }, editing.index));
-    setEditing(null);
+    closeNote();
   };
+  /** The note field goes away: focus moves to that kind's "+ Other…" chip instead of falling out of the dialog. */
+  function closeNote() {
+    if (editing) refocus.current = editing.kind;
+    setEditing(null);
+  }
 
   const price = quote?.ok ? `$${quote.price_usd.toFixed(3)}` : null;
   const outOfBudget = quote?.ok === true && quote.left_usd !== null && quote.left_usd < quote.price_usd;
@@ -199,7 +247,9 @@ export function RedrawComposer(props: Props) {
             onPress={() => (spec.free.length >= MAX_REDRAW_FREE ? setNotice(t("redraw.limitFree", { n: MAX_REDRAW_FREE })) : update(setFree(spec, o)))}
           />
         ))}
-      <Chip label={t("redraw.other")} dashed onPress={() => startNote({ kind, text: "" })} />
+      <View ref={kind === "detail" ? otherDetail : otherFix}>
+        <Chip label={t("redraw.other")} dashed onPress={() => startNote({ kind, text: "" })} />
+      </View>
     </>
   );
 
@@ -231,7 +281,15 @@ export function RedrawComposer(props: Props) {
                 // react-native-web does not map accessibilityState; the ARIA prop reaches the DOM on web and native alike.
                 aria-expanded={word === w.key}
                 accessibilityHint={spoken(t("redraw.wordHint"))}
-                hitSlop={8}
+                style={{
+                  minHeight: layout.hit,
+                  minWidth: layout.hit,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginVertical: WORD_PULL_Y,
+                  paddingHorizontal: WORD_PAD_X,
+                  marginHorizontal: -WORD_PAD_X,
+                }}
               >
                 {/* An underline is a bordered wrapper: RN cannot offset or colour text-decoration. Open = 2px ink. */}
                 <View className="border-b pb-1" style={{ borderColor: word === w.key ? colors.ink : colors["ink-faint"], borderBottomWidth: word === w.key ? 2 : 1 }}>
@@ -250,14 +308,15 @@ export function RedrawComposer(props: Props) {
         <Meta>{t("redraw.details")}</Meta>
         <ChipWrap>
           {shownDetails.map((id) => (
-            <Chip
-              key={id}
-              label={t(`redraw.detail.${id}`)}
-              selected={spec.details.includes(id)}
-              onPress={() => tapDetail(id)}
-              onLongPress={() => startNote({ kind: "detail", fromDetail: id, text: t(`redraw.detail.${id}`) })}
-              accessibilityHint={spoken(t("redraw.longPressHint"))}
-            />
+            <LongPressDescribed key={id} description={t("redraw.longPressDescription")}>
+              <Chip
+                label={t(`redraw.detail.${id}`)}
+                selected={spec.details.includes(id)}
+                onPress={() => tapDetail(id)}
+                onLongPress={() => startNote({ kind: "detail", fromDetail: id, text: t(`redraw.detail.${id}`) })}
+                accessibilityHint={spoken(t("redraw.longPressHint"))}
+              />
+            </LongPressDescribed>
           ))}
           {!allDetails && offered.length > shownDetails.length ? (
             <Chip label={t("redraw.more", { n: offered.length - shownDetails.length })} dashed onPress={() => setAllDetails(true)} />
@@ -305,7 +364,7 @@ export function RedrawComposer(props: Props) {
           <View className="flex-row flex-wrap items-center" style={{ columnGap: 24 }}>
             <Button variant="text" label={t("redraw.noteSave")} onPress={commitNote} />
             {editing.index !== undefined ? <Button variant="text" label={t("redraw.noteRemove")} onPress={removeNote} /> : null}
-            <Button variant="text" label={t("redraw.noteCancel")} onPress={() => setEditing(null)} />
+            <Button variant="text" label={t("redraw.noteCancel")} onPress={closeNote} />
             <Text className="font-mono text-num-sm text-ink-soft">{`⁦${editing.text.length}/${MAX_REDRAW_FREE_CHARS}⁩`}</Text>
           </View>
         </View>
