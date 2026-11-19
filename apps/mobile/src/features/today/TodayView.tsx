@@ -501,7 +501,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     const record = plan.record;
     const wornMessage = planned ? t(plannedKeys(planned.kind).worn) : t("today.status.worn");
     statuses.push({ key: "worn", variant: "ok", message: wornMessage, action: { label: t("today.undo"), onPress: () => void actions.undo(record).then(() => requestFocus("undo")) } });
-    if (laundered && laundered.wearId === record.wearId) {
+    if (laundered && laundered.wearId === record.wearId && laundered.itemIds.length > 0) {
       const ids = laundered.itemIds;
       const names = ids.map((id) => {
         const sub = itemById.get(id)?.tags.subcategory;
@@ -763,7 +763,9 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // does not fit it waits for another visit, the flag unset. Decided once from the space measured without it, then
   // only ever withdrawn (a line that arrives later, say an occasion, can take its room): no layout loop.
   const [hintFit, setHintFit] = useState<HintFit>(null);
-  const hintWanted = showHint && outfit !== null;
+  // And only once the day's occasion read has answered (or failed): a line arriving after the hint would take its room
+  // and withdraw it on its own a moment later.
+  const hintWanted = showHint && outfit !== null && occasions.settled;
   const floorSpace = HERO_MIN * FLAT_LAY_ASPECT;
   const nextHintFit = hintWanted ? tapHintFit({ decided: hintFit, measured, space: heroSpace, floor: floorSpace, hintBlock: HINT_BLOCK, desktop }) : hintFit;
   if (nextHintFit !== hintFit) setHintFit(nextHintFit);
