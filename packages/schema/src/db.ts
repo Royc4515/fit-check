@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { CONTEXT_TYPES } from "./context.ts";
 import { ItemSchema, type Item } from "./item.ts";
+import { SLOTS } from "./stylist.ts";
 
 /**
  * The only place that knows how an `items` row maps to the engine's `Item` and back. The app reads with
@@ -138,3 +140,45 @@ export const WearRowSchema = z.object({
     .nullable(),
 });
 export type WearRow = z.infer<typeof WearRowSchema>;
+
+// ---------------------------------------------------------------------------------------------------------------
+// Saved outfits (migration 0007, DESIGN.md "שלב 5.2")
+// ---------------------------------------------------------------------------------------------------------------
+
+/** `outfits.source` (enum outfit_source, migration 0001): engine suggestion, built by hand, or a swapped suggestion. */
+export const OUTFIT_SOURCES = ["daily", "manual", "swap"] as const;
+export type OutfitSource = (typeof OUTFIT_SOURCES)[number];
+
+/**
+ * The longest outfit name, in characters (code points).
+ * don't touch / must equal the 40 in the `outfits_name_check` constraint of migration 0007_saved_outfits.sql.
+ */
+export const SAVED_OUTFIT_NAME_MAX = 40;
+
+/**
+ * One outfit row with its garments and its wears embedded: outfit_items -> items (the full item, so the flat-lay and
+ * the legend need no second read) and wears (all of them, any feedback: the count of `worn` reads them, and so does
+ * the decision "removing keeps the row"). A deleted item has no outfit_items row at all (`on delete cascade`).
+ */
+export const SAVED_OUTFIT_READ_COLUMNS = `id,name,is_favorite,saved_at,context_type,source,created_for_date,outfit_items(item_id,slot,item:items(${ITEM_READ_COLUMNS})),wears(worn_on,feedback)`;
+
+export const SavedOutfitRowSchema = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+  is_favorite: z.boolean(),
+  // Nullable so an unsaved row (one a wear points at, read before it is marked saved) parses with the same schema.
+  saved_at: z.string().nullable(),
+  context_type: z.enum(CONTEXT_TYPES),
+  source: z.enum(OUTFIT_SOURCES),
+  created_for_date: z.string().date(),
+  outfit_items: z.array(
+    z.object({
+      item_id: z.string(),
+      slot: z.enum(SLOTS),
+      // Left unknown here: itemFromRow judges each garment, so one malformed item does not hide the whole outfit.
+      item: z.unknown(),
+    })
+  ),
+  wears: z.array(z.object({ worn_on: z.string().date(), feedback: z.enum(WEAR_FEEDBACKS) })),
+});
+export type SavedOutfitRow = z.infer<typeof SavedOutfitRowSchema>;
