@@ -18,11 +18,14 @@ type Props = {
   /** A write is in flight. */
   busy: boolean;
   /** What is on the day (DESIGN.md "שלב 4.5" item 1), null for none. */
-  occasion: OccasionType | null;
-  /** "What's on today", or "What's on that day" on a planned day's tab. */
-  occasionTitle: string;
-  /** Picks an occasion, or with null clears it; the sheet closes, as after a skip (the result is another look). */
-  onOccasion: (type: OccasionType | null) => void;
+  occasion?: OccasionType | null;
+  /** "What's on today". */
+  occasionTitle?: string;
+  /**
+   * Picks an occasion, or with null clears it; the sheet closes, as after a skip (the result is another look).
+   * Absent where no occasion can apply (a planned day's tab, Shabbat or a holiday before its havdalah): no chips.
+   */
+  onOccasion?: (type: OccasionType | null) => void;
 };
 
 /**
@@ -38,20 +41,22 @@ export function AdjustSheet({ open, onClose, adjustment, onAdjust, onReset, onSk
     <Sheet open={open} onClose={onClose} title={t("today.adjustTitle")}>
       <View style={{ gap: 24 }}>
         {/* First, above temperature: one choice, the chosen chip in ink; tapping it again clears it. */}
-        <View>
-          <Meta tone="text-ink-soft">{occasionTitle}</Meta>
-          <View className="mt-2 flex-row flex-wrap" style={{ gap: 8 }}>
-            {OCCASION_TYPES.map((type) => (
-              <Chip
-                key={type}
-                label={t(`today.occasion.type.${type}`)}
-                selected={occasion === type}
-                disabled={busy}
-                onPress={() => onOccasion(occasion === type ? null : type)}
-              />
-            ))}
+        {onOccasion ? (
+          <View>
+            <Meta tone="text-ink-soft">{occasionTitle}</Meta>
+            <View className="mt-2 flex-row flex-wrap" style={{ gap: 8 }}>
+              {OCCASION_TYPES.map((type) => (
+                <Chip
+                  key={type}
+                  label={t(`today.occasion.type.${type}`)}
+                  selected={occasion === type}
+                  disabled={busy}
+                  onPress={() => onOccasion(occasion === type ? null : type)}
+                />
+              ))}
+            </View>
           </View>
-        </View>
+        ) : null}
         <View>
           <Meta tone="text-ink-soft">{t("today.adjustTemp")}</Meta>
           <Stepper
