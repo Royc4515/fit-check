@@ -20,6 +20,17 @@ export const OccasionSourceSchema = z.enum(OCCASION_SOURCES);
 /** `YYYY-MM-DD`. zod's date check also rejects impossible days such as 2026-02-30. */
 export const OccasionDateSchema = z.string().date();
 
+const LINE_BREAKS: ReadonlySet<number> = new Set([0x0a, 0x0d, 0x2028, 0x2029]);
+
+// don't touch / no U+2028 or U+2029 in this file's output, neither raw nor as a \u escape inside a regex or string
+// literal (2026-11-19). The mcp bundle travels to the deploy tool as a JSON string, which turned the escapes into
+// the raw characters; those are line terminators in JavaScript, so a regex literal holding them failed to parse
+// ("Unterminated regexp literal") and the deploy was refused. Code points in a Set keep the source and the bundle ASCII.
+function isSingleLine(value: string): boolean {
+  for (const ch of value) if (LINE_BREAKS.has(ch.codePointAt(0) ?? 0)) return false;
+  return true;
+}
+
 /**
  * A short generic description for display ("job interview", "family event in the evening"), never a person's name or
  * the calendar event's title word for word (PRD 7.1). Trimmed first, so the length counts what is shown.
@@ -32,7 +43,7 @@ export const OccasionLabelSchema = z
   .trim()
   .min(1, "label must not be empty")
   .max(OCCASION_LABEL_MAX, `label must be at most ${OCCASION_LABEL_MAX} characters`)
-  .regex(/^[^\r\n\u2028\u2029]+$/, "label must be a single line");
+  .refine(isSingleLine, "label must be a single line");
 
 /** One day's occasion context, as stored: what `contexts` holds minus bookkeeping. */
 export const DayContextSchema = z.object({

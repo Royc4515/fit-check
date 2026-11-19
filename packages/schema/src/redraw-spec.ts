@@ -155,7 +155,8 @@ export function cleanFreeText(text: string, max: number = MAX_REDRAW_FREE_CHARS)
   return (
     text
       // Apostrophes stay (Levi's, Hebrew geresh): only double quotes delimit a note in the prompt.
-      .replace(/[\u0000-\u001f\u007f"“”„`\\<>{}[\]]/g, " ")
+      // don't touch / \x escapes, not \u: a deploy transport that decodes \u in the mcp bundle turned \u000a into a raw newline inside this regex (2026-11-19).
+      .replace(/[\x00-\x1f\x7f"“”„`\\<>{}[\]]/g, " ")
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, max)
