@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-19 (Saved outfits: migration 0007 and the data layer)
+
+- Migration 0007 adds `outfits.name` (null, or 1-40 characters already trimmed), `is_favorite` (a favourite must be saved) and `saved_at` (in the collection exactly when not null), with a partial index for the list. Not applied yet: the lead applies it at merge. PRD 6.1 updated.
+- `data/outfits.ts`: list and read saved outfits (garments as `{ slot, item }` for the flat-lay and legend, `missing` slots for a deleted garment, worn count and last date), save (the same garments in any order return the existing outfit, nothing written), save an already worn row, remove (worn: the row stays unsaved; never worn: deleted), favourite, rename. Rules and mapping in `data/savedOutfit.ts` (pure, tested); row schema in `packages/schema` `db.ts`.
+- Undo of a wear no longer deletes a saved outfit, or one other wears point at (guarded in the delete itself). `recordFeedback` takes `savedOutfitId` to record a wear on an existing outfit: only a `wears` row, and a failure deletes nothing.
+- Look at: `deleteFeedback` in `data/feedback.ts`, the failure modes in the TSDoc of `saveOutfit`. Unverified: the migration and every request against a real database (tests use a recording stand-in for supabase-js; the SQL was only parsed with the Postgres parser). No screen uses any of this yet.
+
 ## 2026-11-19 (Spec: outfits built by hand, saved and favourite)
 
 - DESIGN.md "שלב 5.2": the "לוקים" place, the outfit screen, building by hand, saving from Today and from a worn outfit, what the engine learns, and the order of the seven pull requests that build it. A new library component, `OutfitTile`, is listed in section 4.
