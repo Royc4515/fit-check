@@ -9,13 +9,14 @@ import { underModalProps, useFocusReturnUnderModal } from "../../features/shell/
 import { colors } from "../../theme/tokens";
 
 /**
- * The five destinations (DESIGN.md section 3 "שלד"). Declaration order is the bar order in reading direction; the
+ * The five places (DESIGN.md section 3 "שלד", "שלב 5.2" item 1): wardrobe, today, add, outfits, profile. Declaration order is the bar order in reading direction; the
  * bar itself is custom (ShellTabBar) because it swaps between a bottom TabBar and a top TopNav by window width.
  */
 export default function TabsLayout() {
   const desktop = useIsDesktop();
-  // This layout is the root stack's (tabs) screen: unfocused exactly while a modal route (item, location, archive) is
-  // on top. The tabs stay painted under it (the item page fades in over them) but leave the tab order and the tree.
+  // This layout is the root stack's (tabs) screen: unfocused exactly while a route above it (item, outfit, location,
+  // archive, insights) is on top. The tabs stay painted under it (the item page fades in over them) but leave the tab
+  // order and the tree.
   const covered = !useIsFocused();
   const root = useRef<ComponentRef<typeof View>>(null);
   useFocusReturnUnderModal(root, covered);
@@ -39,7 +40,7 @@ export default function TabsLayout() {
         <Tabs.Screen name="wardrobe" />
         <Tabs.Screen name="index" />
         <Tabs.Screen name="intake" />
-        <Tabs.Screen name="insights" />
+        <Tabs.Screen name="outfits" />
         <Tabs.Screen name="profile" />
       </Tabs>
       {/* On mobile the banner lives inside the tab bar, above it. */}

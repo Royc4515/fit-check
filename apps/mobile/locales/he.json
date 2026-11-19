@@ -270,7 +270,8 @@
     "addClothes": "הוספת בגדים",
     "add": "הוספה",
     "insights": "תובנות",
-    "profile": "פרופיל"
+    "profile": "פרופיל",
+    "outfits": "לוקים"
   },
   "profile": {
     "title": "פרופיל",
@@ -295,7 +296,8 @@
       "cancel": "ביטול",
       "cancelLabel": "ביטול ההקשר: {{type}}",
       "failed": "ההתנתקות נכשלה. נסה שוב."
-    }
+    },
+    "insights": "תובנות"
   },
   "insights": {
     "title": "תובנות",
@@ -828,7 +830,8 @@
       "flatLay": "Flat-lay",
       "stepper": "מונה צעדים",
       "item": "מסך פריט: כתיבה במקום ולבישות",
-      "insights": "תובנות"
+      "insights": "תובנות",
+      "outfitTile": "אריח לוק"
     },
     "item": {
       "wears": "עם לבישות (7 מתוך 12)",
@@ -940,7 +943,8 @@
       "add": "הוספה",
       "mobile": "סרגל טאבים (מובייל)",
       "desktop": "סרגל עליון (דסקטופ)",
-      "desktopOnly": "מוצג מרוחב 900 ומעלה. בטלפון יש סרגל טאבים."
+      "desktopOnly": "מוצג מרוחב 900 ומעלה. בטלפון יש סרגל טאבים.",
+      "outfits": "לוקים"
     },
     "intake": {
       "loading": "טוען פריטים לדוגמה",
@@ -1013,6 +1017,12 @@
       "empty": "בלי קריאות",
       "near": "מעל 80% מהתקרה",
       "preview": "תצוגה מקדימה"
+    },
+    "outfitTile": {
+      "plain": "בלי שם, עוד לא נלבש",
+      "favorite": "עם שם, מועדף, נלבש",
+      "loading": "טעינה",
+      "name": "שבת חורף"
     }
   },
   "archive": {
@@ -1023,5 +1033,89 @@
     "restoreFailed": "השחזור לא נשמר. הפריט עדיין בארכיון.",
     "emptyTitle": "הארכיון ריק",
     "empty": "פריט שמוסר מהארון מגיע לכאן, ואפשר להחזיר אותו בכל זמן."
+  },
+  "outfits": {
+    "title": "לוקים",
+    "tabsLabel": "אילו לוקים",
+    "tabs": {
+      "all": "הכל",
+      "favorites": "מועדפים"
+    },
+    "worn_one": "נלבש פעם אחת",
+    "worn_two": "נלבש פעמיים",
+    "worn_other": "נלבש {{n}} פעמים",
+    "wornWithDate": "{{worn}} · {{date}}",
+    "neverWorn": "עוד לא נלבש",
+    "missingMeta": "חסר בגד · {{rest}}",
+    "favoriteAdd": "הוסף למועדפים",
+    "favoriteRemove": "הסר מהמועדפים",
+    "favoriteFailed": "המועדף לא נשמר. {{reason}}",
+    "tileLabel": "{{title}}. {{pieces}}. {{meta}}",
+    "empty": {
+      "title": "עוד אין לוקים",
+      "body": "לוק שאהבת ב'היום' נשמר מכאן, או בונים אחד ביד."
+    },
+    "emptyFavorites": {
+      "title": "עוד אין מועדפים",
+      "body": "לב על לוק מוסיף אותו לכאן."
+    },
+    "loadFailed": "לא הצלחנו לטעון את הלוקים"
+  },
+  "outfit": {
+    "more": "פעולות נוספות",
+    "unnamed": "לוק בלי שם",
+    "nameLabel": "שם הלוק",
+    "editName": "עריכת שם",
+    "addName": "הוספת שם",
+    "context": {
+      "weekday": "יום חול",
+      "shabbat": "שבת",
+      "holiday": "חג",
+      "reserve": "מילואים",
+      "date": "דייט",
+      "interview": "ראיון",
+      "event": "אירוע",
+      "trip": "טיול"
+    },
+    "away": "לא בבית עכשיו: {{list}}",
+    "awayItem": "{{name}} ({{where}})",
+    "missing": "בגד נמחק מהארון: {{slots}}. הלוק נשאר, עם מקום ריק.",
+    "slot": {
+      "top": "חלק עליון",
+      "bottom": "מכנסיים",
+      "shoes": "נעליים",
+      "layer": "שכבה"
+    },
+    "legendDeleted": "נמחק מהארון",
+    "pieceLabel": "{{type}} {{name}}, פתיחת הפריט",
+    "heroLabel": "הלוק: {{pieces}}",
+    "remove": {
+      "row": "הסרה מהלוקים",
+      "title": "להסיר את הלוק מהלוקים?",
+      "body": "הוא לא יופיע יותר בלוקים. לבישות שכבר נרשמו נשארות בתובנות.",
+      "confirm": "הסרה",
+      "failed": "הלוק לא הוסר. {{reason}}",
+      "removing": "מסיר"
+    },
+    "renameFailed": "השם לא נשמר. {{reason}}",
+    "notFound": {
+      "title": "הלוק הזה לא נמצא",
+      "body": "אולי הוא הוסר מהלוקים.",
+      "action": "ללוקים"
+    },
+    "loadFailed": "לא הצלחנו לטעון את הלוק",
+    "meta": "{{context}} · {{rest}}",
+    "where": {
+      "laundry": "כביסה",
+      "away": "מילואים",
+      "lent": "מושאל",
+      "home": "בבית"
+    },
+    "slotTitle": {
+      "top": "חלק עליון",
+      "bottom": "מכנסיים",
+      "shoes": "נעליים",
+      "layer": "שכבה"
+    }
   }
 }

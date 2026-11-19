@@ -1,13 +1,18 @@
+import { SAVED_OUTFIT_NAME_MAX } from "@fit-check/schema";
 import { NOTES_MAX, type ItemChange } from "./edit";
 
 /*
- * In-place writing on the item screen (DESIGN.md section 4, "כתיבה במקום"): nothing is saved without an explicit
- * action, and leaving the field neither saves nor cancels. The decisions about an open field are pure and live here,
- * so the screen and the tests agree on them.
+ * In-place writing (DESIGN.md section 4, "כתיבה במקום"), on the item screen and the outfit screen: nothing is saved
+ * without an explicit action, and leaving the field neither saves nor cancels. The decisions about an open field are
+ * pure and live here, so the screens and the tests agree on them.
  */
 
-/** The three free-text fields of an item. */
-export type TextField = "name" | "brand" | "notes";
+/** The free-text fields written in place: an item's name, brand and notes, and a saved outfit's name. */
+export const TEXT_FIELDS = ["name", "brand", "notes", "outfitName"] as const;
+export type TextField = (typeof TEXT_FIELDS)[number];
+
+/** Narrows a key of a failures record back to a field. */
+export const isTextField = (k: string): k is TextField => (TEXT_FIELDS as readonly string[]).includes(k);
 
 /** The one field being written in: what it held when editing started, and what is typed now. */
 export type OpenText = { field: TextField; original: string; draft: string };
@@ -35,8 +40,13 @@ export function isChanged(e: OpenText): boolean {
   return storedForm(e.field, e.draft) !== storedForm(e.field, e.original);
 }
 
-/** A name must not be empty; a brand or a note may be (it clears them). */
+/**
+ * An item's name must not be empty; a brand or a note may be (it clears them). An outfit's name may be empty too
+ * (it means "no name", DESIGN.md "שלב 5.2" item 4) but not longer than SAVED_OUTFIT_NAME_MAX characters, counted in
+ * code points like the database's char_length.
+ */
 export function isValid(e: OpenText): boolean {
+  if (e.field === "outfitName") return [...storedForm(e.field, e.draft)].length <= SAVED_OUTFIT_NAME_MAX;
   return e.field !== "name" || storedForm("name", e.draft) !== "";
 }
 
@@ -52,11 +62,12 @@ export function resolveOpen(e: OpenText | null): Resolution {
   return isValid(e) ? "save" : "cancel";
 }
 
-/** The edit-queue change for a field's typed text. */
-export function changeFor(field: TextField, draft: string): ItemChange {
+/** The item edit-queue change for a field's typed text; null for a field that is not an item's (the outfit name). */
+export function changeFor(field: TextField, draft: string): ItemChange | null {
   if (field === "name") return { name: oneLine(draft) };
   if (field === "brand") return { brand: oneLine(draft) };
-  return { notes: draft };
+  if (field === "notes") return { notes: draft };
+  return null;
 }
 
 /** What the screen knows when the user tries to leave it. */
@@ -70,7 +81,7 @@ export type LeaveState = {
 };
 
 /**
- * What leaving the item screen must do first (DESIGN.md section 4, "יציאה מהמסך עם שינוי פתוח ותקין"):
+ * What leaving a screen with writing in place must do first (DESIGN.md section 4, "יציאה מהמסך עם שינוי פתוח ותקין"):
  * - `leave`: nothing would be lost; an open field that is unchanged, or invalid (an emptied name, which can never be
  *   saved), is dropped and the screen goes now;
  * - `save-first`: the open field is changed and valid; it is saved once, and the screen goes only if that succeeds;

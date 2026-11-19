@@ -12,6 +12,7 @@ import {
 import { z } from "zod";
 import { supabase } from "../lib/supabase";
 import { getSnapshot, isPreview, PreviewReadOnlyError } from "./preview";
+import { undoKeepsOutfit } from "./savedOutfit";
 
 export type RecentWear = StylingRequest["recent_wears"][number];
 
@@ -109,6 +110,11 @@ function historyFromRows(rows: readonly unknown[], from: string, today: string, 
  * is deleted again (outfit_items cascade), so a failure leaves nothing behind except in a crash mid-way.
  *
  * `user_id` is passed explicitly: RLS checks it equals auth.uid() but does not fill it in.
+ *
+ * `savedOutfitId`: the wear is of an outfit that already has a row (a saved outfit, DESIGN.md "שלב 5.2"). Then only
+ * the `wears` row is inserted, pointing at it; no `outfits` or `outfit_items` row is written, and a failed insert
+ * deletes nothing (the row is the user's saved outfit). `outfit.items` must be that outfit's garments: they become
+ * the record's itemIds. Without it the behaviour is exactly as before saved outfits existed.
  */
 export async function recordFeedback(args: {
   userId: string;
@@ -120,9 +126,12 @@ export async function recordFeedback(args: {
   feedback: WearFeedback;
   /** The total adjustment (learned + today's taps) the outfit was chosen under; learning reads it back. */
   adjustment: DayAdjustment;
+  /** An existing outfits row (a saved outfit) to record the wear on, instead of writing a new outfit. */
+  savedOutfitId?: string;
 }): Promise<TodayRecord> {
   // Design preview: nothing is saved. Today's feedback hook reports the failure and changes nothing on screen.
   if (isPreview()) throw new PreviewReadOnlyError("recordFeedback");
+  if (args.savedOutfitId !== undefined) return recordWearOfSaved({ ...args, savedOutfitId: args.savedOutfitId });
   const { userId, date, dayType, outfit, source, feedback, adjustment } = args;
   const created = await supabase
     .from("outfits")
@@ -157,6 +166,27 @@ export async function recordFeedback(args: {
   }
 }
 
+/**
+ * A wear of a saved outfit: one `wears` insert on the existing row. On failure the error is thrown and nothing is
+ * cleaned up, on purpose: the only row involved is the saved outfit, which must survive a failed wear.
+ */
+async function recordWearOfSaved(args: {
+  userId: string;
+  date: string;
+  outfit: CandidateOutfit;
+  feedback: WearFeedback;
+  savedOutfitId: string;
+}): Promise<TodayRecord> {
+  const { userId, date, outfit, feedback, savedOutfitId } = args;
+  const wear = await supabase
+    .from("wears")
+    .insert({ user_id: userId, outfit_id: savedOutfitId, worn_on: date, feedback })
+    .select("id")
+    .single();
+  if (wear.error) throw wear.error;
+  return { wearId: String(wear.data.id), outfitId: savedOutfitId, feedback, itemIds: outfit.items.map((i) => i.id), date };
+}
+
 /** Turns a skip into a dislike (or back). Only the `wears` row changes; the outfit stays as it was. */
 export async function changeFeedback(wearId: string, feedback: WearFeedback): Promise<void> {
   if (isPreview()) throw new PreviewReadOnlyError("changeFeedback");
@@ -164,15 +194,28 @@ export async function changeFeedback(wearId: string, feedback: WearFeedback): Pr
   if (error) throw error;
 }
 
+const UndoOutfitRowSchema = z.object({ saved_at: z.string().nullable(), wears: z.array(z.object({ id: z.string() })) });
+
 /**
  * Undo. The wear goes first: deleting the outfit first would leave the wear behind with outfit_id null
- * (`on delete set null`), an orphan that still says "worn".
+ * (`on delete set null`), an orphan that still says "worn". Then the outfit row is deleted only when it was a one-off
+ * suggestion (undoKeepsOutfit): a saved outfit, or one other wears still point at, stays.
+ *
+ * Failure modes: the wear delete fails → thrown, nothing changed. The outfit read or delete fails → thrown after the
+ * wear is gone; the leftover is an unsaved outfits row with no wear, which nothing lists (the same leftover as before
+ * saved outfits). PreviewReadOnlyError in the design preview.
  */
 export async function deleteFeedback(record: TodayRecord): Promise<void> {
   if (isPreview()) throw new PreviewReadOnlyError("deleteFeedback");
   const wear = await supabase.from("wears").delete().eq("id", record.wearId);
   if (wear.error) throw wear.error;
-  const outfit = await supabase.from("outfits").delete().eq("id", record.outfitId);
+  const read = await supabase.from("outfits").select("saved_at,wears(id)").eq("id", record.outfitId).maybeSingle();
+  if (read.error) throw read.error;
+  const row = read.data ? UndoOutfitRowSchema.parse(read.data) : null;
+  if (undoKeepsOutfit(row && { savedAt: row.saved_at, remainingWears: row.wears.length })) return;
+  // don't touch / `saved_at is null` in the delete itself, not only in the read above: undo used to delete the outfit
+  // with its wear, and an outfit saved between the read and this line would be the user's saved outfit, deleted.
+  const outfit = await supabase.from("outfits").delete().eq("id", record.outfitId).is("saved_at", null);
   if (outfit.error) throw outfit.error;
 }
 
