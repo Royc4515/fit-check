@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-19 (stage 4 hardening: removal, location, insights, tests)
+
+- Item screen: "remove from the wardrobe" now follows the leave rule (`decideRemove` in `features/item/writing.ts`, tested). An open, changed, valid field is saved first (one write) and the item is archived only after that save succeeded; if it fails the item stays, the confirm sheet closes, and the field keeps its typed text, the error line and "נסה שוב". An unchanged or cancelled field does not block removal.
+- Location: web reports a never-granted permission, and a prompt that was dismissed, as "prompt", which expo-location maps to `undetermined`, not `denied`; the old mount check looked only for `denied`, so the message vanished on reopening. Now `data/locationNotice.ts` (pure, tested) decides from the saved kind, the permission and whether a fix is stored: the message shows under the "my current location" row for as long as it is true, and the profile row says "מיקום נוכחי · אין הרשאה". Nothing prompts on mount; only a tap on the row does.
+- Insights outfit sheet: type and Latin name are two texts (`features/insights/OutfitItemRow.tsx`), each in its own direction, so the Hebrew type sits at the start edge.
+- 115 new unit tests: wardrobe filters and search, intake tag rules / failure lines / upload captions, insights summaries, the date in the location's zone, the pager. None exposed a bug.
+- Look at: the remove flow with unsaved text on the item screen (browser: the preview rejects writes, so only the failing-save path was run), the location screen with the permission refused, an outfit's sheet in Hebrew.
+
 ## 2026-11-19 (OpenStreetMap credit from the keyboard)
 
 - `ui/MetaLink` is a real anchor on web (new tab, noopener): Enter, middle-click and copy-link work; native keeps Linking. Before, only a click opened it.
