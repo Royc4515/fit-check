@@ -541,3 +541,9 @@
 - Optimistic item edits go through one serialised per-item queue (`features/item/editQueue.ts`, driver `editRunner.ts`): edits carry only their fields, writes go one at a time over the confirmed state, a failure rolls back only its own fields, and a write that settles after the screen closed still settles the wardrobe store. Tests: `apps/mobile` now runs vitest for its pure modules (`pnpm test`).
 - "Remove the background again" on an AI-redrawn or hand-cleaned picture asks first (`features/item/recut.ts`); undo line after removal from the item screen (last removed item moved into `WardrobeProvider`); composer word buttons are 44 boxes; long-press chips carry an `aria-description`; logical text alignment; capped wear list says so.
 - Look at: `design/screens/2026-11-18-item-flight-*` (replaced, plus en/1280 strips), `2026-11-19-item-recut-confirm-*`, `2026-11-19-item-composer-390-he.png`.
+
+## 2026-11-19 (ListRow Latin truncation, wardrobe tabs under a filter)
+
+- `ListRow` sets an explicit `writingDirection` on label, meta and value from the dominant script of the string (`components/ui/textDirection.ts`, first strong character on a tie, digits only = LTR), inside a start-aligned box. A long Latin name in a Hebrew row ("חולצה · Carhartt WIP Detroit Jack…") now loses its end, not its start; Hebrew-only rows are unchanged. Side effect: a mixed row that fits ("מגפיים · Salomon Hiking Boots") is now drawn left-to-right inside the row, so the Hebrew word sits left of the name.
+- Wardrobe: with a sheet filter, colour, search or reserve-mode narrowing active, the category tabs show only categories with a match (counted with the grid's own `applyFilters` and `matchesQuery`), plus "הכל" and the selected category even when empty. With nothing active the row is as before.
+- Look at: Insights outfit sheet with a long item name (he/en, 390), the wardrobe under "לשבת" (no accessories tab). Not verified: native (no emulator).
