@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-19 (Spec: outfits built by hand, saved and favourite)
+
+- DESIGN.md "שלב 5.2": the "לוקים" place, the outfit screen, building by hand, saving from Today and from a worn outfit, what the engine learns, and the order of the seven pull requests that build it. A new library component, `OutfitTile`, is listed in section 4.
+- Spec only. The navigation change, the migration and every screen come in their own pull requests.
+- Look at: item 1 (navigation), item 2 (the "+" now asks garment or outfit), item 5 (what a hand-built outfit must have), item 8 (a saved outfit is not offered as it is; its pairs weigh more).
+
 ## 2026-11-19 (Profile: the observance switch on the profile)
 
 - "שומר שבת וחג" now lives on `profile.observes_shabbat` (migration 0006) with the device copy shown at once; the profile's answer replaces it when it arrives (no row, a missing column or any read error: the device decides, logged once). A change is written to the profile (upsert, so the first write creates the row) optimistically and rolls back with an error line and "נסה שוב" when it fails (DESIGN.md "שלב 4.5" item 7).
