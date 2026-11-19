@@ -761,7 +761,6 @@
     "empty": "No image for this look yet",
     "generate": "Generate image",
     "generating": "Drawing the look",
-    "again": "Generate again",
     "againLabel": "Generate again · {{price}}",
     "againA11y": "Generate again, costs {{price}}",
     "retry": "Try again",
@@ -775,14 +774,20 @@
       "item_not_found": "One of the garments is not in the wardrobe. Refresh the screen and try again.",
       "invalid_input": "This look cannot be drawn: it needs a top, trousers and shoes.",
       "unauthenticated": "Please sign in again.",
-      "provider_refused": "The model refused to draw this image.",
+      "provider_refused": "The model refused to draw this look. You can swap a garment and try again.",
       "provider_timeout": "Drawing took too long and did not finish.",
       "provider_error": "Drawing failed.",
       "storage_error": "The image could not be read or saved.",
       "network": "No answer came back. If the image was made, it will show when we check again.",
       "bad_response": "The answer was not understood. If the image was made, it will show when we check again.",
-      "image_load": "The image did not load."
-    }
+      "image_load": "The image did not load.",
+      "budget_low": "Not enough left in this month's budget for another image. It renews on the 1st."
+    },
+    "pending": "The image may still be on its way. Checking again…",
+    "lostWarning": "The earlier image never arrived. A new one is charged again.",
+    "ready": "The image is ready.",
+    "retryPaid": "Try again · {{price}}",
+    "retryPaidA11y": "Try again, costs {{price}}"
   },
   "preview": {
     "banner": "Design preview only · nothing is saved"

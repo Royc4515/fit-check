@@ -832,7 +832,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // a top, bottom and shoes. It sits below the hero and legend, so the flat-lay's measured space is untouched.
   const tryOnGarments =
     outfit && plan.kind !== "empty" && tryonItemsOf(ordered.map((p) => ({ id: p.id, slot: p.slot })))
-      ? ordered.map((p) => ({ id: p.id, slot: p.slot, label: `${typeOf(p.subcategory)} ${p.name}` }))
+      ? ordered.map((p) => ({ id: p.id, slot: p.slot, label: `${typeOf(p.subcategory)} ${p.name}`, name: p.name }))
       : null;
   const legendBlock = legend ? (
     <View>
