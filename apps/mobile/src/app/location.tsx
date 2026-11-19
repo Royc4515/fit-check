@@ -5,6 +5,7 @@ import { Platform, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, ListRow, MetaLink, ScreenHeader, SearchField, StatusLine } from "../components/ui";
 import { cachedPlaceName, currentPosition, getSavedLocation, locationPermissionDenied, onPlaceNameChange, saveLocation, searchCities, type SavedLocation } from "../data/location";
+import { useObservesShabbat } from "../data/useObservance";
 import { layout } from "../theme/tokens";
 
 type City = Extract<SavedLocation, { kind: "city" }>;
@@ -24,6 +25,8 @@ export default function LocationScreen() {
   const [denied, setDenied] = useState(false);
 
   const lang = i18n.language === "en" ? "en" : "he";
+  // Without "keeps Shabbat and holidays" the location sets only the weather (DESIGN.md "שלב 4.1" item 10).
+  const observes = useObservesShabbat();
   const [currentName, setCurrentName] = useState<string | null>(null);
 
   useEffect(() => {
@@ -100,7 +103,7 @@ export default function LocationScreen() {
           <Button variant="icon" icon="arrow_back" accessibilityLabel={t("common.back")} onPress={leave} />
         </View>
         <ScreenHeader title={t("location.title")} safeArea={false} />
-        <Text className="mt-2 font-body text-body-sm text-ink-soft">{t("location.hint")}</Text>
+        <Text className="mt-2 font-body text-body-sm text-ink-soft">{t(observes ? "location.hint" : "location.hintWeatherOnly")}</Text>
 
         <View className="mt-8 border-t border-hairline">
           <ListRow

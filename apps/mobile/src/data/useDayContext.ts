@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { loadDayContext, type DayContext } from "./dayContext";
 import { onLocationChange, onPlaceNameChange } from "./location";
+import { useObservesShabbat } from "./useObservance";
 
 /**
  * Today's context for the screen. `null` while loading; the loader itself never fails (see dayContext.ts).
@@ -16,15 +17,17 @@ export function useDayContext(): DayContext | null {
   useEffect(() => onPlaceNameChange(() => setVersion((v) => v + 1)), []);
   const { i18n } = useTranslation();
   const lang = i18n.language === "en" ? "en" : "he";
+  // The profile's "keeps Shabbat and holidays": switching it reloads the day here, no app reload needed.
+  const observes = useObservesShabbat();
   // The language is a dependency because the place name of "current location" is looked up in it.
   useEffect(() => {
     let active = true;
-    void loadDayContext(new Date(), lang).then((c) => {
+    void loadDayContext(new Date(), lang, observes).then((c) => {
       if (active) setCtx(c);
     });
     return () => {
       active = false;
     };
-  }, [version, lang]);
+  }, [version, lang, observes]);
   return ctx;
 }

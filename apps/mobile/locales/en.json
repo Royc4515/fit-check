@@ -254,6 +254,10 @@
     "languageHe": "עברית",
     "languageEn": "English",
     "languageRestart": "The layout direction changes after you restart the app.",
+    "observance": "Keeps Shabbat and holidays",
+    "observanceYes": "Yes",
+    "observanceNo": "No",
+    "observanceMeta": "Candle-lighting and end times, an outfit planned ahead for Shabbat and holidays, and Shabbat dress rules",
     "archive": "Archive",
     "signOut": {
       "button": "Sign out",
@@ -484,6 +488,7 @@
   "location": {
     "title": "Location",
     "hint": "Weather and Shabbat times follow this location.",
+    "hintWeatherOnly": "The location sets the weather.",
     "current": "My current location",
     "currentShort": "Current location",
     "default": "Tel Aviv",

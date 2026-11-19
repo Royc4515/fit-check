@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 import { Button, Chip, Meta, Sheet } from "../../components/ui";
+import { useObservesShabbat } from "../../data/useObservance";
 import type { SheetFacet, Selection } from "./filters";
 
 type Props = {
@@ -20,6 +21,10 @@ type Props = {
  */
 export function FilterSheet({ open, onClose, facets, selection, onToggle, onClear }: Props) {
   const { t } = useTranslation();
+  // "For Shabbat" is offered only to someone who keeps it (DESIGN.md "שלב 4.1" item 10); the control is hidden, the
+  // filter logic is unchanged.
+  const observes = useObservesShabbat();
+  const shown = observes ? facets : facets.filter(({ facet }) => facet !== "context");
   const any = facets.some(({ facet }) => selection[facet] !== undefined);
   return (
     <Sheet
@@ -38,7 +43,7 @@ export function FilterSheet({ open, onClose, facets, selection, onToggle, onClea
         />
       }
     >
-      {facets.map(({ facet, values }, i) => (
+      {shown.map(({ facet, values }, i) => (
         <View key={facet} className={i === 0 ? "mt-2" : "mt-6"}>
           <Meta tone="text-ink-soft">{t(`wardrobe.filter.facet.${facet}`)}</Meta>
           <View className="mt-2 flex-row flex-wrap" style={{ gap: 8 }}>
