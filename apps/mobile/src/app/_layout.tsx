@@ -64,12 +64,24 @@ function Routes() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="location" />
         <Stack.Screen name="archive" />
+        {/* Out of the bar since stage 5.2; opened from the profile. Same URL as when it was a tab. */}
+        <Stack.Screen name="insights" />
         {/* Internal component gallery; not linked from any screen. */}
         <Stack.Screen name="design-system" />
         {/* don't touch / transparent + no native animation: the item screen runs its own shared-element
             flight and fades its page in over the wardrobe. A default push would slide over that flight. */}
         <Stack.Screen
           name="item/[id]"
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        {/* A saved outfit (DESIGN.md "שלב 5.2" item 4): over everything like the item screen, with the item screen's
+            entrance without a flight (the page fades in over what opened it), so it is presented the same way. */}
+        <Stack.Screen
+          name="outfit/[id]"
           options={{
             presentation: "transparentModal",
             animation: "none",
@@ -103,10 +115,10 @@ export default function RootLayout() {
   // Derived, not set in an effect: the server snapshot is false and the client snapshot true, which is exactly
   // "false while pre-rendering and hydrating, true once on the client", with no state update inside an effect.
   const mounted = useSyncExternalStore(subscribeNever, () => true, () => false);
-  // The tabs (and the item screen above them) carry the preview banner themselves, stacked above the tab bar. Here
+  // The tabs (and the item and outfit screens above them) carry the preview banner themselves, stacked above the tab bar. Here
   // only the screens outside them need it. Moving it in and out of this flow would resize the stack mid item flight.
   const first = useSegments()[0];
-  const tabsOwnBanner = first === "(tabs)" || first === "item";
+  const tabsOwnBanner = first === "(tabs)" || first === "item" || first === "outfit";
   // Re-renders this layout on a language change, so `dir` below follows it.
   const { i18n } = useTranslation();
   const rtl = isRtl(i18n.language === "en" ? "en" : "he");

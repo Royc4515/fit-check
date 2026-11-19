@@ -2,18 +2,18 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, View } from "react-native";
-import { ScreenColumn, ScreenHeader } from "../../components/ui";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button, ScreenColumn, ScreenHeader } from "../../components/ui";
 import { fetchMonthSpend, fetchWornOutfits, summarizeSpend, summarizeWears, wearsToday, type AiCallRow, type WornOutfit } from "../../data/insights";
 import { useWardrobe } from "../../data/WardrobeProvider";
-import { useIsDesktop } from "../shell/ShellTabBar";
 import { SpendSection, type SpendState } from "./SpendSection";
 import { WearsSection, type WearsState } from "./WearsSection";
 
 type Load<T> = { kind: "loading" } | { kind: "error" } | { kind: "ready"; value: T };
 
 /**
- * Loads `fetch` each time the tab gains focus (tabs stay mounted, so a wear logged on Today must show when the user
- * comes back). The last good value stays on screen while a refresh runs; a failed refresh after a good load keeps
+ * Loads `fetch` each time the screen gains focus (a wear logged on Today must show when the user comes back, and an
+ * item opened from here returns to it). The last good value stays on screen while a refresh runs; a failed refresh after a good load keeps
  * it too, and only a failure with nothing to show becomes the error state.
  */
 function useOnFocus<T>(fetch: () => Promise<T>): [Load<T>, () => void] {
@@ -52,15 +52,17 @@ const loadWorn = async (): Promise<{ today: string; rows: WornOutfit[] }> => {
 const loadSpend = (): Promise<{ kind: "rows"; rows: AiCallRow[]; partial: boolean } | { kind: "unavailable" }> => fetchMonthSpend(new Date());
 
 /**
- * Insights tab (DESIGN.md "שלב 2", "תובנות"): what was worn in the last 30 days and what AI cost this month. Two
- * sections, no cards, no colour beyond ink and hairline.
+ * Insights (DESIGN.md "שלב 2", "תובנות"): what was worn in the last 30 days and what AI cost this month. Two
+ * sections, no cards, no colour beyond ink and hairline. A screen above the tabs, opened from the profile (stage
+ * 5.2), with a back arrow above the title like the archive.
  * Data: worn outfits from `wears` (or the design-preview snapshot) joined to the loaded wardrobe; spend from the
  * user's own `ai_calls` rows (RLS). Each section loads and fails on its own, with its own retry.
  */
-export function InsightsView() {
+/** @param onBack - the back arrow: to the profile underneath (or to it, after a deep link). */
+export function InsightsView({ onBack }: { onBack: () => void }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const desktop = useIsDesktop();
+  const insets = useSafeAreaInsets();
   const wardrobe = useWardrobe();
 
   const [worn, retryWorn] = useOnFocus(loadWorn);
@@ -90,7 +92,13 @@ export function InsightsView() {
     <View className="flex-1 bg-ivory">
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 48 }}>
         <ScreenColumn>
-          <ScreenHeader title={t("insights.title")} safeArea={!desktop} />
+          <View style={{ paddingTop: insets.top + 8 }}>
+            {/* The glyph sits 10px inside its 44 box; pulling the box out by 8 lines the arrow up with the title's edge. */}
+            <View style={{ alignSelf: "flex-start", marginStart: -8 }}>
+              <Button variant="icon" icon="arrow_back" accessibilityLabel={t("common.back")} onPress={onBack} />
+            </View>
+            <ScreenHeader title={t("insights.title")} safeArea={false} />
+          </View>
           <View className="mt-8">
             <WearsSection state={wears} onOpenItem={openItem} onEmptyAction={() => router.navigate("/")} />
           </View>

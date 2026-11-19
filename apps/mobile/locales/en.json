@@ -267,7 +267,8 @@
     "addClothes": "Add clothes",
     "add": "Add",
     "insights": "Insights",
-    "profile": "Profile"
+    "profile": "Profile",
+    "outfits": "Outfits"
   },
   "profile": {
     "title": "Profile",
@@ -292,7 +293,8 @@
       "cancel": "Cancel",
       "cancelLabel": "Cancel the occasion: {{type}}",
       "failed": "Sign-out failed. Try again."
-    }
+    },
+    "insights": "Insights"
   },
   "insights": {
     "title": "Insights",
@@ -819,7 +821,8 @@
       "flatLay": "Flat-lay",
       "stepper": "Stepper",
       "item": "Item screen: writing in place and wears",
-      "insights": "Insights"
+      "insights": "Insights",
+      "outfitTile": "Outfit tile"
     },
     "item": {
       "wears": "With wears (7 of 12)",
@@ -930,7 +933,8 @@
       "add": "Add",
       "mobile": "Tab bar (mobile)",
       "desktop": "Top bar (desktop)",
-      "desktopOnly": "Shown from 900px wide. Phones use the tab bar."
+      "desktopOnly": "Shown from 900px wide. Phones use the tab bar.",
+      "outfits": "Outfits"
     },
     "intake": {
       "loading": "Loading sample items",
@@ -1003,6 +1007,12 @@
       "empty": "No calls",
       "near": "Over 80% of the cap",
       "preview": "Preview"
+    },
+    "outfitTile": {
+      "plain": "No name, not worn yet",
+      "favorite": "Named, favourite, worn",
+      "loading": "Loading",
+      "name": "Winter Shabbat"
     }
   },
   "archive": {
@@ -1013,5 +1023,88 @@
     "restoreFailed": "The restore did not save. The item is still in the archive.",
     "emptyTitle": "The archive is empty",
     "empty": "An item removed from the wardrobe comes here, and can be brought back any time."
+  },
+  "outfits": {
+    "title": "Outfits",
+    "tabsLabel": "Which outfits",
+    "tabs": {
+      "all": "All",
+      "favorites": "Favourites"
+    },
+    "worn_one": "Worn once",
+    "worn_other": "Worn {{n}} times",
+    "wornWithDate": "{{worn}} · {{date}}",
+    "neverWorn": "Not worn yet",
+    "missingMeta": "A garment is missing · {{rest}}",
+    "favoriteAdd": "Add to favourites",
+    "favoriteRemove": "Remove from favourites",
+    "favoriteFailed": "The favourite was not saved. {{reason}}",
+    "tileLabel": "{{title}}. {{pieces}}. {{meta}}",
+    "empty": {
+      "title": "No outfits yet",
+      "body": "An outfit you liked on Today is saved from there, or you build one by hand."
+    },
+    "emptyFavorites": {
+      "title": "No favourites yet",
+      "body": "The heart on an outfit adds it here."
+    },
+    "loadFailed": "Your outfits could not be loaded"
+  },
+  "outfit": {
+    "more": "More actions",
+    "unnamed": "Untitled outfit",
+    "nameLabel": "Outfit name",
+    "editName": "Edit name",
+    "addName": "Add a name",
+    "context": {
+      "weekday": "Weekday",
+      "shabbat": "Shabbat",
+      "holiday": "Holiday",
+      "reserve": "Reserve duty",
+      "date": "Date",
+      "interview": "Interview",
+      "event": "Event",
+      "trip": "Trip"
+    },
+    "away": "Not at home now: {{list}}",
+    "awayItem": "{{name}} ({{where}})",
+    "missing": "A garment was deleted from the wardrobe: {{slots}}. The outfit stays, with a gap.",
+    "slot": {
+      "top": "top",
+      "bottom": "trousers",
+      "shoes": "shoes",
+      "layer": "layer"
+    },
+    "legendDeleted": "Deleted from the wardrobe",
+    "pieceLabel": "{{type}} {{name}}, open the item",
+    "heroLabel": "The outfit: {{pieces}}",
+    "remove": {
+      "row": "Remove from outfits",
+      "title": "Remove this outfit from your outfits?",
+      "body": "It will no longer show in Outfits. Wears already recorded stay in Insights.",
+      "confirm": "Remove",
+      "failed": "The outfit was not removed. {{reason}}",
+      "removing": "Removing"
+    },
+    "renameFailed": "The name was not saved. {{reason}}",
+    "notFound": {
+      "title": "This outfit is not here",
+      "body": "It may have been removed from your outfits.",
+      "action": "To outfits"
+    },
+    "loadFailed": "This outfit could not be loaded",
+    "meta": "{{context}} · {{rest}}",
+    "where": {
+      "laundry": "laundry",
+      "away": "reserve duty",
+      "lent": "lent",
+      "home": "home"
+    },
+    "slotTitle": {
+      "top": "Top",
+      "bottom": "Trousers",
+      "shoes": "Shoes",
+      "layer": "Layer"
+    }
   }
 }

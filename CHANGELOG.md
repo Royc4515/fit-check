@@ -9,6 +9,27 @@
 - Library: `PhotoTile` takes `onError` and `emptyLabel` (a still tile that says why there is no picture yet).
 - Look at: `features/tryon/model.ts` (+ test), `TryOnSheet.tsx`, `data/tryon.ts`, `legendBlock` in `TodayView.tsx`, strings under `tryon`, screenshots `design/screens/2026-11-19-tryon-*`. DESIGN.md "שלב 5.3" item 2 is amended to what was built.
 
+## 2026-11-19 (Outfits: the place, the collection and the outfit screen)
+
+- The bar keeps five places: ארון, היום, הוספה, **לוקים** (Material Symbols `style`), פרופיל; the desktop top nav changes the same way. "תובנות" is the first row of the profile and opens as a screen above the tabs with a back arrow, at the same `/insights` URL (old links land on it; back after a deep link goes to the profile). DESIGN.md "שלד" and "פרופיל ותובנות" describe this.
+- "לוקים": header with count, "הכל" / "מועדפים", a grid of the new library `OutfitTile` (small unnumbered flat-lay, name or garment types, wear line, a separate 44 heart) in 2/3/4 columns. The heart is optimistic and rolls back with an error line and "נסה שוב". Loading keeps the tiles' size and pulses; empty and error states as specified, without the "לוק חדש" action until the build screen exists (pull request 4).
+- The outfit screen (`/outfit/<id>`): over everything like the item screen with its fade-in; back, favourite, more; a "לא בבית עכשיו" line; Today's flat-lay with numbers, fitted by the same rule (extracted to `components/ui/flatLayFit.ts` without changing Today); the name written in place (the item screen's mechanism, generalised to an outfit name: may be empty, at most 40); for when · worn · last date; the legend, which opens the item. "הסרה מהלוקים" behind a confirm step. A deleted garment leaves its place on the flat-lay empty, keeps its numbered legend row ("נמחק מהארון") and adds an info line.
+- Look at: `features/outfits/collection.ts` (pure, tested), `features/outfits/store.ts` (shared between the two screens), `useTextWriting`'s new `save(field, draft)`. Unverified: real writes (the preview rejects them; checked on a stubbed copy of the web build), native.
+- After the independent check: the 24 between rows of the grid is a margin under each tile. As `rowGap` it was dropped by the web build on most paths, so the first fix never showed. Measured at 390, 360, 700 and 1280.
+
+## 2026-11-19 (Saved outfits: migration 0007 and the data layer)
+
+- Migration 0007 adds `outfits.name` (null, or 1-40 characters already trimmed), `is_favorite` (a favourite must be saved) and `saved_at` (in the collection exactly when not null), with a partial index for the list. Not applied yet: the lead applies it at merge. PRD 6.1 updated.
+- `data/outfits.ts`: list and read saved outfits (garments as `{ slot, item }` for the flat-lay and legend, `missing` slots for a deleted garment, worn count and last date), save (the same garments in any order return the existing outfit, nothing written), save an already worn row, remove (worn: the row stays unsaved; never worn: deleted), favourite, rename. Rules and mapping in `data/savedOutfit.ts` (pure, tested); row schema in `packages/schema` `db.ts`.
+- Undo of a wear no longer deletes a saved outfit, or one other wears point at (guarded in the delete itself). `recordFeedback` takes `savedOutfitId` to record a wear on an existing outfit: only a `wears` row, and a failure deletes nothing.
+- Look at: `deleteFeedback` in `data/feedback.ts`, the failure modes in the TSDoc of `saveOutfit`. Unverified: the migration and every request against a real database (tests use a recording stand-in for supabase-js; the SQL was only parsed with the Postgres parser). No screen uses any of this yet.
+
+## 2026-11-19 (Spec: outfits built by hand, saved and favourite)
+
+- DESIGN.md "שלב 5.2": the "לוקים" place, the outfit screen, building by hand, saving from Today and from a worn outfit, what the engine learns, and the order of the seven pull requests that build it. A new library component, `OutfitTile`, is listed in section 4.
+- Spec only. The navigation change, the migration and every screen come in their own pull requests.
+- Look at: item 1 (navigation), item 2 (the "+" now asks garment or outfit), item 5 (what a hand-built outfit must have), item 8 (a saved outfit is not offered as it is; its pairs weigh more).
+
 ## 2026-11-19 (Profile: the observance switch on the profile)
 
 - "שומר שבת וחג" now lives on `profile.observes_shabbat` (migration 0006) with the device copy shown at once; the profile's answer replaces it when it arrives (no row, a missing column or any read error: the device decides, logged once). A change is written to the profile (upsert, so the first write creates the row) optimistically and rolls back with an error line and "נסה שוב" when it fails (DESIGN.md "שלב 4.5" item 7).
