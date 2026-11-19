@@ -279,6 +279,7 @@
     "observanceYes": "Yes",
     "observanceNo": "No",
     "observanceMeta": "Candle-lighting and end times, an outfit planned ahead for Shabbat and holidays, and Shabbat dress rules",
+    "observanceFailed": "The change wasn't saved to your profile. Try again.",
     "archive": "Archive",
     "signOut": {
       "button": "Sign out",

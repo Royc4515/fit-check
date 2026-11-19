@@ -12,6 +12,18 @@ import type { PhoneFreeDay, ShabbatTimes } from "./shabbatTimes";
 /** Device storage key, beside the language setting. */
 export const OBSERVANCE_KEY = "fitcheck:observes-shabbat";
 
+/**
+ * What the profile's answer means for the setting (DESIGN.md "שלב 4.5" item 7): its boolean when the row has one;
+ * null, meaning "the device copy stands", for no row, a null, a malformed answer and any error, including the column
+ * not existing yet. Pure, so the hook's one decision is tested.
+ */
+export function observanceFromProfile(data: unknown, error: unknown): boolean | null {
+  if (error) return null;
+  if (typeof data !== "object" || data === null || !("observes_shabbat" in data)) return null;
+  const value = (data as { observes_shabbat: unknown }).observes_shabbat;
+  return typeof value === "boolean" ? value : null;
+}
+
 /** The stored value to the setting: only an explicit "no" turns it off; missing or unreadable means on (the default). */
 export function parseObservance(raw: string | null): boolean {
   return raw !== "no";
