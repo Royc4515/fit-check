@@ -68,7 +68,10 @@ pnpm build:android    # eas build --platform android --profile preview (APK)
 ## Workflow
 
 1. Before writing code for a feature: read the relevant PRD section, state the plan in 5-10 lines, list the files you will touch. Wait for a go only when the plan changes schema or spends money (AI calls in a loop, new provider).
-2. Small commits with imperative messages. One feature per branch. No force-push to main.
+2. Small commits with imperative messages. No force-push to main.
+   - One thing per push and per merge (Roy, 2026-11-19: "every push and merge is one specific, isolated thing, not many scattered things"). A pull request holds one feature, one fix or one rule, with its own spec edit, tests, `TASKS.md` row and `CHANGELOG.md` entry, and nothing else. A note about something unrelated goes in its own pull request.
+   - Branches are named `claude/<topic>` (Roy allowed topic branches the same day), one per thing, cut from `main`. When one thing needs another that is not merged yet, its branch is cut from that other branch and its pull request is based on it, so each pull request still shows only its own change; they merge in order.
+   - Each pull request is checked on its own before it merges: lint, typecheck and tests on that branch, and the independent check for anything a user can see.
 3. Tests before the Edge Function wiring: engine logic is tested with fixtures in `packages/engine/__fixtures__/wardrobe.json` (an anonymized export of the real wardrobe).
 4. After finishing a task, append a short entry to `CHANGELOG.md`: date, what changed, what to look at.
 5. If something in PRD.md or DESIGN.md turns out wrong while building, say so and propose the edit; do not silently diverge.
