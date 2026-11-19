@@ -595,3 +595,8 @@
 - Labels use no-break spaces, so on a narrow screen the row breaks only at " · ".
 - Double Hebcal request: `getJson` (`dayContext.ts`) now shares an in-flight request per URL. A plain cold load in a fresh browser sent each URL once, so the doubling was not reproduced; the likely paths are `useDayContext` mounted in two screens (Today, sign-in) and its reloads on location or place-name events, both before the first answer reaches the cache.
 - Look at: `TodayView.tsx` (`endKeys`). Not verified: native.
+## 2026-11-19 (item writing: leaving waits for the save)
+
+- Leaving the item screen with an open, changed, valid field saves it first; the screen goes (with its flight back) only after the save succeeded. While saving "שמירה" reads "שומר" and is inert; a failed save keeps the screen with the field, the typed text, the error line and "נסה שוב". One write per leave. Unchanged or invalid (emptied name) open fields are dropped and do not block. Covered: the back button, Android back, browser back and other navigator removals (`usePreventRemove`), "goes with", and closing after removal. Decision in `writing.ts` `decideLeave` with tests.
+- A failed save puts focus back in the reopened field (caret at the end). A failure while another field is open keeps its text and error line until it is saved or cancelled; leaving then reopens it instead of losing it.
+- Name and brand text at rest are no longer tab stops; the pencil is the only keyboard and screen-reader control.

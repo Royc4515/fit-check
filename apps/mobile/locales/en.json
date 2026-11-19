@@ -712,7 +712,8 @@
     "loading": "Loading",
     "imageFailed": "The image did not load",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "saving": "Saving"
   },
   "ds": {
     "title": "Design system",

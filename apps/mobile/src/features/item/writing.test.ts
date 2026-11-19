@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canSave, changeFor, resolveOpen, storedForm, type OpenText } from "./writing";
+import { canSave, changeFor, decideLeave, resolveOpen, storedForm, type OpenText, type TextField } from "./writing";
 
 const open = (field: OpenText["field"], original: string, draft: string): OpenText => ({ field, original, draft });
 
@@ -46,6 +46,35 @@ describe("canSave (the save button)", () => {
     expect(canSave(open("name", "Polo", ""))).toBe(false);
     expect(canSave(open("name", "Polo", "Polo shirt"))).toBe(true);
     expect(canSave(open("brand", "Gant", ""))).toBe(true);
+  });
+});
+
+describe("decideLeave: leaving the item screen", () => {
+  const base = { open: null, saving: false, failed: [] as TextField[] };
+  it("leaves at once when nothing is open, saving or held", () => {
+    expect(decideLeave(base)).toEqual({ kind: "leave" });
+  });
+  it("saves a changed, valid field first", () => {
+    const edit = open("name", "Polo", "Polo shirt");
+    expect(decideLeave({ ...base, open: edit })).toEqual({ kind: "save-first", edit });
+  });
+  it("does not block on an unchanged or an invalid (emptied name) field", () => {
+    expect(decideLeave({ ...base, open: open("notes", "a", "a") })).toEqual({ kind: "leave" });
+    expect(decideLeave({ ...base, open: open("name", "Polo", " ") })).toEqual({ kind: "leave" });
+  });
+  it("waits for a save already on its way instead of writing again", () => {
+    expect(decideLeave({ ...base, saving: true, open: open("name", "Polo", "Polo shirt") })).toEqual({ kind: "wait" });
+  });
+  it("stays on a failed save whose text is held while its field is closed", () => {
+    expect(decideLeave({ ...base, failed: ["brand"] })).toEqual({ kind: "stay", field: "brand" });
+  });
+  it("saves a changed open field before reopening a held failure", () => {
+    const edit = open("notes", "", "x");
+    expect(decideLeave({ ...base, open: edit, failed: ["brand"] })).toEqual({ kind: "save-first", edit });
+  });
+  it("the open field's own failure is decided by the open field", () => {
+    expect(decideLeave({ ...base, open: open("name", "Polo", "Polo shirt"), failed: ["name"] }).kind).toBe("save-first");
+    expect(decideLeave({ ...base, open: open("name", "Polo", "Polo"), failed: ["name"] })).toEqual({ kind: "leave" });
   });
 });
 
