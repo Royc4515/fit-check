@@ -23,6 +23,10 @@ export type AdjustmentSample = { wearId: string; adjustment: DayAdjustment };
  */
 export type FeedbackHistory = { recent: RecentWear[]; today: TodayRecord[]; ahead: TodayRecord[]; samples: AdjustmentSample[] };
 
+/**
+ * No wears at all: what Today plans with when the history could not be read (useFeedback logs the failure and shows
+ * it), so the screen still offers an outfit, only without freshness. Also the starting value of a fresh history.
+ */
 export const EMPTY_HISTORY: FeedbackHistory = { recent: [], today: [], ahead: [], samples: [] };
 
 /** yyyy-mm-dd minus `days`, in calendar days. UTC arithmetic so no local timezone can shift the date. */

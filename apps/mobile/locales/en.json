@@ -749,6 +749,8 @@
       "buttons": "Buttons",
       "chips": "Chips",
       "segmented": "Segmented control",
+      "textTabs": "Text tabs",
+      "crossFade": "Cross-fade",
       "swatches": "Swatches",
       "icons": "Icons",
       "tiles": "Tiles",
@@ -807,6 +809,18 @@
       "cotton": "Cotton",
       "suggestion": "Maybe linen?",
       "removable": "Navy"
+    },
+    "textTabs": {
+      "label": "Tabs sample",
+      "two": "Two tabs",
+      "four": "Four tabs",
+      "he": "Hebrew",
+      "en": "English"
+    },
+    "crossFade": {
+      "toggle": "Swap",
+      "a": "Today's outfit: polo, jeans, sneakers.",
+      "b": "For Shabbat: white shirt, trousers, dress shoes."
     },
     "segmented": {
       "label": "Availability",

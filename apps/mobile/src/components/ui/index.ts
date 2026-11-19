@@ -28,6 +28,7 @@ export { Stepper } from "./Stepper";
 export { Swatch, type SwatchSize } from "./Swatch";
 export { TabBar, type NavItem, type NavProps } from "./TabBar";
 export { Tile, TILE_CAPTION_HEIGHT, type TileItem, type TileSize } from "./Tile";
-export { TextTabs, type TextTab } from "./TextTabs";
+export { TabPanel } from "./TabPanel";
+export { panelIdOf, tabIdOf, TextTabs, type TextTab } from "./TextTabs";
 export { TopNav } from "./TopNav";
 export { Display, Meta, useTypeTracking } from "./Type";

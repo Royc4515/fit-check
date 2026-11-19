@@ -21,6 +21,7 @@ import {
   LegendRow,
   Meta,
   StatusLine,
+  TabPanel,
   TextTabs,
   type FlatLayPiece,
   type StatusVariant,
@@ -112,6 +113,8 @@ const FOCUS_WEAR = "today-wear";
 /** A little longer than the sheet's critically damped close spring takes to settle (motion.spring). */
 const SHEET_SETTLE_MS = 700;
 const FIRST_TABBABLE = '[tabindex="0"]:not([aria-disabled="true"])';
+/** Ids of the day tabs and their panel (WAI-ARIA tabs pattern). */
+const DAY_TABS = "today-day";
 
 /** The i18n key of a planned day's tab ("for Shabbat", "for Yom Kippur", "for the holiday", "holiday, day 1"). */
 const tabKey = (label: ChainTabLabel) =>
@@ -213,6 +216,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // does not fire.
   const [mastheadHeight, setMastheadHeight] = useState(0);
   const [aboveHeroHeight, setAboveHeroHeight] = useState<number | null>(null);
+  // Mobile: the day tabs' row (with the space above it), measured apart: it stands outside the day's panel.
+  const [tabsHeight, setTabsHeight] = useState(0);
   // Desktop: the day tabs sit above the flat-lay column, so its cap subtracts them.
   const [desktopTabsHeight, setDesktopTabsHeight] = useState(0);
   // Where focus goes once the action that was just taken has settled (web). The button the hand was on is replaced by
@@ -553,6 +558,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
       onChange={setChosenTab}
       accessibilityLabel={t("today.tabs.label")}
       inset={desktop ? 0 : layout.gutter}
+      idPrefix={DAY_TABS}
     />
   ) : null;
   // A planned day's own forecast, named by its day (item 8): "Shabbat · 14–22° · rain 0%", or "no forecast yet".
@@ -572,18 +578,15 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         : t("today.plannedNoForecast")}
     </Meta>
   ) : null;
-  // Mobile: tabs and the planned day's forecast open the measured block above the hero. The forecast's line is held on
-  // the today tab too (empty, hidden from readers), so a tab change does not move the hero by a line's height.
-  const tabsBlock = hasTabs ? (
-    <View className="mt-6">
-      {dayTabs}
-      <View className="mt-4 px-5">
-        {plannedForecast ?? (
-          <View aria-hidden importantForAccessibility="no-hide-descendants" style={{ opacity: 0 }}>
-            <Meta>{"\u00a0"}</Meta>
-          </View>
-        )}
-      </View>
+  // Mobile: the planned day's forecast opens the measured block above the hero, inside the day's panel. Its line is
+  // held on the today tab too (empty, hidden from readers), so a tab change does not move the hero by a line's height.
+  const forecastSlot = hasTabs ? (
+    <View className="mt-4 px-5">
+      {plannedForecast ?? (
+        <View aria-hidden importantForAccessibility="no-hide-descendants" style={{ opacity: 0 }}>
+          <Meta>{"\u00a0"}</Meta>
+        </View>
+      )}
     </View>
   ) : null;
 
@@ -634,8 +637,9 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // don't touch / a bar that left (worn) must not keep capping the hero with its old height, and one that comes back
   // (undo) must not be capped against a stale one before it is measured again.
   if (!hasBar && barHeight !== 0) setBarHeight(0);
-  const measured = viewportHeight > 0 && mastheadHeight > 0 && aboveHeroHeight !== null && (!hasBar || barHeight > 0);
-  const heroTop = insets.top + MOBILE_TOP + mastheadHeight + (aboveHeroHeight ?? 0) + MOBILE_HERO_GAP;
+  const measured =
+    viewportHeight > 0 && mastheadHeight > 0 && aboveHeroHeight !== null && (!hasBar || barHeight > 0) && (!hasTabs || tabsHeight > 0);
+  const heroTop = insets.top + MOBILE_TOP + mastheadHeight + (hasTabs ? tabsHeight : 0) + (aboveHeroHeight ?? 0) + MOBILE_HERO_GAP;
   const heroSpace = viewportHeight - (hasBar ? barHeight : 0) - heroTop - HERO_CLEARANCE;
   // 600-899, a window wide enough for side margins: the flat-lay is a centred card as wide as the space allows.
   // Below 600 it stays full-bleed and full width, and only its height is capped (FlatLay lays the composition out in
@@ -836,7 +840,9 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
                   {dayTabs}
                 </View>
               ) : null}
-              <Reveal index={1}>{hero ?? empty}</Reveal>
+              <TabPanel idPrefix={DAY_TABS} selectedKey={selectedDate} active={hasTabs}>
+                <Reveal index={1}>{hero ?? empty}</Reveal>
+              </TabPanel>
             </View>
             <View style={{ flex: 1 }}>
               <Reveal index={0}>{masthead}</Reveal>
@@ -892,47 +898,51 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
               {masthead}
             </View>
           </Reveal>
-          {outfit ? (
-            <>
-              <Reveal index={1}>
-                {/* Everything between masthead and hero, measured as one block for the hero's cap. */}
-                <View onLayout={(e) => setAboveHeroHeight(e.nativeEvent.layout.height)}>
-                  {tabsBlock}
-                  {skipStatus ? (
-                    <View className="mt-6 px-5" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
-                      {lineOf(skipStatus)}
-                    </View>
-                  ) : null}
-                  {wornStatus("mt-6 px-5")}
-                  {noShoesLine ? <View className="mt-6 px-5">{noShoesLine}</View> : null}
-                </View>
-                <View style={{ marginTop: MOBILE_HERO_GAP, ...(heroCardWidth ? { width: heroCardWidth, alignSelf: "center" as const } : null) }}>
-                  {hero}
-                </View>
-              </Reveal>
-              <Reveal index={2}>
-                <View className="mt-6 px-5">{legend}</View>
-              </Reveal>
-              <Reveal index={3}>
-                <View className="mt-12 px-5">{quote}</View>
-                <View className="mt-12 px-5">{credits}</View>
-              </Reveal>
-            </>
-          ) : (
-            <>
-              {/* Same place in the tree as the outfit branch's first block, so a keyboard user moving to a day with no
-                  outfit keeps focus on the tab. */}
-              {tabsBlock ? (
-                <Reveal index={1}>
-                  <View>{tabsBlock}</View>
-                </Reveal>
-              ) : null}
-              <View className="px-5">
-                {empty}
-                <View className="mt-12">{credits}</View>
+          {/* The day tabs stay at one place in the tree whatever the day holds, so focus stays on a tab across changes. */}
+          {dayTabs ? (
+            <Reveal index={1}>
+              <View onLayout={(e) => setTabsHeight(e.nativeEvent.layout.height)}>
+                <View className="mt-6">{dayTabs}</View>
               </View>
-            </>
-          )}
+            </Reveal>
+          ) : null}
+          <TabPanel idPrefix={DAY_TABS} selectedKey={selectedDate} active={hasTabs}>
+            {outfit ? (
+              <>
+                <Reveal index={1}>
+                  {/* Everything between masthead and hero, measured as one block for the hero's cap. */}
+                  <View onLayout={(e) => setAboveHeroHeight(e.nativeEvent.layout.height)}>
+                    {forecastSlot}
+                    {skipStatus ? (
+                      <View className="mt-6 px-5" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
+                        {lineOf(skipStatus)}
+                      </View>
+                    ) : null}
+                    {wornStatus("mt-6 px-5")}
+                    {noShoesLine ? <View className="mt-6 px-5">{noShoesLine}</View> : null}
+                  </View>
+                  <View style={{ marginTop: MOBILE_HERO_GAP, ...(heroCardWidth ? { width: heroCardWidth, alignSelf: "center" as const } : null) }}>
+                    {hero}
+                  </View>
+                </Reveal>
+                <Reveal index={2}>
+                  <View className="mt-6 px-5">{legend}</View>
+                </Reveal>
+                <Reveal index={3}>
+                  <View className="mt-12 px-5">{quote}</View>
+                  <View className="mt-12 px-5">{credits}</View>
+                </Reveal>
+              </>
+            ) : (
+              <>
+                {forecastSlot}
+                <View className="px-5">
+                  {empty}
+                  <View className="mt-12">{credits}</View>
+                </View>
+              </>
+            )}
+          </TabPanel>
         </ScrollView>
         {hasBar ? (
           // safeArea off: Today always renders inside the tabs, whose bar below already takes the bottom inset.
