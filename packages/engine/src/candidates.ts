@@ -152,6 +152,9 @@ export function noRepeatOutfits(req: StylingRequest): Set<string> {
   return new Set(
     req.recent_wears
       .filter((w) => w.context_type === req.context.type && w.date <= req.today)
+      // don't touch / newest first by date here, not by trusting the caller's order: "the last three" is about dates.
+      // Array.prototype.sort is stable, so two wears on one date keep the order they came in.
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
       .slice(0, NO_REPEAT_LAST_WEARS)
       .map((w) => [...w.item_ids].sort().join("+"))
   );
