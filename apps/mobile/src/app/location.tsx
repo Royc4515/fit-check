@@ -107,7 +107,7 @@ export default function LocationScreen() {
           />
           <ListRow
             label={t("location.current")}
-            meta={currentName ?? t("location.genericCandles")}
+            meta={currentName ?? t("location.currentMeta")}
             selected={saved?.kind === "current"}
             onPress={() => void chooseCurrent()}
           />
