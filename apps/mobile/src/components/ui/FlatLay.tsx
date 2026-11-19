@@ -386,6 +386,9 @@ function Piece({
   }
   // 1 = settled. A fresh mount enters too: a piece that appears (a layer added) should not pop in.
   const p = useSharedValue(0);
+  // How far the incoming garment rises: RISE for a swap, 0 for a tab change or reduced motion. A shared value set with
+  // the animation, not a render value read in the style: the browser check showed a closure-captured flag still rising.
+  const rise = useSharedValue(reduce ? 0 : RISE);
   const prevId = layers.prev?.id ?? null;
   const curId = layers.cur.id;
   const still = layers.still;
@@ -397,6 +400,7 @@ function Piece({
       clear();
       return;
     }
+    rise.set(reduce || still ? 0 : RISE);
     p.set(0);
     p.set(
       withTiming(1, timing(motion.stateMs), (finished) => {
@@ -404,11 +408,11 @@ function Piece({
         if (finished) scheduleOnRN(clear);
       })
     );
-  }, [p, curId, prevId, reduce, still]);
+  }, [p, rise, curId, prevId, reduce, still]);
 
   const enter = useAnimatedStyle(() => ({
     opacity: p.get(),
-    transform: [{ translateY: reduce || still ? 0 : (1 - p.get()) * RISE }],
+    transform: [{ translateY: (1 - p.get()) * rise.get() }],
   }));
   const leave = useAnimatedStyle(() => ({ opacity: 1 - p.get() }));
 
