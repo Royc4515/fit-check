@@ -43,7 +43,9 @@ export const ContextRulesSchema = z.object({
   shoes: SlotRuleSchema.default({}),
   // Some contexts produce a packing list instead of an outfit (reserve, trip).
   styling: z.enum(["outfit", "packing_list", "none"]).default("outfit"),
-  // "date": never repeat a full outfit with the same person. Free-text key.
+  // A complete outfit worn in one of the last few wears of this same context is not offered again (engine config
+  // NO_REPEAT_LAST_WEARS). Kept under its first name, from when "date" meant "not with the same person": nothing about
+  // a person is stored any more (PRD 7.1, "דייט בלי שם"), and `context_key` stays unused.
   no_repeat_with_key: z.boolean().default(false),
 });
 
@@ -70,7 +72,13 @@ export const StylingRequestSchema = z.object({
   weather: WeatherSchema,
   /** item ids worn per day, most recent first; used for recency penalties and no-repeat. */
   recent_wears: z.array(
-    z.object({ date: z.string().date(), item_ids: z.array(z.string()), context_key: z.string().nullable() })
+    z.object({
+      date: z.string().date(),
+      item_ids: z.array(z.string()),
+      context_key: z.string().nullable(),
+      /** The context the outfit was worn in (`outfits.context_type`), when the caller knows it; no-repeat reads it. */
+      context_type: z.enum(CONTEXT_TYPES).optional(),
+    })
   ),
   /** Optional anchor the user picked ("build around this shirt"). */
   anchor_item_id: z.string().nullable().default(null),
