@@ -113,9 +113,23 @@ const FOCUS_WEAR = "today-wear";
 const SHEET_SETTLE_MS = 700;
 const FIRST_TABBABLE = '[tabindex="0"]:not([aria-disabled="true"])';
 
-/** The i18n key of a planned day's tab ("for Shabbat", "for the holiday", "holiday, day 1"). */
+/** The i18n key of a planned day's tab ("for Shabbat", "for Yom Kippur", "for the holiday", "holiday, day 1"). */
 const tabKey = (label: ChainTabLabel) =>
-  label.kind === "shabbat" ? "today.tabs.shabbat" : label.day === null ? "today.tabs.holiday" : `today.tabs.holidayDay${label.day}`;
+  label.kind === "shabbat"
+    ? "today.tabs.shabbat"
+    : label.kind === "yom_kippur"
+      ? "today.tabs.yomKippur"
+      : label.day === null
+        ? "today.tabs.holiday"
+        : `today.tabs.holidayDay${label.day}`;
+
+/** A planned day's "I'll wear it on ..." and "Logged: ... for ..." keys, by what the day is. */
+const plannedKeys = (kind: "shabbat" | "holiday" | "yom_kippur") =>
+  kind === "shabbat"
+    ? { wear: "today.wearOnShabbat", worn: "today.status.wornShabbat" }
+    : kind === "yom_kippur"
+      ? { wear: "today.wearOnYomKippur", worn: "today.status.wornYomKippur" }
+      : { wear: "today.wearOnHoliday", worn: "today.status.wornHoliday" };
 
 type StatusItem = {
   key: string;
@@ -148,8 +162,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // the list is just today and the screen is exactly what it was before the tabs.
   const days = useMemo<DayInput[]>(
     () => [
-      { date: day.date, weather: day.weather, dayType: day.dayType, festive: day.festive },
-      ...day.chain.map((d) => ({ date: d.date, weather: d.weather, dayType: d.dayType })),
+      { date: day.date, weather: day.weather, dayType: day.dayType, festive: day.festive, yomKippur: day.yomKippur },
+      ...day.chain.map((d) => ({ date: d.date, weather: d.weather, dayType: d.dayType, yomKippur: d.yomKippur })),
     ],
     [day]
   );
@@ -402,7 +416,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const statuses: StatusItem[] = [];
   if (plan.kind === "worn") {
     const record = plan.record;
-    const wornMessage = planned ? t(planned.dayType === "shabbat" ? "today.status.wornShabbat" : "today.status.wornHoliday") : t("today.status.worn");
+    const wornMessage = planned ? t(plannedKeys(planned.kind).worn) : t("today.status.worn");
     statuses.push({ key: "worn", variant: "ok", message: wornMessage, action: { label: t("today.undo"), onPress: () => void actions.undo(record).then(() => requestFocus("undo")) } });
     if (laundered && laundered.wearId === record.wearId) {
       const ids = laundered.itemIds;
@@ -455,6 +469,11 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
       <View tabIndex={-1} style={{ gap: 8 }}>
         {barStatusLines}
       </View>
+    ) : null;
+  // Yom Kippur with no non-leather shoe at home: the look comes without shoes, and says so (PRD section 7).
+  const noShoesLine =
+    days[sel]!.yomKippur && outfit && !outfit.items.some((i) => i.slot === "shoes") ? (
+      <StatusLine variant="info" message={t("today.status.noLeatherFreeShoes")} />
     ) : null;
   // One focusable wrapper (tabIndex -1: reachable by script, not by Tab) so focus has a place to land when a line
   // has no action of its own, and screen readers read the whole stack when it arrives.
@@ -719,7 +738,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
           <View style={{ flex: 1 }} nativeID={FOCUS_WEAR}>
             <Button
               variant="primary"
-              label={planned ? t(planned.dayType === "shabbat" ? "today.wearOnShabbat" : "today.wearOnHoliday") : t("today.wearing")}
+              label={planned ? t(plannedKeys(planned.kind).wear) : t("today.wearing")}
               onPress={wear}
               disabled={busy}
               fullWidth
@@ -828,6 +847,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
                 </View>
               ) : null}
               {outfit ? wornStatus("mt-6") : null}
+              {noShoesLine ? <View className="mt-6">{noShoesLine}</View> : null}
               {outfit ? (
                 <>
                   <Reveal index={2}>
@@ -884,6 +904,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
                     </View>
                   ) : null}
                   {wornStatus("mt-6 px-5")}
+                  {noShoesLine ? <View className="mt-6 px-5">{noShoesLine}</View> : null}
                 </View>
                 <View style={{ marginTop: MOBILE_HERO_GAP, ...(heroCardWidth ? { width: heroCardWidth, alignSelf: "center" as const } : null) }}>
                   {hero}

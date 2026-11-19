@@ -161,7 +161,14 @@ export function generateCandidates(items: Item[], req: StylingRequest, weights: 
     }
   }
   const bottoms = bySlot.bottom.length === 1 ? bySlot.bottom : preRank(bySlot.bottom, req, PER_SLOT_LIMIT.bottom);
-  const shoes = bySlot.shoes.length === 1 ? bySlot.shoes : preRank(bySlot.shoes, req, PER_SLOT_LIMIT.shoes);
+  // An optional shoe slot with nothing in it (Yom Kippur with no non-leather shoe) yields outfits without shoes; the
+  // caller says so. Never a shoe the rules ruled out.
+  const shoes: Array<Item | null> =
+    bySlot.shoes.length === 0 && req.context.shoes.optional
+      ? [null]
+      : bySlot.shoes.length === 1
+        ? bySlot.shoes
+        : preRank(bySlot.shoes, req, PER_SLOT_LIMIT.shoes);
   const layers: Array<Item | null> =
     bySlot.layer.length === 0 ? [null] : bySlot.layer.length === 1 ? bySlot.layer : preRank(bySlot.layer, req, PER_SLOT_LIMIT.layer);
 
@@ -171,7 +178,7 @@ export function generateCandidates(items: Item[], req: StylingRequest, weights: 
     for (const b of bottoms) {
       for (const s of shoes) {
         for (const l of layers) {
-          const combo = l ? [t, b, s, l] : [t, b, s];
+          const combo = [t, b, s, l].filter((i): i is Item => i !== null);
           // The band is enforced on the whole outfit: a casual shoe is fine under a formal shirt and trousers.
           const f = outfitFormality(combo);
           if (f < lo - OUTFIT_FORMALITY_TOLERANCE || f > hi + OUTFIT_FORMALITY_TOLERANCE) continue;

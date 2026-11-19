@@ -8,6 +8,7 @@
     "wearing": "Wearing it",
     "wearOnShabbat": "I'll wear it on Shabbat",
     "wearOnHoliday": "I'll wear it on the holiday",
+    "wearOnYomKippur": "I'll wear it on Yom Kippur",
     "warmer": "Warmer",
     "cooler": "Cooler",
     "dressier": "Dressier",
@@ -57,6 +58,8 @@
       "worn": "Logged: this is what you wore today.",
       "wornShabbat": "Logged: this is your outfit for Shabbat.",
       "wornHoliday": "Logged: this is your outfit for the holiday.",
+      "wornYomKippur": "Logged: this is your outfit for Yom Kippur.",
+      "noLeatherFreeShoes": "No non-leather shoes in the wardrobe. The outfit is shown without shoes.",
       "skipped": "You skipped the previous suggestion.",
       "disliked": "Noted: the previous combination didn't work.",
       "failed": "That didn't save. Try again.",
@@ -95,7 +98,8 @@
       "shabbat": "For Shabbat",
       "holiday": "For the holiday",
       "holidayDay1": "Holiday, day 1",
-      "holidayDay2": "Holiday, day 2"
+      "holidayDay2": "Holiday, day 2",
+      "yomKippur": "For Yom Kippur"
     },
     "plannedForecast": "{{day}} · {{range}} · Rain {{rain}}",
     "plannedNoForecast": "No forecast yet"
