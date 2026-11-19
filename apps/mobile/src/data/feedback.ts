@@ -159,7 +159,7 @@ export async function savePairWeights(userId: string, updates: readonly PairUpda
 
 /**
  * `washed`: the item came back clean, so its wear count restarts (items.washed_at). Not set when the user only
- * overrides an automatic laundry move ("השאר בבית"): that garment was not washed and its count must keep going.
+ * overrides an automatic laundry move ("אל תעביר לכביסה"): that garment was not washed and its count must keep going.
  */
 type MoveOptions = { washed?: boolean };
 
