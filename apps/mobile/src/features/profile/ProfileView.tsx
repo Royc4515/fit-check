@@ -13,8 +13,8 @@ import { signOut } from "../auth/signOut";
 import { useIsDesktop } from "../shell/ShellTabBar";
 
 /**
- * Profile tab: where weather comes from, the app language (switched here, stored on the device), the archive, the
- * data credits and sign-out (DESIGN.md "שלב 2", "פרופיל").
+ * Profile tab: Insights (its first row, since stage 5.2), where weather comes from, the app language (switched here,
+ * stored on the device), the archive, the data credits and sign-out (DESIGN.md "שלב 2", "פרופיל", "שלב 5.2" item 1).
  * Reads the saved location itself (device setting, no network) and refreshes when the location screen saves a new one,
  * because this tab stays mounted underneath it. The archived count comes from the shared wardrobe (it follows an
  * archive or restore made anywhere, with no query of its own).
@@ -91,6 +91,8 @@ export function ProfileView() {
         <ScreenColumn>
           <ScreenHeader title={t("profile.title")} safeArea={!desktop} />
           <View className="mt-8 border-t border-hairline">
+            {/* First row (DESIGN.md "שלב 5.2" item 1): Insights left the bar for the outfits and lives here now. */}
+            <ListRow label={t("profile.insights")} onPress={() => router.push("/insights")} />
             <ListRow label={t("profile.location")} value={place} onPress={() => router.push("/location")} />
             <View className="border-b border-hairline py-3" style={{ gap: 8 }}>
               <Text className="font-body text-body text-ink">{t("profile.language")}</Text>
