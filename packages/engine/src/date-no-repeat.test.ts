@@ -66,6 +66,23 @@ describe("a date does not repeat an outfit from the last three dates", () => {
     expect(ids("date", h, small)).not.toContain(fresh[0]);
   });
 
+  it("the last three are chosen by date, whatever order the wears come in", () => {
+    const four = fresh.slice(0, 4).map((id, i) => wear(`2026-10-1${i}`, id, "date"));
+    // Oldest is fresh[0] (2026-10-10); the newest three are fresh[1..3].
+    const expected = new Set(fresh.slice(1, 4));
+    for (const order of [[0, 1, 2, 3], [3, 2, 1, 0], [2, 0, 3, 1], [1, 3, 0, 2]]) {
+      expect(noRepeatOutfits(request("date", order.map((i) => four[i]!)))).toEqual(expected);
+    }
+  });
+
+  it("an outfit that is the only one the wardrobe can make is not offered for a date once it is blocked", () => {
+    // One top, one bottom, one shoe (warm day: no layer): exactly one possible outfit.
+    const only = fresh[0]!.split("+");
+    const one = wardrobe.filter((i) => only.includes(i.id));
+    expect(ids("date", [], one)).toEqual([fresh[0]]);
+    expect(ids("date", [wear("2026-10-01", fresh[0]!, "date")], one)).toEqual([]);
+  });
+
   it("contexts without the rule ignore it", () => {
     expect(noRepeatOutfits(request("interview", [wear("2026-10-01", fresh[0]!, "interview")]))).toEqual(new Set());
   });
