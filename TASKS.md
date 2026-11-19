@@ -83,4 +83,20 @@ Status: `todo` / `doing` / `review` / `done` / `blocked`. A model that fails a t
 | Today hero: one frame at the old size on first paint and after "undo" (about 35 ms) | Measured cap arrives a frame late; seen only in frame logging | stage 4 hardening |
 | Rosh Hashana eve on a Friday says only "כניסת שבת"; day 1 on a Saturday shows no "Shabbat ends" | Labels go by weekday; accurate times, incomplete wording | Roy's call |
 | Candle minutes and the Israel schedule follow the device time zone | A phone in Israel set to a foreign zone gets the Diaspora rules | Roy's call |
-| `redraw-five` Edge Function: a one-time access code is written in the repo; it expired 2026-11-19 and the function answers 410, but it is still deployed with the service role | Edge Functions are outside the redesign's scope | Roy: delete the function |
+| `redraw-five` Edge Function: a one-time access code is written in the repo; it expired 2026-11-19 and the function answers 410, but it is still deployed with the service role | Edge Functions are outside the redesign's scope | Removed from the repo 2026-11-19; Roy deletes the deployed copy |
+
+## Stage 4 - from a finished redesign to a daily habit (approved by Roy 2026-11-19)
+
+Plan and reasons: `docs/REDESIGN_PLAN.md` "Stage 4". Stage 3 merged as PR #24.
+
+| # | Task | Model | Status | Result |
+| --- | --- | --- | --- | --- |
+| 4.1 | Friday is for Shabbat: two outfits on a Friday and on a holiday eve ("היום" / "לשבת") | opus (engine) + sonnet (screen) | doing | Roy: white preferred by weight, any light colour or stripe is fine; no hard colour rule |
+| 4.2 | A way to verify after the preview ends on 2026-11-25: extend it, or a fixture session | lead decision with Roy | deferred | Roy decides near 2026-11-25 |
+| 4.3 | Android: first APK, native pass, one fix round | Roy builds; sonnet fixes | deferred | Roy: after the web app is final |
+| 4.4 | Morning notification scheduled on the device; Fridays three hours before candle lighting | sonnet | deferred | Waits for 4.3 |
+| 4.5 | Manual context for today: date, interview, event | sonnet | doing | |
+| 4.6 | Reserve duty: packing count and shortage warning | sonnet | waiting | Needs the number of white T-shirts for a weekend |
+| 4.7 | Hardening: `useFeedback` races, missing unit tests, offline wear history, 90-day window, stage 3 minors | opus (races) + sonnet | doing | |
+| 4.8 | Clean-up: design preview, `redraw-five`, config and docs drift, bucket listing | sonnet, each with Roy's go | partly | `redraw-five` removed from the repo (lead decision, Roy: "whatever you think"); Roy can delete the deployed copy in the dashboard. The rest waits for the end |
+
