@@ -1,10 +1,11 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, ScrollView, Text, View } from "react-native";
+import { AppState, Platform, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, ListRow, MetaLink, ScreenHeader, SearchField, StatusLine } from "../components/ui";
-import { cachedPlaceName, currentPosition, getSavedLocation, locationPermissionDenied, onPlaceNameChange, saveLocation, searchCities, type SavedLocation } from "../data/location";
+import { cachedPlaceName, currentPosition, getSavedLocation, onPlaceNameChange, readLocationFacts, saveLocation, searchCities, type SavedLocation } from "../data/location";
+import { locationNotice, type LocationFacts } from "../data/locationNotice";
 import { layout } from "../theme/tokens";
 
 type City = Extract<SavedLocation, { kind: "city" }>;
@@ -21,18 +22,34 @@ export default function LocationScreen() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<City[]>([]);
   const [searched, setSearched] = useState(false);
-  const [denied, setDenied] = useState(false);
+  // A tap on "my current location" that came back with no position; cleared by the next tap.
+  const [tapFailed, setTapFailed] = useState(false);
+  const [facts, setFacts] = useState<Pick<LocationFacts, "permission" | "hasStoredFix"> | null>(null);
 
   const lang = i18n.language === "en" ? "en" : "he";
   const [currentName, setCurrentName] = useState<string | null>(null);
 
+  // Read without prompting (data/location.ts): only a tap on the row may ask. Read again when the app comes back to
+  // the front, because the permission is changed in the browser's or the phone's settings, outside this screen.
   useEffect(() => {
-    void getSavedLocation().then((s) => {
-      setSaved(s);
-      // "Current" was chosen earlier but the permission has since been refused: Today shows the default city, so say why.
-      if (s.kind === "current") void locationPermissionDenied().then((d) => d && setDenied(true));
-    });
+    let active = true;
+    const load = () =>
+      void Promise.all([getSavedLocation(), readLocationFacts()]).then(([s, f]) => {
+        if (!active) return;
+        setSaved(s);
+        setFacts(f);
+      });
+    load();
+    const sub = AppState.addEventListener("change", (state) => state === "active" && load());
+    return () => {
+      active = false;
+      sub.remove();
+    };
   }, []);
+
+  // "Current" was chosen but no position can be had: Today shows the default city without a word, so this says why,
+  // for as long as it is true (not only right after a tap).
+  const noPermission = saved !== null && facts !== null && locationNotice({ saved: saved.kind, tapFailed, ...facts }) === "noPermission";
 
   // Cache only: Today does the lookup, this row shows what is already known (and updates when Today stores a name).
   useEffect(() => {
@@ -74,9 +91,12 @@ export default function LocationScreen() {
     // Ask now, while the user is looking at the button, rather than silently on the next app start.
     const fix = await currentPosition();
     if (!fix) {
-      setDenied(true);
+      setTapFailed(true);
+      // A refusal changes the permission and a fix would have changed the stored position: read both again.
+      void readLocationFacts().then(setFacts);
       return;
     }
+    setTapFailed(false);
     await choose({ kind: "current" });
   };
 
@@ -115,13 +135,14 @@ export default function LocationScreen() {
             selected={saved?.kind === "current"}
             onPress={() => void chooseCurrent()}
           />
+          {/* Directly under the row it is about. */}
+          {noPermission ? (
+            <View className="py-3">
+              <StatusLine variant="error" message={t("location.denied")} />
+            </View>
+          ) : null}
           {saved?.kind === "city" ? <ListRow label={saved.name} meta={saved.region ?? undefined} selected onPress={leave} /> : null}
         </View>
-        {denied ? (
-          <View className="mt-3">
-            <StatusLine variant="error" message={t("location.denied")} />
-          </View>
-        ) : null}
 
         <View className="mt-12">
           <SearchField value={query} onChangeText={setQuery} placeholder={t("location.search")} />

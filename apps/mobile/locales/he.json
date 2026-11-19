@@ -489,6 +489,7 @@
     "label": "מיקום: {{place}}",
     "currentMeta": "מזג האוויר וזמני השבת לפי המקום שבו אתה נמצא",
     "currentWithPlace": "מיקום נוכחי · {{place}}",
+    "currentNoPermission": "מיקום נוכחי · אין הרשאה",
     "osmCredit": "שמות מקומות: © OpenStreetMap"
   },
   "intake": {

@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
 import { Platform } from "react-native";
 import { z } from "zod";
+import type { LocationFacts, PermissionState } from "./locationNotice";
 import { canReuseName, nameFromDevice, nameFromNominatim, parseCachedPlace, roundForLookup, type Fix, type PlaceLang } from "./placeName";
 
 /**
@@ -90,13 +91,34 @@ export async function currentPosition(): Promise<{ lat: number; lon: number } | 
   }
 }
 
-/** True only when the permission is known to be refused; never prompts and never throws (unknown reads as not denied). */
-export async function locationPermissionDenied(): Promise<boolean> {
+const FixSchema = z.object({ lat: z.number(), lon: z.number() });
+
+/** The position of the last successful fix, or null. Never throws. */
+async function lastFix(): Promise<{ lat: number; lon: number } | null> {
+  return AsyncStorage.getItem(LAST_FIX_KEY)
+    .then((raw) => FixSchema.parse(JSON.parse(raw ?? "null")))
+    .catch(() => null);
+}
+
+/**
+ * What the permission says, read without ever prompting and never throwing (a failed read is `unknown`). Only a tap
+ * on "my current location" may prompt (`currentPosition`); a screen opening must not.
+ */
+export async function locationPermissionState(): Promise<PermissionState> {
   try {
-    return (await Location.getForegroundPermissionsAsync()).status === Location.PermissionStatus.DENIED;
+    const { status } = await Location.getForegroundPermissionsAsync();
+    if (status === Location.PermissionStatus.GRANTED) return "granted";
+    if (status === Location.PermissionStatus.DENIED) return "denied";
+    return "undetermined";
   } catch {
-    return false;
+    return "unknown";
   }
+}
+
+/** The permission and the stored fix, for `locationNotice`. No prompt, no network, never throws. */
+export async function readLocationFacts(): Promise<Pick<LocationFacts, "permission" | "hasStoredFix">> {
+  const [permission, fix] = await Promise.all([locationPermissionState(), lastFix()]);
+  return { permission, hasStoredFix: fix !== null };
 }
 
 /** Turns the saved setting into coordinates. "Current" falls back to the last fix, then to the default. */
@@ -106,11 +128,7 @@ export async function resolveLocation(): Promise<ResolvedLocation> {
     return { kind: "city", label: saved.name, lat: saved.lat, lon: saved.lon, tz: saved.tz, geonameid: saved.geonameid };
   }
   if (saved.kind === "current") {
-    const fix =
-      (await currentPosition()) ??
-      (await AsyncStorage.getItem(LAST_FIX_KEY)
-        .then((raw) => z.object({ lat: z.number(), lon: z.number() }).parse(JSON.parse(raw ?? "null")))
-        .catch(() => null));
+    const fix = (await currentPosition()) ?? (await lastFix());
     // You are standing there, so the device's own zone is the right one for "today".
     if (fix) return { kind: "current", label: null, lat: fix.lat, lon: fix.lon, tz: Intl.DateTimeFormat().resolvedOptions().timeZone, geonameid: null };
   }
