@@ -56,3 +56,9 @@ Status: `todo` / `doing` / `review` / `done` / `blocked`. A model that fails a t
 | Shabbat rules for outerwear and accessories in the engine | The wardrobe filter handles them; the stylist's rules still have no slot for them | Roy's decision |
 | Insights outfit sheet: a row "type · Latin name" is drawn left-to-right in Hebrew | Side effect of keeping the start of truncated Latin names; splitting type and name into two texts would fix it | small follow-up |
 | Design preview | The server stops answering 2026-11-25; remove the preview code path afterwards (CHANGELOG 2026-11-18) | next session |
+
+## Stage 3 - fixes from Roy's use of the live app (started 2026-11-19)
+
+| # | Task | Model | Status | Result |
+| --- | --- | --- | --- | --- |
+| 3.1 | Inline writing (name, brand, notes): explicit save and cancel, a visible "saved" line, nothing saved on blur. Roy: "no button or indication, not clear how to save a note; the writing mechanism is not good". Spec: DESIGN.md section 4 "כתיבה במקום" | opus | doing | |
