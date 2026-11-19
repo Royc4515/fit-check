@@ -174,6 +174,8 @@ export function TryOnSheet({ open, onClose, garments }: Props) {
   const picture = (props: { uri?: string; loading?: boolean; emptyLabel?: string }) => (
     <View style={{ width: "100%", maxWidth, alignSelf: "center" }}>
       <PhotoTile
+        // A new instance per stored address: a tile that already failed on an address does not try (or report) it again.
+        key={props.uri ? `${state.image?.at}` : "none"}
         aspect={PICTURE_ASPECT}
         fit="cover"
         uri={props.uri}

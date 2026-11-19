@@ -29,7 +29,7 @@ export type TryOnState = {
   retry: "quote" | PayMode | null;
   /** The paying request in flight, or the one that just failed. */
   paying: PayMode | null;
-  /** Times a stored image failed to load since the last good quote: one silent re-ask, then an error. */
+  /** Times a stored image failed to load since the sheet opened (or the last render / manual retry): one silent re-ask, then an error. */
   imageErrors: number;
 };
 
@@ -170,7 +170,8 @@ export function reduceTryOn(s: TryOnState, a: TryOnAction): TryOnState {
     case "quote_ok": {
       // A quote that lands while a paying request runs is stale news; the render's own answer decides.
       if (s.phase === "generating") return s;
-      return { ...s, phase: a.image ? "result" : "ready", quote: a.quote, image: a.image, failure: null, retry: null, paying: null, imageErrors: 0 };
+      // imageErrors is NOT reset here: an image that keeps failing after fresh addresses must end in an error, not loop.
+      return { ...s, phase: a.image ? "result" : "ready", quote: a.quote, image: a.image, failure: null, retry: null, paying: null };
     }
     case "quote_failed": {
       if (s.phase === "generating") return s;
@@ -182,7 +183,7 @@ export function reduceTryOn(s: TryOnState, a: TryOnAction): TryOnState {
       return { ...s, phase: "generating", paying: a.mode, failure: null, retry: null };
     case "retry": {
       if (s.phase !== "failed" || s.retry === null) return s;
-      if (s.retry === "quote") return { ...s, phase: "quoting", failure: null, retry: null, paying: null };
+      if (s.retry === "quote") return { ...s, phase: "quoting", failure: null, retry: null, paying: null, imageErrors: 0 };
       return reduceTryOn({ ...s, phase: s.retry === "render" ? "ready" : "result", failure: null, retry: null }, { type: "press", mode: s.retry });
     }
     case "render_ok":
