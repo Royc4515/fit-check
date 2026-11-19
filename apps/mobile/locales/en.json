@@ -446,6 +446,15 @@
       "confirmBody": "The improved picture will be replaced by a cutout of the original photo.",
       "confirm": "Cut out again",
       "cancel": "Cancel"
+    },
+    "writing": {
+      "editName": "Edit name",
+      "editBrand": "Edit brand",
+      "editNotes": "Edit notes",
+      "saved": "Saved",
+      "failed": "Not saved. {{reason}}",
+      "failedUnknown": "Check the connection and try again.",
+      "retry": "Try again"
     }
   },
   "auth": {
@@ -695,7 +704,9 @@
     "close": "Close",
     "remove": "Remove {{label}}",
     "loading": "Loading",
-    "imageFailed": "The image did not load"
+    "imageFailed": "The image did not load",
+    "save": "Save",
+    "cancel": "Cancel"
   },
   "ds": {
     "title": "Design system",
@@ -726,7 +737,13 @@
       "once": "One wear",
       "never": "Not worn yet",
       "loading": "Loading",
-      "failed": "Failed"
+      "failed": "Failed",
+      "writingRest": "At rest",
+      "writingEditing": "Writing, changed",
+      "writingSaved": "After saving",
+      "writingFailed": "Save failed",
+      "writingFixtureWord": "shirt",
+      "writingFixtureNote": "Gentle wash, no dryer."
     },
     "state": {
       "default": "Default",

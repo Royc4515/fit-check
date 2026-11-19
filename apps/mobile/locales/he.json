@@ -453,6 +453,15 @@
       "confirmBody": "התמונה המשופרת תוחלף בחיתוך מהצילום המקורי.",
       "confirm": "חתוך מחדש",
       "cancel": "ביטול"
+    },
+    "writing": {
+      "editName": "עריכת שם",
+      "editBrand": "עריכת מותג",
+      "editNotes": "עריכת הערות",
+      "saved": "נשמר",
+      "failed": "לא נשמר. {{reason}}",
+      "failedUnknown": "בדוק את החיבור ונסה שוב.",
+      "retry": "נסה שוב"
     }
   },
   "auth": {
@@ -704,7 +713,9 @@
     "close": "סגירה",
     "remove": "הסרת {{label}}",
     "loading": "טוען",
-    "imageFailed": "התמונה לא נטענה"
+    "imageFailed": "התמונה לא נטענה",
+    "save": "שמירה",
+    "cancel": "ביטול"
   },
   "ds": {
     "title": "מערכת עיצוב",
@@ -735,7 +746,13 @@
       "once": "לבישה אחת",
       "never": "עוד לא נלבש",
       "loading": "טעינה",
-      "failed": "כישלון"
+      "failed": "כישלון",
+      "writingRest": "מנוחה",
+      "writingEditing": "כתיבה, עם שינוי",
+      "writingSaved": "אחרי שמירה",
+      "writingFailed": "השמירה נכשלה",
+      "writingFixtureWord": "חולצה",
+      "writingFixtureNote": "לכבס בכביסה עדינה, בלי מייבש."
     },
     "state": {
       "default": "רגיל",

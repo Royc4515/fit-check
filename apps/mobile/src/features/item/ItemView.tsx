@@ -2,7 +2,7 @@ import type { PairWeights } from "@fit-check/engine";
 import type { Availability, Item } from "@fit-check/schema";
 import { Image, type ImageLoadEventData } from "expo-image";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BackHandler, Platform, View, useWindowDimensions } from "react-native";
 import Animated, { useAnimatedRef } from "react-native-reanimated";
@@ -61,7 +61,14 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
   // so it lands on Today, the app's opening screen.
   const goBack = useCallback(() => (router.canGoBack() ? router.back() : router.replace("/")), [router]);
   const flight = useItemFlight(id, geo, heroTone, goBack);
-  const { close, onAspect, onCopyShown } = flight;
+  const { close: fly, onAspect, onCopyShown } = flight;
+  // An open, changed text field is saved before the screen goes (DESIGN.md section 4, "כתיבה במקום"); ItemDetails
+  // fills this, and its own unmount covers the browser's back button.
+  const flushWriting = useRef<(() => void) | null>(null);
+  const close = useCallback(() => {
+    flushWriting.current?.();
+    return fly();
+  }, [fly]);
   const scroll = useAnimatedRef<Animated.ScrollView>();
   const [actionsOpen, setActionsOpen] = useState(false);
   const [imageStatus, setImageStatus] = useState<ImageStatus | null>(null);
@@ -86,6 +93,8 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
 
   /** Another item from "goes with": measure the pressed garment first so the next screen flies from it. */
   const openOther = async (scope: string, otherId: string) => {
+    // This screen stays mounted under the next one: its open field must be settled now, not on unmount.
+    flushWriting.current?.();
     await flyFrom(scope, otherId);
     router.push({ pathname: "/item/[id]", params: { id: otherId } });
   };
@@ -156,6 +165,7 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
       onOpenOther={(scope, otherId) => void openOther(scope, otherId)}
       onScrollTop={() => scroll.current?.scrollTo({ y: 0, animated: true })}
       bleed={!geo.desktop}
+      flushRef={flushWriting}
     />
   ) : (
     <Display level={1}>{t("item.notFound")}</Display>
@@ -198,7 +208,16 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
           order, so Back and More are the first two stops, then the details (verification N2). The layers (zIndex)
           keep the paint order: the flying picture over the text, the buttons over the picture. */}
       {geo.desktop ? buttons : null}
-      <Animated.ScrollView ref={scroll} onScroll={flight.onScroll} scrollEventThrottle={16} contentContainerStyle={{ paddingBottom: insets.bottom + BOTTOM_AIR }}>
+      <Animated.ScrollView
+        ref={scroll}
+        onScroll={flight.onScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: insets.bottom + BOTTOM_AIR }}
+        // Native writing (DESIGN.md section 4): iOS insets the scroll by the keyboard and keeps the focused field in
+        // view; a tap on "שמירה" with the keyboard up must press it, not only dismiss the keyboard.
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+      >
         {geo.desktop ? null : buttons}
         <View style={column}>
           <Animated.View style={[{ paddingHorizontal: geo.desktop ? 0 : layout.gutter }, flight.contentStyle]}>{details}</Animated.View>
