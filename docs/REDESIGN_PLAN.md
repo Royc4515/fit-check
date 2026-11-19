@@ -47,6 +47,53 @@ Started 2026-11-19 on Roy's go ("merge and continue with your plan"), after stag
 | Insights: outfit history, AI spend | AI spend from `ai_calls`; clothing spend only once prices are entered (none today) |
 | Profile: language switch, sign-out | |
 
+## Stage 3 - fixes from use of the live app (done)
+
+2026-11-19, PR #24. Roy used the merged redesign on his phone and sent findings; each became a row in
+`TASKS.md` "Stage 3": explicit save for name, brand and notes; the worn lines above the flat-lay and a flat-lay
+that always fits; the place name for the current location; candle lighting by the local custom at the current
+location; the end of Shabbat on Today. Verified twice by an agent that did not write the code
+(`docs/redesign-checklist-stage3.md`). What nobody could check is in `TASKS.md` "Open after stage 3".
+
+## Stage 4 - from a finished redesign to a daily habit (proposed 2026-11-19, waiting for Roy's go)
+
+The PRD has one success measure: 14 days in a row of daily use. The redesign made the app pleasant; it did not
+make it part of the morning. An inventory of the PRD against the code (2026-11-19) shows what stands between
+the two:
+
+- Nothing calls Roy in the morning. `expo-notifications` is installed and never imported.
+- On Friday, Today offers a weekday outfit. The Shabbat context starts only on Saturday, so the suggestion for
+  Shabbat clothes is missing exactly when it is needed.
+- The Android app has a build profile and has never been built or run. Everything was checked in Chromium.
+- Every write was verified with stubs. One real wear exists (Roy, 2026-11-19).
+- The design preview, the only way agents see real data, stops answering on 2026-11-25.
+
+### Order of work
+
+| # | Task | Why now | Needs from Roy |
+| --- | --- | --- | --- |
+| 4.1 | Friday is for Shabbat. On a Friday and on the eve of a holiday Today shows two outfits, "היום" and "לשבת" / "לחג", switched by `TextTabs` above the flat-lay; each can be worn, swapped and adjusted. Engine: the evening's day type comes from "candles today" (already computed in `shabbatTimes`). | Largest gap for a weekly, real need; app code and pure engine only | Go. Open PRD question: is light blue or a thin stripe "respectable" for Shabbat, or white and navy only |
+| 4.2 | A way to verify after 2026-11-25. Either extend the design preview's end date (one constant in an Edge Function), or build a fixture session from the anonymised wardrobe. | Without it stage 4 cannot be verified against real data | Decision: extend the preview until the app is finished (recommended), or fixtures |
+| 4.3 | Android: first APK (`pnpm build:android`, EAS), then a native pass over the list in `TASKS.md` (gestures, haptics, shadows, hardware back, safe areas, RTL, keyboard against the save row, device geocoder), then one fix round. | Push and haptics exist only on native; the PRD's device is Android | Roy runs the build (EAS account) and installs the APK, or adds an `EXPO_TOKEN` secret to the environment |
+| 4.4 | Morning notification, scheduled on the device: every day at an hour Roy chooses; on Fridays and holiday eves three hours before candle lighting (PRD 4.3). Local scheduling with `expo-notifications`: no server, no cron, no push token, nothing new to pay for. Setting on the profile screen. | The outfit is already computed on the device, so a local notification is enough for the habit | Go, after 4.3 (native only; the web app cannot notify) |
+| 4.5 | A manual context for today: date, interview, event. The engine's rules exist and nothing can select them. One row in the adjustments sheet, "מה יש היום". | Small, and it uses rules that are already written and tested | Go |
+| 4.6 | Reserve duty as a real flow: the packing list counts white T-shirts and warns when there are too few clean ones. | Roy leaves most weekends | The number of T-shirts for a weekend (open PRD question) |
+| 4.7 | Hardening: the two `useFeedback` races; unit tests for `planToday`, wardrobe filters, the day-context loader and the feedback layer; wear history cached for offline; the 90-day learning window the config promises and nothing applies; the open minors from stage 3. | Real writes start to matter once the app is used daily | - |
+| 4.8 | Clean-up: remove the design preview (when the app is finished, Roy 2026-11-19); delete the `redraw-five` function, whose one-time code is in the repo and expired; bring `supabase/config.toml` and the docs in line with what is deployed; decide on the public listing of the `cutouts` bucket. | Debt with a security edge | Go for each Edge Function or storage change |
+
+4.1, 4.5 and 4.7 touch different files and can run in parallel. 4.4 waits for 4.3. Each task: spec in
+`DESIGN.md` or `PRD.md` first, built by a subagent, verified by one that did not write it, one commit per screen.
+
+### Not in stage 4 (each needs a decision, money or a schema change)
+
+| What | What it needs |
+| --- | --- |
+| Background removal and embeddings (the Modal worker, disabled since 2026-11-18) | Roy re-enables the Modal workspace; it has a cost |
+| Pre-purchase check (PRD 4.5) | Embeddings or a paid model call per check; a new screen |
+| A server-side daily outfit with remote push (`generate-daily`, pg_cron) | Only if the local notification of 4.4 turns out not to be enough |
+| Onboarding: sizes, editing the context rules, re-importing the sheet | Low value for one user who is already set up |
+| Trip packing lists, Google Calendar | PRD version 2 |
+
 ## Delegation
 
 | Kind of work | Model |

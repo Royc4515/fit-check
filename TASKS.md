@@ -84,3 +84,19 @@ Status: `todo` / `doing` / `review` / `done` / `blocked`. A model that fails a t
 | Rosh Hashana eve on a Friday says only "כניסת שבת"; day 1 on a Saturday shows no "Shabbat ends" | Labels go by weekday; accurate times, incomplete wording | Roy's call |
 | Candle minutes and the Israel schedule follow the device time zone | A phone in Israel set to a foreign zone gets the Diaspora rules | Roy's call |
 | `redraw-five` Edge Function: a one-time access code is written in the repo; it expired 2026-11-19 and the function answers 410, but it is still deployed with the service role | Edge Functions are outside the redesign's scope | Roy: delete the function |
+
+## Stage 4 - from a finished redesign to a daily habit (proposed 2026-11-19, waiting for Roy's go)
+
+Plan and reasons: `docs/REDESIGN_PLAN.md` "Stage 4". Stage 3 merged as PR #24.
+
+| # | Task | Model | Status | Result |
+| --- | --- | --- | --- | --- |
+| 4.1 | Friday is for Shabbat: two outfits on a Friday and on a holiday eve ("היום" / "לשבת") | opus (engine) + sonnet (screen) | proposed | |
+| 4.2 | A way to verify after the preview ends on 2026-11-25: extend it, or a fixture session | lead decision with Roy | proposed | |
+| 4.3 | Android: first APK, native pass, one fix round | Roy builds; sonnet fixes | proposed | |
+| 4.4 | Morning notification scheduled on the device; Fridays three hours before candle lighting | sonnet | proposed, after 4.3 | |
+| 4.5 | Manual context for today: date, interview, event | sonnet | proposed | |
+| 4.6 | Reserve duty: packing count and shortage warning | sonnet | proposed, needs the T-shirt number | |
+| 4.7 | Hardening: `useFeedback` races, missing unit tests, offline wear history, 90-day window, stage 3 minors | opus (races) + sonnet | proposed | |
+| 4.8 | Clean-up: design preview, `redraw-five`, config and docs drift, bucket listing | sonnet, each with Roy's go | proposed | |
+
