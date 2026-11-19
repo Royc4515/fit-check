@@ -38,8 +38,9 @@ export function isFestiveWeekday(yomtov: boolean, observes: boolean): boolean {
 export type CalendarFields = Pick<ShabbatTimes, "candles" | "end"> & {
   holiday: { he: string; en: string } | null;
   yomtov: boolean;
+  yomKippur: boolean;
   chain: PhoneFreeDay[];
 };
 
 /** What a day without the calendar looks like: no times, no holiday, nothing planned ahead. */
-export const NO_CALENDAR: CalendarFields = { holiday: null, candles: null, end: null, yomtov: false, chain: [] };
+export const NO_CALENDAR: CalendarFields = { holiday: null, candles: null, end: null, yomtov: false, yomKippur: false, chain: [] };

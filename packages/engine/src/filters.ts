@@ -28,6 +28,7 @@ function passesSlotRule(item: Item, rule: SlotRule): boolean {
   if (rule.allow_subcategories.length > 0 && !rule.allow_subcategories.includes(sub)) return false;
   if (rule.deny_subcategories.includes(sub)) return false;
   if (rule.deny_patterns.includes(item.tags.pattern)) return false;
+  if (rule.deny_materials.includes(item.tags.material)) return false;
   if (rule.min_formality !== undefined && item.tags.formality < rule.min_formality) return false;
   return true;
 }
@@ -58,7 +59,10 @@ function passesWeather(item: Item, slot: Slot, req: StylingRequest, layered: boo
  */
 function passesFormality(item: Item, slot: Slot, context: ContextRules): boolean {
   const [lo, hi] = context.formality_range;
-  return item.tags.formality >= lo - FORMALITY_SLACK[slot] && item.tags.formality <= hi + 1;
+  // A slot's own floor replaces the coarse one. The contexts that set one (date, interview: shoes 4) set it above the
+  // coarse floor, so for them nothing changes; Yom Kippur sets 1 for any non-leather shoe.
+  const floor = (slot === "layer" ? undefined : context[slot].min_formality) ?? lo - FORMALITY_SLACK[slot];
+  return item.tags.formality >= floor && item.tags.formality <= hi + 1;
 }
 
 /**

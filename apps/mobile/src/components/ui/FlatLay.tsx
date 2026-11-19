@@ -389,7 +389,6 @@ function Piece({
   // How far the incoming garment rises: RISE for a swap, 0 for a tab change or reduced motion. A shared value set with
   // the animation, not a render value read in the style: the browser check showed a closure-captured flag still rising.
   const rise = useSharedValue(reduce ? 0 : RISE);
-  const prevId = layers.prev?.id ?? null;
   const curId = layers.cur.id;
   const still = layers.still;
   useEffect(() => {
@@ -408,7 +407,12 @@ function Piece({
         if (finished) scheduleOnRN(clear);
       })
     );
-  }, [p, rise, curId, prevId, reduce, still]);
+    // don't touch / runs once per arriving garment (curId), never again when the outgoing layer is cleared (prevId) or
+    // `still` flips: re-running then restarted the fade from 0, so a tab change read as a fade out and a second fade in
+    // (about 440 ms, independent verification 19.11) instead of one 180 ms cross-fade. `still` and `reduce` are read
+    // as they are when the garment arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p, rise, curId]);
 
   const enter = useAnimatedStyle(() => ({
     opacity: p.get(),

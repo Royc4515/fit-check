@@ -8,6 +8,7 @@
     "wearing": "לובש",
     "wearOnShabbat": "אלבש בשבת",
     "wearOnHoliday": "אלבש בחג",
+    "wearOnYomKippur": "אלבש ביום כיפור",
     "warmer": "יותר חם",
     "cooler": "יותר קר",
     "dressier": "יותר רשמי",
@@ -57,6 +58,8 @@
       "worn": "נרשם: זה מה שלבשת היום.",
       "wornShabbat": "נרשם: זה הלוק שלך לשבת.",
       "wornHoliday": "נרשם: זה הלוק שלך לחג.",
+      "wornYomKippur": "נרשם: זה הלוק שלך ליום כיפור.",
+      "noLeatherFreeShoes": "אין בארון נעל שאינה מעור. הלוק מוצע בלי נעליים.",
       "skipped": "דילגת על ההצעה הקודמת.",
       "disliked": "נרשם שהשילוב הקודם לא עבד.",
       "failed": "הפעולה לא נשמרה. נסה שוב.",
@@ -95,7 +98,8 @@
       "shabbat": "לשבת",
       "holiday": "לחג",
       "holidayDay1": "לחג א׳",
-      "holidayDay2": "לחג ב׳"
+      "holidayDay2": "לחג ב׳",
+      "yomKippur": "ליום כיפור"
     },
     "plannedForecast": "{{day}} · {{range}} · גשם {{rain}}",
     "plannedNoForecast": "אין עדיין תחזית"
@@ -754,6 +758,8 @@
       "buttons": "כפתורים",
       "chips": "צ'יפים",
       "segmented": "בקר מקוטע",
+      "textTabs": "לשוניות טקסט",
+      "crossFade": "החלפה בדהייה",
       "swatches": "גוונים",
       "icons": "אייקונים",
       "tiles": "אריחים",
@@ -812,6 +818,18 @@
       "cotton": "כותנה",
       "suggestion": "אולי פשתן?",
       "removable": "נייבי"
+    },
+    "textTabs": {
+      "label": "דוגמת לשוניות",
+      "two": "שתי לשוניות",
+      "four": "ארבע לשוניות",
+      "he": "עברית",
+      "en": "אנגלית"
+    },
+    "crossFade": {
+      "toggle": "החלפה",
+      "a": "הלוק של היום: פולו, ג׳ינס, סניקרס.",
+      "b": "הלוק לשבת: חולצה לבנה, מכנסי אלגנט, נעלי ערב."
     },
     "segmented": {
       "label": "זמינות",

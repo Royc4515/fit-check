@@ -59,7 +59,7 @@ describe("a holiday with the switch off", () => {
 
 describe("off", () => {
   it("there are no times and no planned days (the calendar is still read for the holiday)", () => {
-    expect(NO_CALENDAR).toEqual({ holiday: null, candles: null, end: null, yomtov: false, chain: [] });
+    expect(NO_CALENDAR).toEqual({ holiday: null, candles: null, end: null, yomtov: false, yomKippur: false, chain: [] });
   });
   it("Saturday is planned by the weekday rules", () => {
     const day = { date: "2026-11-21", weather: { temp_min_c: 14, temp_max_c: 22, rain_probability: 0 }, dayType: dayTypeFor(6, false, false) };

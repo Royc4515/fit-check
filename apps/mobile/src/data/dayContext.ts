@@ -2,7 +2,7 @@ import { summarizeDay, type DayWeather } from "@fit-check/engine";
 import { HebcalConverterSchema, HebcalItemsSchema, OpenMeteoHourlySchema, type OpenMeteoHourly } from "@fit-check/schema";
 import { candleLightingMinutes } from "./candleLighting";
 import { cacheGet, cacheSet } from "./kv";
-import { CHAIN_MAX_DAYS, phoneFreeChain, shabbatTimes, stripNiqqud, type PhoneFreeDay, type ShabbatTimes } from "./shabbatTimes";
+import { CHAIN_MAX_DAYS, isYomKippur, phoneFreeChain, shabbatTimes, stripNiqqud, type PhoneFreeDay, type ShabbatTimes } from "./shabbatTimes";
 import { placeNameFor, resolveLocation, type ResolvedLocation } from "./location";
 import type { PlaceLang } from "./placeName";
 import { localDate } from "./localDate";
@@ -25,8 +25,10 @@ export type DayType = "weekday" | "shabbat" | "holiday";
 export type PlannedDay = PhoneFreeDay & {
   /** 0 = Sunday ... 6 = Saturday. */
   weekday: number;
-  /** The engine context: the day's own kind. */
+  /** The context stored with a wear (`outfits.context_type`): Yom Kippur is a holiday there. */
   dayType: Exclude<DayType, "weekday">;
+  /** Planned by the Yom Kippur rules (no leather shoes; PRD section 7). */
+  yomKippur: boolean;
   /** That date's forecast; null is a real state ("no forecast yet": the forecast does not reach it, or failed). */
   weather: DayWeather | null;
 };
@@ -50,6 +52,8 @@ export type DayContext = {
   candles: ShabbatTimes["candles"];
   /** The end of Shabbat or the holiday, only when it falls today or tomorrow (see shabbatTimes). */
   end: ShabbatTimes["end"];
+  /** Today is Yom Kippur and the switch is on: planned by the Yom Kippur rules (PRD section 7). */
+  yomKippur: boolean;
   /** A Yom Tov with the observance switch off: weekday rules, one "dressier" step by default (DESIGN.md 4.1 item 10). */
   festive: boolean;
   /** The location's time zone, for reading the local clock against `candles`. */
@@ -127,14 +131,14 @@ async function loadHebrewDate(date: string): Promise<DayContext["hebrewDate"]> {
   }
 }
 
-type Calendar = Pick<DayContext, "holiday" | "candles" | "end"> & { yomtov: boolean; chain: PhoneFreeDay[] };
+type Calendar = Pick<DayContext, "holiday" | "candles" | "end"> & { yomtov: boolean; yomKippur: boolean; chain: PhoneFreeDay[] };
 
 async function loadCalendar(date: string, loc: ResolvedLocation): Promise<Calendar> {
-  // Coordinates carry the candle minutes in the key: the minutes depend on the point (city boundary), and v4 drops the
-  // entries from before the chain of planned days (v4: before the end-of-Shabbat fields; v3: Hebcal's coordinate
-  // default).
+  // Coordinates carry the candle minutes in the key: the minutes depend on the point (city boundary). v6 drops the
+  // entries from before Yom Kippur was told apart (v5: before the chain of planned days; v4: before the end-of-Shabbat
+  // fields; v3: Hebcal's coordinate default).
   const minutes = loc.geonameid ? null : candleLightingMinutes(loc);
-  const key = `fitcheck:hebcal:v5:${date}:${loc.geonameid ?? `${placeKey(loc)}:b${minutes}`}`;
+  const key = `fitcheck:hebcal:v6:${date}:${loc.geonameid ?? `${placeKey(loc)}:b${minutes}`}`;
   const cached = await cacheGet<Calendar>(key, 24 * HOUR);
   if (cached) return cached;
   try {
@@ -158,6 +162,7 @@ async function loadCalendar(date: string, loc: ResolvedLocation): Promise<Calend
       holiday: times.holiday ? { he: stripNiqqud(times.holiday.hebrew ?? times.holiday.title), en: times.holiday.title_orig ?? times.holiday.title } : null,
       candles: times.candles,
       end: times.end,
+      yomKippur: times.holiday !== null && isYomKippur(times.holiday),
       chain: phoneFreeChain(items, date),
     };
     await cacheSet(key, value);
@@ -202,11 +207,13 @@ export async function loadDayContext(now: Date = new Date(), lang: PlaceLang = "
     candles: cal.candles,
     end: cal.end,
     festive: isFestiveWeekday(cal.yomtov, observesShabbat),
+    yomKippur: observesShabbat && cal.yomKippur,
     tz: loc.tz,
     chain: cal.chain.map((d) => ({
       ...d,
       weekday: addDays(d.date, 0).weekday,
-      dayType: d.kind,
+      dayType: d.kind === "shabbat" ? ("shabbat" as const) : ("holiday" as const),
+      yomKippur: d.kind === "yom_kippur",
       weather: forecast ? summarizeDay(forecast, d.date) : null,
     })),
   };

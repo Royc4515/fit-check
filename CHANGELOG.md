@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-19 (Friday is for Shabbat: fixes from the independent verification)
+
+- Day-tab change: one cross-fade in motion.state, the two looks at the same time (was a fade out then a fade in, about 440 ms: a garment's fade restarted when its old layer was cleared). The forecast line's slot is held on the today tab, so the hero keeps its box (390: 354 px at y 309 throughout, was 388 -> 354 and 275 -> 309); when status lines differ the hero keeps its size until the fade ends.
+- Yom Kippur is named as itself ("ליום כיפור", "אלבש ביום כיפור") and planned by `YOM_KIPPUR_RULES` (engine config): no leather or suede shoes, any other shoe, without shoes and a line if none. Its type stays "holiday", the database enum value a wear stores. `SlotRule` gained `deny_materials` and `optional` (zod defaults only); a slot's `min_formality` replaces the coarse floor (date and interview unchanged, tested against recorded outfits).
+- Day tabs follow the WAI-ARIA tabs pattern (`TextTabs` `idPrefix`, new `TabPanel`); TextTabs and CrossFade in the gallery.
+- Look at: `FlatLay` Piece effect, the held size in `TodayView.tsx`, `packages/engine/src/config.ts` YOM_KIPPUR_RULES. Unverified: native; the server engine bundle (`supabase/functions/_shared/engine.js`) is not regenerated, so the MCP tools do not apply the Yom Kippur rules yet. Shoes tagged `unknown` material count as non-leather.
+
 ## 2026-11-19 (context through the MCP, observance setting on the profile)
 
 - **NOTHING IS APPLIED OR DEPLOYED YET.** Files only, on branch `work-mcp-context`; the owner approved the migration and the tools on 2026-11-19.

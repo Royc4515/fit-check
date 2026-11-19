@@ -138,8 +138,19 @@ describe("phoneFreeChain", () => {
     ]));
   it("erev Pesach (Wednesday), a one-day weekday holiday: Thursday's havdalah ends it before Friday's candles", () =>
     expect(chain(chainErevPesach, "2027-04-21")).toEqual([{ date: "2027-04-22", kind: "holiday", holiday: { he: "פסח א׳", en: "Pesach I" } }]));
-  it("erev Yom Kippur (Sunday): Monday", () =>
-    expect(chain(chainYomKippurEve, "2027-10-10")).toEqual([{ date: "2027-10-11", kind: "holiday", holiday: { he: "יום כיפור", en: "Yom Kippur" } }]));
+  it("erev Yom Kippur (Sunday): Monday, named as Yom Kippur", () =>
+    expect(chain(chainYomKippurEve, "2027-10-10")).toEqual([{ date: "2027-10-11", kind: "yom_kippur", holiday: { he: "יום כיפור", en: "Yom Kippur" } }]));
+  it("Yom Kippur on a Saturday is still Yom Kippur", () =>
+    expect(
+      phoneFreeChain(
+        [
+          { title: "c", date: "2026-10-02T17:50:00+03:00", category: "candles" },
+          { title: "yk", date: "2026-10-03", category: "holiday", title_orig: "Yom Kippur", yomtov: true },
+          { title: "h", date: "2026-10-03T18:40:00+03:00", category: "havdalah" },
+        ],
+        "2026-10-02"
+      ).map((d) => d.kind)
+    ).toEqual(["yom_kippur"]));
   it("a chain whose havdalah is out of range is not planned", () =>
     expect(phoneFreeChain([{ title: "c", date: "2027-10-01T18:06:00+03:00", category: "candles" }], "2027-10-01")).toEqual([]));
   it("an invalid date opens nothing", () => expect(chain(chainFriday, "20-11-2026")).toEqual([]));
@@ -161,6 +172,7 @@ describe("chainTabLabels", () => {
   it("Rosh Hashana on Thursday-Friday: holiday day 1, day 2, then Shabbat", () =>
     expect(kinds(chainRhEve2028, "2028-09-20")).toEqual([{ kind: "holiday", day: 1 }, { kind: "holiday", day: 2 }, { kind: "shabbat" }]));
   it("no chain, no tabs", () => expect(chainTabLabels([])).toEqual([]));
+  it("erev Yom Kippur: for Yom Kippur", () => expect(kinds(chainYomKippurEve, "2027-10-10")).toEqual([{ kind: "yom_kippur" }]));
 });
 
 describe("defaultTab", () => {
