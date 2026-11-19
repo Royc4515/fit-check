@@ -113,3 +113,22 @@ describe("decideRemove: removing the item from the wardrobe", () => {
     }
   });
 });
+
+describe("the outfit name (DESIGN.md \"שלב 5.2\" item 4)", () => {
+  it("may be cleared: no name is a valid name for an outfit", () => {
+    expect(resolveOpen(open("outfitName", "Shabbat", "  "))).toBe("save");
+    expect(canSave(open("outfitName", "", "Shabbat"))).toBe(true);
+  });
+  it("is at most 40 characters, counted in code points", () => {
+    expect(canSave(open("outfitName", "", "a".repeat(40)))).toBe(true);
+    expect(canSave(open("outfitName", "", "a".repeat(41)))).toBe(false);
+    expect(canSave(open("outfitName", "", "👔".repeat(40)))).toBe(true);
+    expect(resolveOpen(open("outfitName", "x", "a".repeat(41)))).toBe("cancel");
+  });
+  it("is one line, like an item's name", () => {
+    expect(storedForm("outfitName", " a\nb ")).toBe("a b");
+  });
+  it("is not an item change", () => {
+    expect(changeFor("outfitName", "Shabbat")).toBeNull();
+  });
+});

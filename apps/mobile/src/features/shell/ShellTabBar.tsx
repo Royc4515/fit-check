@@ -6,18 +6,18 @@ import { TabBar, TopNav, type NavItem } from "../../components/ui";
 import { isPreview } from "../../data/preview";
 import { layout } from "../../theme/tokens";
 
-type NavKey = "wardrobe" | "today" | "insights" | "profile";
+type NavKey = "wardrobe" | "today" | "outfits" | "profile";
 /** `add` is the active key on the Add route; no item carries it, so no destination shows as selected there. */
 type Key = NavKey | "add";
 
 /** Route file name (inside `(tabs)`) for each destination. `today` is the group's index route. */
-const ROUTE_OF: Record<NavKey, string> = { wardrobe: "wardrobe", today: "index", insights: "insights", profile: "profile" };
+const ROUTE_OF: Record<NavKey, string> = { wardrobe: "wardrobe", today: "index", outfits: "outfits", profile: "profile" };
 const ADD_ROUTE = "intake";
 
 const ITEMS: readonly { key: NavKey; icon: NavItem["icon"] }[] = [
   { key: "wardrobe", icon: "checkroom" },
   { key: "today", icon: "today" },
-  { key: "insights", icon: "insights" },
+  { key: "outfits", icon: "style" },
   { key: "profile", icon: "person" },
 ];
 
