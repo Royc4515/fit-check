@@ -63,3 +63,4 @@ Status: `todo` / `doing` / `review` / `done` / `blocked`. A model that fails a t
 | --- | --- | --- | --- | --- |
 | 3.1 | Inline writing (name, brand, notes): explicit save and cancel, a visible "saved" line, nothing saved on blur. Roy: "no button or indication, not clear how to save a note; the writing mechanism is not good". Spec: DESIGN.md section 4 "כתיבה במקום" | opus | doing | |
 | 3.2 | Today after "wearing it": the status lines leave the bottom bar and sit above the hero, so the flat-lay (shoes) is not covered. Roy sent a phone screenshot of the live app | sonnet | doing | |
+| 3.3 | "Current location" shows the place name (Today weather line, profile row, location screen). Web: Nominatim (OSM, usage policy linked in DESIGN.md); native: the device geocoder. Roy: "in current location it does not say where" | sonnet | doing | |
