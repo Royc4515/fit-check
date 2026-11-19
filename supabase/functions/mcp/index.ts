@@ -19,11 +19,14 @@ import { TOOL_BY_NAME, TOOLS, type ToolContext } from "./tools.ts";
  */
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
-const SERVER_INFO = { name: "fit-check", title: "Fit Check", version: "0.3.0" };
+const SERVER_INFO = { name: "fit-check", title: "Fit Check", version: "0.4.0" };
 const INSTRUCTIONS =
   "Fit Check is Roy's personal wardrobe app (Hebrew-first, religious-modest menswear). Use wardrobe_search to see what he owns " +
   "and to find ids, item_get to look at one garment, item_update to fix names or tags, item_archive/item_restore to remove or bring back. " +
-  "outfit_today gives today's candidates: you pick and explain, then outfit_log what he wore. intake_pending shows photos he " +
+  "outfit_today gives today's candidates: you pick and explain, then outfit_log what he wore. If you can see his calendar, tell the app " +
+  "what kind of day it is with context_set (date, interview or event), check with context_get, " +
+  "and context_clear if the event was cancelled. The label is a short generic description, never a person's name or the event's title " +
+  "verbatim. Ask Roy before overriding a context he set by hand. intake_pending shows photos he " +
   "uploaded for you: tag them yourself and item_create. item_redraw costs money: write the description yourself and ask first. " +
   "Ask before archiving or editing several items at once. Answer Roy in Hebrew.";
 

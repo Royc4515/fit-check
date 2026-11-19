@@ -6,6 +6,9 @@
     "title": "Today",
     "empty": "No outfit for today yet",
     "wearing": "Wearing it",
+    "wearOnShabbat": "I'll wear it on Shabbat",
+    "wearOnHoliday": "I'll wear it on the holiday",
+    "wearOnYomKippur": "I'll wear it on Yom Kippur",
     "warmer": "Warmer",
     "cooler": "Cooler",
     "dressier": "Dressier",
@@ -53,6 +56,10 @@
     "dislike": "Didn't like the combination",
     "status": {
       "worn": "Logged: this is what you wore today.",
+      "wornShabbat": "Logged: this is your outfit for Shabbat.",
+      "wornHoliday": "Logged: this is your outfit for the holiday.",
+      "wornYomKippur": "Logged: this is your outfit for Yom Kippur.",
+      "noLeatherFreeShoes": "No non-leather shoes in the wardrobe. The outfit is shown without shoes.",
       "skipped": "You skipped the previous suggestion.",
       "disliked": "Noted: the previous combination didn't work.",
       "failed": "That didn't save. Try again.",
@@ -83,7 +90,19 @@
     "tune": "Adjust the suggestion: warmer, cooler, formality, skip",
     "pieceLabel": "{{type}}, {{name}}. Alternatives and details",
     "heroLabel": "Today's outfit: {{pieces}}. Swipe sideways to skip to the next suggestion",
-    "weatherLabel": "Weather in {{place}}: {{weather}}. Change location"
+    "heroLabelPlanned": "{{tab}}: {{pieces}}. Swipe sideways to skip to the next suggestion",
+    "weatherLabel": "Weather in {{place}}: {{weather}}. Change location",
+    "tabs": {
+      "label": "Outfit by day",
+      "today": "Today",
+      "shabbat": "For Shabbat",
+      "holiday": "For the holiday",
+      "holidayDay1": "Holiday, day 1",
+      "holidayDay2": "Holiday, day 2",
+      "yomKippur": "For Yom Kippur"
+    },
+    "plannedForecast": "{{day}} · {{range}} · Rain {{rain}}",
+    "plannedNoForecast": "No forecast yet"
   },
   "wardrobe": {
     "title": "Wardrobe",
@@ -240,6 +259,10 @@
     "languageHe": "עברית",
     "languageEn": "English",
     "languageRestart": "The layout direction changes after you restart the app.",
+    "observance": "Keeps Shabbat and holidays",
+    "observanceYes": "Yes",
+    "observanceNo": "No",
+    "observanceMeta": "Candle-lighting and end times, an outfit planned ahead for Shabbat and holidays, and Shabbat dress rules",
     "archive": "Archive",
     "signOut": {
       "button": "Sign out",
@@ -470,6 +493,7 @@
   "location": {
     "title": "Location",
     "hint": "Weather and Shabbat times follow this location.",
+    "hintWeatherOnly": "The location sets the weather.",
     "current": "My current location",
     "currentShort": "Current location",
     "default": "Giv'at Shmuel",
@@ -481,7 +505,9 @@
     "back": "Today",
     "label": "Location: {{place}}",
     "currentMeta": "Weather and Shabbat times for where you are",
+    "currentMetaWeatherOnly": "Weather for where you are",
     "currentWithPlace": "Current location · {{place}}",
+    "currentNoPermission": "Current location · no permission",
     "osmCredit": "Place names: © OpenStreetMap"
   },
   "intake": {
@@ -723,6 +749,8 @@
       "buttons": "Buttons",
       "chips": "Chips",
       "segmented": "Segmented control",
+      "textTabs": "Text tabs",
+      "crossFade": "Cross-fade",
       "swatches": "Swatches",
       "icons": "Icons",
       "tiles": "Tiles",
@@ -781,6 +809,18 @@
       "cotton": "Cotton",
       "suggestion": "Maybe linen?",
       "removable": "Navy"
+    },
+    "textTabs": {
+      "label": "Tabs sample",
+      "two": "Two tabs",
+      "four": "Four tabs",
+      "he": "Hebrew",
+      "en": "English"
+    },
+    "crossFade": {
+      "toggle": "Swap",
+      "a": "Today's outfit: polo, jeans, sneakers.",
+      "b": "For Shabbat: white shirt, trousers, dress shoes."
     },
     "segmented": {
       "label": "Availability",

@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-11-19 (Friday is for Shabbat: fixes from the independent verification)
+
+- Day-tab change: one cross-fade in motion.state, the two looks at the same time (was a fade out then a fade in, about 440 ms: a garment's fade restarted when its old layer was cleared). The forecast line's slot is held on the today tab, so the hero keeps its box (390: 354 px at y 309 throughout, was 388 -> 354 and 275 -> 309); when status lines differ the hero keeps its size until the fade ends.
+- Yom Kippur is named as itself ("ליום כיפור", "אלבש ביום כיפור") and planned by `YOM_KIPPUR_RULES` (engine config): no leather or suede shoes, any other shoe, without shoes and a line if none. Its type stays "holiday", the database enum value a wear stores. `SlotRule` gained `deny_materials` and `optional` (zod defaults only); a slot's `min_formality` replaces the coarse floor (date and interview unchanged, tested against recorded outfits).
+- Day tabs follow the WAI-ARIA tabs pattern (`TextTabs` `idPrefix`, new `TabPanel`); TextTabs and CrossFade in the gallery.
+- Look at: `FlatLay` Piece effect, the held size in `TodayView.tsx`, `packages/engine/src/config.ts` YOM_KIPPUR_RULES. Unverified: native; the server engine bundle (`supabase/functions/_shared/engine.js`) is not regenerated, so the MCP tools do not apply the Yom Kippur rules yet. Shoes tagged `unknown` material count as non-leather.
+
+## 2026-11-19 (context through the MCP, observance setting on the profile)
+
+- **NOTHING IS APPLIED OR DEPLOYED YET.** Files only, on branch `work-mcp-context`; the owner approved the migration and the tools on 2026-11-19.
+- Migration `0006_profile_observance.sql`: `profile.observes_shabbat boolean not null default true`. No generated Supabase types file exists in the repo, so none to update.
+- `packages/schema/src/day-context.ts`: shared zod schema of a day's context (type date | interview | event, date, label 1-60 chars one line, source manual | calendar), the date window (1 day back .. 14 ahead) and `planDay` (which rule set a day follows). 15 vitest tests.
+- MCP (`supabase/functions/mcp/context.ts`, version 0.4.0): `context_set`, `context_get`, `context_clear`. One occasion per date (new row written first, then the other two occasion types deleted; readers take the newest). A calendar write over a hand-set context is refused (`manual_context_exists`). No person's name is accepted or stored; `context_key` stays null. Weekday, Shabbat, holiday, reserve and trip rows are never touched. 11 Deno tests with an in-memory fake database.
+- `outfit_today`: a stored occasion beats the calendar; with `profile.observes_shabbat` false, Shabbat plans as a weekday and a holiday as a weekday plus one "dressier" step (engine `adjustRequest`). The answer has `context_used` and `calendar_day_type`. `engine.d.ts` now declares `adjustRequest` and `DayAdjustment` (the bundle already exported them).
+- Workflow for the user's own assistant: `docs/mcp/daily-context-workflow.md` (Hebrew, then English).
+- Look at: the walk-through of `context_set` failure cases in `supabase/functions/mcp/context_test.ts`.
+- To apply, in this order: (1) merge; (2) apply `0006_profile_observance.sql`; (3) `pnpm db:types` is not needed (no types file); (4) `scripts/bundle-engine.sh` only if `packages/engine` changed since the last bundle, then `scripts/bundle-mcp.sh /tmp/mcp.bundle.js`; (5) deploy the bundle as the `mcp` function (verify_jwt off), check it boots with 401 + WWW-Authenticate, then call `context_get` from the connector. Deploying before the migration is safe: a missing column reads as "keeps Shabbat".
+
+## 2026-11-19 (stage 4 hardening: removal, location, insights, tests)
+
+- Item screen: "remove from the wardrobe" now follows the leave rule (`decideRemove` in `features/item/writing.ts`, tested). An open, changed, valid field is saved first (one write) and the item is archived only after that save succeeded; if it fails the item stays, the confirm sheet closes, and the field keeps its typed text, the error line and "נסה שוב". An unchanged or cancelled field does not block removal.
+- Location: web reports a never-granted permission, and a prompt that was dismissed, as "prompt", which expo-location maps to `undetermined`, not `denied`; the old mount check looked only for `denied`, so the message vanished on reopening. Now `data/locationNotice.ts` (pure, tested) decides from the saved kind, the permission and whether a fix is stored: the message shows under the "my current location" row for as long as it is true, and the profile row says "מיקום נוכחי · אין הרשאה". Nothing prompts on mount; only a tap on the row does.
+- Insights outfit sheet: type and Latin name are two texts (`features/insights/OutfitItemRow.tsx`), each in its own direction, so the Hebrew type sits at the start edge.
+- 115 new unit tests: wardrobe filters and search, intake tag rules / failure lines / upload captions, insights summaries, the date in the location's zone, the pager. None exposed a bug.
+- Look at: the remove flow with unsaved text on the item screen (browser: the preview rejects writes, so only the failing-save path was run), the location screen with the permission refused, an outfit's sheet in Hebrew.
+## 2026-11-19 (Friday is for Shabbat: every phone-free day planned ahead)
+
+- On a day with candle lighting Today shows tabs ("היום", then "לשבת" / "לחג" / "לחג א׳", "לחג ב׳") inside the measured hero block (DESIGN.md "שלב 4.1"). Each tab is its own day: Shabbat or holiday rules, its own forecast line, "אלבש בשבת" records the wear on that date (laundry at press time, undo brings it back), its own stylist request when the tab is first opened. A later day sees the earlier looks as worn; a garment recorded for a later day is not offered earlier. Opens on the planned day from three hours before candle lighting or once today is worn.
+- Hebcal is asked for date..date+3 (`phoneFreeChain`, cache v5), the forecast for 4 days (cache v3). Engine: a Shabbat colour term (white top preferred; `SHABBAT_COLOR` in config) and a fix: a wear dated after `req.today` no longer lowers its garments' pre-rank.
+- Profile: "שומר שבת וחג" (device setting, `useObservesShabbat` / `getObservesShabbat`). Off: no times, no tabs, no "לשבת" filter, short location hint, weekday rules; a Yom Tov is a weekday one "dressier" step up (shown in the adjust sheet).
+- Look at: `features/today/plans.ts` (pure, tested), `data/shabbatTimes.ts`, `useFeedback` (one hook, `target` per action), the tab block in `TodayView.tsx`. Checked in the browser on the read-only preview (writes stubbed locally in a throwaway build).
+- Unverified: native; real writes and the real `wear_counts_since_wash` SQL; the stylist's answer for a planned day (blocked in preview: the template text shows). The MCP tools do not know the observance switch. The location screen's current-location meta still mentions Shabbat times with the switch off (that row belongs to another task).
+
 ## 2026-11-19 (OpenStreetMap credit from the keyboard)
 
 - `ui/MetaLink` is a real anchor on web (new tab, noopener): Enter, middle-click and copy-link work; native keeps Linking. Before, only a click opened it.
@@ -611,4 +644,11 @@
 - Stage 3 (fixes from Roy's use of the live app) merged as PR #24 after two independent verification passes (`docs/redesign-checklist-stage3.md`).
 - `docs/REDESIGN_PLAN.md` now has "Stage 4 - from a finished redesign to a daily habit": Friday for Shabbat, Android, a morning notification on the device, manual contexts, reserve packing, hardening, clean-up. It rests on an inventory of the PRD against the code made the same day. Nothing in it is started; it waits for Roy's go.
 - Look at: the stage 4 table and the "Not in stage 4" table; `TASKS.md` "Open after stage 3".
+
+## 2026-11-19 (stage 4 part 1 closed; stage 5 planned)
+
+- Independent verification of Shabbat planning, the observance switch and the hardening items, and a recheck after the fix round: `docs/redesign-checklist-stage4-part1.md`. No blocker and no major defect; open minors are in `TASKS.md`.
+- `supabase/functions/_shared/engine.js` rebuilt from the engine (`scripts/bundle-engine.sh`): the white-shirt preference, the future-dated wear fix and the Yom Kippur rule set are now in the bundle the `mcp` function runs. `supabase/config.toml` now lists `mcp` and `design-preview` with `verify_jwt = false`, as deployed.
+- `docs/REDESIGN_PLAN.md` "Stage 5": hand-built and saved outfits with favourites (a "לוקים" place in the bottom bar, Insights moves into the profile), alternatives after wearing, the algorithm's judgement, and a try-on experiment. Decisions and their reasons are there.
+- To deploy with this merge: migration 0006, then the `mcp` function from `scripts/bundle-mcp.sh` with verify_jwt off.
 

@@ -15,6 +15,7 @@ import {
   type ItemTags,
 } from "@fit-check/schema/item-tags.ts";
 import { sniffImageType } from "../_shared/media.ts";
+import { contextClear, contextGet, contextSet } from "./context.ts";
 import { outfitLog, outfitToday } from "./outfit.ts";
 import { intakeDismiss, intakePending, itemCreate, itemRecrop, itemRecut, itemRedraw } from "./photos.ts";
 import { REDRAW_DETAIL_IDS, REDRAW_FIX_IDS } from "@fit-check/schema/redraw-spec.ts";
@@ -368,8 +369,11 @@ export const TOOLS: Tool[] = [
     name: "outfit_today",
     title: "Today's outfit candidates",
     description:
-      "Builds today's outfit candidates with the app's own engine: weather (Givat Shmuel by default), weekday/Shabbat/holiday rules, " +
+      "Builds today's outfit candidates with the app's own engine: weather (Givat Shmuel by default), the day's rules, " +
       "laundry and what Roy wore recently. YOU are the stylist: pick one candidate and explain it to Roy in Hebrew. " +
+      "The rules are, in this order: a day_type you pass; else the date's occasion context (see context_set: date, interview or event); " +
+      "else the calendar (weekday, Shabbat, holiday), where, if Roy's profile says he does not keep Shabbat and holidays, Shabbat is planned as a " +
+      "weekday and a holiday as a weekday one step dressier. The answer says which context was used and why (context_used). " +
       "Optional: date (yyyy-mm-dd), day_type, lat/lon for another place, anchor_item_id to build around one garment.",
     inputSchema: {
       type: "object",
@@ -384,6 +388,53 @@ export const TOOLS: Tool[] = [
     },
     annotations: { readOnlyHint: true, openWorldHint: true },
     run: outfitToday,
+  },
+  {
+    name: "context_set",
+    title: "Tell the app what kind of day it is",
+    description:
+      "Sets the occasion for a date so the app dresses Roy for it: date (a date with someone), interview, or event (a formal occasion). " +
+      "Use it when his calendar shows one. One context per date: it replaces any other occasion of that date. " +
+      "date defaults to today; dates more than 14 days ahead or 1 day back are refused. source: calendar (default, you inferred it) or manual (Roy told you outright). " +
+      "label (optional, up to 60 characters, one line) is a SHORT GENERIC description such as \"job interview\" or \"family event, evening\": " +
+      "never a person's name, never the calendar event's title word for word. No person's name is accepted or stored. " +
+      "ASK ROY BEFORE overriding a context he set by hand (source manual): such a write with source calendar is refused; if he agrees, call again with source manual. " +
+      "It never touches Shabbat, holidays, reserve duty or trips. Returns what was stored and which rules today's outfit now follows.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        type: { ...enumOf(["date", "interview", "event"]), description: "date = a date with someone; interview = a job interview; event = a formal occasion." },
+        date: { type: "string", format: "date", description: "yyyy-mm-dd, default today (Israel time)." },
+        label: { type: "string", minLength: 1, maxLength: 60, description: "Short generic description, one line. No names, no verbatim event title." },
+        source: { ...enumOf(["calendar", "manual"]), default: "calendar" },
+      },
+      required: ["type"],
+      additionalProperties: false,
+    },
+    annotations: { idempotentHint: true },
+    run: contextSet,
+  },
+  {
+    name: "context_get",
+    title: "What kind of day is it set to",
+    description:
+      "The occasion context stored for a date (type, label, whether it was set by hand or from the calendar, when), or \"none\"; " +
+      "plus observes_shabbat: whether Roy's profile says he keeps Shabbat and holidays. date defaults to today. " +
+      "Check it before context_set, and before doing anything on a Saturday or holiday for someone who keeps them.",
+    inputSchema: { type: "object", properties: { date: { type: "string", format: "date" } }, additionalProperties: false },
+    annotations: { readOnlyHint: true },
+    run: contextGet,
+  },
+  {
+    name: "context_clear",
+    title: "Remove the day's occasion",
+    description:
+      "Removes the occasion context of a date (default today), for example when the calendar event was cancelled; " +
+      "the day goes back to the calendar's rules. Succeeds quietly when none is set. Same date window as context_set. " +
+      "If the removed context was set by hand, say so to Roy.",
+    inputSchema: { type: "object", properties: { date: { type: "string", format: "date" } }, additionalProperties: false },
+    annotations: { destructiveHint: true, idempotentHint: true },
+    run: contextClear,
   },
   {
     name: "outfit_log",

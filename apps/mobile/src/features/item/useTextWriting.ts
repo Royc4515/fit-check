@@ -2,7 +2,7 @@ import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from "react";
 import { Platform, View } from "react-native";
 import type { ItemChange } from "./edit";
-import { changeFor, decideLeave, resolveOpen, type OpenText, type TextField } from "./writing";
+import { changeFor, decideLeave, decideRemove, resolveOpen, type LeaveState, type OpenText, type TextField } from "./writing";
 
 /** How long "נשמר" stays under a field (DESIGN.md section 4, "כתיבה במקום"). */
 export const SAVED_MS = 2000;
@@ -57,8 +57,8 @@ export function useTextWriting(save: ((change: ItemChange) => Promise<void>) | n
   const [busy, setBusy] = useState(false);
   // Asks the open field to take focus again (a failed save): a counter, so the same field can be asked twice.
   const [focusAsk, setFocusAsk] = useState(0);
-  // The way out the user took, kept while the save it needs is on its way.
-  const pendingLeave = useRef<(() => void) | null>(null);
+  // The way out the user took, kept while the save it needs is on its way; `refused` runs if that save fails.
+  const pendingLeave = useRef<{ go: () => void; refused?: () => void; remove: boolean } | null>(null);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -88,7 +88,7 @@ export function useTextWriting(save: ((change: ItemChange) => Promise<void>) | n
 
   const savedCount = useRef(0);
   // Assigned below; a settling write re-asks whether the pending way out may go now.
-  const leaveRef = useRef<(proceed: () => void) => void>(() => undefined);
+  const leaveRef = useRef<(proceed: () => void, refused?: () => void, remove?: boolean) => void>(() => undefined);
 
   /**
    * One write of a field's typed text. `keepOpen`: the field stays open and busy while it saves (a save before
@@ -119,9 +119,9 @@ export function useTextWriting(save: ((change: ItemChange) => Promise<void>) | n
           setSaved({ field: e.field, n: savedCount.current });
           if (keepOpen && openRef.current?.field === e.field) setOpen(null);
           if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          const go = pendingLeave.current;
+          const pending = pendingLeave.current;
           pendingLeave.current = null;
-          if (go) leaveRef.current(go);
+          if (pending) leaveRef.current(pending.go, pending.refused, pending.remove);
         },
         (error: unknown) => {
           console.error("Item text save failed", error);
@@ -129,7 +129,9 @@ export function useTextWriting(save: ((change: ItemChange) => Promise<void>) | n
           if (!settle()) return;
           if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           // The way out is cancelled: the screen stays with the text and the error.
+          const refused = pendingLeave.current?.refused;
           pendingLeave.current = null;
+          refused?.();
           setFailures((f) => ({ ...f, [e.field]: { message: failureText(error), draft: e.draft, original: e.original } }));
           const cur = openRef.current;
           if (!cur || cur.field === e.field) {
@@ -201,29 +203,33 @@ export function useTextWriting(save: ((change: ItemChange) => Promise<void>) | n
 
   /**
    * Every way out of the screen calls this with what it would do (fly back, follow the browser's back, open another
-   * item). `proceed` runs now when nothing typed can be lost, after the one save it needs when that succeeds, and
-   * never when it fails: then the screen stays with the field, the text and the error (writing.ts `decideLeave`).
+   * item), and so does removing the item (`remove`: its archive closes the screen, so it follows the same rule,
+   * writing.ts `decideRemove`). `proceed` runs now when nothing typed can be lost, after the one save it needs when
+   * that succeeds, and never when it fails: then the screen stays with the field, the text and the error
+   * (writing.ts `decideLeave`). `refused` runs when `proceed` will not, so a caller can close what it opened.
    */
   const requestLeave = useCallback(
-    (proceed: () => void) => {
-      const d = decideLeave({
+    (proceed: () => void, refused?: () => void, remove = false) => {
+      const state: LeaveState = {
         open: openRef.current,
         saving: inFlight.current > 0,
         failed: Object.keys(failuresRef.current).filter((k): k is TextField => k === "name" || k === "brand" || k === "notes"),
-      });
-      if (d.kind === "leave") {
+      };
+      const d = remove ? decideRemove(state) : decideLeave(state);
+      if (d.kind === "leave" || d.kind === "archive") {
         if (openRef.current) setOpen(null);
         proceed();
       } else if (d.kind === "save-first") {
-        pendingLeave.current = proceed;
+        pendingLeave.current = { go: proceed, refused, remove };
         setSaved(null);
         commit(d.edit, true);
       } else if (d.kind === "wait") {
-        pendingLeave.current = proceed;
+        pendingLeave.current = { go: proceed, refused, remove };
       } else {
         const failed = failuresRef.current[d.field];
         if (failed) setOpen({ field: d.field, original: failed.original, draft: failed.draft });
         setFocusAsk((n) => n + 1);
+        refused?.();
       }
     },
     [commit, setOpen]

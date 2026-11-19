@@ -102,6 +102,43 @@ the two:
 | Onboarding: sizes, editing the context rules, re-importing the sheet | Low value for one user who is already set up |
 | Trip packing lists, Google Calendar | PRD version 2 |
 
+## Stage 5 - Roy's features, and the order after reconsidering (2026-11-19)
+
+Roy asked for three features and for the plan to be reconsidered and then acted on ("manage against the plan, update
+what is needed, reconsider what is needed; after the considerations, act; merge and deploy what is needed"). He left
+three decisions to the lead: where saved outfits live, the migration they need, and the deploy order.
+
+### Decisions
+
+- **Deploy.** Migration 0006 and the `mcp` function with the context tools go live with the merge of stage 4 part 1
+  (Roy: nothing but the web app is in use until we finish, so there is no reason to hold the server back).
+- **Navigation (lead's assessment).** The bottom bar keeps five places and its order. "תובנות" gives its place to
+  "לוקים"; Insights moves into the profile screen as a row. Reason: the bar should hold what is used most. Saved
+  and hand-built outfits are a daily thing; Insights is opened a few times a month and loses nothing by being one
+  tap deeper. A second row of tabs inside the wardrobe ("פריטים | לוקים" above the category row) was the
+  alternative and was rejected: two stacked tab rows, and outfits would be hidden behind items. The centre "+"
+  opens a choice of two: a new garment, or a new outfit.
+- **Migration for saved outfits.** Yes: `outfits` gains a name, a favourite flag and a saved timestamp (an outfit
+  that was only worn is not in the collection). Written with the 5.2 spec.
+- **Yom Kippur without leather shoes** stays (Roy: fine). To tighten: a shoe whose material is tagged `unknown`
+  is not offered either.
+- **Try-on.** Not a 3D model per garment. Roy's second idea is different and worth testing: an on-figure image of
+  each garment made once at intake, and a default figure that can be adjusted by measurements or generated once
+  from a photo. The open question is consistency: garments rendered separately must line up on the same figure and
+  overlap correctly (collar under a knit, shirt over trousers). The other route is one generated image of the
+  whole outfit on the figure, on demand. Both cost about the price of a redraw per image. Decide from a small paid
+  experiment on real garments, not from opinion.
+
+### Order of work
+
+| Round | What | Why this order | Needs |
+| --- | --- | --- | --- |
+| A (now) | 4.5 manual context in the app; 4.9 the observance setting read from the profile; 5.1 alternatives after wearing and a cue that garments are tappable; the Yom Kippur tightening | All in the Today screen and its data, one builder, one PR | - |
+| B | 5.2 outfits built by hand, the "לוקים" place with saved and favourites, the navigation change, the migration; saved and favourite outfits feed the pair weights | Largest feature; its output (Roy's own outfits) is what the algorithm work needs | - (decided above) |
+| C | 5.4 the algorithm's judgement: formality, layers | After B, tuned against Roy's hand-built and favourite outfits and his examples of wrong suggestions | Roy's examples |
+| beside B | 5.3 try-on, step 1: research of image-based try-on and on-figure rendering (no cost), then the experiment: 6 to 8 real garments, three outfits, both routes, on one neutral figure | Cheap to learn early; if per-garment renders win, intake changes, and it is better to know before more garments are added | Roy's go on a spend capped at 2 USD |
+| later | 4.6 reserve packing (needs the T-shirt number); 4.7b write races and offline history; 4.8 clean-up; 4.3 and 4.4 Android and the morning notification when the web app is final | Unchanged | As listed in stage 4 |
+
 ## Delegation
 
 | Kind of work | Model |

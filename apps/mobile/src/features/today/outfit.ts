@@ -1,6 +1,7 @@
 import {
   adjustRequest,
   DEFAULT_CONTEXT_RULES,
+  YOM_KIPPUR_RULES,
   generateCandidates,
   NO_ADJUSTMENT,
   scoreOutfit,
@@ -11,11 +12,15 @@ import {
 import { StylingRequestSchema, type CandidateOutfit, type Item, type Slot, type StylingRequest } from "@fit-check/schema";
 import type { FeedbackHistory, RecentWear, TodayRecord } from "../../data/feedback";
 import type { DayType } from "../../data/dayContext";
-import { israelDate } from "../../data/dayContext";
+import { israelDate } from "../../data/localDate";
 
 type Weather = { temp_min_c: number; temp_max_c: number; rain_probability: number };
 
-export type DayInput = { date: string; weather: Weather | null; dayType: DayType };
+/**
+ * `festive`: a holiday planned by the weekday rules (the observance switch off); it starts one "dressier" step up
+ * (plans.ts defaultAdjustment).
+ */
+export type DayInput = { date: string; weather: Weather | null; dayType: DayType; festive?: boolean; yomKippur?: boolean };
 
 /**
  * Used only when no forecast is available (offline, rate-limited, first launch). Mild autumn day in the coastal
@@ -29,8 +34,9 @@ function request(
 ): StylingRequest {
   return StylingRequestSchema.parse({
     today: day.date,
-    // Holidays use the Shabbat rules (PRD section 7: shabbat / holiday share one row).
-    context: DEFAULT_CONTEXT_RULES[day.dayType === "weekday" ? "weekday" : day.dayType],
+    // Holidays use the Shabbat rules (PRD section 7: shabbat / holiday share one row); Yom Kippur its own set (no
+    // leather shoes), which is still of type "holiday".
+    context: day.yomKippur && day.dayType !== "weekday" ? YOM_KIPPUR_RULES : DEFAULT_CONTEXT_RULES[day.dayType],
     weather: day.weather ?? FALLBACK_WEATHER,
     recent_wears: [],
     anchor_item_id: null,

@@ -16,6 +16,7 @@ import type { ItemEdits } from "./edit";
 import { heroGeometry } from "./geometry";
 import { ItemActions, type ImageStatus } from "./ItemActions";
 import { ItemDetails } from "./ItemDetails";
+import type { Writing } from "./useTextWriting";
 import { flyFrom } from "./transition";
 import { useItemFlight } from "./useItemFlight";
 import { spoken } from "./a11y";
@@ -64,8 +65,13 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
   const { close: fly, onAspect, onCopyShown } = flight;
   // Every way out this screen starts asks the text writing first (DESIGN.md section 4, "כתיבה במקום"): an open change
   // is saved, and the flight back starts only once it is saved; a failed save keeps the screen. ItemDetails fills it.
-  const leaveWriting = useRef<((proceed: () => void) => void) | null>(null);
+  const leaveWriting = useRef<Writing["requestLeave"] | null>(null);
   const leave = useCallback((proceed: () => void) => (leaveWriting.current ? leaveWriting.current(proceed) : proceed()), []);
+  // Removing the item archives it, which closes the screen: it asks the same question first, with its own decision.
+  const beforeRemove = useCallback(
+    (archive: () => void, refused: () => void) => (leaveWriting.current ? leaveWriting.current(archive, refused, true) : archive()),
+    []
+  );
   const close = useCallback(() => leave(() => void fly()), [leave, fly]);
   const scroll = useAnimatedRef<Animated.ScrollView>();
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -224,7 +230,7 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
       {/* Desktop: held in its column while the details scroll. */}
       {geo.desktop ? hero : null}
       {item && edits ? (
-        <ItemActions item={item} edits={edits} open={actionsOpen} onClose={() => setActionsOpen(false)} onRemoved={() => void close()} onImageStatus={setImageStatus} />
+        <ItemActions item={item} edits={edits} open={actionsOpen} onClose={() => setActionsOpen(false)} onRemoved={() => void close()} beforeRemove={beforeRemove} onImageStatus={setImageStatus} />
       ) : null}
     </View>
   );

@@ -5,6 +5,7 @@
 export { ActionBar } from "./ActionBar";
 export { Button, type ButtonProps } from "./Button";
 export { Chip } from "./Chip";
+export { CrossFade } from "./CrossFade";
 export { EditField } from "./EditField";
 export { EmptyState } from "./EmptyState";
 export { FLAT_LAY, FLAT_LAY_ASPECT, FlatLay, flatLayTone, type FlatLayConfig, type FlatLayPiece, type FlatLayPlacement } from "./FlatLay";
@@ -27,6 +28,7 @@ export { Stepper } from "./Stepper";
 export { Swatch, type SwatchSize } from "./Swatch";
 export { TabBar, type NavItem, type NavProps } from "./TabBar";
 export { Tile, TILE_CAPTION_HEIGHT, type TileItem, type TileSize } from "./Tile";
-export { TextTabs, type TextTab } from "./TextTabs";
+export { TabPanel } from "./TabPanel";
+export { panelIdOf, tabIdOf, TextTabs, type TextTab } from "./TextTabs";
 export { TopNav } from "./TopNav";
 export { Display, Meta, useTypeTracking } from "./Type";

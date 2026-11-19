@@ -7,7 +7,7 @@
     "start": "expo start",
     "android": "expo start --android",
     "web": "expo start --web",
-    "lint": "expo lint",
+    "lint": "expo lint && tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "export:web": "expo export --platform web"
