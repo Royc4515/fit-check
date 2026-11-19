@@ -26,6 +26,11 @@ type Props = {
   onClose: () => void;
   /** The item was archived: the screen closes. */
   onRemoved: () => void;
+  /**
+   * Asked before the archive: runs `archive` once nothing typed can be lost (an open change is saved first), and
+   * `refused` instead when that save failed.
+   */
+  beforeRemove: (archive: () => void, refused: () => void) => void;
   onImageStatus: (status: ImageStatus | null) => void;
 };
 
@@ -62,7 +67,7 @@ const priceOf = (q: IntakeQuoteResult | null) => (q?.ok ? `$${q.price_usd.toFixe
  * step inside the sheet. No accent anywhere: removal is ink text and an ink confirm button, not a red one.
  * The AI composer opens in its own sheet; its submit button carries the price, and that is the only confirmation.
  */
-export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStatus }: Props) {
+export function ItemActions({ item, edits, open, onClose, onRemoved, beforeRemove, onImageStatus }: Props) {
   const { t } = useTranslation();
   const [step, setStep] = useState<Step>("rows");
   const [removing, setRemoving] = useState(false);
@@ -195,9 +200,24 @@ export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStat
     setRemoveFailed(false);
   };
 
-  const remove = async () => {
+  /**
+   * Removal goes through the screen's writing first (`beforeRemove`): an open, changed, valid field is saved once and
+   * the item is archived only after that save succeeded. If the save fails the item stays, this sheet closes, and the
+   * field is left open with its typed text and error line, where "נסה שוב" is.
+   */
+  const remove = () => {
     setRemoving(true);
     setRemoveFailed(false);
+    beforeRemove(
+      () => void archive(),
+      () => {
+        setRemoving(false);
+        close();
+      }
+    );
+  };
+
+  const archive = async () => {
     try {
       await edits.archive(item.id);
       close();
