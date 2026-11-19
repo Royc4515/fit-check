@@ -305,7 +305,7 @@ export function OutfitView({ id, userId }: Props) {
                 accessibilityLabel={spoken(t("outfit.pieceLabel", { type: typeOf(e.item.tags.subcategory), name: e.item.name }))}
               />
             ) : (
-              <LegendRow key={e.slot} index={e.index} title={t(`outfit.slot.${e.slot}`)} detail={t("outfit.legendDeleted")} />
+              <LegendRow key={e.slot} index={e.index} title={t(`outfit.slotTitle.${e.slot}`)} detail={t("outfit.legendDeleted")} />
             )
           )}
         </View>
