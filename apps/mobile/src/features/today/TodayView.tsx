@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
+import { useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Reveal } from "../../components/editorial/Reveal";
 import {
@@ -29,7 +30,7 @@ import type { DayContext } from "../../data/dayContext";
 import type { FeedbackHistory } from "../../data/feedback";
 import { chainTabLabels, defaultTab, type ChainTabLabel } from "../../data/shabbatTimes";
 import type { FeedbackActions, FeedbackTarget, Laundered } from "../../data/useFeedback";
-import { layout } from "../../theme/tokens";
+import { layout, motion } from "../../theme/tokens";
 import { flyFrom, registerOrigin } from "../item/transition";
 import { AdjustSheet, type Adjust } from "./AdjustSheet";
 import { explainOutfit } from "./explain";
@@ -141,6 +142,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const desktop = width >= layout.desktopMin;
+  const reduceMotion = useReducedMotion();
 
   // Today first, then each phone-free day that today's candle lighting opens (DESIGN.md "שלב 4.1"). Without candles
   // the list is just today and the screen is exactly what it was before the tabs.
@@ -551,11 +553,18 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         : t("today.plannedNoForecast")}
     </Meta>
   ) : null;
-  // Mobile: tabs and the planned day's forecast open the measured block above the hero.
+  // Mobile: tabs and the planned day's forecast open the measured block above the hero. The forecast's line is held on
+  // the today tab too (empty, hidden from readers), so a tab change does not move the hero by a line's height.
   const tabsBlock = hasTabs ? (
     <View className="mt-6">
       {dayTabs}
-      {plannedForecast ? <View className="mt-4 px-5">{plannedForecast}</View> : null}
+      <View className="mt-4 px-5">
+        {plannedForecast ?? (
+          <View aria-hidden importantForAccessibility="no-hide-descendants" style={{ opacity: 0 }}>
+            <Meta>{"\u00a0"}</Meta>
+          </View>
+        )}
+      </View>
     </View>
   ) : null;
 
@@ -614,7 +623,23 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // a centred 4:5 frame). Until measured, both render as before (column width, plain 4:5), so first paint does not jump.
   const card = !desktop && width >= CARD_MIN_WIDTH;
   const cardWidth = card && measured ? Math.max(HERO_MIN, Math.min(layout.maxContentWidth, heroSpace / FLAT_LAY_ASPECT)) : null;
-  const heroMaxHeight = !desktop && !card && measured ? Math.max(HERO_MIN * FLAT_LAY_ASPECT, heroSpace) : undefined;
+  const measuredMax = !desktop && !card && measured ? Math.max(HERO_MIN * FLAT_LAY_ASPECT, heroSpace) : undefined;
+  // A tab change cross-fades the two looks in motion.state (item 3). Their status lines can differ in height, so the
+  // hero keeps the size it had for the duration and takes its new size when the old look is gone: the outgoing
+  // garments never move. Layout state on purpose: the fade itself runs on shared values inside FlatLay.
+  const [shownTab, setShownTab] = useState(selectedDate);
+  const [heldSize, setHeldSize] = useState<{ max: number | undefined; card: number | null } | null>(null);
+  if (shownTab !== selectedDate) {
+    setShownTab(selectedDate);
+    if (!reduceMotion) setHeldSize({ max: measuredMax, card: cardWidth });
+  }
+  useEffect(() => {
+    if (!heldSize) return;
+    const timer = setTimeout(() => setHeldSize(null), motion.stateMs);
+    return () => clearTimeout(timer);
+  }, [heldSize]);
+  const heroMaxHeight = heldSize ? heldSize.max : measuredMax;
+  const heroCardWidth = heldSize ? heldSize.card : cardWidth;
 
   const hero =
     pieces.length > 0 ? (
@@ -860,7 +885,9 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
                   ) : null}
                   {wornStatus("mt-6 px-5")}
                 </View>
-                <View style={{ marginTop: MOBILE_HERO_GAP, ...(cardWidth ? { width: cardWidth, alignSelf: "center" as const } : null) }}>{hero}</View>
+                <View style={{ marginTop: MOBILE_HERO_GAP, ...(heroCardWidth ? { width: heroCardWidth, alignSelf: "center" as const } : null) }}>
+                  {hero}
+                </View>
               </Reveal>
               <Reveal index={2}>
                 <View className="mt-6 px-5">{legend}</View>
