@@ -42,8 +42,8 @@ const BELOW_H_NARROW = 204;
 const BELOW_H_WIDE = 164;
 /** Windows at least this wide (a 390 phone, the desktop dialog) wrap the lines less than a 360 phone does. */
 const WIDE_FROM = 375;
-/** Handle, title row and the scroll area's padding (measured 77) plus slack. */
-const CHROME_H = 81;
+/** Handle, title row and the scroll area's padding (measured 77) plus 15 of slack: at 360x640 the sheet still scrolled by 3 with 4. */
+const CHROME_H = 92;
 const PICTURE_ASPECT = 1.25;
 const GAP = 12;
 
