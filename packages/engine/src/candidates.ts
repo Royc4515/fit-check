@@ -1,5 +1,5 @@
 import type { CandidateOutfit, Item, Slot, StylingRequest } from "@fit-check/schema";
-import { MMR_LAMBDA, OUTFIT_FORMALITY_TOLERANCE, PER_SLOT_LIMIT, SLOT_FORMALITY_WEIGHT } from "./config";
+import { MMR_LAMBDA, NO_REPEAT_LAST_WEARS, OUTFIT_FORMALITY_TOLERANCE, PER_SLOT_LIMIT, SLOT_FORMALITY_WEIGHT } from "./config";
 import { hardFilter, slotOf } from "./filters";
 import { scoreOutfit, type PairWeights } from "./scoring";
 
@@ -142,7 +142,23 @@ function selectDiverse(scored: Scored[], count: number): CandidateOutfit[] {
   return chosen.map((c) => c.candidate);
 }
 
+/**
+ * Outfit ids (sorted item ids joined) that this context may not offer again: the complete outfits of the last
+ * NO_REPEAT_LAST_WEARS wears of the same context, when its rules ask for it (`no_repeat_with_key`, set for `date`).
+ * Wears dated after req.today have not happened yet and do not count. Empty for every other context.
+ */
+export function noRepeatOutfits(req: StylingRequest): Set<string> {
+  if (!req.context.no_repeat_with_key) return new Set();
+  return new Set(
+    req.recent_wears
+      .filter((w) => w.context_type === req.context.type && w.date <= req.today)
+      .slice(0, NO_REPEAT_LAST_WEARS)
+      .map((w) => [...w.item_ids].sort().join("+"))
+  );
+}
+
 export function generateCandidates(items: Item[], req: StylingRequest, weights: PairWeights): CandidateOutfit[] {
+  const blocked = noRepeatOutfits(req);
   const bySlot = hardFilter(items, req);
 
   let tops = preRank(bySlot.top, req, PER_SLOT_LIMIT.top);
@@ -179,6 +195,7 @@ export function generateCandidates(items: Item[], req: StylingRequest, weights: 
       for (const s of shoes) {
         for (const l of layers) {
           const combo = [t, b, s, l].filter((i): i is Item => i !== null);
+          if (blocked.has(outfitId(combo))) continue;
           // The band is enforced on the whole outfit: a casual shoe is fine under a formal shirt and trousers.
           const f = outfitFormality(combo);
           if (f < lo - OUTFIT_FORMALITY_TOLERANCE || f > hi + OUTFIT_FORMALITY_TOLERANCE) continue;
