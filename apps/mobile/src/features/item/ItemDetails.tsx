@@ -12,7 +12,7 @@ import { hasSleeves, isBottom, legOf } from "../intake/tagRules";
 import { NOTES_COUNTER_FROM, NOTES_MAX, type ItemChange, type ItemEdits } from "./edit";
 import { GoesWith } from "./GoesWith";
 import { InlineText, NotesPencil } from "./InlineText";
-import { useTextWriting } from "./useTextWriting";
+import { useTextWriting, type Writing } from "./useTextWriting";
 import { fieldLabelKey, TagSheet, type TagField } from "./TagSheet";
 import { useItemWears } from "./useItemWears";
 import { WearHistory } from "./WearHistory";
@@ -45,7 +45,7 @@ type Props = {
    * another item, removal) goes through it, so an open change is saved first and the screen only goes once it is
    * saved (DESIGN.md section 4, "יציאה מהמסך עם שינוי פתוח ותקין").
    */
-  leaveRef?: MutableRefObject<((proceed: () => void) => void) | null>;
+  leaveRef?: MutableRefObject<Writing["requestLeave"] | null>;
 };
 
 /**
@@ -83,6 +83,7 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
   const writing = useTextWriting(edits ? saveText : null, failureText);
   const { requestLeave, holds } = writing;
   useEffect(() => {
+    // Removal asks the same question as leaving, so it uses this same function (its third argument selects the decision).
     if (leaveRef) leaveRef.current = requestLeave;
   }, [leaveRef, requestLeave]);
   // Ways out the screen does not start itself (the browser's back, a swipe, a route reset) are held by the navigator

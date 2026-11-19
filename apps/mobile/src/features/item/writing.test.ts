@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canSave, changeFor, decideLeave, resolveOpen, storedForm, type OpenText, type TextField } from "./writing";
+import { canSave, changeFor, decideLeave, decideRemove, resolveOpen, storedForm, type OpenText, type TextField } from "./writing";
 
 const open = (field: OpenText["field"], original: string, draft: string): OpenText => ({ field, original, draft });
 
@@ -83,5 +83,33 @@ describe("changeFor", () => {
     expect(changeFor("name", "a\nb")).toEqual({ name: "a b" });
     expect(changeFor("brand", "x\ny")).toEqual({ brand: "x y" });
     expect(changeFor("notes", "x\ny")).toEqual({ notes: "x\ny" });
+  });
+});
+
+describe("decideRemove: removing the item from the wardrobe", () => {
+  const base = { open: null, saving: false, failed: [] as TextField[] };
+  it("archives at once when nothing is open, saving or held", () => {
+    expect(decideRemove(base)).toEqual({ kind: "archive" });
+  });
+  it("saves a changed, valid field first, so typed text is never archived away", () => {
+    const edit = open("notes", "", "dry clean only");
+    expect(decideRemove({ ...base, open: edit })).toEqual({ kind: "save-first", edit });
+  });
+  it("an unchanged field, or an emptied name that can never be saved, does not block the removal", () => {
+    expect(decideRemove({ ...base, open: open("brand", "Gant", "Gant ") })).toEqual({ kind: "archive" });
+    expect(decideRemove({ ...base, open: open("name", "Polo", "  ") })).toEqual({ kind: "archive" });
+  });
+  it("waits for a save already on its way instead of writing again", () => {
+    expect(decideRemove({ ...base, saving: true, open: open("name", "Polo", "Polo shirt") })).toEqual({ kind: "wait" });
+  });
+  it("stays, writing nothing, while an earlier failed save is still held", () => {
+    expect(decideRemove({ ...base, failed: ["notes"] })).toEqual({ kind: "stay", field: "notes" });
+  });
+  it("agrees with decideLeave on everything except the name of the go outcome", () => {
+    const states = [base, { ...base, open: open("name", "a", "b") }, { ...base, saving: true }, { ...base, failed: ["name"] as TextField[] }];
+    for (const s of states) {
+      const l = decideLeave(s);
+      expect(decideRemove(s)).toEqual(l.kind === "leave" ? { kind: "archive" } : l);
+    }
   });
 });
