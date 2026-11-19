@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import wardrobeJson from "../../../../packages/engine/__fixtures__/wardrobe.json";
 import { defaultAdjustment, planDays } from "../features/today/plans";
 import type { FeedbackHistory } from "./feedback";
-import { dayTypeFor, isFestiveWeekday, NO_CALENDAR, parseObservance, storedObservance } from "./observance";
+import { dayTypeFor, isFestiveWeekday, NO_CALENDAR, observanceFromProfile, parseObservance, profileReadResult, storedObservance } from "./observance";
 
 const wardrobe: Item[] = (wardrobeJson as unknown[]).map((row) => ItemSchema.parse(row));
 const EMPTY: FeedbackHistory = { recent: [], today: [], ahead: [], samples: [] };
@@ -68,4 +68,31 @@ describe("off", () => {
     const on = planDays({ items: wardrobe, pairWeights: new Map(), days: [{ ...day, dayType: dayTypeFor(6, false, true) }], history: EMPTY, adjustments: [NO_ADJUSTMENT] });
     expect(on[0]!.plan.req.context.type).toBe("shabbat");
   });
+});
+
+describe("the profile's answer (DESIGN.md 4.5 item 7)", () => {
+  it("a boolean on the row is in charge", () => {
+    expect(observanceFromProfile({ observes_shabbat: false }, null)).toBe(false);
+    expect(observanceFromProfile({ observes_shabbat: true }, null)).toBe(true);
+  });
+  it("no row, a null, a malformed answer or an error leave the device copy in charge", () => {
+    expect(observanceFromProfile(null, null)).toBeNull();
+    expect(observanceFromProfile({ observes_shabbat: null }, null)).toBeNull();
+    expect(observanceFromProfile({ observes_shabbat: "no" }, null)).toBeNull();
+    expect(observanceFromProfile({}, null)).toBeNull();
+    // PostgREST's answer when the column does not exist yet.
+    expect(observanceFromProfile(null, { code: "42703", message: "column profile.observes_shabbat does not exist" })).toBeNull();
+  });
+});
+
+describe("a profile read that answers late (it never undoes a change made meanwhile)", () => {
+  it("applies the answer when nothing changed since the read started", () => {
+    expect(profileReadResult(false, 0, 0)).toBe(false);
+    expect(profileReadResult(true, 2, 2)).toBe(true);
+  });
+  it("ignores it when the user changed the setting after the read started", () => {
+    // Device "yes"; the read starts; the user taps "no" at 0.8 s; the read answers true at 3 s.
+    expect(profileReadResult(true, 0, 1)).toBeNull();
+  });
+  it("nothing to apply when the device copy stands", () => expect(profileReadResult(null, 0, 0)).toBeNull());
 });
