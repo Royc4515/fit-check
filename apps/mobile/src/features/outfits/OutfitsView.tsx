@@ -19,6 +19,9 @@ import { refreshOutfits, toggleFavorite, useSavedOutfits } from "./store";
  * Between rows of the grid. Wider than the wardrobe's 16 on purpose (lead's review of the first build, 2026-11-19):
  * at 16 the meta line sat as close to the next row's flat-lay as to its own, so a caption read as the title of the
  * outfit below it. 24 keeps each caption with the tile above.
+ * don't touch / applied as a bottom margin on each tile, not as `rowGap` on the grid: on the web build `rowGap` next to
+ * `columnGap` in one inline style was dropped on most paths (independent check, 2026-11-19: row-gap computed as
+ * `normal`, captions 0 px above the next row), so the first fix never reached the screen.
  */
 const OUTFIT_ROW_GAP = 24;
 
@@ -89,7 +92,7 @@ export function OutfitsView({ userId }: Props) {
     const caption = outfitCaption({ name: o.name, pieces }, typeOf);
     const meta = metaOf(o);
     return (
-      <View key={o.id} style={{ width: tileW }}>
+      <View key={o.id} style={{ width: tileW, marginBottom: OUTFIT_ROW_GAP }}>
         <OutfitTile
           pieces={pieces}
           title={caption.text}
@@ -107,9 +110,9 @@ export function OutfitsView({ userId }: Props) {
   let body;
   if (state.status === "loading" && state.outfits.length === 0) {
     body = (
-      <View className="flex-row flex-wrap" style={{ gap: layout.gridGap, rowGap: OUTFIT_ROW_GAP }}>
+      <View className="flex-row flex-wrap" style={{ columnGap: layout.gridGap }}>
         {Array.from({ length: SKELETON_TILES }, (_, n) => (
-          <View key={n} style={{ width: tileW }}>
+          <View key={n} style={{ width: tileW, marginBottom: OUTFIT_ROW_GAP }}>
             <OutfitTileSkeleton />
           </View>
         ))}
@@ -126,8 +129,8 @@ export function OutfitsView({ userId }: Props) {
       );
   } else {
     body = (
-      // 8 between columns; OUTFIT_ROW_GAP between rows.
-      <View className="flex-row flex-wrap" style={{ columnGap: layout.gridGap, rowGap: OUTFIT_ROW_GAP }}>
+      // 8 between columns; OUTFIT_ROW_GAP under every tile (see the constant for why it is a margin and not rowGap).
+      <View className="flex-row flex-wrap" style={{ columnGap: layout.gridGap }}>
         {shown.map(tile)}
       </View>
     );
