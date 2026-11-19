@@ -26,6 +26,7 @@ import {
   type FlatLayPiece,
   type StatusVariant,
 } from "../../components/ui";
+import { fitFlatLay, HERO_MIN } from "../../components/ui/flatLayFit";
 import { focusRingProps } from "../../components/ui/interaction";
 import type { DayContext } from "../../data/dayContext";
 import type { FeedbackHistory } from "../../data/feedback";
@@ -96,18 +97,6 @@ const DESKTOP_GAP = 64;
 const DESKTOP_GUTTER = 32;
 /** Desktop: space between the day tabs and the flat-lay under them. */
 const DESKTOP_TABS_GAP = 24;
-/** Mobile layout, wide windows (>= this): the flat-lay is a centred card, not full-bleed, and capped to fit above the bar. */
-const CARD_MIN_WIDTH = 600;
-/**
- * Air kept between the flat-lay's bottom edge and whatever ends the free space at scroll top: the floating bar's top,
- * or the bottom of the scene (the tab bar's top) when there is no bar (DESIGN.md section 3 "היום" item 2).
- */
-const HERO_CLEARANCE = 16;
-/**
- * The 4:5 composition is never narrower than this when capping (a short window would otherwise shrink the hero to
- * a thumbnail); below it the hero keeps this size and the page scrolls.
- */
-const HERO_MIN = 240;
 /** Mobile layout's scroll padding above the masthead, and the space between masthead and flat-lay (see its comment). */
 const MOBILE_TOP = 24;
 const MOBILE_HERO_GAP = 16;
@@ -752,12 +741,15 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const measured =
     viewportHeight > 0 && mastheadHeight > 0 && aboveHeroHeight !== null && (!hasBar || barHeight > 0) && (!hasTabs || tabsHeight > 0);
   const heroTop = insets.top + MOBILE_TOP + mastheadHeight + (hasTabs ? tabsHeight : 0) + (aboveHeroHeight ?? 0) + MOBILE_HERO_GAP;
-  const heroSpace = viewportHeight - (hasBar ? barHeight : 0) - heroTop - HERO_CLEARANCE;
   // 600-899, a window wide enough for side margins: the flat-lay is a centred card as wide as the space allows.
   // Below 600 it stays full-bleed and full width, and only its height is capped (FlatLay lays the composition out in
   // a centred 4:5 frame). Until measured, both render as before (column width, plain 4:5), so first paint does not jump.
-  const card = !desktop && width >= CARD_MIN_WIDTH;
-  const cardWidth = card && measured ? Math.max(HERO_MIN, Math.min(layout.maxContentWidth, heroSpace / FLAT_LAY_ASPECT)) : null;
+  const {
+    card,
+    cardWidth,
+    maxHeight: measuredMax,
+    space: heroSpace,
+  } = fitFlatLay({ measured, desktop, width, viewportHeight, heroTop, bottomReserved: hasBar ? barHeight : 0 });
   // The one-time cue that garments can be tapped (5.1 item 2), until the first tap on a garment or "got it". It is
   // shown only when the flat-lay stays above its floor with it (it must never push garments under the bar); when it
   // does not fit it waits for another visit, the flag unset. Decided once from the space measured without it, then
@@ -773,7 +765,6 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     hintWanted && hintFit === "show" ? (
       <StatusLine variant="info" message={t("today.tapHint")} action={{ label: t("today.tapHintOk"), onPress: gotHint }} />
     ) : null;
-  const measuredMax = !desktop && !card && measured ? Math.max(HERO_MIN * FLAT_LAY_ASPECT, heroSpace) : undefined;
   // A tab change cross-fades the two looks in motion.state (item 3). Their status lines can differ in height, so the
   // hero keeps the size it had for the duration and takes its new size when the old look is gone: the outgoing
   // garments never move. Layout state on purpose: the fade itself runs on shared values inside FlatLay.

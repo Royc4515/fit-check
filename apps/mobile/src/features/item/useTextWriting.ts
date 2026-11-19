@@ -1,8 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from "react";
 import { Platform, View } from "react-native";
-import type { ItemChange } from "./edit";
-import { changeFor, decideLeave, decideRemove, resolveOpen, type LeaveState, type OpenText, type TextField } from "./writing";
+import { decideLeave, decideRemove, isTextField, resolveOpen, type LeaveState, type OpenText, type TextField } from "./writing";
 
 /** How long "נשמר" stays under a field (DESIGN.md section 4, "כתיבה במקום"). */
 export const SAVED_MS = 2000;
@@ -17,7 +16,7 @@ export type Failures = Partial<Record<TextField, FailedSave>>;
 
 type Node = ComponentRef<typeof View>;
 
-/** The writing state of the item screen's text fields, as `InlineText` and the screen use it. */
+/** The writing state of a screen's text fields (item, outfit), as `InlineText` and the screen use it. */
 export type Writing = ReturnType<typeof useTextWriting>;
 
 /** Web: focus the first button inside a wrapper (the library Button takes no ref). */
@@ -27,16 +26,17 @@ function focusButtonIn(node: Node | null | undefined): void {
 }
 
 /**
- * In-place writing of name, brand and notes (DESIGN.md section 4, "כתיבה במקום"). One field at a time; only "שמירה",
+ * In-place writing (DESIGN.md section 4, "כתיבה במקום"): an item's name, brand and notes, or a saved outfit's name.
+ * One field at a time; only "שמירה",
  * Enter (Ctrl/Cmd+Enter in notes), switching to another field or leaving the screen ever saves, and only a changed,
- * valid value (writing.ts). Blur does nothing. Saves go through the item's edit queue. Success shows "נשמר" for two
+ * valid value (writing.ts). Blur does nothing. Saves go through `save` (the item's edit queue, or the outfit rename). Success shows "נשמר" for two
  * seconds; a failure keeps the typed text (the field reopens with it and takes focus, or, when another field is open,
  * an error line with "נסה שוב" stays under it until the text is saved or cancelled). Leaving the screen asks
  * `requestLeave`, which saves an open change first and lets the screen go only once nothing typed can be lost.
- * @param save the item's save for one change; null when the screen is read-only.
+ * @param save writes one field's typed text (each screen maps it to its own write); null when the screen is read-only.
  * @param failureText the error line's text for a failed write.
  */
-export function useTextWriting(save: ((change: ItemChange) => Promise<void>) | null, failureText: (error: unknown) => string) {
+export function useTextWriting(save: ((field: TextField, draft: string) => Promise<void>) | null, failureText: (error: unknown) => string) {
   const [open, setOpenState] = useState<OpenText | null>(null);
   // The same, readable synchronously: a switch, a leave or a settling write must see the latest typed text.
   const openRef = useRef<OpenText | null>(null);
@@ -107,7 +107,7 @@ export function useTextWriting(save: ((change: ItemChange) => Promise<void>) | n
         if (keepOpen) setBusy(false);
         return true;
       };
-      save(changeFor(e.field, e.draft)).then(
+      save(e.field, e.draft).then(
         () => {
           if (!settle()) return;
           setFailures((f) => {
@@ -124,7 +124,7 @@ export function useTextWriting(save: ((change: ItemChange) => Promise<void>) | n
           if (pending) leaveRef.current(pending.go, pending.refused, pending.remove);
         },
         (error: unknown) => {
-          console.error("Item text save failed", error);
+          console.error("Text save failed", e.field, error);
           // Gone already: nothing is left to show. Cannot happen through `requestLeave`, which waits for the write.
           if (!settle()) return;
           if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -213,7 +213,7 @@ export function useTextWriting(save: ((change: ItemChange) => Promise<void>) | n
       const state: LeaveState = {
         open: openRef.current,
         saving: inFlight.current > 0,
-        failed: Object.keys(failuresRef.current).filter((k): k is TextField => k === "name" || k === "brand" || k === "notes"),
+        failed: Object.keys(failuresRef.current).filter(isTextField),
       };
       const d = remove ? decideRemove(state) : decideLeave(state);
       if (d.kind === "leave" || d.kind === "archive") {
@@ -243,7 +243,7 @@ export function useTextWriting(save: ((change: ItemChange) => Promise<void>) | n
     decideLeave({
       open,
       saving: saving > 0,
-      failed: Object.keys(failures).filter((k): k is TextField => k === "name" || k === "brand" || k === "notes"),
+      failed: Object.keys(failures).filter(isTextField),
     }).kind !== "leave";
 
   // A real field takes focus when it opens; only gallery fixtures turn this off.
