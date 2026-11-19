@@ -40,6 +40,11 @@ export type FlatLayFit = {
   cardWidth: number | null;
   /** The layout is the centred card (600-899), measured or not. */
   card: boolean;
+  /**
+   * The free height itself, before the floor and the card rule: what a caller needs to decide whether one more line
+   * above the hero still leaves the flat-lay above its floor (Today's one-time tap hint).
+   */
+  space: number;
 };
 
 /**
@@ -55,5 +60,5 @@ export function fitFlatLay(input: FlatLayFitInput): FlatLayFit {
   const card = !desktop && width >= CARD_MIN_WIDTH;
   const cardWidth = card && measured ? Math.max(HERO_MIN, Math.min(layout.maxContentWidth, space / ASPECT)) : null;
   const maxHeight = !desktop && !card && measured ? Math.max(HERO_MIN * ASPECT, space) : undefined;
-  return { maxHeight, cardWidth, card };
+  return { maxHeight, cardWidth, card, space };
 }

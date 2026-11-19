@@ -63,7 +63,9 @@
       "skipped": "You skipped the previous suggestion.",
       "disliked": "Noted: the previous combination didn't work.",
       "failed": "That didn't save. Try again.",
-      "laundry": "Moved to the laundry: {{items}}."
+      "laundry": "Moved to the laundry: {{items}}.",
+      "correctionNotSaved": "The correction wasn't saved. The earlier record stands.",
+      "correctionOldKept": "The earlier record wasn't deleted."
     },
     "adjust": {
       "label": "Adjusted for today: {{parts}}",
@@ -106,10 +108,9 @@
     "woreSomethingElse": "Wore something else?",
     "tapHint": "Tap any garment to swap it",
     "tapHintOk": "Got it",
-    "swapPiece": "Swap {{name}}",
+    "swapPiece": "Swap {{type}}: {{name}}",
     "occasion": {
       "title": "What's on today",
-      "titlePlanned": "What's on that day",
       "type": {
         "date": "Date",
         "interview": "Interview",
@@ -117,6 +118,7 @@
       },
       "fromCalendar": "from the calendar",
       "cancel": "Cancel",
+      "cancelLabel": "Cancel the occasion: {{type}}",
       "failed": "The occasion wasn't saved."
     }
   },
@@ -289,6 +291,7 @@
       "bodyPreview": "The preview closes and you return to the sign-in screen.",
       "confirm": "Sign out",
       "cancel": "Cancel",
+      "cancelLabel": "Cancel the occasion: {{type}}",
       "failed": "Sign-out failed. Try again."
     },
     "insights": "Insights"
