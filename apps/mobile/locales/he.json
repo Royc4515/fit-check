@@ -284,6 +284,7 @@
     "observanceYes": "כן",
     "observanceNo": "לא",
     "observanceMeta": "זמני כניסה ויציאה, לוק מתוכנן מראש לשבת ולחג, וכללי לבוש של שבת",
+    "observanceFailed": "השינוי לא נשמר בפרופיל. נסה שוב.",
     "archive": "ארכיון",
     "signOut": {
       "button": "התנתקות",

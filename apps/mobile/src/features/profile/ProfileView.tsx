@@ -7,7 +7,7 @@ import { cachedPlaceName, getSavedLocation, onLocationChange, onPlaceNameChange,
 import { locationNotice, type LocationFacts } from "../../data/locationNotice";
 import { isPreview } from "../../data/preview";
 import { useArchivedCount } from "../../data/WardrobeProvider";
-import { setObservesShabbat, useObservesShabbat } from "../../data/useObservance";
+import { setObservesShabbat, useObservanceFailed, useObservesShabbat } from "../../data/useObservance";
 import { needsRestartForDirection, setLanguage, type Locale } from "../../i18n";
 import { signOut } from "../auth/signOut";
 import { useIsDesktop } from "../shell/ShellTabBar";
@@ -73,6 +73,7 @@ export function ProfileView() {
   const chooseLanguage = (next: Locale) => void setLanguage(next).then(setRestart);
   // "Keeps Shabbat and holidays" (DESIGN.md "שלב 4.1" item 10): stored on the device like the language, live everywhere.
   const observes = useObservesShabbat();
+  const observanceFailed = useObservanceFailed();
 
   const closeSignOut = () => {
     setSignOutOpen(false);
@@ -116,6 +117,13 @@ export function ProfileView() {
                 onChange={(next) => void setObservesShabbat(next === "yes")}
               />
               <Meta style={{ textTransform: "none" }}>{t("profile.observanceMeta")}</Meta>
+              {observanceFailed ? (
+                <StatusLine
+                  variant="error"
+                  message={t("profile.observanceFailed")}
+                  action={{ label: t("common.retry"), onPress: () => void setObservesShabbat(!observes) }}
+                />
+              ) : null}
             </View>
             <ListRow label={t("profile.archive")} value={archived === null ? undefined : String(archived)} onPress={() => router.push("/archive")} />
           </View>

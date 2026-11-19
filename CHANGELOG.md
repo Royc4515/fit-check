@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-19 (Profile: the observance switch on the profile)
+
+- "שומר שבת וחג" now lives on `profile.observes_shabbat` (migration 0006) with the device copy shown at once; the profile's answer replaces it when it arrives (no row, a missing column or any read error: the device decides, logged once). A change is written to the profile (upsert, so the first write creates the row) optimistically and rolls back with an error line and "נסה שוב" when it fails (DESIGN.md "שלב 4.5" item 7).
+- Look at: `data/useObservance.ts` (the only place that knows where the setting lives), `observanceFromProfile` in `data/observance.ts` (tested), the error line in `ProfileView.tsx`. Unverified: a real profile write (preview rejects writes).
+- Fixes after the independent verification: a profile read that started before the user changed the switch no longer flips it back (`profileReadResult`, tested); a failed read (offline at start) is asked again on the next mount or return to the app instead of never, and a read on its way is not doubled.
+
 ## 2026-11-19 (Today: alternatives after wearing, and a tap cue)
 
 - After "לובש" a garment still opens its sheet with up to three alternatives, under "לבשת משהו אחר?"; choosing one corrects the record in one action (undo, then wear, serialised in `useFeedback.correct`), so laundry and learning follow the corrected outfit; if the second step fails the day is back to a suggestion with the failure line. Planned-day tabs too (DESIGN.md "שלב 5.1").
