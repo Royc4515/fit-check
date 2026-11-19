@@ -116,6 +116,12 @@ type Props = {
    * unmounts: the item screen's shared element measures it to start and end its flight on the cloth itself.
    */
   onPieceNode?: (itemId: string, node: ComponentRef<typeof View> | null) => void;
+  /**
+   * The tallest the surface may be, px (Today on a phone: the space left above the bar). The surface stays full
+   * width and only gets shorter; the garments and numbers are laid out in a centred 4:5 frame of that height, so
+   * the composition is the same, slightly smaller. Absent = a plain 4:5 surface, as every other caller has.
+   */
+  maxHeight?: number;
 };
 
 /** The surface's ground: `tile-deep` when any piece is light, so a white shirt stays readable; otherwise `tile`. */
@@ -131,7 +137,7 @@ export function flatLayTone(pieces: readonly Pick<FlatLayPiece, "item">[]): "til
  * When one garment changes (a swap) the old one fades out while the new one fades in and rises 8px, 180ms.
  * Reduced motion: opacity only. A garment without a photo shows its drawing (ItemArt).
  */
-export function FlatLay({ pieces, onPressPiece, pieceFocusable = true, instantKey, radius = "none", accessibilityLabel, contentStyle, numbered = true, onPieceNode }: Props) {
+export function FlatLay({ pieces, onPressPiece, pieceFocusable = true, instantKey, radius = "none", accessibilityLabel, contentStyle, numbered = true, onPieceNode, maxHeight }: Props) {
   const four = pieces.some((p) => p.slot === "layer");
   const tone = flatLayTone(pieces);
   const ordered = Z_ORDER.flatMap((slot) => pieces.filter((p) => p.slot === slot));
@@ -141,16 +147,41 @@ export function FlatLay({ pieces, onPressPiece, pieceFocusable = true, instantKe
   const onAspect = useCallback((id: string, aspect: number) => {
     setAspects((cur) => (cur[id] === aspect ? cur : { ...cur, [id]: aspect }));
   }, []);
-  const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
+  const [measured, setMeasured] = useState(false);
+  const onLayout = (e: LayoutChangeEvent) => {
+    setWidth(e.nativeEvent.layout.width);
+    setMeasured(true);
+  };
+  // Capped: the height comes from the measured width here, not from aspectRatio + maxHeight, whose interplay differs
+  // between Yoga and CSS. Until measured (DEFAULT_WIDTH is a guess) the plain 4:5 surface stands in, as without a cap.
+  const height = maxHeight !== undefined && measured ? Math.min(width * FLAT_LAY_ASPECT, maxHeight) : null;
+  // The 4:5 frame the composition is laid out in: the whole surface, or a centred column when the cap binds.
+  const frameWidth = height !== null ? Math.min(width, height / FLAT_LAY_ASPECT) : width;
 
   return (
     <View
       role="group"
       accessibilityLabel={accessibilityLabel}
       onLayout={onLayout}
-      style={{ width: "100%", aspectRatio: 1 / FLAT_LAY_ASPECT, backgroundColor: colors[tone], borderRadius: radius === "md" ? 6 : 0, overflow: "hidden" }}
+      style={{
+        width: "100%",
+        ...(height !== null ? { height } : { aspectRatio: 1 / FLAT_LAY_ASPECT }),
+        backgroundColor: colors[tone],
+        borderRadius: radius === "md" ? 6 : 0,
+        // don't touch / the surface clips and carries the tone, not the frame: a swiped outfit slides out over the
+        // surface's full width, and a capped surface shows no edge or sliver where the centred frame ends.
+        overflow: "hidden",
+      }}
     >
-      <Animated.View style={[{ position: "absolute", top: 0, bottom: 0, start: 0, end: 0 }, contentStyle]}>
+      {/* The garments layer is the 4:5 frame: every placement, number, drawn rect and origin node is a percentage of
+          it, so they stay true when the surface is capped, and the item flight (which measures the origin nodes in
+          window coordinates) still starts on the cloth. */}
+      <Animated.View
+        style={[
+          height !== null ? { height: "100%", width: frameWidth, alignSelf: "center" } : { position: "absolute", top: 0, bottom: 0, start: 0, end: 0 },
+          contentStyle,
+        ]}
+      >
         {ordered.map((p) => {
           const place = placementOf(four, p.slot);
           // The arrangement is part of the identity: going from 3 to 4 pieces moves every box, and a garment that
@@ -176,7 +207,7 @@ export function FlatLay({ pieces, onPressPiece, pieceFocusable = true, instantKe
           const aspect = p.item.cutout_path ? aspects[p.item.id] : DRAWING_ASPECT;
           // Hidden until the photo's shape is known, so a number never jumps from the box corner to the cloth.
           if (!place || aspect === undefined) return null;
-          const at = numberPosition(place, aspect, width, !p.item.cutout_path);
+          const at = numberPosition(place, aspect, frameWidth, !p.item.cutout_path);
           return (
             <Text
               key={`n-${p.slot}`}

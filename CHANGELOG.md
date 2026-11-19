@@ -5,6 +5,11 @@
 - `ui/MetaLink` is a real anchor on web (new tab, noopener): Enter, middle-click and copy-link work; native keeps Linking. Before, only a click opened it.
 - The location screen now shows "no location permission" when "current" is saved but the permission was refused later (Today shows the default city then).
 - Checked live: Nominatim answers with `access-control-allow-origin: *`.
+## 2026-11-19 (Today: the flat-lay always fits, measured)
+
+- Today on phones: the whole flat-lay is on screen at scroll top whatever stands above it (Friday times row, skip, worn, laundry and failure lines), per DESIGN.md section 3 "היום" item 2. The free space is measured (masthead and the status stack above the hero by size, the floating bar or, without it, the scene down to the tab bar) minus 16, instead of paddings tuned to 390 and 360.
+- Below 600 the surface stays full width and gets shorter; the composition sits in a centred 4:5 frame (new optional `FlatLay` `maxHeight`; other callers unchanged). 600-899: the card cap now also works with no bar (worn, including opening already worn); the bar height resets to 0 when the bar leaves.
+- Look at: the cap block in `features/today/TodayView.tsx` (`heroSpace`, `cardWidth`, `heroMaxHeight`), the frame in `components/ui/FlatLay.tsx`. Native not run (no emulator).
 
 ## 2026-11-19 (place name for the current location)
 
