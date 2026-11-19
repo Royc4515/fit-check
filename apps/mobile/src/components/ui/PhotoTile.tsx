@@ -6,6 +6,7 @@ import type { TileTone } from "../../theme/tileTone";
 import { colors, motion } from "../../theme/tokens";
 import { Icon } from "./Icon";
 import { Skeleton } from "./Skeleton";
+import { Meta } from "./Type";
 import { FRAME, type TileSize } from "./Tile";
 
 type Props = {
@@ -21,6 +22,13 @@ type Props = {
   fit?: "contain" | "cover";
   /** Force the reserved loading state even with a uri. */
   loading?: boolean;
+  /** The image could not be read (an expired signed address, say): the owner decides what to do, the tile shows the glyph. */
+  onError?: () => void;
+  /**
+   * With no `uri`: a still box in the tile tone that says why there is no picture, instead of the loading pulse.
+   * Keeps a place at its final size for something that has not been made yet (the try-on sheet before "generate").
+   */
+  emptyLabel?: string;
   accessibilityLabel: string;
 };
 
@@ -30,7 +38,7 @@ type Props = {
  * image loads, no frame. Not pressable; `Tile` stays the one component for items. If the image cannot be read it
  * shows an error glyph on the ground, never an endless pulse.
  */
-export function PhotoTile({ uri, tone = "tile", size = "grid", width = "100%", aspect, fit = "contain", loading = false, accessibilityLabel }: Props) {
+export function PhotoTile({ uri, tone = "tile", size = "grid", width = "100%", aspect, fit = "contain", loading = false, onError, emptyLabel, accessibilityLabel }: Props) {
   const { t } = useTranslation();
   const frame = FRAME[size];
   // Keyed by uri, so a new photo in the same box starts from loading again without an effect to reset it.
@@ -47,7 +55,11 @@ export function PhotoTile({ uri, tone = "tile", size = "grid", width = "100%", a
       accessibilityLabel={accessibilityLabel}
       style={{ width, aspectRatio: 1 / aspect, borderRadius: frame.radius, backgroundColor: colors[tone], overflow: "hidden" }}
     >
-      {reserved ? (
+      {reserved && emptyLabel && !uri && !loading ? (
+        <View className="flex-1 items-center justify-center" style={{ padding: frame.pad }}>
+          <Meta className="text-center">{emptyLabel}</Meta>
+        </View>
+      ) : reserved ? (
         <Skeleton height="100%" tone={tone} radius="none" />
       ) : failed ? (
         <View className="flex-1 items-center justify-center" accessibilityLabel={t("ui.imageFailed")}>
@@ -61,7 +73,10 @@ export function PhotoTile({ uri, tone = "tile", size = "grid", width = "100%", a
               contentFit={fit}
               transition={{ duration: motion.stateMs, effect: "cross-dissolve" }}
               onLoad={() => setLoadedUri(uri ?? null)}
-              onError={() => setFailedUri(uri ?? null)}
+              onError={() => {
+                setFailedUri(uri ?? null);
+                onError?.();
+              }}
               style={{ width: "100%", height: "100%" }}
               accessibilityIgnoresInvertColors
             />
