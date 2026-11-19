@@ -1,5 +1,6 @@
 import { summarizeDay, type DayWeather } from "@fit-check/engine";
 import { HebcalConverterSchema, HebcalItemsSchema, OpenMeteoHourlySchema } from "@fit-check/schema";
+import { candleLightingMinutes } from "./candleLighting";
 import { cacheGet, cacheSet } from "./kv";
 import { resolveLocation, type ResolvedLocation } from "./location";
 
@@ -95,15 +96,19 @@ async function loadHebrewDate(date: string): Promise<DayContext["hebrewDate"]> {
 }
 
 async function loadCalendar(date: string, loc: ResolvedLocation): Promise<Pick<DayContext, "holiday" | "candleLighting"> & { yomtov: boolean }> {
-  const key = `fitcheck:hebcal:v2:${date}:${loc.geonameid ?? placeKey(loc)}`;
+  // Coordinates carry the candle minutes in the key: the minutes depend on the point (city boundary), and v3 drops the
+  // v2 entries that were computed with Hebcal's coordinate default instead of the local custom.
+  const minutes = loc.geonameid ? null : candleLightingMinutes(loc);
+  const key = `fitcheck:hebcal:v3:${date}:${loc.geonameid ?? `${placeKey(loc)}:b${minutes}`}`;
   type Cal = { holiday: DayContext["holiday"]; candleLighting: string | null; yomtov: boolean };
   const cached = await cacheGet<Cal>(key, 24 * HOUR);
   if (cached) return cached;
   try {
-    // A GeoNames id gets the city's own customs (Jerusalem: 40 minutes); coordinates get the generic 18.
+    // A GeoNames id gets the city's own custom from Hebcal (Jerusalem 40, Haifa 30). Coordinates get no city custom
+    // (20 in Israel, 18 abroad), so the app sends the local custom itself as b= (PRD.md, candle lighting).
     const where = loc.geonameid
       ? `geonameid=${loc.geonameid}`
-      : `latitude=${loc.lat}&longitude=${loc.lon}&tzid=${encodeURIComponent(loc.tz)}`;
+      : `latitude=${loc.lat}&longitude=${loc.lon}&tzid=${encodeURIComponent(loc.tz)}&b=${minutes}`;
     // i=on is the Israel holiday schedule; it is correct only inside Israel (one day of Yom Tov, not two).
     const israel = loc.tz === "Asia/Jerusalem" ? "&i=on" : "";
     const url = `https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&min=on${israel}&c=on&M=on&${where}&start=${date}&end=${date}&lg=he`;
