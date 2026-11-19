@@ -18,6 +18,8 @@ import {
   ListRow,
   MasonryGrid,
   MetaLink,
+  OutfitTile,
+  OutfitTileSkeleton,
   ScreenHeader,
   Segmented,
   Sheet,
@@ -48,6 +50,7 @@ const ICONS: readonly IconName[] = [
   "checkroom",
   "today",
   "add",
+  "style",
   "insights",
   "person",
   "tune",
@@ -62,12 +65,14 @@ const ICONS: readonly IconName[] = [
   "info",
   "check_circle",
   "error",
+  "favorite",
+  "favorite_fill",
 ];
 const TONES: readonly TileTone[] = ["tile", "tile-deep", "tile-cool"];
 /** Enough combinations to see every arrangement with several garment shapes. */
 const FLAT_LAY_DEMOS = 8;
 const AVAILABILITY = ["home", "laundry", "away", "lent"] as const;
-type NavKey = "wardrobe" | "today" | "insights" | "profile";
+type NavKey = "wardrobe" | "today" | "outfits" | "profile";
 type Category = (typeof CATEGORY_ORDER)[number];
 
 // Section head inside the masonry: display line (34) + 16 below it.
@@ -155,6 +160,7 @@ export function Gallery() {
   const [status, setStatus] = useState<"info" | "ok" | "error">("error");
   const [twoTab, setTwoTab] = useState("today");
   const [fourTab, setFourTab] = useState("day1");
+  const [outfitFav, setOutfitFav] = useState(true);
 
   const toggleChip = (k: string) =>
     setChips((cur) => {
@@ -238,7 +244,7 @@ export function Gallery() {
   const navItems: NavItem<NavKey>[] = [
     { key: "wardrobe", label: t("ds.nav.wardrobe"), icon: "checkroom" },
     { key: "today", label: t("ds.nav.today"), icon: "today" },
-    { key: "insights", label: t("ds.nav.insights"), icon: "insights" },
+    { key: "outfits", label: t("ds.nav.outfits"), icon: "style" },
     { key: "profile", label: t("ds.nav.profile"), icon: "person" },
   ];
   const noop = () => undefined;
@@ -486,6 +492,34 @@ export function Gallery() {
               </View>
             </View>
           ))}
+        </Wrap>
+      </Block>
+
+      <Block title={t("ds.section.outfitTile")}>
+        <Wrap gap={8}>
+          {[flatLays[0], flatLays[1]].map((pieces, n) =>
+            pieces ? (
+              <Demo key={n} label={t(n === 0 ? "ds.outfitTile.plain" : "ds.outfitTile.favorite")}>
+                <View style={{ width: tileW }}>
+                  <OutfitTile
+                    pieces={pieces}
+                    title={n === 0 ? pieces.map((p) => t(`item.subcategory.${p.item.tags.subcategory}`)).join(" · ") : t("ds.outfitTile.name")}
+                    meta={n === 0 ? t("outfits.neverWorn") : t("outfits.wornWithDate", { worn: t("outfits.worn", { count: 3, n: ltr(3) }), date: ltr("12.11") })}
+                    favorite={n === 0 ? false : outfitFav}
+                    onPress={noop}
+                    onToggleFavorite={n === 0 ? noop : () => setOutfitFav((f) => !f)}
+                    accessibilityLabel={t(n === 0 ? "ds.outfitTile.plain" : "ds.outfitTile.favorite")}
+                    favoriteLabel={t(n === 1 && outfitFav ? "outfits.favoriteRemove" : "outfits.favoriteAdd")}
+                  />
+                </View>
+              </Demo>
+            ) : null
+          )}
+          <Demo label={t("ds.outfitTile.loading")}>
+            <View style={{ width: tileW }}>
+              <OutfitTileSkeleton />
+            </View>
+          </Demo>
         </Wrap>
       </Block>
 
