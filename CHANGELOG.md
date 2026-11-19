@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-19 (OpenStreetMap credit from the keyboard)
+
+- `ui/MetaLink` is a real anchor on web (new tab, noopener): Enter, middle-click and copy-link work; native keeps Linking. Before, only a click opened it.
+- The location screen now shows "no location permission" when "current" is saved but the permission was refused later (Today shows the default city then).
+- Checked live: Nominatim answers with `access-control-allow-origin: *`.
+
 ## 2026-11-19 (place name for the current location)
 
 - "My current location" now shows the settlement name: Today's weather line, the profile row ("Current location · Ramat Gan") and the meta of the location screen row. Web asks Nominatim (rounded to 3 decimals, only after a move over 300 m or a language change, 3 s cap, cached on the device); native uses the device geocoder (not run here: no emulator). No name falls back to "current location" and never delays the weather.

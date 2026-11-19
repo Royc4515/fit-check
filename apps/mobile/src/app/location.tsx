@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Platform, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, ListRow, MetaLink, ScreenHeader, SearchField, StatusLine } from "../components/ui";
-import { cachedPlaceName, currentPosition, getSavedLocation, onPlaceNameChange, saveLocation, searchCities, type SavedLocation } from "../data/location";
+import { cachedPlaceName, currentPosition, getSavedLocation, locationPermissionDenied, onPlaceNameChange, saveLocation, searchCities, type SavedLocation } from "../data/location";
 import { layout } from "../theme/tokens";
 
 type City = Extract<SavedLocation, { kind: "city" }>;
@@ -27,7 +27,11 @@ export default function LocationScreen() {
   const [currentName, setCurrentName] = useState<string | null>(null);
 
   useEffect(() => {
-    void getSavedLocation().then(setSaved);
+    void getSavedLocation().then((s) => {
+      setSaved(s);
+      // "Current" was chosen earlier but the permission has since been refused: Today shows the default city, so say why.
+      if (s.kind === "current") void locationPermissionDenied().then((d) => d && setDenied(true));
+    });
   }, []);
 
   // Cache only: Today does the lookup, this row shows what is already known (and updates when Today stores a name).

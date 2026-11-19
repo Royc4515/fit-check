@@ -90,6 +90,15 @@ export async function currentPosition(): Promise<{ lat: number; lon: number } | 
   }
 }
 
+/** True only when the permission is known to be refused; never prompts and never throws (unknown reads as not denied). */
+export async function locationPermissionDenied(): Promise<boolean> {
+  try {
+    return (await Location.getForegroundPermissionsAsync()).status === Location.PermissionStatus.DENIED;
+  } catch {
+    return false;
+  }
+}
+
 /** Turns the saved setting into coordinates. "Current" falls back to the last fix, then to the default. */
 export async function resolveLocation(): Promise<ResolvedLocation> {
   const saved = await getSavedLocation();
