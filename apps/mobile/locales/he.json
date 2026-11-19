@@ -103,6 +103,10 @@
     },
     "plannedForecast": "{{day}} · {{range}} · גשם {{rain}}",
     "plannedNoForecast": "אין עדיין תחזית",
+    "woreSomethingElse": "לבשת משהו אחר?",
+    "tapHint": "אפשר להקיש על כל בגד כדי להחליף אותו",
+    "tapHintOk": "הבנתי",
+    "swapPiece": "החלפת {{name}}",
     "occasion": {
       "title": "מה יש היום",
       "titlePlanned": "מה יש באותו יום",

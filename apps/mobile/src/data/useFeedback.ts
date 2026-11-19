@@ -27,6 +27,11 @@ export type FeedbackActions = {
   skip: (outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment, target?: FeedbackTarget) => Promise<void>;
   dislike: (record: TodayRecord) => Promise<void>;
   undo: (record: TodayRecord) => Promise<void>;
+  /**
+   * "Wore something else?" (DESIGN.md "שלב 5.1" item 1): replaces a recorded wear by the corrected outfit, as one
+   * action: undo, then wear, serialised. `target` defaults to the record's own date, in today's day type.
+   */
+  correct: (record: TodayRecord, outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment, target?: FeedbackTarget) => Promise<void>;
   /** Overrides the automatic laundry move: the items stay home and keep their wear count. */
   keepHome: (itemIds: string[]) => Promise<void>;
   /**
@@ -173,28 +178,49 @@ export function useFeedback(args: {
     }
   }, []);
 
-  const actions = useMemo<FeedbackActions>(
-    () => ({
-      wear: (outfit, source, adjustment, target = { date, dayType }) =>
-        run(target.date, async () => {
-          const record = await recordFeedback({ ...target, userId, outfit, source, feedback: "worn", adjustment });
-          const ahead = record.date !== date;
-          setHistory((h) => ({
-            // A planned day's wear is not "recent" for today; the planning counts it on its own date.
-            recent: ahead
-              ? (h?.recent ?? [])
-              : [{ date, item_ids: record.itemIds, context_key: null, context_type: target.dayType }, ...(h?.recent ?? [])],
-            today: ahead ? (h?.today ?? []) : [...(h?.today ?? []), record],
-            ahead: ahead ? [...(h?.ahead ?? []), record] : (h?.ahead ?? []),
-            samples: [{ wearId: record.wearId, adjustment }, ...(h?.samples ?? [])],
-          }));
-          // The wear is stored even if learning fails; the weights are a derived signal, the wear is the fact. So a
-          // failed weights write is logged and swallowed here: letting it reach run() would show "didn't save" for a
-          // wear that was saved, and the user would press "wearing it" again and wear the day twice.
-          await learn(record.itemIds, "worn", 1).catch((error: unknown) => console.error("Pair weights update failed", error));
-          // A failed laundry move is logged, not shown: the wear itself succeeded and the user can move items by hand.
-          await launder(record).catch((error: unknown) => console.error("Automatic laundry failed", error));
-        }),
+  const actions = useMemo<FeedbackActions>(() => {
+    /** Records a worn outfit for `target`, then learns from it and moves what is due to the laundry. */
+    const wearNow = async (outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment, target: FeedbackTarget) => {
+      const record = await recordFeedback({ ...target, userId, outfit, source, feedback: "worn", adjustment });
+      const ahead = record.date !== date;
+      setHistory((h) => ({
+        // A planned day's wear is not "recent" for today; the planning counts it on its own date.
+        recent: ahead
+          ? (h?.recent ?? [])
+          : [{ date, item_ids: record.itemIds, context_key: null, context_type: target.dayType }, ...(h?.recent ?? [])],
+        today: ahead ? (h?.today ?? []) : [...(h?.today ?? []), record],
+        ahead: ahead ? [...(h?.ahead ?? []), record] : (h?.ahead ?? []),
+        samples: [{ wearId: record.wearId, adjustment }, ...(h?.samples ?? [])],
+      }));
+      // The wear is stored even if learning fails; the weights are a derived signal, the wear is the fact. So a
+      // failed weights write is logged and swallowed here: letting it reach run() would show "didn't save" for a
+      // wear that was saved, and the user would press "wearing it" again and wear the day twice.
+      await learn(record.itemIds, "worn", 1).catch((error: unknown) => console.error("Pair weights update failed", error));
+      // A failed laundry move is logged, not shown: the wear itself succeeded and the user can move items by hand.
+      await launder(record).catch((error: unknown) => console.error("Automatic laundry failed", error));
+    };
+    /** Removes a recorded answer, unlearns it, and brings back what its wear sent to the laundry. */
+    const undoNow = async (record: TodayRecord) => {
+      await deleteFeedback(record);
+      setHistory((h) => {
+        if (!h) return h;
+        const idx = h.recent.findIndex((w) => w.date === record.date && sameItems(w.item_ids, record.itemIds));
+        return {
+          recent: record.feedback === "worn" && idx >= 0 ? h.recent.filter((_, i) => i !== idx) : h.recent,
+          today: h.today.filter((r) => r.wearId !== record.wearId),
+          ahead: h.ahead.filter((r) => r.wearId !== record.wearId),
+          samples: h.samples.filter((x) => x.wearId !== record.wearId),
+        };
+      });
+      if (record.feedback !== "skipped") await learn(record.itemIds, record.feedback, -1);
+      // Undoing the wear undoes its laundry move too; the wash count is right again because the wear is gone.
+      if (laundered?.wearId === record.wearId) {
+        await move(laundered.itemIds, "home");
+        setLaundered(null);
+      }
+    };
+    return {
+      wear: (outfit, source, adjustment, target = { date, dayType }) => run(target.date, () => wearNow(outfit, source, adjustment, target)),
       skip: (outfit, source, adjustment, target = { date, dayType }) =>
         run(target.date, async () => {
           const record = await recordFeedback({ ...target, userId, outfit, source, feedback: "skipped", adjustment });
@@ -213,25 +239,14 @@ export function useFeedback(args: {
           setHistory((h) => h && { ...h, today: h.today.map(mark), ahead: h.ahead.map(mark) });
           await learn(record.itemIds, "disliked", 1);
         }),
-      undo: (record) =>
-        run(record.date, async () => {
-          await deleteFeedback(record);
-          setHistory((h) => {
-            if (!h) return h;
-            const idx = h.recent.findIndex((w) => w.date === record.date && sameItems(w.item_ids, record.itemIds));
-            return {
-              recent: record.feedback === "worn" && idx >= 0 ? h.recent.filter((_, i) => i !== idx) : h.recent,
-              today: h.today.filter((r) => r.wearId !== record.wearId),
-              ahead: h.ahead.filter((r) => r.wearId !== record.wearId),
-              samples: h.samples.filter((x) => x.wearId !== record.wearId),
-            };
-          });
-          if (record.feedback !== "skipped") await learn(record.itemIds, record.feedback, -1);
-          // Undoing the wear undoes its laundry move too; the wash count is right again because the wear is gone.
-          if (laundered?.wearId === record.wearId) {
-            await move(laundered.itemIds, "home");
-            setLaundered(null);
-          }
+      undo: (record) => run(record.date, () => undoNow(record)),
+      correct: (record, outfit, source, adjustment, target = { date: record.date, dayType }) =>
+        run(target.date, async () => {
+          // One action for the user, two steps here, inside one run so nothing else interleaves (DESIGN.md "שלב 5.1"
+          // item 1): the wrong wear goes (with its laundry move and learning), then the corrected one is recorded.
+          // If the second step fails the day is back to a suggestion with the failure line, and no wrong record stays.
+          await undoNow(record);
+          await wearNow(outfit, source, adjustment, target);
         }),
       keepHome: (itemIds) =>
         run(laundered ? laundryDate.current : date, async () => {
@@ -239,9 +254,8 @@ export function useFeedback(args: {
           setLaundered(null);
         }),
       dismissFailure: () => setFailedOn(null),
-    }),
-    [run, learn, launder, move, laundered, setHistory, userId, date, dayType]
-  );
+    };
+  }, [run, learn, launder, move, laundered, setHistory, userId, date, dayType]);
 
   return { history, busy, failedOn, laundered, actions };
 }

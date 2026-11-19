@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-19 (Today: alternatives after wearing, and a tap cue)
+
+- After "לובש" a garment still opens its sheet with up to three alternatives, under "לבשת משהו אחר?"; choosing one corrects the record in one action (undo, then wear, serialised in `useFeedback.correct`), so laundry and learning follow the corrected outfit; if the second step fails the day is back to a suggestion with the failure line. Planned-day tabs too (DESIGN.md "שלב 5.1").
+- A one-time line "אפשר להקיש על כל בגד כדי להחליף אותו · הבנתי" above the hero until the first tap on a garment or "הבנתי" (device flag), measured with the hero. Legend rows end with `swap_horiz` (Material Symbols Rounded 300, svg-300@0.49.0) and read "החלפת {{name}}".
+- Look at: `correct` in `data/useFeedback.ts`, the worn branch of PieceSheet's `onSwap` in `TodayView.tsx`, `LegendRow` `trailingIcon`. Unverified: the real laundry SQL after a correction; a garment moved to the laundry by a wear made before a reload is not brought back by a later correction (the laundry line is session state, as for undo).
+
 ## 2026-11-19 (Today: what is on today)
 
 - The adjust sheet starts with "מה יש היום" (on a planned tab "מה יש באותו יום"): date, interview, event as chips; choosing closes the sheet and changes the look, the chosen chip clears it. The occasion shows first among the status lines above the hero ("ראיון · ראיון עבודה · מהיומן" · ביטול), measured with the hero (DESIGN.md "שלב 4.5").
