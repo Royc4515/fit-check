@@ -43,6 +43,8 @@ type IconOnly = Common & {
    * DESIGN.md section 3 "פריט"): the glyph stays readable on any tile tone without a shadow or a scrim.
    */
   surface?: boolean;
+  /** Glyph size: 24 by default; 20 for an icon inside a line of text (the pencil of in-place writing). The box stays 44. */
+  iconSize?: 20 | 24;
 };
 
 export type ButtonProps = Labelled | IconOnly;
@@ -95,7 +97,7 @@ export function Button(props: ButtonProps) {
       >
         <Animated.View style={pressStyle}>
           {/* mirrorInRtl is safe for every icon: Icon only flips the directional ones. */}
-          <Icon name={props.icon} size={24} color={selected ? "ink" : "ink-soft"} mirrorInRtl />
+          <Icon name={props.icon} size={props.iconSize ?? 24} color={selected ? "ink" : "ink-soft"} mirrorInRtl />
           {props.dot ? (
             <View
               pointerEvents="none"
