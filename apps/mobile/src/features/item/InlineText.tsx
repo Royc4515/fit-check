@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, Text, TextInput, View } from "react-native";
 import { focusRingProps } from "../../components/ui";
@@ -74,14 +74,24 @@ export function InlineText({
   counterFrom,
   placeholder,
 }: Props) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const tracking = useTypeTracking();
   const [draft, setDraft] = useState<string | null>(null);
   const [fieldHeight, setFieldHeight] = useState(MULTILINE_MIN);
   // Free text keeps its line breaks; a one-line value never carries one.
   const clean = multiline ? (s: string) => s : oneLine;
-  // Hebrew is right-aligned, English left; the field does not inherit the page direction on web.
-  const align = { textAlign: i18n.language === "en" ? "left" : "right" } as const;
+  // The page's start side, resolved from the layout direction (react-native-web reads the root `dir`, native the
+  // drawn direction): a language-chosen left/right was wrong on native until a restart (verification D9).
+  const align = { textAlign: "start" } as const;
+  const button = useRef<ComponentRef<typeof Pressable>>(null);
+  // Set when a key (Enter, Escape) closed the field: focus goes back to the edit button, not to <body> (verification
+  // N3). Not on blur: a blur means focus already went somewhere the user chose.
+  const refocus = useRef(false);
+  useEffect(() => {
+    if (draft !== null || !refocus.current) return;
+    refocus.current = false;
+    if (Platform.OS === "web") button.current?.focus();
+  }, [draft]);
 
   // don't touch / a ref, not the state: Escape unmounts the field, and the blur that unmounting fires still sees the
   // old render's draft, which would save the text the user just cancelled. It also makes Enter + the blur that
@@ -117,17 +127,28 @@ export function InlineText({
         value={draft}
         onChangeText={edit}
         onBlur={() => stop(true)}
-        onSubmitEditing={multiline ? undefined : () => stop(true)}
+        onSubmitEditing={
+          multiline
+            ? undefined
+            : () => {
+                refocus.current = true;
+                stop(true);
+              }
+        }
         onKeyPress={(e) => {
           if (Platform.OS !== "web") return;
           const key = e.nativeEvent.key;
           // Escape is a web/hardware-keyboard key; on a touch keyboard, clearing the change by hand is the cancel.
-          if (key === "Escape") stop(false);
+          if (key === "Escape") {
+            refocus.current = true;
+            stop(false);
+          }
           // don't touch / a multiline field on web is a <textarea>, where Enter inserts a line break before any submit
           // handler runs (seen 2026-11-18: the name became "…\n" and the field stayed open). Stop the key, then save.
           // Free text (notes) wants that line break, so it is left alone there.
           else if (!multiline && key === "Enter" && !("shiftKey" in e.nativeEvent && e.nativeEvent.shiftKey === true)) {
             e.preventDefault();
+            refocus.current = true;
             stop(true);
           }
         }}
@@ -176,8 +197,9 @@ export function InlineText({
   // simply at least 44 high, since it is a block that may run over several lines.
   const small = size === "body-sm";
   const block = size === "body";
-  const button = (
+  const pressable = (
     <Pressable
+      ref={button}
       {...focusRingProps}
       onPress={start}
       disabled={disabled}
@@ -194,5 +216,5 @@ export function InlineText({
       <View>{children}</View>
     </Pressable>
   );
-  return headingLevel ? <View {...headingProps(headingLevel)}>{button}</View> : button;
+  return headingLevel ? <View {...headingProps(headingLevel)}>{pressable}</View> : pressable;
 }

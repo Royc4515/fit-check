@@ -21,6 +21,7 @@ import {
   type MasonrySection,
   type TextTab,
 } from "../../components/ui";
+import { useLastRemoved } from "../../data/WardrobeProvider";
 import { tileAspect } from "../../theme/tileTone";
 import { layout, masonryColumnsFor } from "../../theme/tokens";
 import { measureCell, registerCell, setOrigin } from "../item/transition";
@@ -74,9 +75,6 @@ type Props = {
   onRestore?: (id: string) => Promise<void>;
 };
 
-/** The item just removed from the long-press sheet, offered back until the next action; `failed` = the undo did not save. */
-type Removed = { id: string; failed: boolean };
-
 /** The desktop header keeps the search field open at this width (DESIGN.md "שלב 2", "חיפוש בארון"). */
 const SEARCH_W = 280;
 
@@ -115,9 +113,9 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive, onRestore
   const [actionsOpen, setActionsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const [removed, setRemoved] = useState<Removed | null>(null);
+  const [removed, setRemoved] = useLastRemoved();
   // Every other action on the screen ends the undo offer (DESIGN.md "ארכיון": "עד הפעולה הבאה").
-  const settle = useCallback(() => setRemoved(null), []);
+  const settle = useCallback(() => setRemoved(null), [setRemoved]);
 
   const [packing, setPacking] = useState(false);
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
@@ -196,17 +194,17 @@ export function WardrobeView({ all, onMove, onAvailability, onArchive, onRestore
   const archiveFromSheet = onArchive
     ? (item: Item) =>
         onArchive(item.id).then(() => {
-          setRemoved({ id: item.id, failed: false });
+          setRemoved({ id: item.id, name: item.name, failed: false });
         })
     : undefined;
   // Optimistic in the container: the tile is back at once and the line goes; a failed write brings the line back as an error.
   const undoRemove = () => {
     if (!removed || !onRestore) return;
-    const { id } = removed;
+    const { id, name } = removed;
     setRemoved(null);
     onRestore(id).catch((error: unknown) => {
       console.error("Restore failed", error);
-      setRemoved({ id, failed: true });
+      setRemoved({ id, name, failed: true });
     });
   };
   const filtersActive = sheetActive || selection.color !== undefined;

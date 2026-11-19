@@ -9,7 +9,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "echo 'no app tests yet' && exit 0",
+    "test": "vitest run",
     "export:web": "expo export --platform web"
   },
   "dependencies": {
@@ -58,6 +58,7 @@
     "babel-preset-expo": "~58.0.0",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~58.0.0",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^2.1.9"
   }
 }

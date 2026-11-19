@@ -430,13 +430,18 @@
       "showAll": "Show all",
       "showLess": "Show less",
       "failed": "The wears did not load.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "capped": "Showing the last {{n}} wears"
     },
     "recut": {
       "row": "Remove the background again",
       "busy": "Removing the background again",
       "notConfigured": "Background removal is not available right now. The picture stays as it is.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "confirmTitle": "Cut out again from the original photo?",
+      "confirmBody": "The improved picture will be replaced by a cutout of the original photo.",
+      "confirm": "Cut out again",
+      "cancel": "Cancel"
     }
   },
   "auth": {
@@ -601,6 +606,7 @@
     "sleeve": "{{value}} sleeves",
     "wordHint": "Opens this word's options",
     "longPressHint": "Long press: edit as free text",
+    "longPressDescription": "A long press opens this detail as free text to edit. The “+ Other…” button does the same.",
     "noteDetail": "Your own detail",
     "noteFix": "Your own fix",
     "notePlaceholder": "e.g. contrast stitching",
