@@ -605,3 +605,10 @@
 - Leaving the item screen with an open, changed, valid field saves it first; the screen goes (with its flight back) only after the save succeeded. While saving "שמירה" reads "שומר" and is inert; a failed save keeps the screen with the field, the typed text, the error line and "נסה שוב". One write per leave. Unchanged or invalid (emptied name) open fields are dropped and do not block. Covered: the back button, Android back, browser back and other navigator removals (`usePreventRemove`), "goes with", and closing after removal. Decision in `writing.ts` `decideLeave` with tests.
 - A failed save puts focus back in the reopened field (caret at the end). A failure while another field is open keeps its text and error line until it is saved or cancelled; leaving then reopens it instead of losing it.
 - Name and brand text at rest are no longer tab stops; the pencil is the only keyboard and screen-reader control.
+
+## 2026-11-19 (stage 3 merged, stage 4 proposed)
+
+- Stage 3 (fixes from Roy's use of the live app) merged as PR #24 after two independent verification passes (`docs/redesign-checklist-stage3.md`).
+- `docs/REDESIGN_PLAN.md` now has "Stage 4 - from a finished redesign to a daily habit": Friday for Shabbat, Android, a morning notification on the device, manual contexts, reserve packing, hardening, clean-up. It rests on an inventory of the PRD against the code made the same day. Nothing in it is started; it waits for Roy's go.
+- Look at: the stage 4 table and the "Not in stage 4" table; `TASKS.md` "Open after stage 3".
+

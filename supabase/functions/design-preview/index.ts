@@ -9,7 +9,7 @@ import { sameCode } from "./code.ts";
  * so a designer (another Claude in a real browser) can see the live app without Google sign-in.
  *
  * Expires 2026-11-25T16:00:00Z (seven days, Roy's choice). After that it answers 410 to everyone; retire it to a
- * plain 410 like redraw-five, delete the DESIGN_PREVIEW_CODE secret and revert the app's preview-mode commits
+ * plain 410, delete the DESIGN_PREVIEW_CODE secret and revert the app's preview-mode commits
  * (CHANGELOG 2026-11-18, design preview).
  *
  * Input: POST JSON { code } (DesignPreviewInputSchema). The code lives only in the function's env
