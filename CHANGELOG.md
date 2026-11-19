@@ -658,3 +658,9 @@
 - `docs/REDESIGN_PLAN.md` "Stage 5": hand-built and saved outfits with favourites (a "לוקים" place in the bottom bar, Insights moves into the profile), alternatives after wearing, the algorithm's judgement, and a try-on experiment. Decisions and their reasons are there.
 - To deploy with this merge: migration 0006, then the `mcp` function from `scripts/bundle-mcp.sh` with verify_jwt off.
 
+## 2026-11-19 (deployed: migration 0006 and mcp version 9)
+
+- Migration `0006_profile_observance` applied to the project and checked in `information_schema`.
+- `mcp` redeployed as version 9 from `scripts/bundle-mcp.sh` (verify_jwt off, as before): the context tools, `outfit_today` honouring the day's occasion and the observance setting, and the rebuilt engine. Deployed source equals the bundle byte for byte; an anonymous call answers 401 with `www-authenticate`; `outfit_today` through the connector returns `context_used`.
+- The five functions that are not in the repo (`env-check`, `tag-compare`, `image-put`, `cutout-backfill`, `redraw-five`) were read: each is already a two-line 410 stub. They can be deleted from the dashboard; nothing depends on them.
+
