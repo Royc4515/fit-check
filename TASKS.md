@@ -37,8 +37,22 @@ Status: `todo` / `doing` / `review` / `done` / `blocked`. A model that fails a t
 | # | Task | Model | Status | Result |
 | --- | --- | --- | --- | --- |
 | 2.0 | Specs in DESIGN.md section 3 "שלב 2" | lead | done | |
-| 2.1 | Wardrobe: search, "for Shabbat" and formality filters, archive screen with restore, undo after archiving | opus (sonnet hit its weekly limit before writing anything) | review | 346a779 merged. Lead looked at search and archive at 390 he. Shabbat filter = engine's own rule check (new exported `passesContextRules`, engine behaviour unchanged, 82 tests pass); 32 of 82 items pass, incl. casual jackets and caps because the rules have no outerwear/accessory slot. Successful archive/restore/undo writes seen only against stubbed DB calls |
-| 2.2 | Item: notes, wear history, manual re-cut | opus | review | ad0ec51 merged. Wear history seen only with fixtures: the database has no `worn` wear at all (one `skipped`), so the real query has never returned rows. Real notes write and real re-cut not exercised |
-| 2.3 | Add: queue of photos waiting for Claude | opus | review | b95b37a merged. Real listing works in the preview and is empty (no pending photos); populated and failure states seen with a mocked list. No dismiss: storage has no delete policy |
-| 2.4 | Insights content (wears, AI spend); Profile: language switch, archive row, sign-out | opus | review | 8d0d799 merged. Wears section seen with injected fixture wears (real data has none); AI spend seen with gallery fixtures only (not in the preview snapshot). Language switch verified on web (live `dir` flip, persisted); native restart path not run. Real sign-out not run |
-| 2.5 | Independent verification of stage 2 and of the stage-1 fix rounds | sonnet x2 | doing | |
+| 2.1 | Wardrobe: search, "for Shabbat" and formality filters, archive screen with restore, undo after archiving | opus | done | 346a779 + fixes 533b472, 39f39c8, 46c26bf. Shabbat filter: 27 of 82 items after coats and accessories were held to the layer formality bound (wardrobe filter only; engine rules unchanged). Successful archive/restore/undo writes seen only against stubbed calls |
+| 2.2 | Item: notes, wear history, manual re-cut | opus | done | ad0ec51 + fixes 39f39c8. Re-cut now asks before replacing an AI redraw (it would have silently replaced 81 of 82 images). Wear history seen only with fixtures: the database has no `worn` wear. Real notes write and real re-cut not exercised |
+| 2.3 | Add: queue of photos waiting for Claude | opus | done | b95b37a + fixes d344866. Real listing is empty; populated states seen with a mocked list. No dismiss: storage has no delete policy |
+| 2.4 | Insights content (wears, AI spend); Profile: language switch, archive row, sign-out | opus | done | 8d0d799 + fixes d344866. Insights day now follows the location's time zone; spend read is paged. Wears seen with injected fixtures, AI spend with gallery fixtures. Native restart path for language and real sign-out not run |
+| 2.5 | Independent verification of stage 2 and of the stage-1 fix rounds | sonnet x2 | done | `docs/redesign-checklist-stage2.md` (96 checks: 62 pass, 12 fail; 6 major, 14 minor) and `docs/redesign-checklist-recheck.md` (31 stage-1 defects: 20 fixed, 4 not fixed, 2 partly, 4 accepted; 5 new majors incl. a live regression: the screen under the item modal vanished). All majors fixed in 39f39c8, 533b472, d344866, 46c26bf. Lead re-ran the item flight on the merged build (frame strips from the wardrobe and Today): the screen stays under the flight. The other fixes were checked by their authors only |
+
+## Open after stage 2
+
+| What | Why it is open | Who |
+| --- | --- | --- |
+| Everything in "Open after stage 1" above still applies | Android, real writes, real intake and redraw were never exercised | Roy |
+| First real wear | No `worn` row exists; wear history, the Insights wears section and their queries have never run on real rows | Roy: press "wearing it" once, then look at the item and at Insights |
+| AI cost on a signed-in session | `ai_calls` is not in the preview snapshot; about 500 rows exist this month | Roy |
+| Optimistic-edit races | Fixed by a serialised edit queue covered by 12 unit tests; a slow failing write cannot be produced in the preview | first signed-in session |
+| `useFeedback` races (overlapping wear/skip writes; overlapping pair-weight learning) | Pre-existing, confirmed by code reading, rare because buttons lock while busy; not changed without a way to run real writes | separate task |
+| Public listing of the `cutouts` bucket | Anyone with the anon key can list and download the garment photos (policy "cutouts public read" from the first migration). Closing it needs a migration and signed URLs | Roy's decision |
+| Shabbat rules for outerwear and accessories in the engine | The wardrobe filter handles them; the stylist's rules still have no slot for them | Roy's decision |
+| Insights outfit sheet: a row "type · Latin name" is drawn left-to-right in Hebrew | Side effect of keeping the start of truncated Latin names; splitting type and name into two texts would fix it | small follow-up |
+| Design preview | The server stops answering 2026-11-25; remove the preview code path afterwards (CHANGELOG 2026-11-18) | next session |

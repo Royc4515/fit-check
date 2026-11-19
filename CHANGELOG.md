@@ -547,3 +547,9 @@
 - `ListRow` sets an explicit `writingDirection` on label, meta and value from the dominant script of the string (`components/ui/textDirection.ts`, first strong character on a tie, digits only = LTR), inside a start-aligned box. A long Latin name in a Hebrew row ("חולצה · Carhartt WIP Detroit Jack…") now loses its end, not its start; Hebrew-only rows are unchanged. Side effect: a mixed row that fits ("מגפיים · Salomon Hiking Boots") is now drawn left-to-right inside the row, so the Hebrew word sits left of the name.
 - Wardrobe: with a sheet filter, colour, search or reserve-mode narrowing active, the category tabs show only categories with a match (counted with the grid's own `applyFilters` and `matchesQuery`), plus "הכל" and the selected category even when empty. With nothing active the row is as before.
 - Look at: Insights outfit sheet with a long item name (he/en, 390), the wardrobe under "לשבת" (no accessories tab). Not verified: native (no emulator).
+
+## 2026-11-19 (redesign stage 2 closed)
+
+- Stage 2 of `docs/REDESIGN_PLAN.md` is complete on `claude/gifted-goldberg-9498c1` (PR #23): wardrobe search, Shabbat and formality filters, archive with restore and undo; item notes, wear history, guarded re-cut; the intake queue; Insights; Profile language switch, archive row and sign-out. No migration, no Edge Function change. `packages/engine` exports `passesContextRules` (behaviour unchanged).
+- Two independent verifications (`docs/redesign-checklist-stage2.md`, `docs/redesign-checklist-recheck.md`) found a live regression from stage 1 (the screen under the item modal disappeared during the flight), a re-cut that would have replaced AI redraws, races in optimistic edits, and keyboard and focus gaps. All fixed; `apps/mobile` now has a vitest suite (21 tests) for the pure logic.
+- Not verified: Android, real writes, the first real wear, a real `ai_calls` read. `TASKS.md` "Open after stage 2" lists them.
