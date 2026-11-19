@@ -171,7 +171,9 @@
       "facet": {
         "type": "סוג",
         "season": "עונה",
-        "availability": "זמינות"
+        "availability": "זמינות",
+        "context": "הקשר",
+        "formality": "רשמיות"
       }
     },
     "actions": {
@@ -183,6 +185,31 @@
       "keep": "השאר",
       "failed": "השינוי לא נשמר. נסה שוב.",
       "removeFailed": "ההסרה לא נשמרה. נסה שוב."
+    },
+    "context": {
+      "shabbat": "לשבת"
+    },
+    "formality": {
+      "casual": "יומיומי",
+      "mid": "ביניים",
+      "formal": "רשמי"
+    },
+    "search": {
+      "open": "חיפוש בארון",
+      "placeholder": "חיפוש לפי שם או מותג",
+      "close": "סגור חיפוש",
+      "clear": "נקה חיפוש",
+      "results_one": "פריט אחד",
+      "results_two": "{{count}} פריטים",
+      "results_other": "{{count}} פריטים",
+      "noMatch": "אין תוצאות ל\"{{query}}\"",
+      "noMatchBody": "שום שם או מותג בארון לא מכיל את זה.",
+      "noMatchFiltered": "שום שם או מותג לא מכיל את זה בסינון הנוכחי."
+    },
+    "removed": {
+      "message": "הוסר מהארון",
+      "undo": "ביטול",
+      "undoFailed": "השחזור לא נשמר. הפריט עדיין בארכיון."
     }
   },
   "common": {
@@ -204,7 +231,20 @@
     "title": "פרופיל",
     "location": "מיקום",
     "language": "שפה",
-    "languageValue": "עברית"
+    "languageValue": "עברית",
+    "languageHe": "עברית",
+    "languageEn": "English",
+    "languageRestart": "כיוון הפריסה יתחלף אחרי הפעלה מחדש של האפליקציה.",
+    "archive": "ארכיון",
+    "signOut": {
+      "button": "התנתקות",
+      "title": "התנתקות",
+      "body": "להתנתק מ-Fit Check במכשיר הזה?",
+      "bodyPreview": "התצוגה המקדימה תיסגר ותחזור למסך הכניסה.",
+      "confirm": "התנתק",
+      "cancel": "ביטול",
+      "failed": "ההתנתקות נכשלה. נסה שוב."
+    }
   },
   "insights": {
     "title": "תובנות",
@@ -212,6 +252,56 @@
       "title": "עוד אין תובנות",
       "body": "כאן תופיע היסטוריית הלבישה וההוצאות על הארון.",
       "action": "לארון"
+    },
+    "wears": {
+      "title": "לבישות, 30 הימים האחרונים",
+      "daysWorn": "ימים עם אאוטפיט",
+      "distinctItems": "פריטים שונים",
+      "mostWorn": "הנלבש ביותר",
+      "mostWornCount_one": "הנלבש ביותר · פעם אחת",
+      "mostWornCount_two": "הנלבש ביותר · פעמיים",
+      "mostWornCount_many": "הנלבש ביותר · {{count}} פעמים",
+      "mostWornCount_other": "הנלבש ביותר · {{count}} פעמים",
+      "mostWornNone": "עוד אין",
+      "stripSummary": "נלבש אאוטפיט ב-{{n}} מתוך {{total}} הימים האחרונים",
+      "dayWorn": "{{date}}: נלבש",
+      "dayNotWorn": "{{date}}: לא נלבש",
+      "stripToday": "היום",
+      "recent": "אאוטפיטים אחרונים",
+      "outfitLabel": "{{date}}: {{pieces}}",
+      "rowHint": "פותח את חלקי האאוטפיט",
+      "showMore": "הצג עוד",
+      "empty": {
+        "title": "עוד לא נרשמו לבישות",
+        "body": "כשתסמן \"לובש\" במסך היום, הלבישות יופיעו כאן.",
+        "action": "להיום"
+      },
+      "failed": "לא הצלחנו לטעון את הלבישות.",
+      "wardrobeFailed": "לא הצלחנו לטעון את הארון."
+    },
+    "spend": {
+      "title": "עלות AI החודש",
+      "totalLabel": "סך הכול החודש",
+      "googleLabel": "הוצאה על Google מול התקרה החודשית",
+      "ofCap": "{{spent}} מתוך {{cap}}",
+      "barLabel": "הוצאה על Google: {{spent}} מתוך {{cap}}",
+      "near": "קרוב לתקרה: נשארו {{left}} החודש.",
+      "over": "התקרה נוצלה: ציור מחדש מושבת עד החודש הבא.",
+      "colTask": "משימה",
+      "colCalls": "קריאות",
+      "colCost": "עלות",
+      "partial": "הסכום חלקי: יש יותר קריאות ממה שנטען.",
+      "none": "החודש עוד לא היו קריאות AI.",
+      "preview": "עלות ה-AI לא זמינה בתצוגה המקדימה.",
+      "failed": "לא הצלחנו לטעון את עלות ה-AI.",
+      "task": {
+        "separate": "זיהוי בגדים",
+        "cutout": "הסרת רקע",
+        "embed": "הטמעה",
+        "tag": "תיוג",
+        "style": "סטייליסט",
+        "receipt": "קבלות"
+      }
     }
   },
   "item": {
@@ -331,7 +421,35 @@
       "removeConfirm": "הסר",
       "keep": "השאר"
     },
-    "editInline": "{{value}}, {{field}}, עריכה"
+    "editInline": "{{value}}, {{field}}, עריכה",
+    "notes": {
+      "title": "הערות",
+      "add": "הוסף הערה",
+      "counter": "{{n}} מתוך {{max}} תווים"
+    },
+    "wears": {
+      "title": "לבישות",
+      "summary_one": "נלבש פעם אחת · לאחרונה ב-{{date}}",
+      "summary_two": "נלבש פעמיים · לאחרונה ב-{{date}}",
+      "summary_many": "נלבש {{n}} פעמים · לאחרונה ב-{{date}}",
+      "summary_other": "נלבש {{n}} פעמים · לאחרונה ב-{{date}}",
+      "never": "עוד לא נלבש",
+      "showAll": "הצג הכול",
+      "showLess": "הצג פחות",
+      "failed": "הלבישות לא נטענו.",
+      "retry": "נסה שוב",
+      "capped": "מוצגות {{n}} הלבישות האחרונות"
+    },
+    "recut": {
+      "row": "חיתוך רקע מחדש",
+      "busy": "מסיר את הרקע מחדש",
+      "notConfigured": "הסרת הרקע לא זמינה כרגע. התמונה נשארה כמו שהיא.",
+      "retry": "נסה שוב",
+      "confirmTitle": "לחתוך מחדש מהצילום המקורי?",
+      "confirmBody": "התמונה המשופרת תוחלף בחיתוך מהצילום המקורי.",
+      "confirm": "חתוך מחדש",
+      "cancel": "ביטול"
+    }
   },
   "auth": {
     "prompt": "התחבר כדי לראות את הארון שלך",
@@ -452,6 +570,21 @@
       "wholePhoto": "לא זוהה בגד בנפרד, נשמרת התמונה המלאה",
       "spec": "התמונה נשמרה, אבל פרטי השיפור לא נשמרו",
       "correction": "הבגד נשמר, אבל התיקונים שלך לא נשמרו"
+    },
+    "queue": {
+      "title": "ממתינות ל-Claude",
+      "count_one": "תמונה אחת",
+      "count_two": "{{count}} תמונות",
+      "count_other": "{{count}} תמונות",
+      "hint": "Claude יתייג אותן מהצ'אט.",
+      "photo": "תמונה ממתינה, הועלתה {{when}}",
+      "photoUndated": "תמונה ממתינה",
+      "failed": "רשימת התמונות הממתינות לא נטענה.",
+      "ago": {
+        "minuteOne": "לפני דקה",
+        "hourOne": "לפני שעה",
+        "hourTwo": "לפני שעתיים"
+      }
     }
   },
   "oauth": {
@@ -482,6 +615,7 @@
     "sleeve": "שרוול {{value}}",
     "wordHint": "פותח את האפשרויות של המילה",
     "longPressHint": "לחיצה ארוכה: עריכה כטקסט חופשי",
+    "longPressDescription": "לחיצה ארוכה פותחת את הפרט כטקסט חופשי לעריכה. הכפתור ״+ אחר…״ עושה את אותו הדבר.",
     "noteDetail": "פרט משלך",
     "noteFix": "תיקון משלך",
     "notePlaceholder": "למשל: תפרים בצבע מנוגד",
@@ -588,7 +722,16 @@
       "masonry": "הארון כ-masonry",
       "intake": "הוספה",
       "flatLay": "Flat-lay",
-      "stepper": "מונה צעדים"
+      "stepper": "מונה צעדים",
+      "item": "מסך פריט: לבישות",
+      "insights": "תובנות"
+    },
+    "item": {
+      "wears": "עם לבישות (7 מתוך 12)",
+      "once": "לבישה אחת",
+      "never": "עוד לא נלבש",
+      "loading": "טעינה",
+      "failed": "כישלון"
     },
     "state": {
       "default": "רגיל",
@@ -710,7 +853,12 @@
       "duplicate": "כרטיס כפילות",
       "duplicateAsk": "שאלת כפילות",
       "duplicateFailed": "החלפה נכשלה",
-      "replaced": "אישור החלפה"
+      "replaced": "אישור החלפה",
+      "queue": "תור ממתינות ל-Claude",
+      "queueLoading": "טוען",
+      "queueOne": "תמונה אחת",
+      "queueSeven": "שבע תמונות, החדשה ראשונה",
+      "queueFailed": "הרשימה לא נטענה (נסה שוב)"
     },
     "masonry": {
       "all": "הכל",
@@ -737,6 +885,21 @@
       "label": "טמפרטורה",
       "less": "יותר קר",
       "more": "יותר חם"
+    },
+    "insights": {
+      "populated": "החודש, עם נתונים",
+      "empty": "בלי קריאות",
+      "near": "מעל 80% מהתקרה",
+      "preview": "תצוגה מקדימה"
     }
+  },
+  "archive": {
+    "title": "ארכיון",
+    "hint": "פריטים שהוסרו מהארון. הם לא מוצעים, ואפשר להחזיר כל אחד.",
+    "restore": "שחזר לארון",
+    "restoreHint": "הפריט יחזור לארון ולהצעות של היום.",
+    "restoreFailed": "השחזור לא נשמר. הפריט עדיין בארכיון.",
+    "emptyTitle": "הארכיון ריק",
+    "empty": "פריט שמוסר מהארון מגיע לכאן, ואפשר להחזיר אותו בכל זמן."
   }
 }

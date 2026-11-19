@@ -62,3 +62,14 @@ export async function restoreItem(itemId: string): Promise<void> {
   const { error } = await supabase.from("items").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", itemId);
   if (error) throw error;
 }
+
+/**
+ * The item's free-text notes (DESIGN.md "שלב 2"); null clears them. A write of its own so `updateItemDetails` stays
+ * as it is: the item route sends a payload's identity, its notes, or both, after one optimistic change. Throws on a
+ * failed write so the screen can roll back and say so.
+ */
+export async function updateItemNotes(itemId: string, notes: string | null): Promise<void> {
+  if (isPreview()) throw new PreviewReadOnlyError("updateItemNotes");
+  const { error } = await supabase.from("items").update({ notes, updated_at: new Date().toISOString() }).eq("id", itemId);
+  if (error) throw error;
+}

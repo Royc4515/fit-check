@@ -75,7 +75,11 @@ export function getSnapshot(): Promise<DesignPreviewSnapshot> {
   return snapshot;
 }
 
-function forgetCode() {
+/**
+ * Drops the stored preview code, so the next page load is the normal app (sign-in). Also used by Profile's sign-out
+ * in preview; this page keeps showing the preview until it reloads, because isPreview() is read once per load.
+ */
+export function forgetCode() {
   try {
     window.sessionStorage.removeItem(STORAGE_KEY);
   } catch {

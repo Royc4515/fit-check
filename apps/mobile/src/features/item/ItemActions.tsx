@@ -1,20 +1,23 @@
 import type { IntakeQuoteResult, Item, ItemTags, RedrawSpec } from "@fit-check/schema";
 import * as ImagePicker from "expo-image-picker";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { Button, ListRow, Sheet, StatusLine } from "../../components/ui";
-import { enhanceCutout, preparePhoto, removeBackground, sourceCropPath, wholePhotoGarment } from "../../data/intake";
+import { enhanceCutout, preparePhoto, reasonOf, removeBackground, sourceCropPath, wholePhotoGarment } from "../../data/intake";
 import { quoteRedraw, saveRedrawSpec } from "../../data/redraw";
+import { failureMessage, isRetryable } from "../intake/failure";
 import { normalizeTags } from "../intake/tagRules";
 import { RedrawComposer } from "../redraw/RedrawComposer";
-import { colorHexFor, editPayload, type ItemEdits } from "./edit";
+import { colorHexFor, type ItemEdits } from "./edit";
+import { recutReplacesImproved } from "./recut";
 
 /** What the picture is doing, for the status line under the hero. */
 export type ImageStatus =
   | { kind: "replacing" }
+  | { kind: "recutting" }
   | { kind: "kept-uncut" }
-  | { kind: "failed"; message: string };
+  | { kind: "failed"; message: string; retry?: () => void };
 
 type Props = {
   item: Item;
@@ -45,18 +48,23 @@ class ReasonError extends Error {
   }
 }
 
+/** What the sheet shows: the rows, or the confirm step of removing the item or of a re-cut that replaces an improved picture. */
+type Step = "rows" | "remove" | "recut";
+
 /** Display price of one redraw, as the composer shows it. */
 const priceOf = (q: IntakeQuoteResult | null) => (q?.ok ? `$${q.price_usd.toFixed(3)}` : null);
 
 /**
- * The item's `more_horiz` sheet (DESIGN.md section 3 "פריט" item 6): replace the photo, improve with AI (only when the
- * picture has a source crop to redraw from; the price is on the row), and remove from the wardrobe behind a confirm
+ * The item's `more_horiz` sheet (DESIGN.md section 3 "פריט" item 6 and "שלב 2"): replace the photo, improve with AI
+ * (only when the picture has a source crop to redraw from; the price is on the row), remove the background again
+ * from that same crop (free; behind a confirm step when the current picture is an AI redraw or a hand-cleaned one,
+ * which the cutout of the raw photo would replace), and remove from the wardrobe behind a confirm
  * step inside the sheet. No accent anywhere: removal is ink text and an ink confirm button, not a red one.
  * The AI composer opens in its own sheet; its submit button carries the price, and that is the only confirmation.
  */
 export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStatus }: Props) {
   const { t } = useTranslation();
-  const [confirming, setConfirming] = useState(false);
+  const [step, setStep] = useState<Step>("rows");
   const [removing, setRemoving] = useState(false);
   const [removeFailed, setRemoveFailed] = useState(false);
   const [quote, setQuote] = useState<IntakeQuoteResult | null>(null);
@@ -69,6 +77,9 @@ export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStat
   const [drawing, setDrawing] = useState(false);
   const [drawError, setDrawError] = useState<string | null>(null);
   const canRedraw = sourceCropPath(item.cutout_path) !== null;
+  const [recutting, setRecutting] = useState(false);
+  // A ref, not the state: the retry on the failure line is a closure from an earlier render.
+  const recutBusy = useRef(false);
 
   // The price is free to ask for; it is on the row before anything is spent. Asked once, on the first opening.
   const wantsQuote = open && canRedraw;
@@ -82,7 +93,7 @@ export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStat
   }, [wantsQuote, quote]);
 
   const close = () => {
-    setConfirming(false);
+    setStep("rows");
     setRemoveFailed(false);
     onClose();
   };
@@ -105,6 +116,34 @@ export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStat
     } catch (error) {
       console.error("Item replacing failed", error);
       onImageStatus({ kind: "failed", message: t("item.edit.failed.replacing") });
+    }
+  };
+
+  /**
+   * Removes the background again from the item's own source crop, through the same worker call "replace photo" uses
+   * (intake-cutout, free). Success points the item at the new cutout, so the hero shows it. A failure says why under
+   * the hero, with a retry when trying again can help (never for the design preview, which blocks the call).
+   */
+  const recut = async () => {
+    close();
+    const source = sourceCropPath(item.cutout_path);
+    if (!source || recutBusy.current) return;
+    recutBusy.current = true;
+    setRecutting(true);
+    onImageStatus({ kind: "recutting" });
+    try {
+      const cut = await removeBackground(source);
+      if (!cut.ok) throw new ReasonError(cut.reason);
+      await edits.setImage(item.id, cut.path, cut.thumb_path);
+      onImageStatus(null);
+    } catch (error) {
+      console.error("Item re-cut failed", error);
+      const reason = error instanceof ReasonError ? error.reason : reasonOf(error);
+      const message = reason === "not_configured" ? t("item.recut.notConfigured") : failureMessage(t, reason);
+      onImageStatus({ kind: "failed", message, retry: isRetryable(reason) ? () => void recut() : undefined });
+    } finally {
+      recutBusy.current = false;
+      setRecutting(false);
     }
   };
 
@@ -131,8 +170,7 @@ export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStat
       if (!source) throw new ReasonError("not_found");
       const drawn = await enhanceCutout(source, spec);
       if (!drawn.ok) throw new ReasonError(drawn.reason);
-      const payload = editPayload(item, { tags: draftTags });
-      if (payload) await edits.save(item.id, payload);
+      await edits.save(item.id, { tags: draftTags });
       // The server usually clears the white itself; the worker is only asked when that check declined.
       if (drawn.transparent) await edits.setImage(item.id, drawn.path, null);
       else {
@@ -153,7 +191,7 @@ export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStat
 
   /** Not removing after all: the confirm step and its failure line go together (an error belongs to its action). */
   const keep = () => {
-    setConfirming(false);
+    setStep("rows");
     setRemoveFailed(false);
   };
 
@@ -177,7 +215,18 @@ export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStat
   return (
     <>
       <Sheet open={open} onClose={close} title={item.name}>
-        {confirming ? (
+        {step === "recut" ? (
+          // An improved picture (AI redraw, hand-cleaned) would be replaced by a cutout of the raw photo: say so and
+          // send nothing before the confirmation (verification D1: a silent re-cut replaced 82 of 82 such pictures).
+          <View style={{ gap: 16 }}>
+            <Text className="font-body text-body text-ink">{t("item.recut.confirmTitle")}</Text>
+            <Text className="font-body text-body-sm text-ink-soft">{t("item.recut.confirmBody")}</Text>
+            <View className="flex-row flex-wrap items-center" style={{ columnGap: 12, rowGap: 8 }}>
+              <Button variant="ink" label={t("item.recut.confirm")} onPress={() => void recut()} />
+              <Button variant="outline" label={t("item.recut.cancel")} onPress={() => setStep("rows")} />
+            </View>
+          </View>
+        ) : step === "remove" ? (
           <View style={{ gap: 16 }}>
             <Text className="font-body text-body text-ink">{t("item.actions.removeTitle")}</Text>
             <Text className="font-body text-body-sm text-ink-soft">{t("item.actions.removeBody")}</Text>
@@ -191,7 +240,15 @@ export function ItemActions({ item, edits, open, onClose, onRemoved, onImageStat
           <View className="border-t border-hairline">
             <ListRow label={t("item.edit.replacePhoto")} onPress={() => void replacePhoto()} />
             {canRedraw ? <ListRow label={t("intake.enhance")} value={price ?? undefined} onPress={openComposer} /> : null}
-            <ListRow label={t("item.edit.remove")} onPress={() => setConfirming(true)} />
+            {/* Free, so no price on the row; only when there is a source crop to cut from. */}
+            {canRedraw ? (
+              <ListRow
+                label={t("item.recut.row")}
+                onPress={() => (recutReplacesImproved(item.cutout_path) ? setStep("recut") : void recut())}
+                disabled={recutting}
+              />
+            ) : null}
+            <ListRow label={t("item.edit.remove")} onPress={() => setStep("remove")} />
           </View>
         )}
       </Sheet>

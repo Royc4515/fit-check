@@ -4,6 +4,7 @@ import "../../global.css";
 import { isRtl } from "../i18n";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect, useSyncExternalStore } from "react";
+import { useTranslation } from "react-i18next";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -16,8 +17,9 @@ import { takePendingConsent } from "../features/auth/oauthPending";
 import { SessionProvider, sessionUserId, useSession } from "../features/auth/SessionProvider";
 
 // ViewProps has no `dir` in RN's types, but react-native-web reads it. Spreading a typed object keeps this
-// free of casts; the excess-property check does not apply to JSX spreads.
-const directionProps = { dir: isRtl() ? "rtl" : "ltr" };
+// free of casts; the excess-property check does not apply to JSX spreads. Computed per render (not once at load) so
+// Profile's language switch flips the whole web layout at once, without a reload.
+const directionProps = (rtl: boolean) => ({ dir: rtl ? "rtl" : "ltr" });
 
 /** Nothing changes the mounted flag after hydration, so there is nothing to subscribe to. */
 const subscribeNever = () => () => {};
@@ -61,6 +63,7 @@ function Routes() {
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="location" />
+        <Stack.Screen name="archive" />
         {/* Internal component gallery; not linked from any screen. */}
         <Stack.Screen name="design-system" />
         {/* don't touch / transparent + no native animation: the item screen runs its own shared-element
@@ -104,6 +107,9 @@ export default function RootLayout() {
   // only the screens outside them need it. Moving it in and out of this flow would resize the stack mid item flight.
   const first = useSegments()[0];
   const tabsOwnBanner = first === "(tabs)" || first === "item";
+  // Re-renders this layout on a language change, so `dir` below follows it.
+  const { i18n } = useTranslation();
+  const rtl = isRtl(i18n.language === "en" ? "en" : "he");
   // Quiet empty state while fonts load: no spinner, no skeleton (DESIGN.md section 1).
   if (!fontsLoaded || !mounted) return quiet;
 
@@ -112,7 +118,7 @@ export default function RootLayout() {
       {/* don't touch / `dir` is what makes react-native-web resolve start/end/marginStart for RTL. Setting
           document.dir alone (see i18n/index.ts) flips the flex rows but leaves logical props on the LTR side,
           which shifted the outfit composition 8px out of its gutter in Hebrew. Harmless on native. */}
-      <View {...directionProps} style={{ flex: 1 }}>
+      <View {...directionProps(rtl)} style={{ flex: 1 }}>
         <StatusBar style="dark" />
         <View style={{ flex: 1 }}>
           <SessionProvider>

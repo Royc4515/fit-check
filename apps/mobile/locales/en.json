@@ -169,7 +169,9 @@
       "facet": {
         "type": "Type",
         "season": "Season",
-        "availability": "Availability"
+        "availability": "Availability",
+        "context": "Occasion",
+        "formality": "Formality"
       }
     },
     "actions": {
@@ -181,6 +183,30 @@
       "keep": "Keep",
       "failed": "That didn't save. Try again.",
       "removeFailed": "The removal didn't save. Try again."
+    },
+    "context": {
+      "shabbat": "For Shabbat"
+    },
+    "formality": {
+      "casual": "Casual",
+      "mid": "In between",
+      "formal": "Formal"
+    },
+    "search": {
+      "open": "Search the wardrobe",
+      "placeholder": "Search by name or brand",
+      "close": "Close search",
+      "clear": "Clear search",
+      "results_one": "1 item",
+      "results_other": "{{count}} items",
+      "noMatch": "Nothing matches “{{query}}”",
+      "noMatchBody": "No name or brand in the wardrobe contains it.",
+      "noMatchFiltered": "No name or brand contains it with the current filters."
+    },
+    "removed": {
+      "message": "Removed from the wardrobe",
+      "undo": "Undo",
+      "undoFailed": "The restore did not save. The item is still in the archive."
     }
   },
   "common": {
@@ -202,7 +228,20 @@
     "title": "Profile",
     "location": "Location",
     "language": "Language",
-    "languageValue": "English"
+    "languageValue": "English",
+    "languageHe": "עברית",
+    "languageEn": "English",
+    "languageRestart": "The layout direction changes after you restart the app.",
+    "archive": "Archive",
+    "signOut": {
+      "button": "Sign out",
+      "title": "Sign out",
+      "body": "Sign out of Fit Check on this device?",
+      "bodyPreview": "The preview closes and you return to the sign-in screen.",
+      "confirm": "Sign out",
+      "cancel": "Cancel",
+      "failed": "Sign-out failed. Try again."
+    }
   },
   "insights": {
     "title": "Insights",
@@ -210,6 +249,54 @@
       "title": "No insights yet",
       "body": "Outfit history and spending on your wardrobe will appear here.",
       "action": "Go to wardrobe"
+    },
+    "wears": {
+      "title": "Wears, last 30 days",
+      "daysWorn": "Days with an outfit",
+      "distinctItems": "Different items",
+      "mostWorn": "Most worn",
+      "mostWornCount_one": "Most worn · {{count}} time",
+      "mostWornCount_other": "Most worn · {{count}} times",
+      "mostWornNone": "None yet",
+      "stripSummary": "Outfit worn on {{n}} of the last {{total}} days",
+      "dayWorn": "{{date}}: worn",
+      "dayNotWorn": "{{date}}: not worn",
+      "stripToday": "Today",
+      "recent": "Recent outfits",
+      "outfitLabel": "{{date}}: {{pieces}}",
+      "rowHint": "Opens the outfit's garments",
+      "showMore": "Show more",
+      "empty": {
+        "title": "No wears logged yet",
+        "body": "When you tap \"Wearing it\" on Today, your wears show up here.",
+        "action": "Go to Today"
+      },
+      "failed": "Could not load your wears.",
+      "wardrobeFailed": "Could not load your wardrobe."
+    },
+    "spend": {
+      "title": "AI cost this month",
+      "totalLabel": "Total this month",
+      "googleLabel": "Google against the monthly cap",
+      "ofCap": "{{spent}} of {{cap}}",
+      "barLabel": "Google spend: {{spent}} of {{cap}}",
+      "near": "Close to the cap: {{left}} left this month.",
+      "over": "Cap reached: redraws are off until next month.",
+      "colTask": "Task",
+      "colCalls": "Calls",
+      "colCost": "Cost",
+      "partial": "The total is partial: there are more calls than were loaded.",
+      "none": "No AI calls this month yet.",
+      "preview": "AI cost is not available in the preview.",
+      "failed": "Could not load the AI cost.",
+      "task": {
+        "separate": "Garment detection",
+        "cutout": "Background removal",
+        "embed": "Embedding",
+        "tag": "Tagging",
+        "style": "Stylist",
+        "receipt": "Receipts"
+      }
     }
   },
   "item": {
@@ -329,7 +416,33 @@
       "removeConfirm": "Remove",
       "keep": "Keep it"
     },
-    "editInline": "{{value}}, {{field}}, edit"
+    "editInline": "{{value}}, {{field}}, edit",
+    "notes": {
+      "title": "Notes",
+      "add": "Add a note",
+      "counter": "{{n}} of {{max}} characters"
+    },
+    "wears": {
+      "title": "Wears",
+      "summary_one": "Worn once · last on {{date}}",
+      "summary_other": "Worn {{n}} times · last on {{date}}",
+      "never": "Not worn yet",
+      "showAll": "Show all",
+      "showLess": "Show less",
+      "failed": "The wears did not load.",
+      "retry": "Try again",
+      "capped": "Showing the last {{n}} wears"
+    },
+    "recut": {
+      "row": "Remove the background again",
+      "busy": "Removing the background again",
+      "notConfigured": "Background removal is not available right now. The picture stays as it is.",
+      "retry": "Try again",
+      "confirmTitle": "Cut out again from the original photo?",
+      "confirmBody": "The improved picture will be replaced by a cutout of the original photo.",
+      "confirm": "Cut out again",
+      "cancel": "Cancel"
+    }
   },
   "auth": {
     "prompt": "Sign in to see your wardrobe",
@@ -449,6 +562,20 @@
       "wholePhoto": "No separate garment was found, the full photo is kept",
       "spec": "The photo was saved, but the improvement details were not saved",
       "correction": "The garment was saved, but your corrections were not recorded"
+    },
+    "queue": {
+      "title": "Waiting for Claude",
+      "count_one": "{{count}} photo",
+      "count_other": "{{count}} photos",
+      "hint": "Claude will tag them from the chat.",
+      "photo": "Waiting photo, uploaded {{when}}",
+      "photoUndated": "Waiting photo",
+      "failed": "The waiting photos did not load.",
+      "ago": {
+        "minuteOne": "1 minute ago",
+        "hourOne": "1 hour ago",
+        "hourTwo": "2 hours ago"
+      }
     }
   },
   "oauth": {
@@ -479,6 +606,7 @@
     "sleeve": "{{value}} sleeves",
     "wordHint": "Opens this word's options",
     "longPressHint": "Long press: edit as free text",
+    "longPressDescription": "A long press opens this detail as free text to edit. The “+ Other…” button does the same.",
     "noteDetail": "Your own detail",
     "noteFix": "Your own fix",
     "notePlaceholder": "e.g. contrast stitching",
@@ -585,7 +713,16 @@
       "masonry": "The wardrobe as masonry",
       "intake": "Add",
       "flatLay": "Flat-lay",
-      "stepper": "Stepper"
+      "stepper": "Stepper",
+      "item": "Item screen: wears",
+      "insights": "Insights"
+    },
+    "item": {
+      "wears": "With wears (7 of 12)",
+      "once": "One wear",
+      "never": "Not worn yet",
+      "loading": "Loading",
+      "failed": "Failed"
     },
     "state": {
       "default": "Default",
@@ -706,7 +843,12 @@
       "duplicate": "Duplicate card",
       "duplicateAsk": "The duplicate question",
       "duplicateFailed": "Replacing failed",
-      "replaced": "Replaced confirmation"
+      "replaced": "Replaced confirmation",
+      "queue": "Waiting for Claude queue",
+      "queueLoading": "Loading",
+      "queueOne": "One photo",
+      "queueSeven": "Seven photos, newest first",
+      "queueFailed": "List failed (retry)"
     },
     "masonry": {
       "all": "All",
@@ -733,6 +875,21 @@
       "label": "Temperature",
       "less": "Cooler",
       "more": "Warmer"
+    },
+    "insights": {
+      "populated": "This month, with data",
+      "empty": "No calls",
+      "near": "Over 80% of the cap",
+      "preview": "Preview"
     }
+  },
+  "archive": {
+    "title": "Archive",
+    "hint": "Items removed from the wardrobe. They are never suggested, and each one can come back.",
+    "restore": "Restore to wardrobe",
+    "restoreHint": "It goes back to the wardrobe and to Today's suggestions.",
+    "restoreFailed": "The restore did not save. The item is still in the archive.",
+    "emptyTitle": "The archive is empty",
+    "empty": "An item removed from the wardrobe comes here, and can be brought back any time."
   }
 }

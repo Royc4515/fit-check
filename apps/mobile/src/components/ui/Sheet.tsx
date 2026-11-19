@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ComponentRef, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ComponentRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { GestureDetector, GestureHandlerRootView, usePanGesture } from "react-native-gesture-handler";
@@ -33,19 +33,44 @@ const HANDLE_H = 4;
 /** Desktop dialog entrance: 8px rise with the fade (DESIGN.md section 5 generic motion). */
 const RISE = 8;
 
+/** Web markers read by `firstFocus`. Typed object spreads: RN's types have no `dataSet`, react-native-web reads it. */
+const chromeProps: object = Platform.OS === "web" ? { dataSet: { sheetChrome: "" } } : {};
+const titleProps: object = Platform.OS === "web" ? { dataSet: { sheetTitle: "" } } : {};
+
 const TABBABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Painted, connected and not under an inert or hidden ancestor: somewhere focus can really go. */
+function reachable(el: Element | null | undefined): el is HTMLElement {
+  return el instanceof HTMLElement && el.isConnected && el.getClientRects().length > 0 && el.closest("[inert], [data-scene-hidden]") === null;
+}
+
+/**
+ * Web focus bookkeeping of one open sheet. `openers` is where focus goes back on close, best first: the element that
+ * had focus when the sheet opened, then (when that element sat in another sheet, e.g. the item's "more" sheet that
+ * opened the redraw composer and closed) that sheet's own openers, since the row is gone by the time this one closes.
+ */
+type FocusRecord = { openers: HTMLElement[]; dialog: HTMLElement | null; last: HTMLElement | null };
+/** Sheets on screen now (open or closing), oldest first. A closing sheet only restores focus when no other is open. */
+const openSheets: FocusRecord[] = [];
+const unregister = (record: FocusRecord) => {
+  const i = openSheets.indexOf(record);
+  if (i !== -1) openSheets.splice(i, 1);
+};
 
 /**
  * Web only. react-native-web's Modal already renders the one `role="dialog" aria-modal` element (it takes our
  * `aria-label` / `aria-labelledby`) and traps focus with two empty `tabindex=0` sentinel divs on either side of it.
  * Those sentinels are focusable, unnamed content for a screen reader, so they are taken out of the tab order and the
  * accessibility tree, and the wrap-around they provided is done on Tab / Shift+Tab inside the dialog instead.
- * Focus then moves to the dialog element itself, which now carries the name (a second inner node would be a second
- * unnamed dialog). RNW's own focus listener still pulls back any focus that escapes by mouse or script.
+ * First focus goes to the first control of the sheet's content (not the close button, not the footer, whose first
+ * button may be a paid or destructive confirm), else to the title; never to the dialog element, whose focus ring
+ * framed the whole viewport (verification N6). RNW's own focus listener still pulls back any focus that escapes by
+ * mouse or script.
  * @param inner A node inside the Modal's dialog; anything that is not an element (native, not yet mounted) is ignored.
- * @returns a function that removes the key handler, or undefined when nothing was adopted.
+ * @param record this sheet's focus bookkeeping; gets the dialog and every later focus inside it.
+ * @returns a function that removes the listeners, or undefined when nothing was adopted.
  */
-function adoptModalDialog(inner: unknown): (() => void) | undefined {
+function adoptModalDialog(inner: unknown, record: FocusRecord): (() => void) | undefined {
   if (!(inner instanceof HTMLElement)) return undefined;
   // don't touch / matched by `aria-modal`, not `role="dialog"`: RNW only sets the role once its Modal reports itself
   // active, which is after this runs.
@@ -58,7 +83,14 @@ function adoptModalDialog(inner: unknown): (() => void) | undefined {
     s.setAttribute("aria-hidden", "true");
   });
   dialog.tabIndex = -1;
-  dialog.focus();
+  // Script or RNW's trap may still focus the host; it must not draw a ring around the viewport when it does.
+  dialog.style.outline = "none";
+  record.dialog = dialog;
+  firstFocus(dialog)?.focus();
+  const onFocusIn = (e: FocusEvent) => {
+    if (e.target instanceof HTMLElement && e.target !== dialog) record.last = e.target;
+  };
+  dialog.addEventListener("focusin", onFocusIn);
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key !== "Tab") return;
     const stops = Array.from(dialog.querySelectorAll<HTMLElement>(TABBABLE)).filter((el) => el.getClientRects().length > 0);
@@ -78,13 +110,58 @@ function adoptModalDialog(inner: unknown): (() => void) | undefined {
     }
   };
   dialog.addEventListener("keydown", onKeyDown);
-  return () => dialog.removeEventListener("keydown", onKeyDown);
+  return () => {
+    dialog.removeEventListener("keydown", onKeyDown);
+    dialog.removeEventListener("focusin", onFocusIn);
+  };
+}
+
+/** The first control of a sheet's content (header and footer excluded), else its title made focusable without a ring. */
+function firstFocus(dialog: HTMLElement): HTMLElement | null {
+  const control = Array.from(dialog.querySelectorAll<HTMLElement>(TABBABLE)).find((el) => reachable(el) && el.closest("[data-sheet-chrome]") === null);
+  if (control) return control;
+  const title = dialog.querySelector<HTMLElement>("[data-sheet-title]");
+  if (!title || !title.textContent) return null;
+  title.tabIndex = -1;
+  title.style.outline = "none";
+  return title;
+}
+
+/**
+ * The element that has focus as a sheet opens, with the openers of the sheet it sits in (if any) behind it.
+ */
+function openersFor(at: Element | null): HTMLElement[] {
+  if (!(at instanceof HTMLElement) || at === document.body) return [];
+  const host = at.closest<HTMLElement>('[aria-modal="true"]');
+  const outer = host ? openSheets.find((r) => r.dialog === host) : undefined;
+  return [at, ...(outer?.openers ?? [])];
+}
+
+/**
+ * A sheet has closed: if another sheet is still open, focus stays (or goes back) inside it, at its last focused
+ * control; otherwise it returns to the first opener still on screen. Next frame: react-native-web's Modal restores
+ * focus on unmount to whatever was focused when it mounted, which for a sheet opened from another sheet is a row that
+ * no longer exists, or a control behind the sheet that is still open (verification N4).
+ */
+function restoreFocus(record: FocusRecord): void {
+  unregister(record);
+  requestAnimationFrame(() => {
+    const top = openSheets[openSheets.length - 1];
+    if (top) {
+      const at = document.activeElement;
+      if (top.dialog && at instanceof Node && top.dialog.contains(at) && at !== top.dialog) return;
+      const target = reachable(top.last) ? top.last : top.dialog ? firstFocus(top.dialog) : null;
+      target?.focus();
+      return;
+    }
+    record.openers.find((el) => reachable(el))?.focus();
+  });
 }
 
 /**
  * Bottom sheet (DESIGN.md sections 4-5). Rendered in a transparent RN `Modal`, so it sits above the tab bar and
- * every screen on native, and on web gets react-native-web's Escape handling, focus trap and focus return to the
- * opener for free.
+ * every screen on native, and on web gets react-native-web's Escape handling and focus trap. Focus return is ours on
+ * web: to the opener, or to the opener of the sheet the opener sat in when that one closed meanwhile.
  *
  * Phone: slides up on `motion.spring` (critically damped, no overshoot); drag the handle (or the whole sheet when
  * its content fits) to dismiss: release past 30% or a fling closes, continuing at the finger's velocity. Scrim tap
@@ -104,6 +181,8 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
   const [mounted, setMounted] = useState(open);
   const [scrollable, setScrollable] = useState(false);
   const panel = useRef<ComponentRef<typeof View>>(null);
+  // Web focus bookkeeping for this sheet while it is open (see FocusRecord); null while closed.
+  const focusRecord = useRef<FocusRecord | null>(null);
   // don't touch / web: a sheet opened by a touch long press appears under the finger, and the browser's click on
   // release lands on the scrim and closed it at once. Only a press that also started on the scrim closes the sheet.
   const scrimPressed = useRef(false);
@@ -125,6 +204,35 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
   // Derived during render, not in an effect: the Modal mounts in the same commit that `open` turns true.
   if (open && !mounted) setMounted(true);
 
+  // don't touch / a layout effect: it runs before react-native-web's Modal moves focus into the new dialog (its
+  // effects are passive), so `document.activeElement` is still the control that opened this sheet.
+  // A sheet stays registered until it has left the screen: a sheet opened from it meanwhile (the item's "more" sheet
+  // opening the composer as it closes) still finds it, and with it the control that opened it.
+  useLayoutEffect(() => {
+    if (Platform.OS !== "web" || !open) return;
+    const reopened = focusRecord.current;
+    const record: FocusRecord = { openers: reopened?.openers ?? openersFor(document.activeElement), dialog: null, last: null };
+    if (reopened) unregister(reopened);
+    focusRecord.current = record;
+    openSheets.push(record);
+  }, [open]);
+
+  // Focus goes back once the sheet has left the screen (its closing animation done), or when it unmounts while open.
+  useEffect(() => {
+    if (Platform.OS !== "web" || mounted) return;
+    const record = focusRecord.current;
+    focusRecord.current = null;
+    if (record) restoreFocus(record);
+  }, [mounted]);
+  useEffect(() => {
+    const holder = focusRecord;
+    return () => {
+      const record = holder.current;
+      holder.current = null;
+      if (Platform.OS === "web" && record) restoreFocus(record);
+    };
+  }, []);
+
   useEffect(() => {
     if (!mounted) return;
     const finish = (finished?: boolean) => {
@@ -140,7 +248,8 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
       if (Platform.OS === "web") {
         let release: (() => void) | undefined;
         const frame = requestAnimationFrame(() => {
-          release = adoptModalDialog(panel.current);
+          const record = focusRecord.current;
+          if (record) release = adoptModalDialog(panel.current, record);
         });
         return () => {
           cancelAnimationFrame(frame);
@@ -201,8 +310,9 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
   const modalWebProps: { "aria-labelledby"?: string; "aria-label"?: string } =
     Platform.OS !== "web" ? {} : title ? { "aria-labelledby": titleId } : { "aria-label": name };
 
+  // Header and footer are "chrome" for first focus: it skips the close button and a footer's confirm (firstFocus).
   const header = (
-    <View>
+    <View {...chromeProps}>
       {desktop ? null : (
         <View className="items-center pt-2 pb-1">
           <View className="rounded-sm bg-ink-faint" style={{ width: HANDLE_W, height: HANDLE_H }} />
@@ -212,7 +322,7 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
         {/* don't touch / start-aligned box, not text alignment: react-native-web gives text dir="auto", so a Latin
             title ("Benetton Polo") hugged the close button's edge in an RTL sheet. */}
         <View style={{ flex: 1, alignItems: "flex-start" }}>
-          <Text nativeID={titleId} {...headingProps(2)} className="font-body-semibold text-title text-ink" numberOfLines={1} style={{ maxWidth: "100%" }}>
+          <Text nativeID={titleId} {...titleProps} {...headingProps(2)} className="font-body-semibold text-title text-ink" numberOfLines={1} style={{ maxWidth: "100%" }}>
             {title ?? ""}
           </Text>
         </View>
@@ -251,7 +361,7 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
         body
       )}
       {footer ? (
-        <View className="border-t border-hairline px-5 pt-4" style={{ paddingBottom: 16 + (desktop ? 0 : insets.bottom) }}>
+        <View {...chromeProps} className="border-t border-hairline px-5 pt-4" style={{ paddingBottom: 16 + (desktop ? 0 : insets.bottom) }}>
           {footer}
         </View>
       ) : null}

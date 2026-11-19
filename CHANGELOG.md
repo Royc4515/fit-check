@@ -486,3 +486,70 @@
 - Verified in Chromium on the web build with the read-only design preview, at 390 and 1280, Hebrew and English. Not verified: Android, real writes, the real intake pipeline, the paid redraw, real Google sign-in. `TASKS.md` lists what is open and who can close it.
 - Look at: `design/screens/before/` vs `design/screens/after/` (same names), `docs/redesign-checklist-part1.md` and `part2.md` for the regression tables and defects.
 - lint went from 20 problems to 0; typecheck and tests pass.
+
+## 2026-11-19 - Intake queue (stage 2, task 2.3)
+
+- The Add screen shows "Waiting for Claude" under the two buttons: the photos sent with "send to Claude" that Claude has not tagged yet, 3 per row on a phone and 6 from 900, each with when it was uploaded (relative for 24 hours, then a short date). Not rendered when the queue is empty. Refreshes on screen focus and after a send batch; no polling.
+- `listPendingForClaude` in `data/intake.ts` lists `cutouts/{uid}/pending` with the same folder, extension filter and page size as the MCP's `intake_pending`, newest first. It is a read, so it also runs in the design preview (the bucket is publicly readable).
+- Thumbnails are images, not buttons: the bucket has no delete policy, so dismissing stays in the chat (`intake_dismiss`).
+- Gallery: loading, one photo, seven photos, failure in the intake block of `/design-system`.
+- Look at: `design/screens/2026-11-19-intake-queue-*`; the Hebrew hint line (explicit RTL, it starts with "Claude"); a real send-then-refresh on a signed-in device (not exercised).
+
+## 2026-11-19 - Item: notes, wear history, manual re-cut (stage 2, task 2.2)
+
+- Notes: a "הערות" section after the tags, edited in place like the name (`InlineText multiline`: Enter is a new line, blur saves, Escape cancels on web), 500 characters with a mono counter from 400. Saved through the one payload builder (`editPayload` now carries `notes`; trimmed, empty is null) and the item route's optimistic save, which writes `updateItemNotes` (new, `data/items.ts`) when only the notes changed.
+- Wear history: a "לבישות" section after notes: "נלבש N פעמים · לאחרונה ב-<date>" (Hebrew one/two/other forms) or "עוד לא נלבש", five newest wears as hairline rows (numeric date in mono, the outfit's other pieces), "הצג הכול" expands in place. `fetchItemWears` (`data/feedback.ts`): worn wears whose outfit holds the item, all time, newest first, 50 rows, exact count. The design preview derives it from the snapshot, i.e. only the last 31 days. The preview has no worn outfit, so the rows are shown with a fixture in `/design-system` ("מסך פריט: לבישות").
+- Manual re-cut: "חיתוך רקע מחדש" in the item's overflow sheet when the item has a source crop; the same free intake-cutout call as "replace photo", on that crop. Busy line under the hero, the hero updates on success, a failure line with the reason (and "נסה שוב" when retrying can help).
+- Not verified: native; real notes writes, the real history query with data (only its syntax against PostgREST, as anon) and a real re-cut, all blocked in the preview.
+- Look at: `design/screens/2026-11-19-item-*.png`.
+
+## 2026-11-19 - Stage 2.1: wardrobe search, Shabbat and formality filters, archive
+
+- Wardrobe search (DESIGN.md "שלב 2"): `search` before `tune` swaps the title row for a focused `SearchField` + live count + `close`; name or brand, substring, any case, trimmed (`matchesQuery` in `features/wardrobe/filters.ts`), AND with category, colour and sheet filters. Close / Escape clears. Desktop: field always in the header, 280 wide. No-match quotes the query and offers "נקה". `SearchField` gained `autoFocus` and `onEscape`.
+- Filter sheet rows "הקשר" (one chip, "לשבת") and "רשמיות" (1-4 / 5-7 / 8-10). "לשבת" uses the new engine export `passesContextRules(item, DEFAULT_CONTEXT_RULES.shabbat)`, which `hardFilter` now calls for its context part (same behaviour, test in `context-rules.test.ts`; `engine.js` re-bundled). Outerwear and accessories have no Shabbat rules and pass.
+- Archive: `/archive` (above the tabs, back falls back to `/profile`), masonry of archived items, sheet with "שחזר לארון" (optimistic, rolls back with an error line). Data: `useArchivedItems()`, `useArchivedCount()`, `useSetItemStatus()` in `data/WardrobeProvider.tsx`; archived rows already came with `fetchWardrobe` and the preview snapshot, no new query.
+- After a removal from the long-press sheet, an undo line "הוסר מהארון · ביטול" pinned under the category row until the next action; a failed undo shows an error line with retry.
+- Look at: `design/screens/2026-11-19-wardrobe-*` and `2026-11-19-archive-*`; the Shabbat list (outerwear jackets with formality 3-4 are in it, by the rules as written).
+
+## 2026-11-19 (stage 2: insights and profile)
+
+- Insights: "Wears, last 30 days" (days with an outfit, distinct items, most-worn item with ties to the most recent; a 30-day ink/hairline strip, newest at the end side, one focusable group with a summary and a named square per day; recent outfits as small flat-lays, 10 then "show more", garments open the item with the shared-element flight) and "AI cost this month" (total, Google spend bar against the $8 cap with a warn line from 80%, cost by task). Reads in `src/data/insights.ts`; the preview has no `ai_calls`, so it says so instead of showing numbers. Gallery has an Insights block with fixture states.
+- Profile: language `Segmented` (stored on the device, wins over the device locale; web flips text, `dir` and tab order at once; native shows a restart note for direction), "Archive" row with count linking to `/archive` (route lands with the wardrobe work), "Sign out" with a confirmation sheet (preview: forgets the preview code and reloads to sign-in).
+- Outside the owned folders: root `_layout.tsx` computes `dir` per render from the active language; `useRtl` re-renders on a language change and on native reports the drawn direction; `kv.ts` gained plain settings; `preview.ts` exports `forgetCode`.
+- Look at: `design/screens/2026-11-19-insights-*` and `-profile-*`; the "fixture" insights shots use real items with synthetic worn wears injected in the test browser only (the real snapshot has no worn wear).
+
+## 2026-11-19 (stage 2 fix round: insights, intake, profile)
+
+- Insights "today" is the saved location's date (`wearsToday` in `data/insights.ts`, via `dayContext.localDate` and `resolveLocation`), the same as Today and as the date wears are written with; the window and strip end on it. An outfit row is now one button (name = date + garments, min height 44) that opens a sheet of the garments (`type · name`, chevron, each to `/item/<id>`); the small flat-lay is only a picture. Most worn: ties resolve by count, then latest wear date, then name; the label pluralises (`count`, he one/two/many/other) and stays on one line, the item name takes two lines at most.
+- AI spend is read by paging `.range()` in 1,000-row pages (cap 20 pages; if hit, a `Meta` line says the total is partial). Strip: app focus ring, empty squares outlined in `ink-faint` (4.8:1). New type token `num-lg` (28/34 Plex Mono, DESIGN.md section 2); widths on the 4-scale (`w-24`, `w-16`).
+- Hebrew relative times in the intake queue: "לפני דקה", "לפני שעה", "לפני שעתיים" are i18n strings (Intl added a stray numeral); other counts and English stay on Intl. Profile's archive count comes from `useArchivedCount()` (its own query is gone).
+- Look at: `design/screens/2026-11-19-insights-fixture-*`, `-insights-row-sheet-*`, `-intake-queue-seven-*`.
+
+## 2026-11-19 - Fix round: keyboard patterns, Shabbat filter for coats and accessories, Today focus and hero cap, search polish
+
+- `Segmented` is a WAI-ARIA radiogroup on web (one tab stop on the checked radio; arrows, Home / End and Space choose and move focus; Enter already did) and `TextTabs` a tablist with automatic activation (the grid re-filters cheaply, so focus follows selection). Horizontal arrows follow reading order, so in Hebrew ArrowLeft is "next". Shared in the new `components/ui/roving.ts`; native unchanged.
+- `SearchField` is 44 high at every width: the 1px underline took a pixel from the input (43); it is now its own layer and the input carries `layout.hit`.
+- Wardrobe "לשבת": an item with no slot (outerwear, accessory) passes only when it passes the engine's layer gate (`passesContextRules` on a layer stand-in, so the bound and slack come from the rule data and `FORMALITY_SLACK`: formality 6+ today). On the real wardrobe 32 items passed before, 27 now: the puffer, zip jacket, softshell and both caps leave, the wool coat stays. Engine untouched.
+- Search folds the ASCII apostrophe / quotes with Hebrew geresh / gershayim, strips Latin diacritics and niqqud (`normalizeSearch`). The title row replaced by the search field on a phone keeps a visually hidden level-1 heading. The two "נקה" buttons are now "נקה חיפוש" (no-match state) and "נקה סינון" (chip row).
+- Today: on mobile layout at 600+ the flat-lay is a centred 4:5 card with radius 6, capped so it ends 8px above the action bar at scroll top (below 600 unchanged). The failure line is cleared when another action starts (adjust or piece sheet; wear / skip already did). After wear, skip and undo focus moves to the new status line's undo (or the line itself when it has no action), and back to "wearing it" after an undo. A failed pair-weights write after a stored wear is logged and no longer shows "didn't save".
+- Look at: `design/screens/2026-11-19-wardrobe-shabbat-*` and `-nomatch-*`. Not verified: native; real writes (the preview rejects them, the success paths were driven in a throwaway build with local fake writes).
+
+## 2026-11-19 (item fix round: flight, focus, optimistic edits, re-cut, undo)
+
+- The screen under the item modal stays painted: `SceneGate` hides a tab scene only while another tab is selected (tab navigator state), and the tabs layout makes everything under a modal route `inert` + `aria-hidden` instead (native: hide-descendants flags). Flights from the wardrobe, Today and "goes with", both directions, he/en, 390/1280: 0 frames with no garment, 0 with two (rAF probe).
+- Focus: item tab order is Back, More, details; keyboard Back returns to the opening tile (or its re-rendered twin, else the screen's first control); Enter/Escape in an inline field return to its edit button; sheets focus their first content control (never the dialog host), remember their opener across a sheet that opened them, and return focus there; the composer keeps focus on "+ Other…" after a note.
+- Optimistic item edits go through one serialised per-item queue (`features/item/editQueue.ts`, driver `editRunner.ts`): edits carry only their fields, writes go one at a time over the confirmed state, a failure rolls back only its own fields, and a write that settles after the screen closed still settles the wardrobe store. Tests: `apps/mobile` now runs vitest for its pure modules (`pnpm test`).
+- "Remove the background again" on an AI-redrawn or hand-cleaned picture asks first (`features/item/recut.ts`); undo line after removal from the item screen (last removed item moved into `WardrobeProvider`); composer word buttons are 44 boxes; long-press chips carry an `aria-description`; logical text alignment; capped wear list says so.
+- Look at: `design/screens/2026-11-18-item-flight-*` (replaced, plus en/1280 strips), `2026-11-19-item-recut-confirm-*`, `2026-11-19-item-composer-390-he.png`.
+
+## 2026-11-19 (ListRow Latin truncation, wardrobe tabs under a filter)
+
+- `ListRow` sets an explicit `writingDirection` on label, meta and value from the dominant script of the string (`components/ui/textDirection.ts`, first strong character on a tie, digits only = LTR), inside a start-aligned box. A long Latin name in a Hebrew row ("חולצה · Carhartt WIP Detroit Jack…") now loses its end, not its start; Hebrew-only rows are unchanged. Side effect: a mixed row that fits ("מגפיים · Salomon Hiking Boots") is now drawn left-to-right inside the row, so the Hebrew word sits left of the name.
+- Wardrobe: with a sheet filter, colour, search or reserve-mode narrowing active, the category tabs show only categories with a match (counted with the grid's own `applyFilters` and `matchesQuery`), plus "הכל" and the selected category even when empty. With nothing active the row is as before.
+- Look at: Insights outfit sheet with a long item name (he/en, 390), the wardrobe under "לשבת" (no accessories tab). Not verified: native (no emulator).
+
+## 2026-11-19 (redesign stage 2 closed)
+
+- Stage 2 of `docs/REDESIGN_PLAN.md` is complete on `claude/gifted-goldberg-9498c1` (PR #23): wardrobe search, Shabbat and formality filters, archive with restore and undo; item notes, wear history, guarded re-cut; the intake queue; Insights; Profile language switch, archive row and sign-out. No migration, no Edge Function change. `packages/engine` exports `passesContextRules` (behaviour unchanged).
+- Two independent verifications (`docs/redesign-checklist-stage2.md`, `docs/redesign-checklist-recheck.md`) found a live regression from stage 1 (the screen under the item modal disappeared during the flight), a re-cut that would have replaced AI redraws, races in optimistic edits, and keyboard and focus gaps. All fixed; `apps/mobile` now has a vitest suite (21 tests) for the pure logic.
+- Not verified: Android, real writes, the first real wear, a real `ai_calls` read. `TASKS.md` "Open after stage 2" lists them.

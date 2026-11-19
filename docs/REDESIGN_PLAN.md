@@ -32,7 +32,9 @@ is the order of work, `TASKS.md` is the live status.
 
 1.5-1.8 touch different screens and run in parallel in separate worktrees once 1.4 is approved.
 
-## Stage 2 - new features, on the system (not started; each needs its own go)
+## Stage 2 - new features, on the system
+
+Started 2026-11-19 on Roy's go ("merge and continue with your plan"), after stage 1 merged as PR #22. Specs: DESIGN.md section 3 "שלב 2". Four parallel tasks by file ownership: 2.1 wardrobe search, Shabbat and formality filters, archive screen; 2.2 item notes, wear history, manual re-cut; 2.3 intake queue; 2.4 insights content, profile language switch and sign-out. Then an independent verification pass. No migration, no Edge Function change: the intake queue has no dismiss because the storage policies have no delete rule.
 
 | Feature | Notes |
 | --- | --- |
