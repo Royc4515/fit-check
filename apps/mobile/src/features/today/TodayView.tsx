@@ -35,7 +35,7 @@ import { AdjustSheet, type Adjust } from "./AdjustSheet";
 import { explainOutfit } from "./explain";
 import type { DayInput, Swaps, TodayPlan } from "./outfit";
 import { PieceSheet } from "./PieceSheet";
-import { planDays } from "./plans";
+import { defaultAdjustment, planDays } from "./plans";
 import { outfitIndex, SLOT_ORDER } from "./pieces";
 import { useSwipeToSkip } from "./useSwipeToSkip";
 
@@ -146,7 +146,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // the list is just today and the screen is exactly what it was before the tabs.
   const days = useMemo<DayInput[]>(
     () => [
-      { date: day.date, weather: day.weather, dayType: day.dayType },
+      { date: day.date, weather: day.weather, dayType: day.dayType, festive: day.festive },
       ...day.chain.map((d) => ({ date: d.date, weather: d.weather, dayType: d.dayType })),
     ],
     [day]
@@ -177,7 +177,10 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // changes the suggestion (a nudge, a skip) clears them, or a swapped shirt would be pasted onto a different outfit.
   const [adjustments, setAdjustments] = useState<Readonly<Record<string, DayAdjustment>>>({});
   const [swapsByDay, setSwapsByDay] = useState<Readonly<Record<string, Swaps>>>({});
-  const adjustment = adjustments[selectedDate] ?? NO_ADJUSTMENT;
+  // A day's taps start from its default (one "dressier" step on a holiday with the observance switch off), so the
+  // sheet shows that step as taken and can take it back.
+  const tapsOf = (d: DayInput) => adjustments[d.date] ?? defaultAdjustment(d);
+  const adjustment = tapsOf(days[sel]!);
   // The piece sheet keeps the garment it was opened for, so its title does not change under the closing animation
   // when that garment has just been swapped out.
   const [piece, setPiece] = useState<{ slot: Slot; item: Item } | null>(null);
@@ -206,7 +209,9 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // worn outfit (see engine learnedAdjustment for why the total and not the taps).
   const learned = useMemo(() => learnedAdjustment(history.samples.map((s) => s.adjustment)), [history.samples]);
   const effectiveByDay = useMemo(
-    () => days.map((d) => combineAdjustments(learned, adjustments[d.date] ?? NO_ADJUSTMENT)),
+    () => days.map((d) => combineAdjustments(learned, tapsOf(d))),
+    // tapsOf reads only `adjustments`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [days, learned, adjustments]
   );
   const effective = effectiveByDay[sel]!;
@@ -218,7 +223,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const dayLabelOf = (k: number, lng: "he" | "en" = locale) => {
     const d = days[k]!;
     const holiday = k === 0 ? day.holiday : (day.chain[k - 1]?.holiday ?? null);
-    return holiday && d.dayType === "holiday" ? holiday[lng] : t(`today.dayType.${d.dayType}`, { lng });
+    // A festive weekday (the switch off) is still called by its holiday's name.
+    return holiday && (d.dayType === "holiday" || d.festive) ? holiday[lng] : t(`today.dayType.${d.dayType}`, { lng });
   };
   const dayLabel = dayLabelOf(sel);
 
@@ -321,7 +327,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const adjust = (a: Adjust) => {
     resetSwaps();
     setAdjustments((cur) => {
-      const now = cur[selectedDate] ?? NO_ADJUSTMENT;
+      const now = cur[selectedDate] ?? defaultAdjustment(days[sel]!);
       return {
         ...cur,
         [selectedDate]: { temp_steps: now.temp_steps + ADJUST[a].temp_steps, formality_steps: now.formality_steps + ADJUST[a].formality_steps },

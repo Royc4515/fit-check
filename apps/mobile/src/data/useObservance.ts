@@ -21,6 +21,16 @@ export async function setObservesShabbat(observes: boolean): Promise<void> {
   await settingSet(OBSERVANCE_KEY, storedObservance(observes));
 }
 
+/**
+ * The setting, read once outside React. With useObservesShabbat, the only two readers of where the setting lives: it is
+ * a device setting today and moves to the `profile` table later (owner-approved, a separate task), so only these two
+ * change then, not the screens.
+ */
+export async function getObservesShabbat(): Promise<boolean> {
+  if (current !== null) return current;
+  return parseObservance(await settingGet(OBSERVANCE_KEY));
+}
+
 /** The setting, live: the stored value (default on), then every change made while the screen is mounted. */
 export function useObservesShabbat(): boolean {
   const [observes, setObserves] = useState(initial);

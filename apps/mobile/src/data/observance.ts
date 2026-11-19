@@ -26,6 +26,14 @@ export function dayTypeFor(weekday: number, yomtov: boolean, observes: boolean):
   return yomtov ? "holiday" : weekday === 6 ? "shabbat" : "weekday";
 }
 
+/**
+ * A Yom Tov for someone who does not keep it: still an ordinary weekday for the engine, but planned a little dressier
+ * (DESIGN.md "שלב 4.1" item 10). Never true while the switch is on (then the day is a holiday proper).
+ */
+export function isFestiveWeekday(yomtov: boolean, observes: boolean): boolean {
+  return !observes && yomtov;
+}
+
 /** The calendar fields of a day: times row, holiday, Yom Tov flag and the planned days. */
 export type CalendarFields = Pick<ShabbatTimes, "candles" | "end"> & {
   holiday: { he: string; en: string } | null;

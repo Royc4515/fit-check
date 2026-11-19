@@ -55,6 +55,12 @@ export const FEEDBACK = {
 export const ADJUST_STEP = { temp_c: 3, formality: 1 } as const;
 
 /**
+ * A holiday for someone who does not keep Shabbat and holidays (the profile switch off, DESIGN.md "שלב 4.1" item 10):
+ * weekday rules, "a bit more festive". Steps of the adjust sheet's "dressier", taken by default and shown as taken.
+ */
+export const FESTIVE_FORMALITY_STEPS = 1;
+
+/**
  * Wears before a garment goes to the wash (Roy's rules, 2026-11-08). Counted since the item's last wash.
  * Button-downs get 3 because they are worn over an undershirt. Missing kinds (shoes, outerwear, belts) never go.
  */
