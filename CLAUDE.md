@@ -13,6 +13,7 @@ Personal wardrobe and styling app for Roy. Single user now, multi-user-ready sch
   - `tagItem(cutout)` → Claude Haiku, structured output, schema in `packages/schema/item-tags.ts`
   - `styleOutfit(candidates, context)` → Claude Sonnet, schema in `packages/schema/stylist.ts`
   - `extractReceipt(text)` → Claude Haiku (v2)
+  - `renderOutfit(garments, figure)` → Nano Banana 2.1 (stage 5.3; not built yet)
 - i18n: `i18next` + `react-i18next`, files in `apps/mobile/locales/{he,en}.json`. Default `he`, RTL via `I18nManager` on native and `dir` on web.
 
 ## Repo layout (monorepo, pnpm + turbo)
