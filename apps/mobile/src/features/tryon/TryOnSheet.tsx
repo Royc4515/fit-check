@@ -35,12 +35,15 @@ type Props = {
 
 /**
  * One height for everything under the picture, in every state, so the bottom-anchored sheet's top edge and the
- * picture never move between states. Measured (not guessed) as the tallest state at 360 and 390 wide, he and en:
- * see CHANGELOG 2026-11-19 "fix round".
+ * picture never move between states. Measured, not guessed: the tallest state (en, the first image with the figure's
+ * line and the lost-answer warning) is 200 high at 360 wide and 160 at 390, plus 4 of slack (CHANGELOG 2026-11-19).
  */
-const BELOW_H = 190;
-/** Handle, title row and the gap above the picture. */
-const CHROME_H = 72;
+const BELOW_H_NARROW = 204;
+const BELOW_H_WIDE = 164;
+/** Windows at least this wide (a 390 phone, the desktop dialog) wrap the lines less than a 360 phone does. */
+const WIDE_FROM = 375;
+/** Handle, title row and the scroll area's padding (measured 77) plus slack. */
+const CHROME_H = 81;
 const PICTURE_ASPECT = 1.25;
 const GAP = 12;
 
@@ -92,7 +95,8 @@ function focusView(node: Box | null): void {
  */
 export function TryOnSheet({ open, onClose, garments }: Props) {
   const { t } = useTranslation();
-  const { height } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
+  const belowH = width >= WIDE_FROM ? BELOW_H_WIDE : BELOW_H_NARROW;
   // A ref, not a dependency: the parent rebuilds `garments` on every render, and the sheet must not ask again for it.
   const itemsRef = useRef<TryonItem[]>([]);
   useEffect(() => {
@@ -245,7 +249,7 @@ export function TryOnSheet({ open, onClose, garments }: Props) {
   };
 
   const pieces = garments.map((g) => g.label).join(", ");
-  const maxWidth = imageMaxWidth(height, CHROME_H + GAP + BELOW_H, PICTURE_ASPECT);
+  const maxWidth = imageMaxWidth(height, CHROME_H + GAP + belowH, PICTURE_ASPECT);
   const picture = (props: { uri?: string; loading?: boolean }) => (
     <View ref={pictureRef} tabIndex={-1} style={{ width: "100%", maxWidth, alignSelf: "center" }}>
       <PhotoTile
@@ -400,7 +404,7 @@ export function TryOnSheet({ open, onClose, garments }: Props) {
     <Sheet open={open} onClose={onClose} title={t("tryon.title")}>
       <View style={{ gap: GAP }}>
         {pic}
-        <View style={{ minHeight: BELOW_H, gap: GAP }}>{below}</View>
+        <View style={{ minHeight: belowH, gap: GAP }}>{below}</View>
         {/* Announced once when an image arrives from a paying request; empty (but present) the rest of the time. */}
         <Text accessibilityLiveRegion="polite" style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}>
           {state.phase === "result" && state.fresh ? t("tryon.ready") : ""}
