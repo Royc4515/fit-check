@@ -123,3 +123,8 @@ Roy's answers the same day: alternatives, yes; hand-built outfits from every ent
 Deploy order: the lead first held the `mcp` function back until the app's manual context exists; Roy overruled that the same day (only the web app is in use until we finish, so it can go now). Migration 0006 and the `mcp` function, with the rebuilt engine bundle, are deployed with the merge of stage 4 part 1.
 
 New open minor from the recheck: when the two tabs have a different number of status lines, the hero's top shifts at once and its bottom edge snaps when the fade ends. Yom Kippur: the only non-leather shoe in the wardrobe is tagged `unknown`; tightening the rule (round A) will leave Yom Kippur without shoes until that shoe's material is tagged.
+
+## Money rule (Roy, 2026-11-19)
+
+"I want everything to be free or covered by the credits that come with my subscriptions every month." Written into CLAUDE.md and PRD section 9. Open: the monthly credit Google gives (to set `MONTHLY_GOOGLE_BUDGET_USD`, now 8, against it); a spend cap on Google's side (none is set); there is no monthly cap in code for Anthropic, only daily call caps and the 5 USD limit Roy set in the console; five old functions still deployed (`env-check`, `tag-compare`, `image-put`, `cutout-backfill`, `redraw-five`), three of them without the gateway's JWT check, none in the repo: Roy deletes them in the dashboard or says which is still used.
+
