@@ -1,8 +1,16 @@
 import { RECENT_WEARS_DAYS, type DayAdjustment, type PairUpdate } from "@fit-check/engine";
-import { WEAR_READ_COLUMNS, WearRowSchema, type Availability, type CandidateOutfit, type StylingRequest, type WearFeedback } from "@fit-check/schema";
+import {
+  CONTEXT_TYPES,
+  WEAR_READ_COLUMNS,
+  WearRowSchema,
+  type Availability,
+  type CandidateOutfit,
+  type ContextType,
+  type StylingRequest,
+  type WearFeedback,
+} from "@fit-check/schema";
 import { z } from "zod";
 import { supabase } from "../lib/supabase";
-import type { DayType } from "./dayContext";
 import { getSnapshot, isPreview, PreviewReadOnlyError } from "./preview";
 
 export type RecentWear = StylingRequest["recent_wears"][number];
@@ -41,6 +49,11 @@ export function daysBefore(date: string, days: number): string {
  * ones, not UTC: a wear logged at 01:00 in Israel belongs to that Israeli day. Rows that fail the schema are skipped and
  * logged, like items: one bad row must not hide the rest. Throws on a network or permission error.
  */
+// The shared wear columns plus the outfit's context, which the date rule reads (no outfit from the last three dates;
+// engine noRepeatOutfits). Kept here, not in the shared constant, so the server functions' reads do not change.
+const WEAR_COLUMNS = WEAR_READ_COLUMNS.replace("outfits(", "outfits(context_type,");
+const ContextOfRow = z.object({ outfits: z.object({ context_type: z.enum(CONTEXT_TYPES) }) });
+
 export async function fetchFeedback(today: string, until: string = today): Promise<FeedbackHistory> {
   const from = daysBefore(today, RECENT_WEARS_DAYS);
   const last = until > today ? until : today;
@@ -48,7 +61,7 @@ export async function fetchFeedback(today: string, until: string = today): Promi
   if (isPreview()) return historyFromRows((await getSnapshot()).wears, from, today, last);
   const { data, error } = await supabase
     .from("wears")
-    .select(WEAR_READ_COLUMNS)
+    .select(WEAR_COLUMNS)
     .gte("worn_on", from)
     .lte("worn_on", last)
     .order("worn_on", { ascending: false })
@@ -76,7 +89,10 @@ function historyFromRows(rows: readonly unknown[], from: string, today: string, 
     const record: TodayRecord = { wearId: row.id, outfitId: row.outfit_id, feedback: row.feedback, itemIds, date: row.worn_on };
     if (row.feedback === "worn") {
       // A planned day's wear has not happened yet: it is not "recent" for today (the planning adds it per day).
-      if (row.worn_on <= today) history.recent.push({ date: row.worn_on, item_ids: itemIds, context_key: null });
+      const context = ContextOfRow.safeParse(raw);
+      if (row.worn_on <= today) {
+        history.recent.push({ date: row.worn_on, item_ids: itemIds, context_key: null, context_type: context.success ? context.data.outfits.context_type : undefined });
+      }
       const adjustment = row.outfits.breakdown?.adjustment ?? { temp_steps: 0, formality_steps: 0 };
       history.samples.push({ wearId: row.id, adjustment });
     }
@@ -97,7 +113,8 @@ function historyFromRows(rows: readonly unknown[], from: string, today: string, 
 export async function recordFeedback(args: {
   userId: string;
   date: string;
-  dayType: DayType;
+  /** The context the outfit was chosen for (`outfits.context_type`): the day type, or the day's occasion. */
+  dayType: ContextType;
   outfit: CandidateOutfit;
   source: "daily" | "swap";
   feedback: WearFeedback;

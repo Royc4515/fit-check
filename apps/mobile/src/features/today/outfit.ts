@@ -9,7 +9,7 @@ import {
   type DayAdjustment,
   type PairWeights,
 } from "@fit-check/engine";
-import { StylingRequestSchema, type CandidateOutfit, type Item, type Slot, type StylingRequest } from "@fit-check/schema";
+import { StylingRequestSchema, type CandidateOutfit, type ContextType, type Item, type OccasionType, type Slot, type StylingRequest } from "@fit-check/schema";
 import type { FeedbackHistory, RecentWear, TodayRecord } from "../../data/feedback";
 import type { DayType } from "../../data/dayContext";
 import { israelDate } from "../../data/localDate";
@@ -20,7 +20,15 @@ type Weather = { temp_min_c: number; temp_max_c: number; rain_probability: numbe
  * `festive`: a holiday planned by the weekday rules (the observance switch off); it starts one "dressier" step up
  * (plans.ts defaultAdjustment).
  */
-export type DayInput = { date: string; weather: Weather | null; dayType: DayType; festive?: boolean; yomKippur?: boolean };
+/**
+ * `occasion`: what is on that day (DESIGN.md "שלב 4.5"); its rule set overrides the calendar's (item 3).
+ */
+export type DayInput = { date: string; weather: Weather | null; dayType: DayType; festive?: boolean; yomKippur?: boolean; occasion?: OccasionType };
+
+/** The context a day is planned and recorded in: its occasion when it has one, else its calendar day type. */
+export function contextTypeOf(day: Pick<DayInput, "dayType" | "occasion">): ContextType {
+  return day.occasion ?? day.dayType;
+}
 
 /**
  * Used only when no forecast is available (offline, rate-limited, first launch). Mild autumn day in the coastal
@@ -36,7 +44,12 @@ function request(
     today: day.date,
     // Holidays use the Shabbat rules (PRD section 7: shabbat / holiday share one row); Yom Kippur its own set (no
     // leather shoes), which is still of type "holiday".
-    context: day.yomKippur && day.dayType !== "weekday" ? YOM_KIPPUR_RULES : DEFAULT_CONTEXT_RULES[day.dayType],
+    // An occasion overrides the calendar for its date, Yom Kippur included (PRD 7.1 "קדימות").
+    context: day.occasion
+      ? DEFAULT_CONTEXT_RULES[day.occasion]
+      : day.yomKippur && day.dayType !== "weekday"
+        ? YOM_KIPPUR_RULES
+        : DEFAULT_CONTEXT_RULES[day.dayType],
     weather: day.weather ?? FALLBACK_WEATHER,
     recent_wears: [],
     anchor_item_id: null,
