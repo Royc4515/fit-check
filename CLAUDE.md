@@ -52,6 +52,7 @@ pnpm build:android    # eas build --platform android --profile preview (APK)
 - The LLM never sees the whole wardrobe. `styleOutfit` receives at most 8 candidate outfits. If you find yourself passing more, the bug is upstream in filtering.
 - All AI output is JSON validated by zod before use. A parse failure logs to `ai_calls` and falls back to the top-scored candidate without explanation.
 - Every AI call writes a row to `ai_calls` (provider, model, tokens or images, cost estimate, latency). Cost visibility is a feature.
+- Money rule (Roy, 2026-11-19): everything runs free or inside the credits his subscriptions give him each month. Nothing may bill him out of pocket. So: every paid provider has a monthly cap in code set below that provider's monthly credit (`_shared/ai/budget.ts` for Google); when a cap is reached the feature says so and stops, it never falls back to another paid path; where there is a choice of provider, use the one with more unused credit (today Anthropic); a new paid call, provider or plan needs Roy's go with the monthly cost stated against the credit that covers it.
 - Secrets only in Supabase function env and Modal secrets. The app bundle contains the Supabase anon key and nothing else.
 - i18n: no string literal in JSX. `t('today.title')`. Dates via `Intl` with the active locale; Hebrew dates from Hebcal, not computed locally.
 - RTL: logical properties only (`ms-`, `me-`, `ps-`, `pe-`, `start`, `end`). Never `ml-`/`mr-`. Directional icons come from the icon set's RTL variants.
@@ -78,5 +79,5 @@ pnpm build:android    # eas build --platform android --profile preview (APK)
 - Do not add a UI library (shadcn, Tamagui, Paper). Components are ours, in `apps/mobile/src/components/ui/`, styled from the tokens. A screen never styles a one-off view; a missing component is added to the library (DESIGN.md section 4).
 - Do not add a vector DB, queue, or second backend. Supabase does all of it at this scale.
 - Do not call remove.bg (API shuts down 2026-12-01). Cutouts come from the Modal worker.
-- Do not implement virtual try-on, Gmail import, or price tracking in the MVP, even if tempting. Tables for them exist and stay empty.
+- Do not implement Gmail import or price tracking in the MVP, even if tempting. Tables for them exist and stay empty. Virtual try-on: Roy lifted the ban on 2026-11-19; it proceeds only as `docs/REDESIGN_PLAN.md` stage 5.3 says (research, then a capped experiment), under the money rule above.
 - Do not store the wardrobe in the app bundle or in local-only storage; Supabase is the source of truth, local is cache.
