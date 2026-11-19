@@ -10,8 +10,10 @@ const WARM = { temp_min_c: 22, temp_max_c: 31, rain_probability: 0 };
 const run = (items: Item[], context: ContextRules, weather = MILD) =>
   generateCandidates(items, StylingRequestSchema.parse({ today: "2027-10-11", context, weather, recent_wears: [], anchor_item_id: null, max_candidates: 8 }), new Map());
 // The fixture's only dress shoe (701) is tagged cotton after anonymising; the real one is leather. Retag it, and the
-// boots, so the test has leather to refuse.
-const leathered = wardrobe.map((i) => (i.id === "701" || i.id === "702" ? { ...i, tags: { ...i.tags, material: "leather" as const } } : i));
+// boots, so the test has leather to refuse; and mark two sneakers as known synthetic, the only shoes Yom Kippur may
+// offer (every other shoe in the fixture is tagged "unknown" or suede).
+const MATERIAL: Record<string, Item["tags"]["material"]> = { "701": "leather", "702": "leather", "704": "synthetic", "711": "synthetic" };
+const leathered = wardrobe.map((i) => (MATERIAL[i.id] ? { ...i, tags: { ...i.tags, material: MATERIAL[i.id]! } } : i));
 
 describe("Yom Kippur rules", () => {
   it("keep the holiday's type, so a wear is still stored as a holiday", () => {
@@ -27,10 +29,17 @@ describe("Yom Kippur rules", () => {
     for (const c of out) {
       const shoes = c.items.filter((i) => i.slot === "shoes").map((i) => leatheredById.get(i.id)!);
       expect(shoes).toHaveLength(1);
-      for (const s of shoes) expect(["leather", "suede"]).not.toContain(s.tags.material);
+      for (const s of shoes) expect(["leather", "suede", "unknown"]).not.toContain(s.tags.material);
     }
     // The ordinary holiday, by contrast, offers the leather dress shoe.
     expect(run(leathered, DEFAULT_CONTEXT_RULES.holiday)[0]!.items.some((i) => i.id === "701")).toBe(true);
+  });
+
+  it("a shoe of unknown material is not offered: only one known not to be leather", () => {
+    const unknownOnly = leathered.map((i) => (i.id === "704" || i.id === "711" ? { ...i, tags: { ...i.tags, material: "unknown" as const } } : i));
+    const out = run(unknownOnly, YOM_KIPPUR_RULES);
+    expect(out.length).toBeGreaterThan(0);
+    for (const c of out) expect(c.items.some((i) => i.slot === "shoes")).toBe(false);
   });
 
   it("without any non-leather shoe: outfits without shoes, every other slot still there", () => {
