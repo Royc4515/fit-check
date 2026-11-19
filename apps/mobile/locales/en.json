@@ -63,7 +63,9 @@
       "skipped": "You skipped the previous suggestion.",
       "disliked": "Noted: the previous combination didn't work.",
       "failed": "That didn't save. Try again.",
-      "laundry": "Moved to the laundry: {{items}}."
+      "laundry": "Moved to the laundry: {{items}}.",
+      "correctionNotSaved": "The correction wasn't saved. The earlier record stands.",
+      "correctionOldKept": "The earlier record wasn't deleted."
     },
     "adjust": {
       "label": "Adjusted for today: {{parts}}",
@@ -103,6 +105,10 @@
     },
     "plannedForecast": "{{day}} · {{range}} · Rain {{rain}}",
     "plannedNoForecast": "No forecast yet",
+    "woreSomethingElse": "Wore something else?",
+    "tapHint": "Tap any garment to swap it",
+    "tapHintOk": "Got it",
+    "swapPiece": "Swap {{type}}: {{name}}",
     "occasion": {
       "title": "What's on today",
       "type": {

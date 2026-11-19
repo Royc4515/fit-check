@@ -15,13 +15,15 @@ type Props = {
   onSwap: (item: Item) => void;
   onOpenItem: (id: string) => void;
   onClose: () => void;
+  /** The line above the alternatives; "Wore something else?" when the outfit is already recorded (DESIGN.md 5.1). */
+  heading?: string;
 };
 
 /**
  * One piece of today's outfit (DESIGN.md section 3 "היום" item 3): titled with its name, up to three alternatives
  * as grid tiles (tap = swap and close, 2 taps from the screen), the "no alternatives" line, and a link to the item.
  */
-export function PieceSheet({ piece, open, alternatives, onSwap, onOpenItem, onClose }: Props) {
+export function PieceSheet({ piece, open, alternatives, onSwap, onOpenItem, onClose, heading }: Props) {
   const { t } = useTranslation();
   const meta = (i: Item) => `${t(`item.subcategory.${i.tags.subcategory}`)} · ${t(`wardrobe.color.${i.tags.color_name}`)}`;
   return (
@@ -33,7 +35,7 @@ export function PieceSheet({ piece, open, alternatives, onSwap, onOpenItem, onCl
           {alternatives ? (
             alternatives.length > 0 ? (
               <View style={{ gap: 8 }}>
-                <Meta tone="text-ink-soft">{t("today.alternatives")}</Meta>
+                <Meta tone="text-ink-soft">{heading ?? t("today.alternatives")}</Meta>
                 <View className="flex-row" style={{ gap: 8 }}>
                   {alternatives.map((o) => (
                     <View key={o.id} style={{ flex: 1 }}>

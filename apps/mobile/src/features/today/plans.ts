@@ -1,6 +1,7 @@
 import { FESTIVE_FORMALITY_STEPS, NO_ADJUSTMENT, type DayAdjustment, type PairWeights } from "@fit-check/engine";
 import type { Item, OccasionType } from "@fit-check/schema";
 import type { FeedbackHistory, RecentWear, TodayRecord } from "../../data/feedback";
+import { newestWorn } from "../../data/correction";
 import { contextTypeOf, planToday, type DayInput, type Swaps, type TodayPlan } from "./outfit";
 
 /** One day's plan on Today: today first, then each planned phone-free day (DESIGN.md "שלב 4.1"). */
@@ -62,7 +63,7 @@ function lookOf(plan: TodayPlan): string[] | null {
   return null;
 }
 
-const lastWorn = (records: readonly TodayRecord[]) => [...records].reverse().find((r) => r.feedback === "worn") ?? null;
+const lastWorn = (records: readonly TodayRecord[]) => newestWorn(records);
 
 /**
  * Plans today and every planned day after it, in date order. Pure: the days, the history and the session's

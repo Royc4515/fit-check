@@ -31,15 +31,17 @@ import type { DayContext } from "../../data/dayContext";
 import type { FeedbackHistory } from "../../data/feedback";
 import { chainTabLabels, defaultTab, type ChainTabLabel } from "../../data/shabbatTimes";
 import type { OccasionsState } from "../../data/occasions";
-import type { FeedbackActions, FeedbackTarget, Laundered } from "../../data/useFeedback";
+import { correctionFailure } from "../../data/correction";
+import type { FeedbackActions, FeedbackState, FeedbackTarget, Laundered } from "../../data/useFeedback";
 import { layout, motion } from "../../theme/tokens";
 import { flyFrom, registerOrigin } from "../item/transition";
 import { AdjustSheet, type Adjust } from "./AdjustSheet";
 import { explainOutfit } from "./explain";
-import { contextTypeOf, type DayInput, type Swaps, type TodayPlan } from "./outfit";
+import { settingGetNow, settingGet, settingSet } from "../../data/kv";
+import { asCandidate, contextTypeOf, type DayInput, type Swaps, type TodayPlan } from "./outfit";
 import { PieceSheet } from "./PieceSheet";
 import { defaultAdjustment, occasionInEffect, occasionMayApply, planDays } from "./plans";
-import { outfitIndex, SLOT_ORDER } from "./pieces";
+import { correctedPieces, outfitIndex, SLOT_ORDER, tapHintFit, type HintFit } from "./pieces";
 import { useSwipeToSkip } from "./useSwipeToSkip";
 
 /** Wraps digits and the degree/percent signs so they stay LTR inside Hebrew text (DESIGN.md: numbers always LTR). */
@@ -55,6 +57,8 @@ type Props = {
   /** The date of the day whose last action failed (useFeedback), or null; shown on that day's tab only. */
   failedOn: string | null;
   laundered?: Laundered | null;
+  /** A correction after wearing that did not complete (useFeedback `correction`). */
+  correction?: FeedbackState["correction"];
   /**
    * The local time `HH:MM` when the screen opened, for the opening tab on the eve of Shabbat or a holiday (three
    * hours before candle lighting). Data, not a clock read here, so the choice is testable.
@@ -112,12 +116,21 @@ const MOBILE_HERO_GAP = 16;
 const FOCUS_WORN_STATUS = "today-worn-status";
 const FOCUS_SKIP_STATUS = "today-skip-status";
 const FOCUS_WEAR = "today-wear";
+/** The legend: focus goes to its first row after "got it" on the tap hint. */
+const FOCUS_LEGEND = "today-legend";
+/**
+ * Height the tap hint takes above the hero: a one-line StatusLine (44) and the 24 above it. Used to decide whether it
+ * fits before it is drawn (DESIGN.md "שלב 5.1" item 2).
+ */
+const HINT_BLOCK = 68;
 /** The adjust button, where an occasion is chosen: focus goes there after the occasion line's "cancel". */
 const FOCUS_TUNE = "today-tune";
 /** The first thing in a container that a keyboard can reach: react-native-web gives every live pressable tabindex 0. */
 /** A little longer than the sheet's critically damped close spring takes to settle (motion.spring). */
 const SHEET_SETTLE_MS = 700;
 const FIRST_TABBABLE = '[tabindex="0"]:not([aria-disabled="true"])';
+/** Device flag: the one-time "tap any garment" line has been acted on (DESIGN.md "שלב 5.1" item 2). */
+const TAP_HINT_KEY = "fitcheck:tap-hint-seen";
 /** Ids of the day tabs and their panel (WAI-ARIA tabs pattern). */
 const DAY_TABS = "today-day";
 
@@ -158,7 +171,7 @@ type StatusItem = {
  * view (DESIGN.md section 3 "היום" item 8). A failed "wearing it" is the only status that stays in the bar, next to
  * the button it belongs to. Desktop (>= 900): two columns, nothing floats.
  */
-export function TodayView({ items, pairWeights, day, history, actions, busy, failedOn, laundered, stylist, clock, occasions }: Props) {
+export function TodayView({ items, pairWeights, day, history, actions, busy, failedOn, laundered, correction = null, stylist, clock, occasions }: Props) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -225,6 +238,32 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // when that garment has just been swapped out.
   const [piece, setPiece] = useState<{ slot: Slot; item: Item } | null>(null);
   const [pieceOpen, setPieceOpen] = useState(false);
+  // "Tap any garment to swap it", shown until it has been acted on once on this device (DESIGN.md "שלב 5.1" item 2).
+  // Web reads the flag before the first paint; native reads it a moment later and the line may show for that moment.
+  const [showHint, setShowHint] = useState(() => settingGetNow(TAP_HINT_KEY) === null);
+  useEffect(() => {
+    let active = true;
+    void settingGet(TAP_HINT_KEY).then((seen) => {
+      if (active && seen !== null) setShowHint(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const dismissHint = () => {
+    if (!showHint) return;
+    setShowHint(false);
+    void settingSet(TAP_HINT_KEY, "seen");
+  };
+  // "Got it": the line leaves and focus would drop to the page; send it to the first legend row, the lasting cue.
+  const gotHint = () => {
+    dismissHint();
+    if (Platform.OS !== "web") return;
+    requestAnimationFrame(() => {
+      const box = document.getElementById(FOCUS_LEGEND);
+      box?.querySelector<HTMLElement>(FIRST_TABBABLE)?.focus();
+    });
+  };
   const [adjustOpen, setAdjustOpen] = useState(false);
   // The floating bar's measured height; 0 = not rendered or not measured yet (reset when the bar leaves, so a bar that
   // comes back is never capped against its old height).
@@ -366,9 +405,14 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   );
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   // Swap options come from the day's own pool: a garment kept for Shabbat is not offered on Friday as a swap either.
+  // The pieces on screen as items: the suggestion's, or the recorded outfit's once worn (DESIGN.md "שלב 5.1" item 1).
+  const shownItems = useMemo(
+    () => (plan.kind === "suggestion" ? plan.items : plan.kind === "worn" ? plan.record.itemIds.flatMap((id) => itemById.get(id) ?? []) : []),
+    [plan, itemById]
+  );
   const options = useMemo(
-    () => (plan.kind === "suggestion" && piece ? swapOptions(selected.pool, plan.req, pairWeights, plan.items, piece.slot) : []),
-    [plan, piece, selected.pool, pairWeights]
+    () => (plan.kind !== "empty" && piece ? swapOptions(selected.pool, plan.req, pairWeights, shownItems, piece.slot) : []),
+    [plan, piece, selected.pool, pairWeights, shownItems]
   );
 
   // A failed write is also felt, not only read (DESIGN.md section 5: `warning` on failure). Native only.
@@ -442,6 +486,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
 
   const openPiece = (slot: Slot) => {
     if (!swipe.pressAllowed()) return;
+    dismissHint();
     const id = outfit?.items.find((i) => i.slot === slot)?.id;
     const item = id ? itemById.get(id) : undefined;
     if (!item) return;
@@ -456,7 +501,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     const record = plan.record;
     const wornMessage = planned ? t(plannedKeys(planned.kind).worn) : t("today.status.worn");
     statuses.push({ key: "worn", variant: "ok", message: wornMessage, action: { label: t("today.undo"), onPress: () => void actions.undo(record).then(() => requestFocus("undo")) } });
-    if (laundered && laundered.wearId === record.wearId) {
+    if (laundered && laundered.wearId === record.wearId && laundered.itemIds.length > 0) {
       const ids = laundered.itemIds;
       const names = ids.map((id) => {
         const sub = itemById.get(id)?.tags.subcategory;
@@ -487,6 +532,11 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
       action: undo,
       secondaryAction: record.feedback === "skipped" ? { label: t("today.dislike"), onPress: () => void actions.dislike(record) } : undefined,
     });
+  }
+  // A correction that did not complete says which step failed and what stands (DESIGN.md "שלב 5.1" item 1).
+  if (correction && correction.date === selectedDate) {
+    const { messageKey } = correctionFailure(correction.stage);
+    statuses.push({ key: "correction", variant: "error", message: t(messageKey), action: { label: t("common.retry"), onPress: correction.retry } });
   }
   if (failed) statuses.push({ key: "failed", variant: "error", message: t("today.status.failed") });
 
@@ -708,6 +758,21 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // a centred 4:5 frame). Until measured, both render as before (column width, plain 4:5), so first paint does not jump.
   const card = !desktop && width >= CARD_MIN_WIDTH;
   const cardWidth = card && measured ? Math.max(HERO_MIN, Math.min(layout.maxContentWidth, heroSpace / FLAT_LAY_ASPECT)) : null;
+  // The one-time cue that garments can be tapped (5.1 item 2), until the first tap on a garment or "got it". It is
+  // shown only when the flat-lay stays above its floor with it (it must never push garments under the bar); when it
+  // does not fit it waits for another visit, the flag unset. Decided once from the space measured without it, then
+  // only ever withdrawn (a line that arrives later, say an occasion, can take its room): no layout loop.
+  const [hintFit, setHintFit] = useState<HintFit>(null);
+  // And only once the day's occasion read has answered (or failed): a line arriving after the hint would take its room
+  // and withdraw it on its own a moment later.
+  const hintWanted = showHint && outfit !== null && occasions.settled;
+  const floorSpace = HERO_MIN * FLAT_LAY_ASPECT;
+  const nextHintFit = hintWanted ? tapHintFit({ decided: hintFit, measured, space: heroSpace, floor: floorSpace, hintBlock: HINT_BLOCK, desktop }) : hintFit;
+  if (nextHintFit !== hintFit) setHintFit(nextHintFit);
+  const hintLine =
+    hintWanted && hintFit === "show" ? (
+      <StatusLine variant="info" message={t("today.tapHint")} action={{ label: t("today.tapHintOk"), onPress: gotHint }} />
+    ) : null;
   const measuredMax = !desktop && !card && measured ? Math.max(HERO_MIN * FLAT_LAY_ASPECT, heroSpace) : undefined;
   // A tab change cross-fades the two looks in motion.state (item 3). Their status lines can differ in height, so the
   // hero keeps the size it had for the duration and takes its new size when the old look is gone: the outgoing
@@ -758,7 +823,9 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
           title={typeOf(p.subcategory)}
           detail={p.name}
           onPress={() => openPiece(p.slot)}
-          accessibilityLabel={t("today.pieceLabel", { type: typeOf(p.subcategory), name: p.name })}
+          // The whole row opens the garment's sheet; the trailing cue says it swaps (DESIGN.md "שלב 5.1" item 3).
+          accessibilityLabel={t("today.swapPiece", { type: typeOf(p.subcategory), name: p.name })}
+          trailingIcon="swap_horiz"
         />
       ))}
     </View>
@@ -766,6 +833,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
 
   // The legend changes with the day's tab: a still fade, like the garments (item 3). Plain on a day without tabs.
   const legend = hasTabs && captions ? <CrossFade swapKey={selectedDate}>{captions}</CrossFade> : captions;
+  const legendBlock = legend ? <View nativeID={FOCUS_LEGEND}>{legend}</View> : null;
 
   const quote = explanation ? (
     <View>
@@ -854,10 +922,22 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
       <PieceSheet
         piece={piece?.item ?? null}
         open={pieceOpen}
-        alternatives={plan.kind === "suggestion" ? options : null}
+        alternatives={plan.kind === "empty" ? null : options}
+        heading={plan.kind === "worn" ? t("today.woreSomethingElse") : undefined}
         onSwap={(o) => {
-          if (piece) setSwapsByDay((cur) => ({ ...cur, [selectedDate]: { ...cur[selectedDate], [piece.slot]: o.id } }));
           setPieceOpen(false);
+          if (!piece) return;
+          if (plan.kind === "worn") {
+            // Correct what was recorded: one action, undo and wear behind it (useFeedback.correct). Focus follows as
+            // after a wear: to the new status line's undo.
+            const corrected = correctedPieces(shownItems, piece.item.id, o);
+            const record = plan.record;
+            void actions
+              .correct(record, asCandidate(corrected, plan.req, pairWeights), "swap", effective, { date: record.date, dayType: contextTypeOf(days[sel]!) })
+              .then(() => requestFocus("wear"));
+            return;
+          }
+          setSwapsByDay((cur) => ({ ...cur, [selectedDate]: { ...cur[selectedDate], [piece.slot]: o.id } }));
         }}
         onOpenItem={(id) => {
           setPieceOpen(false);
@@ -923,6 +1003,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
               <Reveal index={0}>{masthead}</Reveal>
               {plannedForecast ? <View className="mt-6">{plannedForecast}</View> : null}
               {occasionLine ? <View className="mt-6">{occasionLine}</View> : null}
+              {hintLine ? <View className="mt-6">{hintLine}</View> : null}
               {skipStatus && outfit ? (
                 <View className="mt-6" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
                   {lineOf(skipStatus)}
@@ -933,7 +1014,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
               {outfit ? (
                 <>
                   <Reveal index={2}>
-                    <View className="mt-12">{legend}</View>
+                    <View className="mt-12">{legendBlock}</View>
                   </Reveal>
                   <Reveal index={3}>
                     <View className="mt-12">{quote}</View>
@@ -990,6 +1071,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
                   <View onLayout={(e) => setAboveHeroHeight(e.nativeEvent.layout.height)}>
                     {forecastSlot}
                     {occasionLine ? <View className="mt-6 px-5">{occasionLine}</View> : null}
+                    {hintLine ? <View className="mt-6 px-5">{hintLine}</View> : null}
                     {skipStatus ? (
                       <View className="mt-6 px-5" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
                         {lineOf(skipStatus)}
@@ -1003,7 +1085,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
                   </View>
                 </Reveal>
                 <Reveal index={2}>
-                  <View className="mt-6 px-5">{legend}</View>
+                  <View className="mt-6 px-5">{legendBlock}</View>
                 </Reveal>
                 <Reveal index={3}>
                   <View className="mt-12 px-5">{quote}</View>
