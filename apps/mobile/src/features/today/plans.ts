@@ -1,4 +1,4 @@
-import type { DayAdjustment, PairWeights } from "@fit-check/engine";
+import { FESTIVE_FORMALITY_STEPS, NO_ADJUSTMENT, type DayAdjustment, type PairWeights } from "@fit-check/engine";
 import type { Item } from "@fit-check/schema";
 import type { FeedbackHistory, RecentWear, TodayRecord } from "../../data/feedback";
 import { planToday, type DayInput, type Swaps, type TodayPlan } from "./outfit";
@@ -15,6 +15,16 @@ export type DayPlan = {
   /** The history this day was planned with (its own records as `today`, earlier days' looks as recent wears). */
   history: FeedbackHistory;
 };
+
+/**
+ * The taps a day starts with before the user touches the adjust sheet: one "dressier" step on a holiday planned by the
+ * weekday rules (the observance switch off, DESIGN.md "שלב 4.1" item 10), none otherwise. A starting value of the
+ * day's taps, not a hidden term: the sheet and the "adjusted for today" line show it, and reset or "more casual"
+ * take it back.
+ */
+export function defaultAdjustment(day: Pick<DayInput, "festive">): DayAdjustment {
+  return day.festive ? { temp_steps: 0, formality_steps: FESTIVE_FORMALITY_STEPS } : NO_ADJUSTMENT;
+}
 
 /** The look a day stands for in the planning of the days after it: recorded if worn, else the one shown. */
 function lookOf(plan: TodayPlan): string[] | null {

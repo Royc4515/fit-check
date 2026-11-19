@@ -6,7 +6,7 @@ import { CHAIN_MAX_DAYS, phoneFreeChain, shabbatTimes, stripNiqqud, type PhoneFr
 import { placeNameFor, resolveLocation, type ResolvedLocation } from "./location";
 import type { PlaceLang } from "./placeName";
 import { localDate } from "./localDate";
-import { dayTypeFor, NO_CALENDAR } from "./observance";
+import { dayTypeFor, isFestiveWeekday, NO_CALENDAR } from "./observance";
 
 /**
  * What kind of day it is, from the real world: Israel-local date, Hebrew date and holidays from Hebcal, and the
@@ -50,6 +50,8 @@ export type DayContext = {
   candles: ShabbatTimes["candles"];
   /** The end of Shabbat or the holiday, only when it falls today or tomorrow (see shabbatTimes). */
   end: ShabbatTimes["end"];
+  /** A Yom Tov with the observance switch off: weekday rules, one "dressier" step by default (DESIGN.md 4.1 item 10). */
+  festive: boolean;
   /** The location's time zone, for reading the local clock against `candles`. */
   tz: string;
   /** The phone-free days today's candle lighting opens, in order; [] on any day without candles. */
@@ -169,19 +171,18 @@ async function loadCalendar(date: string, loc: ResolvedLocation): Promise<Calend
 /**
  * Loads today's context for the saved location; never throws. `lang` is the app language, used only for the place
  * name of "my current location" (Nominatim answers in it). `observesShabbat` is the profile switch (DESIGN.md
- * "שלב 4.1" item 10): off, the Hebcal calendar is not asked at all (the Hebrew date still is), there are no times and
- * no planned days, and Shabbat and holidays are weekdays for the engine.
+ * "שלב 4.1" item 10): off, the Hebcal calendar is still asked, but only its Yom Tov flag and holiday name are used (a
+ * holiday is a little dressier, `festive`); there are no times and no planned days, and the engine plans Shabbat and
+ * holidays by the weekday rules.
  */
 export async function loadDayContext(now: Date = new Date(), lang: PlaceLang = "he", observesShabbat = true): Promise<DayContext> {
   const loc = await resolveLocation();
   const { date, weekday } = localDate(loc.tz, now);
   // Started now, in parallel with the three loads below, never before them.
   const namePromise = loc.kind === "current" ? placeNameFor(loc, lang) : Promise.resolve(null);
-  const [forecast, hebrewDate, cal] = await Promise.all([
-    loadForecast(loc),
-    loadHebrewDate(date),
-    observesShabbat ? loadCalendar(date, loc) : Promise.resolve(NO_CALENDAR),
-  ]);
+  const [forecast, hebrewDate, loaded] = await Promise.all([loadForecast(loc), loadHebrewDate(date), loadCalendar(date, loc)]);
+  // Off: only the holiday itself survives; nothing Shabbat-specific (times, planned days) reaches the screen.
+  const cal = observesShabbat ? loaded : { ...NO_CALENDAR, holiday: loaded.holiday, yomtov: loaded.yomtov };
   const weather = forecast ? summarizeDay(forecast, date) : null;
   // don't touch / the name is NOT in the Promise.all: a slow or blocked geocoder (3 s cap) must not hold back the
   // weather, the date or the Shabbat times. We take it only if it has already settled; otherwise the screen says
@@ -200,6 +201,7 @@ export async function loadDayContext(now: Date = new Date(), lang: PlaceLang = "
     holiday: cal.holiday,
     candles: cal.candles,
     end: cal.end,
+    festive: isFestiveWeekday(cal.yomtov, observesShabbat),
     tz: loc.tz,
     chain: cal.chain.map((d) => ({
       ...d,
