@@ -36,10 +36,11 @@ import { layout, motion } from "../../theme/tokens";
 import { flyFrom, registerOrigin } from "../item/transition";
 import { AdjustSheet, type Adjust } from "./AdjustSheet";
 import { explainOutfit } from "./explain";
-import { contextTypeOf, type DayInput, type Swaps, type TodayPlan } from "./outfit";
+import { settingGetNow, settingGet, settingSet } from "../../data/kv";
+import { asCandidate, contextTypeOf, type DayInput, type Swaps, type TodayPlan } from "./outfit";
 import { PieceSheet } from "./PieceSheet";
 import { defaultAdjustment, planDays } from "./plans";
-import { outfitIndex, SLOT_ORDER } from "./pieces";
+import { correctedPieces, outfitIndex, SLOT_ORDER } from "./pieces";
 import { useSwipeToSkip } from "./useSwipeToSkip";
 
 /** Wraps digits and the degree/percent signs so they stay LTR inside Hebrew text (DESIGN.md: numbers always LTR). */
@@ -116,6 +117,8 @@ const FOCUS_WEAR = "today-wear";
 /** A little longer than the sheet's critically damped close spring takes to settle (motion.spring). */
 const SHEET_SETTLE_MS = 700;
 const FIRST_TABBABLE = '[tabindex="0"]:not([aria-disabled="true"])';
+/** Device flag: the one-time "tap any garment" line has been acted on (DESIGN.md "שלב 5.1" item 2). */
+const TAP_HINT_KEY = "fitcheck:tap-hint-seen";
 /** Ids of the day tabs and their panel (WAI-ARIA tabs pattern). */
 const DAY_TABS = "today-day";
 
@@ -210,6 +213,23 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // when that garment has just been swapped out.
   const [piece, setPiece] = useState<{ slot: Slot; item: Item } | null>(null);
   const [pieceOpen, setPieceOpen] = useState(false);
+  // "Tap any garment to swap it", shown until it has been acted on once on this device (DESIGN.md "שלב 5.1" item 2).
+  // Web reads the flag before the first paint; native reads it a moment later and the line may show for that moment.
+  const [showHint, setShowHint] = useState(() => settingGetNow(TAP_HINT_KEY) === null);
+  useEffect(() => {
+    let active = true;
+    void settingGet(TAP_HINT_KEY).then((seen) => {
+      if (active && seen !== null) setShowHint(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const dismissHint = () => {
+    if (!showHint) return;
+    setShowHint(false);
+    void settingSet(TAP_HINT_KEY, "seen");
+  };
   const [adjustOpen, setAdjustOpen] = useState(false);
   // The floating bar's measured height; 0 = not rendered or not measured yet (reset when the bar leaves, so a bar that
   // comes back is never capped against its old height).
@@ -342,9 +362,14 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   );
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   // Swap options come from the day's own pool: a garment kept for Shabbat is not offered on Friday as a swap either.
+  // The pieces on screen as items: the suggestion's, or the recorded outfit's once worn (DESIGN.md "שלב 5.1" item 1).
+  const shownItems = useMemo(
+    () => (plan.kind === "suggestion" ? plan.items : plan.kind === "worn" ? plan.record.itemIds.flatMap((id) => itemById.get(id) ?? []) : []),
+    [plan, itemById]
+  );
   const options = useMemo(
-    () => (plan.kind === "suggestion" && piece ? swapOptions(selected.pool, plan.req, pairWeights, plan.items, piece.slot) : []),
-    [plan, piece, selected.pool, pairWeights]
+    () => (plan.kind !== "empty" && piece ? swapOptions(selected.pool, plan.req, pairWeights, shownItems, piece.slot) : []),
+    [plan, piece, selected.pool, pairWeights, shownItems]
   );
 
   // A failed write is also felt, not only read (DESIGN.md section 5: `warning` on failure). Native only.
@@ -418,6 +443,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
 
   const openPiece = (slot: Slot) => {
     if (!swipe.pressAllowed()) return;
+    dismissHint();
     const id = outfit?.items.find((i) => i.slot === slot)?.id;
     const item = id ? itemById.get(id) : undefined;
     if (!item) return;
@@ -493,6 +519,9 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         .filter((part): part is string => Boolean(part))
         .reduce((first, second) => t("today.timesJoin", { first, second }))
     : null;
+  // The one-time cue that garments can be tapped (5.1 item 2), until the first tap on a garment or "got it".
+  const hintLine =
+    showHint && outfit ? <StatusLine variant="info" message={t("today.tapHint")} action={{ label: t("today.tapHintOk"), onPress: dismissHint }} /> : null;
   const occasionLine = occasionFailed ? (
     <StatusLine variant="error" message={t("today.occasion.failed")} action={{ label: t("common.retry"), onPress: occasionFailed.retry }} />
   ) : occasionText ? (
@@ -724,7 +753,9 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
           title={typeOf(p.subcategory)}
           detail={p.name}
           onPress={() => openPiece(p.slot)}
-          accessibilityLabel={t("today.pieceLabel", { type: typeOf(p.subcategory), name: p.name })}
+          // The whole row opens the garment's sheet; the trailing cue says it swaps (DESIGN.md "שלב 5.1" item 3).
+          accessibilityLabel={t("today.swapPiece", { name: p.name })}
+          trailingIcon="swap_horiz"
         />
       ))}
     </View>
@@ -818,10 +849,22 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
       <PieceSheet
         piece={piece?.item ?? null}
         open={pieceOpen}
-        alternatives={plan.kind === "suggestion" ? options : null}
+        alternatives={plan.kind === "empty" ? null : options}
+        heading={plan.kind === "worn" ? t("today.woreSomethingElse") : undefined}
         onSwap={(o) => {
-          if (piece) setSwapsByDay((cur) => ({ ...cur, [selectedDate]: { ...cur[selectedDate], [piece.slot]: o.id } }));
           setPieceOpen(false);
+          if (!piece) return;
+          if (plan.kind === "worn") {
+            // Correct what was recorded: one action, undo and wear behind it (useFeedback.correct). Focus follows as
+            // after a wear: to the new status line's undo.
+            const corrected = correctedPieces(shownItems, piece.item.id, o);
+            const record = plan.record;
+            void actions
+              .correct(record, asCandidate(corrected, plan.req, pairWeights), "swap", effective, { date: record.date, dayType: contextTypeOf(days[sel]!) })
+              .then(() => requestFocus("wear"));
+            return;
+          }
+          setSwapsByDay((cur) => ({ ...cur, [selectedDate]: { ...cur[selectedDate], [piece.slot]: o.id } }));
         }}
         onOpenItem={(id) => {
           setPieceOpen(false);
@@ -883,6 +926,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
               <Reveal index={0}>{masthead}</Reveal>
               {plannedForecast ? <View className="mt-6">{plannedForecast}</View> : null}
               {occasionLine ? <View className="mt-6">{occasionLine}</View> : null}
+              {hintLine ? <View className="mt-6">{hintLine}</View> : null}
               {skipStatus && outfit ? (
                 <View className="mt-6" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
                   {lineOf(skipStatus)}
@@ -950,6 +994,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
                   <View onLayout={(e) => setAboveHeroHeight(e.nativeEvent.layout.height)}>
                     {forecastSlot}
                     {occasionLine ? <View className="mt-6 px-5">{occasionLine}</View> : null}
+                    {hintLine ? <View className="mt-6 px-5">{hintLine}</View> : null}
                     {skipStatus ? (
                       <View className="mt-6 px-5" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
                         {lineOf(skipStatus)}
