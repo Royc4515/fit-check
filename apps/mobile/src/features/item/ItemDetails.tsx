@@ -13,6 +13,7 @@ import { NOTES_COUNTER_FROM, NOTES_MAX, type ItemChange, type ItemEdits } from "
 import { GoesWith } from "./GoesWith";
 import { InlineText, NotesPencil } from "./InlineText";
 import { useTextWriting, type Writing } from "./useTextWriting";
+import { changeFor, type TextField } from "./writing";
 import { fieldLabelKey, TagSheet, type TagField } from "./TagSheet";
 import { useItemWears } from "./useItemWears";
 import { WearHistory } from "./WearHistory";
@@ -71,7 +72,13 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
   };
   const itemId = item.id;
   const save = edits?.save;
-  const saveText = useCallback((c: ItemChange) => (save ? save(itemId, c) : Promise.resolve()), [save, itemId]);
+  const saveText = useCallback(
+    (field: TextField, draft: string) => {
+      const change = changeFor(field, draft);
+      return save && change ? save(itemId, change) : Promise.resolve();
+    },
+    [save, itemId]
+  );
   const failureText = useCallback(
     (error: unknown) => {
       const reason = reasonOf(error);
