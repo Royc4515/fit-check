@@ -374,7 +374,11 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         return [{ slot: p.slot, item, index: outfitIndex(outfit.items, p.id), accessibilityLabel: t("today.pieceLabel", { type: typeOf(p.subcategory), name: p.name }) }];
       })
     : [];
-  const heroLabel = t("today.heroLabel", { pieces: ordered.map((p) => `${typeOf(p.subcategory)} ${p.name}`).join(", ") });
+  const heroPieces = ordered.map((p) => `${typeOf(p.subcategory)} ${p.name}`).join(", ");
+  // A planned day's flat-lay is named by its tab ("For Shabbat: ..."), not as today's outfit.
+  const heroLabel = planned
+    ? t("today.heroLabelPlanned", { tab: t(tabKey(tabLabels[sel - 1]!)), pieces: heroPieces })
+    : t("today.heroLabel", { pieces: heroPieces });
 
   const openPiece = (slot: Slot) => {
     if (!swipe.pressAllowed()) return;
