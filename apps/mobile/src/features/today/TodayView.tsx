@@ -4,7 +4,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { AccessibilityInfo, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import { useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -42,7 +42,9 @@ import { AdjustSheet, type Adjust } from "./AdjustSheet";
 import { explainOutfit } from "./explain";
 import { settingGetNow, settingGet, settingSet } from "../../data/kv";
 import { asCandidate, contextTypeOf, type DayInput, type Swaps, type TodayPlan } from "./outfit";
+import { bookmarkIntent, shownSaved, wearOutfitId, type BookmarkIntent } from "./bookmark";
 import { PieceSheet } from "./PieceSheet";
+import type { BookmarkApi } from "./useBookmark";
 import { defaultAdjustment, occasionInEffect, occasionMayApply, planDays } from "./plans";
 import { correctedPieces, outfitIndex, SLOT_ORDER, tapHintFit, type HintFit } from "./pieces";
 import { useSwipeToSkip } from "./useSwipeToSkip";
@@ -71,6 +73,8 @@ type Props = {
   stylist?: (input: StylistInput) => Promise<StylistOutput | null>;
   /** What is on each date on screen, and how to change it (DESIGN.md "שלב 4.5"). */
   occasions: OccasionsState;
+  /** Saving the shown outfit to the collection, and the saved outfits it is compared with (DESIGN.md "שלב 5.2" item 6). */
+  bookmark: BookmarkApi;
 };
 
 /** Waits for taps (nudges, swaps) to settle before asking the stylist, so a burst of taps costs one call. */
@@ -162,7 +166,7 @@ type StatusItem = {
  * view (DESIGN.md section 3 "היום" item 8). A failed "wearing it" is the only status that stays in the bar, next to
  * the button it belongs to. Desktop (>= 900): two columns, nothing floats.
  */
-export function TodayView({ items, pairWeights, day, history, actions, busy, failedOn, laundered, correction = null, stylist, clock, occasions }: Props) {
+export function TodayView({ items, pairWeights, day, history, actions, busy, failedOn, laundered, correction = null, stylist, clock, occasions, bookmark }: Props) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -463,6 +467,20 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
 
   const ordered = outfit ? SLOT_ORDER.flatMap((slot) => outfit.items.filter((i) => i.slot === slot)) : [];
   const typeOf = (sub: string) => t(`item.subcategory.${sub}`);
+  // The bookmark of the outfit as shown on the selected tab, after swaps (DESIGN.md "שלב 5.2" item 6). Garment sets are
+  // compared order-free by the data layer's own key; which write a press makes is decided in bookmark.ts.
+  const intent: BookmarkIntent =
+    outfit && plan.kind !== "empty"
+      ? bookmarkIntent({
+          pieces: ordered.map((p) => ({ item_id: p.id, slot: p.slot })),
+          saved: bookmark.saved,
+          wornOutfitId: plan.kind === "worn" ? plan.record.outfitId : null,
+          date: selectedDate,
+          contextType: contextTypeOf(days[sel]!),
+          source: plan.kind === "suggestion" ? plan.source : "daily",
+        })
+      : { kind: "hidden" };
+  const bookmarked = shownSaved(intent, bookmark.pending);
   const pieces: FlatLayPiece[] = outfit
     ? ordered.flatMap((p) => {
         const item = itemById.get(p.id);
@@ -483,6 +501,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     const item = id ? itemById.get(id) : undefined;
     if (!item) return;
     actions.dismissFailure();
+    bookmark.dismissFailure();
     setPiece({ slot, item });
     setPieceOpen(true);
   };
@@ -531,6 +550,16 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     statuses.push({ key: "correction", variant: "error", message: t(messageKey), action: { label: t("common.retry"), onPress: correction.retry } });
   }
   if (failed) statuses.push({ key: "failed", variant: "error", message: t("today.status.failed") });
+  // A failed save or removal stays with the outfit it was for, on its day's tab, with "try again" (item 6).
+  const bookmarkFailure = bookmark.failure;
+  if (bookmarkFailure && intent.kind !== "hidden" && bookmarkFailure.date === selectedDate && bookmarkFailure.intent.key === intent.key) {
+    statuses.push({
+      key: "bookmark",
+      variant: "error",
+      message: t(bookmarkFailure.intent.kind === "saved" ? "today.bookmark.removeFailed" : "today.bookmark.saveFailed"),
+      action: { label: t("common.retry"), onPress: () => void bookmark.press(bookmarkFailure.intent, bookmarkFailure.date) },
+    });
+  }
 
   const lineOf = (s: StatusItem) => (
     <StatusLine key={s.key} variant={s.variant} message={s.message} action={s.action} secondaryAction={s.secondaryAction} disabled={busy} />
@@ -542,8 +571,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // Worn: the bar is gone (nothing left to press), so the worn line, the laundry line and any failure of undo or
   // keep-home take the skip line's slot above the hero. Pinned to the bottom they covered the shoes (Roy, 19.11).
   const wornLines = plan.kind === "worn" ? statuses.map(lineOf) : [];
-  // What stays in the bar is a failed "wearing it", beside the button that failed.
-  const barStatusLines = plan.kind === "suggestion" ? statuses.filter((s) => s.key === "failed").map(lineOf) : [];
+  // What stays in the bar is a failed "wearing it" or a failed bookmark, beside the buttons they belong to.
+  const barStatusLines = plan.kind === "suggestion" ? statuses.filter((s) => s.key === "failed" || s.key === "bookmark").map(lineOf) : [];
   const barStatusLine =
     barStatusLines.length > 0 ? (
       <View tabIndex={-1} style={{ gap: 8 }}>
@@ -708,11 +737,60 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const endLine = day.end ? t(endKeys[day.end.kind][endTomorrow ? 1 : 0], { time: ltr(day.end.time) }) : null;
   const timesLine = entryLine && endLine ? t("today.timesJoin", { first: entryLine, second: endLine }) : (entryLine ?? endLine);
 
+  const pressBookmark = () => {
+    if (intent.kind === "hidden") return;
+    actions.dismissFailure();
+    void bookmark.press(intent, selectedDate);
+  };
+  // Disabled, in its "not saved" look, until the saved outfits have been read: a press before then could not tell an
+  // outfit that is saved from one that is not. Also while a wear is being written, so the two cannot race.
+  const bookmarkButton =
+    intent.kind === "hidden" ? null : (
+      <Button
+        variant="icon"
+        icon={bookmarked ? "bookmark_fill" : "bookmark"}
+        selected={bookmarked}
+        accessibilityLabel={bookmarked ? t("today.bookmark.remove") : t("today.bookmark.save")}
+        onPress={pressBookmark}
+        disabled={!bookmark.ready || busy}
+      />
+    );
+  // The polite announcement of a finished save or removal (item 6): the icon changing shape is for the eyes. Web reads
+  // this live region; native speaks it through the accessibility service.
+  const announcement = bookmark.announcement;
+  const [announceCleared, setAnnounceCleared] = useState(0);
+  const announceText = announcement && announcement.n !== announceCleared ? t(announcement.kind === "saved" ? "today.bookmark.saved" : "today.bookmark.removed") : "";
+  useEffect(() => {
+    if (!announcement) return;
+    if (Platform.OS !== "web") void AccessibilityInfo.announceForAccessibility(t(announcement.kind === "saved" ? "today.bookmark.saved" : "today.bookmark.removed"));
+    // Emptied after a while so a reader's browse mode does not find a stale sentence; set from the timer, not here.
+    const timer = setTimeout(() => setAnnounceCleared(announcement.n), 4000);
+    return () => clearTimeout(timer);
+  }, [announcement, t]);
+  const announceLine = (
+    <Text
+      accessibilityLiveRegion={Platform.OS === "web" ? "polite" : "none"}
+      style={{ position: "absolute", width: 1, height: 1, overflow: "hidden" }}
+      pointerEvents="none"
+    >
+      {announceText}
+    </Text>
+  );
+
   const masthead = (
     <View>
-      <Display size="display-xl" level={1}>
-        {t("today.title")}
-      </Display>
+      {/* The title row: the bookmark is a secondary action of the screen, so it sits at the end of the title's row
+          (DESIGN.md section 3 "שלד"). The title's line is 46 high and the button 44, so the row keeps the height the
+          title alone had and the flat-lay's measured space is unchanged. */}
+      <View className="flex-row items-center" style={{ gap: 8 }}>
+        <View className="flex-1">
+          <Display size="display-xl" level={1}>
+            {t("today.title")}
+          </Display>
+        </View>
+        {bookmarkButton}
+      </View>
+      {announceLine}
       <Text className="mt-2 font-body text-body-sm text-ink-soft">{hebrew ? `${hebrew} · ${gregorian}` : gregorian}</Text>
       {timesLine ? <Text className="mt-1 font-body text-body-sm text-ink-soft">{timesLine}</Text> : null}
       <Pressable
@@ -867,10 +945,18 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const wear = () => {
     if (plan.kind !== "suggestion") return;
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    void actions.wear(plan.outfit, plan.source, effective, target).then(() => {
-      resetSwaps();
-      requestFocus("wear");
-    });
+    bookmark.dismissFailure();
+    const wearing = plan.outfit;
+    const source = plan.source;
+    // A saved outfit is worn on its own row (item 6). A save still on its way finishes first, so the wear sees it; the
+    // saved outfits are then read at this moment, not as of the render the button was drawn in.
+    void bookmark
+      .settled()
+      .then(() => actions.wear(wearing, source, effective, target, wearOutfitId(wearing.items.map((i) => i.id), bookmark.savedNow())))
+      .then(() => {
+        resetSwaps();
+        requestFocus("wear");
+      });
   };
   const adjustActive = adjustment.temp_steps !== 0 || adjustment.formality_steps !== 0;
 
@@ -897,6 +983,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
               accessibilityLabel={tuneLabel}
               onPress={() => {
                 actions.dismissFailure();
+                bookmark.dismissFailure();
                 setAdjustOpen(true);
               }}
               disabled={busy}
@@ -944,7 +1031,15 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
             const corrected = correctedPieces(shownItems, piece.item.id, o);
             const record = plan.record;
             void actions
-              .correct(record, asCandidate(corrected, plan.req, pairWeights), "swap", effective, { date: record.date, dayType: contextTypeOf(days[sel]!) })
+              .correct(
+                record,
+                asCandidate(corrected, plan.req, pairWeights),
+                "swap",
+                effective,
+                { date: record.date, dayType: contextTypeOf(days[sel]!) },
+                // The corrected set may itself be a saved outfit: then the corrected wear goes on that row.
+                wearOutfitId(corrected.map((i) => i.id), bookmark.savedNow())
+              )
               .then(() => requestFocus("wear"));
             return;
           }

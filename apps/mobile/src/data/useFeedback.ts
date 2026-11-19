@@ -24,7 +24,17 @@ import { keepHomeLaundry, laundryAfterCorrection, type CorrectionStage } from ".
 export type FeedbackTarget = { date: string; dayType: ContextType };
 
 export type FeedbackActions = {
-  wear: (outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment, target?: FeedbackTarget) => Promise<void>;
+  /**
+   * `savedOutfitId`: the outfit is a saved one (DESIGN.md "שלב 5.2" item 6): the wear is recorded on that row and no
+   * `outfits` row is written. The same for `correct`, whose corrected set may itself be a saved outfit.
+   */
+  wear: (
+    outfit: CandidateOutfit,
+    source: "daily" | "swap",
+    adjustment: DayAdjustment,
+    target?: FeedbackTarget,
+    savedOutfitId?: string
+  ) => Promise<void>;
   skip: (outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment, target?: FeedbackTarget) => Promise<void>;
   dislike: (record: TodayRecord) => Promise<void>;
   undo: (record: TodayRecord) => Promise<void>;
@@ -34,7 +44,14 @@ export type FeedbackActions = {
    * move undone for the garments that changed. A failure is published as `correction` (see there); the generic
    * failure line is not used. `target` defaults to the record's own date, in today's day type.
    */
-  correct: (record: TodayRecord, outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment, target?: FeedbackTarget) => Promise<void>;
+  correct: (
+    record: TodayRecord,
+    outfit: CandidateOutfit,
+    source: "daily" | "swap",
+    adjustment: DayAdjustment,
+    target?: FeedbackTarget,
+    savedOutfitId?: string
+  ) => Promise<void>;
   /** Overrides the automatic laundry move: the items stay home and keep their wear count. */
   keepHome: (itemIds: string[]) => Promise<void>;
   /**
@@ -206,8 +223,14 @@ export function useFeedback(args: {
       }));
     };
     /** Records a worn outfit for `target`, then learns from it and moves what is due to the laundry. */
-    const wearNow = async (outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment, target: FeedbackTarget) => {
-      const record = await recordFeedback({ ...target, userId, outfit, source, feedback: "worn", adjustment });
+    const wearNow = async (
+      outfit: CandidateOutfit,
+      source: "daily" | "swap",
+      adjustment: DayAdjustment,
+      target: FeedbackTarget,
+      savedOutfitId?: string
+    ) => {
+      const record = await recordFeedback({ ...target, userId, outfit, source, feedback: "worn", adjustment, savedOutfitId });
       addWorn(record, target, adjustment);
       // The wear is stored even if learning fails; the weights are a derived signal, the wear is the fact. So a
       // failed weights write is logged and swallowed here: letting it reach run() would show "didn't save" for a
@@ -286,7 +309,8 @@ export function useFeedback(args: {
       outfit: CandidateOutfit,
       source: "daily" | "swap",
       adjustment: DayAdjustment,
-      target: FeedbackTarget
+      target: FeedbackTarget,
+      savedOutfitId?: string
     ): Promise<void> => {
       setBusy(true);
       setFailedOn(null);
@@ -294,10 +318,10 @@ export function useFeedback(args: {
       try {
         let corrected: TodayRecord;
         try {
-          corrected = await recordFeedback({ ...target, userId, outfit, source, feedback: "worn", adjustment });
+          corrected = await recordFeedback({ ...target, userId, outfit, source, feedback: "worn", adjustment, savedOutfitId });
         } catch (error) {
           console.error("Recording the corrected wear failed; the earlier one stands", error);
-          setCorrection({ date: earlier.date, stage: "record", retry: () => void correctNow(earlier, outfit, source, adjustment, target) });
+          setCorrection({ date: earlier.date, stage: "record", retry: () => void correctNow(earlier, outfit, source, adjustment, target, savedOutfitId) });
           return;
         }
         addWorn(corrected, target, adjustment);
@@ -316,7 +340,8 @@ export function useFeedback(args: {
       }
     };
     return {
-      wear: (outfit, source, adjustment, target = { date, dayType }) => run(target.date, () => wearNow(outfit, source, adjustment, target)),
+      wear: (outfit, source, adjustment, target = { date, dayType }, savedOutfitId) =>
+        run(target.date, () => wearNow(outfit, source, adjustment, target, savedOutfitId)),
       skip: (outfit, source, adjustment, target = { date, dayType }) =>
         run(target.date, async () => {
           const record = await recordFeedback({ ...target, userId, outfit, source, feedback: "skipped", adjustment });
@@ -336,7 +361,8 @@ export function useFeedback(args: {
           await learn(record.itemIds, "disliked", 1);
         }),
       undo: (record) => run(record.date, () => undoNow(record)),
-      correct: (record, outfit, source, adjustment, target = { date: record.date, dayType }) => correctNow(record, outfit, source, adjustment, target),
+      correct: (record, outfit, source, adjustment, target = { date: record.date, dayType }, savedOutfitId) =>
+        correctNow(record, outfit, source, adjustment, target, savedOutfitId),
       keepHome: (itemIds) =>
         run(laundered ? laundryDate.current : date, async () => {
           await move(itemIds, "home");

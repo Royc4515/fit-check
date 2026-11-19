@@ -80,6 +80,15 @@ export async function loadOutfit(userId: string, id: string): Promise<SavedOutfi
   return outfit;
 }
 
+/**
+ * The saved outfits as last read, right now: for an action that must decide at the moment it runs (which row a wear
+ * points at), where a value captured at render would be a render old. Empty until the first read has answered, and
+ * for another user.
+ */
+export function savedOutfitsNow(userId: string): readonly SavedOutfit[] {
+  return owner === userId && state.status === "ready" ? state.outfits : [];
+}
+
 /** A local change (optimistic write, roll back, removal): applied at once, and wins over a read in flight. */
 export function patchOutfits(userId: string, change: (outfits: readonly SavedOutfit[]) => SavedOutfit[]): void {
   if (owner !== userId) return;

@@ -1,6 +1,7 @@
 import type { PairWeights } from "@fit-check/engine";
 import type { Item } from "@fit-check/schema";
-import { useMemo, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import { WardrobeGate } from "../../components/WardrobeGate";
 import { localTime, type DayContext } from "../../data/dayContext";
 import { useDayContext } from "../../data/useDayContext";
@@ -10,7 +11,9 @@ import { requestStyle } from "../../data/stylist";
 import type { WardrobeData } from "../../data/wardrobe";
 import { useWardrobe } from "../../data/WardrobeProvider";
 import { sessionUserId, useSession } from "../../features/auth/SessionProvider";
+import { refreshOutfits } from "../../features/outfits/store";
 import { TodayView } from "../../features/today/TodayView";
+import { useBookmark } from "../../features/today/useBookmark";
 
 /** Today: loads the wardrobe and the day, then hands both to the view. */
 export default function Index() {
@@ -49,6 +52,16 @@ function Today(props: {
   const occasions = useOccasions(userId, dates);
   // The clock when the screen opened, in the location's zone: it picks the opening tab (three hours before candles).
   const [clock] = useState(() => localTime(day.tz));
+  // The saved outfits (the bookmark, and which row a wear points at). One read, started only once the day's outfit
+  // has what it needs to be drawn, so it never delays the first paint; and again whenever Today is focused, as the
+  // collection does, so an outfit removed elsewhere is not still "saved" here.
+  const bookmark = useBookmark(userId);
+  const outfitReady = feedback.history !== null;
+  useFocusEffect(
+    useCallback(() => {
+      if (outfitReady) void refreshOutfits(userId);
+    }, [userId, outfitReady])
+  );
   // Wait for today's answers so an outfit already marked worn never flashes as a fresh suggestion.
   if (!feedback.history) return <WardrobeGate state={{ status: "loading" }} />;
   return (
@@ -64,6 +77,7 @@ function Today(props: {
       correction={feedback.correction}
       stylist={requestStyle}
       occasions={occasions}
+      bookmark={bookmark}
       clock={clock}
     />
   );

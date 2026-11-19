@@ -120,6 +120,14 @@
       "cancel": "Cancel",
       "cancelLabel": "Cancel the occasion: {{type}}",
       "failed": "The occasion wasn't saved."
+    },
+    "bookmark": {
+      "save": "Save to outfits",
+      "remove": "Remove from outfits",
+      "saved": "Saved to outfits",
+      "removed": "Removed from outfits",
+      "saveFailed": "Couldn't save it to your outfits.",
+      "removeFailed": "Couldn't remove it from your outfits."
     }
   },
   "wardrobe": {
