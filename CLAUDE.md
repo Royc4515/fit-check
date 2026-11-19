@@ -13,6 +13,7 @@ Personal wardrobe and styling app for Roy. Single user now, multi-user-ready sch
   - `tagItem(cutout)` → Claude Haiku, structured output, schema in `packages/schema/item-tags.ts`
   - `styleOutfit(candidates, context)` → Claude Sonnet, schema in `packages/schema/stylist.ts`
   - `extractReceipt(text)` → Claude Haiku (v2)
+  - `renderOutfit(garments, figure)` → Nano Banana 2.1 (stage 5.3; not built yet)
 - i18n: `i18next` + `react-i18next`, files in `apps/mobile/locales/{he,en}.json`. Default `he`, RTL via `I18nManager` on native and `dir` on web.
 
 ## Repo layout (monorepo, pnpm + turbo)
@@ -82,5 +83,5 @@ pnpm build:android    # eas build --platform android --profile preview (APK)
 - Do not add a UI library (shadcn, Tamagui, Paper). Components are ours, in `apps/mobile/src/components/ui/`, styled from the tokens. A screen never styles a one-off view; a missing component is added to the library (DESIGN.md section 4).
 - Do not add a vector DB, queue, or second backend. Supabase does all of it at this scale.
 - Do not call remove.bg (API shuts down 2026-12-01). Cutouts come from the Modal worker.
-- Do not implement Gmail import or price tracking in the MVP, even if tempting. Tables for them exist and stay empty. Virtual try-on: Roy lifted the ban on 2026-11-19; it proceeds only as `docs/REDESIGN_PLAN.md` stage 5.3 says (research, then a capped experiment), under the money rule above.
+- Do not implement Gmail import or price tracking in the MVP, even if tempting. Tables for them exist and stay empty. Virtual try-on: Roy lifted the ban on 2026-11-19; it proceeds only as `docs/REDESIGN_PLAN.md` stage 5.3 says (one generated image of the whole outfit, on demand; the first slice is the test and is removed if Roy rejects it), under the money rule above.
 - Do not store the wardrobe in the app bundle or in local-only storage; Supabase is the source of truth, local is cache.
