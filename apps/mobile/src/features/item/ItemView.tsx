@@ -62,13 +62,11 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
   const goBack = useCallback(() => (router.canGoBack() ? router.back() : router.replace("/")), [router]);
   const flight = useItemFlight(id, geo, heroTone, goBack);
   const { close: fly, onAspect, onCopyShown } = flight;
-  // An open, changed text field is saved before the screen goes (DESIGN.md section 4, "כתיבה במקום"); ItemDetails
-  // fills this, and its own unmount covers the browser's back button.
-  const flushWriting = useRef<(() => void) | null>(null);
-  const close = useCallback(() => {
-    flushWriting.current?.();
-    return fly();
-  }, [fly]);
+  // Every way out this screen starts asks the text writing first (DESIGN.md section 4, "כתיבה במקום"): an open change
+  // is saved, and the flight back starts only once it is saved; a failed save keeps the screen. ItemDetails fills it.
+  const leaveWriting = useRef<((proceed: () => void) => void) | null>(null);
+  const leave = useCallback((proceed: () => void) => (leaveWriting.current ? leaveWriting.current(proceed) : proceed()), []);
+  const close = useCallback(() => leave(() => void fly()), [leave, fly]);
   const scroll = useAnimatedRef<Animated.ScrollView>();
   const [actionsOpen, setActionsOpen] = useState(false);
   const [imageStatus, setImageStatus] = useState<ImageStatus | null>(null);
@@ -92,12 +90,11 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
   }, [item, onAspect, onCopyShown]);
 
   /** Another item from "goes with": measure the pressed garment first so the next screen flies from it. */
-  const openOther = async (scope: string, otherId: string) => {
-    // This screen stays mounted under the next one: its open field must be settled now, not on unmount.
-    flushWriting.current?.();
-    await flyFrom(scope, otherId);
-    router.push({ pathname: "/item/[id]", params: { id: otherId } });
-  };
+  const openOther = (scope: string, otherId: string) =>
+    // This screen stays mounted under the next one, so no navigator event would hold it: ask first.
+    leave(() => {
+      void flyFrom(scope, otherId).then(() => router.push({ pathname: "/item/[id]", params: { id: otherId } }));
+    });
 
   const { ground, pad } = geo;
   const originTone = flight.origin?.tone;
@@ -162,10 +159,10 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
       onAvailability={onAvailability}
       edits={edits}
       imageStatus={status}
-      onOpenOther={(scope, otherId) => void openOther(scope, otherId)}
+      onOpenOther={openOther}
       onScrollTop={() => scroll.current?.scrollTo({ y: 0, animated: true })}
       bleed={!geo.desktop}
-      flushRef={flushWriting}
+      leaveRef={leaveWriting}
     />
   ) : (
     <Display level={1}>{t("item.notFound")}</Display>

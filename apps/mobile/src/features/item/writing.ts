@@ -58,3 +58,32 @@ export function changeFor(field: TextField, draft: string): ItemChange {
   if (field === "brand") return { brand: oneLine(draft) };
   return { notes: draft };
 }
+
+/** What the screen knows when the user tries to leave it. */
+export type LeaveState = {
+  /** The field being written in, if any. */
+  open: OpenText | null;
+  /** A text save is on its way (the open field saving for a leave, or one sent by "שמירה" a moment ago). */
+  saving: boolean;
+  /** Fields whose last save failed and whose typed text is held only by the screen. */
+  failed: readonly TextField[];
+};
+
+/**
+ * What leaving the item screen must do first (DESIGN.md section 4, "יציאה מהמסך עם שינוי פתוח ותקין"):
+ * - `leave`: nothing would be lost; an open field that is unchanged, or invalid (an emptied name, which can never be
+ *   saved), is dropped and the screen goes now;
+ * - `save-first`: the open field is changed and valid; it is saved once, and the screen goes only if that succeeds;
+ * - `wait`: a save is already on its way; the screen goes when it succeeds and stays if it fails (no second write);
+ * - `stay`: an earlier save failed while its field was closed; that field reopens with its text, nothing is written.
+ */
+export type LeaveDecision = { kind: "leave" } | { kind: "save-first"; edit: OpenText } | { kind: "wait" } | { kind: "stay"; field: TextField };
+
+/** See `LeaveDecision`. Pure: the screen runs it on every way out (back, browser back, another item, removal). */
+export function decideLeave(s: LeaveState): LeaveDecision {
+  if (s.saving) return { kind: "wait" };
+  if (s.open && resolveOpen(s.open) === "save") return { kind: "save-first", edit: s.open };
+  const held = s.failed.find((f) => f !== s.open?.field);
+  if (held) return { kind: "stay", field: held };
+  return { kind: "leave" };
+}

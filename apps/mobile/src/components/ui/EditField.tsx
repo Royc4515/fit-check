@@ -28,8 +28,12 @@ type Props = {
   /** Typography of the text, matching the text at rest (NativeWind classes). */
   textClassName?: string;
   textStyle?: StyleProp<TextStyle>;
-  /** Focus the field when it appears (default). Off when a failed save reopens it: that must not steal focus. */
+  /** Focus the field when it appears (default). Off for a field shown without being typed in (a gallery fixture). */
   autoFocus?: boolean;
+  /** A save of this field is on its way: "שמירה" shows it is busy, neither button acts. */
+  busy?: boolean;
+  /** Each change asks the field to take focus again, caret at the end (a failed save: never back to <body>). */
+  focusAsk?: number;
   /** Under the row: the field's status line, if any. */
   children?: ReactNode;
 };
@@ -91,6 +95,8 @@ export function EditField({
   textClassName = "font-body text-body text-ink",
   textStyle,
   autoFocus = true,
+  busy = false,
+  focusAsk = 0,
   children,
 }: Props) {
   const { t } = useTranslation();
@@ -119,6 +125,16 @@ export function EditField({
       }
     });
   };
+
+  // A failed save asks for focus back in the field, caret at the end. The first value is the mount (autoFocus did it).
+  const firstAsk = useRef(focusAsk);
+  useEffect(() => {
+    if (focusAsk === firstAsk.current) return;
+    const node: unknown = input.current;
+    input.current?.focus();
+    if (Platform.OS !== "web") return;
+    if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) node.setSelectionRange(node.value.length, node.value.length);
+  }, [focusAsk]);
 
   // Web, also before the next frame: a key typed right after the tap must already land at the end.
   useLayoutEffect(() => {
@@ -234,8 +250,8 @@ export function EditField({
       />
       {/* Start-aligned in reading order: "שמירה" first, then "ביטול"; the counter at the row's end. */}
       <View ref={row} className="mt-3 flex-row flex-wrap items-center" style={{ columnGap: 24, rowGap: 8, minHeight: layout.control }}>
-        <Button variant="ink" label={t("ui.save")} onPress={onSave} disabled={!canSave} />
-        <Button variant="text" label={t("ui.cancel")} onPress={onCancel} />
+        <Button variant="ink" label={busy ? t("ui.saving") : t("ui.save")} onPress={onSave} disabled={!canSave || busy} />
+        <Button variant="text" label={t("ui.cancel")} onPress={onCancel} disabled={busy} />
         {counter}
       </View>
       {children}

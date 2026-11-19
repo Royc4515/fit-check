@@ -68,7 +68,8 @@ export function InlineText({
   const { t } = useTranslation();
   const tracking = useTypeTracking();
   const open = writing.open?.field === field ? writing.open : null;
-  const status = writing.status?.field === field ? writing.status : null;
+  const saved = writing.saved?.field === field;
+  const failed = writing.failures[field];
   const begin = () => writing.start(field, value);
 
   let body: ReactNode;
@@ -89,7 +90,9 @@ export function InlineText({
         placeholder={placeholder ?? label}
         textClassName={FACE[size]}
         textStyle={size === "display-xl" ? tracking.displayXl : undefined}
-        autoFocus={!writing.quietOpen}
+        busy={writing.busy}
+        focusAsk={writing.focusAsk}
+        autoFocus={writing.autoFocus}
       />
     );
   } else if (!value && emptyText) {
@@ -99,10 +102,12 @@ export function InlineText({
       </View>
     );
   } else {
-    // Tapping the text opens writing too, but it is not a second button: the pencil is the one stop for keyboards and
-    // screen readers, and the text stays plain (heading) text for them.
+    // Tapping the text opens writing too, but it is not a second control: the pencil is the one stop for keyboards and
+    // screen readers (DESIGN.md "פוקוס אחרי כישלון"), and the text stays plain (heading) text for them.
+    // don't touch / `tabIndex={-1}`: `focusable={false}` alone still left a tab stop with no name on web
+    // (independent check, 2026-11-19). No role: read as the text it holds.
     const text = (
-      <Pressable onPress={begin} focusable={false} accessible={false} style={{ flexShrink: 1, flexGrow: 1 }}>
+      <Pressable onPress={begin} focusable={false} tabIndex={-1} accessible={false} style={{ flexShrink: 1, flexGrow: 1 }}>
         {children}
       </Pressable>
     );
@@ -131,13 +136,18 @@ export function InlineText({
       {/* Always there, so a screen reader hears "נשמר" when it appears (a live region added with its text is often
           missed). The error line is an alert of its own (StatusLine). Never takes focus. */}
       <View accessibilityLiveRegion="polite">
-        {status?.kind === "saved" ? (
+        {failed ? (
+          <View className="mt-2">
+            <StatusLine
+              variant="error"
+              message={failed.message}
+              action={{ label: t("item.writing.retry"), onPress: () => writing.retry(field) }}
+              disabled={writing.busy}
+            />
+          </View>
+        ) : saved ? (
           <View className="mt-2">
             <StatusLine variant="ok" message={t("item.writing.saved")} />
-          </View>
-        ) : status?.kind === "failed" ? (
-          <View className="mt-2">
-            <StatusLine variant="error" message={status.message} action={{ label: t("item.writing.retry"), onPress: writing.retry }} />
           </View>
         ) : null}
       </View>

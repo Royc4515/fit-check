@@ -1,5 +1,6 @@
 import type { PairWeights } from "@fit-check/engine";
 import { AVAILABILITIES, type Availability, type Item, type ItemTags } from "@fit-check/schema";
+import { useNavigation, usePreventRemove } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
@@ -40,10 +41,11 @@ type Props = {
   /** Phone layout: "goes with" runs to the screen edges. */
   bleed: boolean;
   /**
-   * Filled with this screen's "leaving now" hook: the screen calls it before it goes (back, hardware back, another
-   * item), so an open, changed, valid text field is saved rather than thrown away (DESIGN.md section 4).
+   * Filled with the writing's `requestLeave`: every way out the screen starts itself (its back button, hardware back,
+   * another item, removal) goes through it, so an open change is saved first and the screen only goes once it is
+   * saved (DESIGN.md section 4, "יציאה מהמסך עם שינוי פתוח ותקין").
    */
-  flushRef?: MutableRefObject<(() => void) | null>;
+  leaveRef?: MutableRefObject<((proceed: () => void) => void) | null>;
 };
 
 /**
@@ -52,7 +54,7 @@ type Props = {
  * choice (no edit mode, no save button); the notes, edited in place; the wear history; "goes with". Saves are optimistic upstream (the item route rolls back a failed write);
  * this component only says that it failed, next to what failed.
  */
-export function ItemDetails({ item, items, pairWeights, onAvailability, edits, imageStatus, onOpenOther, onScrollTop, bleed, flushRef }: Props) {
+export function ItemDetails({ item, items, pairWeights, onAvailability, edits, imageStatus, onOpenOther, onScrollTop, bleed, leaveRef }: Props) {
   const { t } = useTranslation();
   const [failure, setFailure] = useState<Failure | null>(null);
   // A write can fail after the screen is gone (back right after an edit): the wardrobe store is still rolled back by
@@ -79,20 +81,14 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
     [t]
   );
   const writing = useTextWriting(edits ? saveText : null, failureText);
-  const { flush } = writing;
-  // Leaving the screen with a field open saves it (changed and valid) through the edit queue, which settles the
-  // wardrobe store even after this screen is gone. Unmount covers browser back; the screen calls `flushRef` earlier.
+  const { requestLeave, holds } = writing;
   useEffect(() => {
-    if (flushRef) flushRef.current = flush;
-  }, [flushRef, flush]);
-  const flushOnUnmount = useRef(flush);
-  useEffect(() => {
-    flushOnUnmount.current = flush;
-  }, [flush]);
-  useEffect(() => {
-    const holder = flushOnUnmount;
-    return () => holder.current();
-  }, []);
+    if (leaveRef) leaveRef.current = requestLeave;
+  }, [leaveRef, requestLeave]);
+  // Ways out the screen does not start itself (the browser's back, a swipe, a route reset) are held by the navigator
+  // while anything typed could be lost, and released through the same decision: one save, then the same action.
+  const navigation = useNavigation();
+  usePreventRemove(holds, ({ data }) => requestLeave(() => navigation.dispatch(data.action)));
   const [field, setField] = useState<TagField | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   // The item as it was when the screen opened: a pick back to it restores it exactly (edit.ts colorPatch/legPatch).

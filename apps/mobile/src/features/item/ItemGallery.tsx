@@ -6,7 +6,7 @@ import { Display, Meta } from "../../components/ui";
 import type { ItemWear } from "../../data/feedback";
 import { InlineText } from "./InlineText";
 import type { WearState } from "./useItemWears";
-import type { Writing, WritingStatus } from "./useTextWriting";
+import type { Failures, SavedLine, Writing } from "./useTextWriting";
 import type { OpenText } from "./writing";
 import { WearHistory } from "./WearHistory";
 
@@ -16,18 +16,22 @@ const FIXTURE_DATES = ["2026-11-17", "2026-11-12", "2026-11-06", "2026-10-30", "
 const noop = () => undefined;
 
 /** A frozen writing state for a fixture: shown exactly as on the item screen, nothing reacts and nothing is saved. */
-function fixtureWriting(open: OpenText | null, status: WritingStatus | null): Writing {
+function fixtureWriting(open: OpenText | null, saved: SavedLine | null = null, failures: Failures = {}): Writing {
   return {
     open,
-    status,
+    saved,
+    failures,
+    busy: false,
+    focusAsk: 0,
+    holds: false,
     // No focus and no scrolling: a fixture field must not pull the gallery to itself.
-    quietOpen: true,
+    autoFocus: false,
     start: noop,
     setDraft: noop,
     submit: noop,
     cancel: noop,
     retry: noop,
-    flush: noop,
+    requestLeave: noop,
     pencilRef: () => noop,
   };
 }
@@ -47,19 +51,18 @@ function WritingGallery({ subject }: { subject: Item }) {
     </InlineText>
   );
   const demos: [string, ReturnType<typeof name>][] = [
-    [t("ds.item.writingRest"), name(fixtureWriting(null, null))],
-    [t("ds.item.writingEditing"), name(fixtureWriting({ field: "name", original: subject.name, draft: `${subject.name} ${t("ds.item.writingFixtureWord")}` }, null))],
-    [t("ds.item.writingSaved"), name(fixtureWriting(null, { field: "name", kind: "saved", n: 1 }))],
+    [t("ds.item.writingRest"), name(fixtureWriting(null))],
+    [t("ds.item.writingEditing"), name(fixtureWriting({ field: "name", original: subject.name, draft: `${subject.name} ${t("ds.item.writingFixtureWord")}` }))],
+    [t("ds.item.writingSaved"), name(fixtureWriting(null, { field: "name", n: 1 }))],
     [
       t("ds.item.writingFailed"),
       <InlineText
         key="failed"
         field="notes"
         value=""
-        writing={fixtureWriting(
-          { field: "notes", original: "", draft: typedNote },
-          { field: "notes", kind: "failed", message: t("item.writing.failed", { reason: t("item.writing.failedUnknown") }), draft: typedNote, original: "" }
-        )}
+        writing={fixtureWriting({ field: "notes", original: "", draft: typedNote }, null, {
+          notes: { message: t("item.writing.failed", { reason: t("item.writing.failedUnknown") }), draft: typedNote, original: "" },
+        })}
         label={t("item.notes.title")}
         editLabel={t("item.writing.editNotes")}
         emptyText={t("item.notes.add")}
