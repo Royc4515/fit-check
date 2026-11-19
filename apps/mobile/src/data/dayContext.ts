@@ -5,6 +5,7 @@ import { cacheGet, cacheSet } from "./kv";
 import { CHAIN_MAX_DAYS, phoneFreeChain, shabbatTimes, stripNiqqud, type PhoneFreeDay, type ShabbatTimes } from "./shabbatTimes";
 import { placeNameFor, resolveLocation, type ResolvedLocation } from "./location";
 import type { PlaceLang } from "./placeName";
+import { localDate } from "./localDate";
 
 /**
  * What kind of day it is, from the real world: Israel-local date, Hebrew date and holidays from Hebcal, and the
@@ -54,28 +55,10 @@ export type DayContext = {
   chain: PlannedDay[];
 };
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-/** The local date and weekday in `tz` (en-CA formats as yyyy-mm-dd). */
-export function localDate(tz: string, now: Date = new Date()): { date: string; weekday: number } {
-  const date = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-  const weekday = WEEKDAYS.indexOf(new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short" }).format(now));
-  return { date, weekday };
-}
-
-export function israelDate(now: Date = new Date()): { date: string; weekday: number } {
-  return localDate("Asia/Jerusalem", now);
-}
+export { israelDate, localDate, localTime } from "./localDate";
 
 /** Cache keys include the place, so switching cities never shows the old city's weather. */
 const placeKey = (loc: ResolvedLocation) => `${loc.lat.toFixed(2)},${loc.lon.toFixed(2)}`;
-
-/** The local time `HH:MM` (24-hour) in `tz`, for the default tab's "three hours before candle lighting". */
-export function localTime(tz: string, now: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
-  return `${get("hour")}:${get("minute")}`;
-}
 
 /** `YYYY-MM-DD` plus `days`, and that date's weekday, in UTC so no device time zone is involved. */
 function addDays(date: string, days: number): { iso: string; weekday: number } {

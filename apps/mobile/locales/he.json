@@ -6,6 +6,8 @@
     "title": "היום",
     "empty": "עוד אין הצעה להיום",
     "wearing": "לובש",
+    "wearOnShabbat": "אלבש בשבת",
+    "wearOnHoliday": "אלבש בחג",
     "warmer": "יותר חם",
     "cooler": "יותר קר",
     "dressier": "יותר רשמי",
@@ -53,6 +55,8 @@
     "dislike": "לא אהבתי את השילוב",
     "status": {
       "worn": "נרשם: זה מה שלבשת היום.",
+      "wornShabbat": "נרשם: זה הלוק שלך לשבת.",
+      "wornHoliday": "נרשם: זה הלוק שלך לחג.",
       "skipped": "דילגת על ההצעה הקודמת.",
       "disliked": "נרשם שהשילוב הקודם לא עבד.",
       "failed": "הפעולה לא נשמרה. נסה שוב.",
@@ -83,7 +87,17 @@
     "tune": "כוונון ההצעה: חם, קר, רשמי, דילוג",
     "pieceLabel": "{{type}}, {{name}}. חלופות ופרטים",
     "heroLabel": "התלבושת להיום: {{pieces}}. החלקה הצידה מדלגת להצעה הבאה",
-    "weatherLabel": "מזג האוויר ב{{place}}: {{weather}}. שינוי מיקום"
+    "weatherLabel": "מזג האוויר ב{{place}}: {{weather}}. שינוי מיקום",
+    "tabs": {
+      "label": "הלוק לפי יום",
+      "today": "היום",
+      "shabbat": "לשבת",
+      "holiday": "לחג",
+      "holidayDay1": "לחג א׳",
+      "holidayDay2": "לחג ב׳"
+    },
+    "plannedForecast": "{{day}} · {{range}} · גשם {{rain}}",
+    "plannedNoForecast": "אין עדיין תחזית"
   },
   "wardrobe": {
     "title": "ארון",
