@@ -21,6 +21,11 @@ export type WardrobeState =
 
 const WardrobeContext = createContext<WardrobeState>({ status: "loading" });
 
+/** The item just removed (long-press sheet or item screen), offered back on the wardrobe until the next action there. */
+export type LastRemoved = { id: string; name: string; failed: boolean };
+type RemovedSlot = readonly [LastRemoved | null, (next: LastRemoved | null) => void];
+const RemovedContext = createContext<RemovedSlot>([null, () => {}]);
+
 /**
  * One wardrobe load shared by every screen, so Today, Wardrobe and Item never disagree and never refetch on
  * navigation. Stale-while-revalidate: show the per-user cache immediately, then replace it with the network
@@ -62,7 +67,19 @@ export function WardrobeProvider({ userId, children }: { userId: string; childre
   }, [userId, attempt, reload, patch]);
 
   const value = useMemo(() => state, [state]);
-  return <WardrobeContext.Provider value={value}>{children}</WardrobeContext.Provider>;
+  // Here, not in the wardrobe screen: a removal from the item screen must leave the same undo line (DESIGN.md "ארכיון").
+  const [removed, setRemoved] = useState<LastRemoved | null>(null);
+  const removedSlot = useMemo<RemovedSlot>(() => [removed, setRemoved], [removed]);
+  return (
+    <WardrobeContext.Provider value={value}>
+      <RemovedContext.Provider value={removedSlot}>{children}</RemovedContext.Provider>
+    </WardrobeContext.Provider>
+  );
+}
+
+/** The last removed item and its setter (null = no undo offer). Shared by the wardrobe and the item screen. */
+export function useLastRemoved(): RemovedSlot {
+  return useContext(RemovedContext);
 }
 
 export function useWardrobe(): WardrobeState {
