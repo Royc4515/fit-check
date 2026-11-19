@@ -749,6 +749,39 @@
     },
     "startFrom": "Or start from a chosen detail"
   },
+  "tryon": {
+    "entry": "On a figure",
+    "title": "On a figure",
+    "price": "Generate image: {{price}} · {{left}} left this month of {{budget}}",
+    "priceUnknown": "Generate image: {{price}} · this month's balance is not known right now",
+    "balanceUnknown": "This month's balance is not known right now",
+    "includesFigure": "The price includes creating the figure, once.",
+    "empty": "No image for this look yet",
+    "generate": "Generate image",
+    "generating": "Drawing the look",
+    "again": "Generate again",
+    "againLabel": "Generate again · {{price}}",
+    "againA11y": "Generate again, costs {{price}}",
+    "retry": "Try again",
+    "notice": "Made by AI. Colour, pattern and logo may be inaccurate.",
+    "imageLabel": "The look on a figure: {{pieces}}",
+    "preview": "Images are not generated in the design preview.",
+    "error": {
+      "budget_reached": "This month's image budget is used up. It renews on the 1st.",
+      "item_has_no_image": "“{{name}}” has no cut-out image, so the look cannot be drawn.",
+      "item_has_no_image_unnamed": "One of the garments has no cut-out image, so the look cannot be drawn.",
+      "item_not_found": "One of the garments is not in the wardrobe. Refresh the screen and try again.",
+      "invalid_input": "This look cannot be drawn: it needs a top, trousers and shoes.",
+      "unauthenticated": "Please sign in again.",
+      "provider_refused": "The model refused to draw this image.",
+      "provider_timeout": "Drawing took too long and did not finish.",
+      "provider_error": "Drawing failed.",
+      "storage_error": "The image could not be read or saved.",
+      "network": "No answer came back. If the image was made, it will show when we check again.",
+      "bad_response": "The answer was not understood. If the image was made, it will show when we check again.",
+      "image_load": "The image did not load."
+    }
+  },
   "preview": {
     "banner": "Design preview only · nothing is saved"
   },
