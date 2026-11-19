@@ -25,7 +25,8 @@ export interface EmbedResult {
 export interface AiLogEntry {
   provider: "anthropic" | "google" | "modal";
   model: string;
-  task: "separate" | "cutout" | "embed" | "tag" | "style" | "receipt";
+  // ai_calls.task is plain text (no check constraint), so a new task needs no migration.
+  task: "separate" | "cutout" | "embed" | "tag" | "style" | "receipt" | "tryon";
   input_tokens?: number;
   output_tokens?: number;
   images?: number;
