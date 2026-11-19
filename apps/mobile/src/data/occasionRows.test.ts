@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { manualPayload, occasionsFromRows, otherOccasionTypes } from "./occasionRows";
+import { manualPayload, mergeOccasionRead, occasionsFromRows, otherOccasionTypes } from "./occasionRows";
 
 const row = (over: Record<string, unknown> = {}) => ({ date: "2026-11-20", type: "interview", source: "manual", payload: {}, created_at: "2026-11-19T10:00:00Z", ...over });
 
@@ -33,5 +33,21 @@ describe("writing", () => {
     expect(manualPayload(existing, "interview")).toEqual({ note: 1 });
     expect(manualPayload(existing, "date")).toEqual({});
     expect(manualPayload(null, "date")).toEqual({});
+  });
+});
+
+describe("mergeOccasionRead (a late read never undoes a choice)", () => {
+  it("applies the read where nothing changed since it started", () => {
+    expect(mergeOccasionRead({ a: null }, { a: "date", b: "event" }, {}, {})).toEqual({ a: "date", b: "event" });
+  });
+  it("a date chosen after the read started keeps the choice", () => {
+    // The read started with no changes; the user chose "date" at 4 s; the read answers "none" at 9 s.
+    expect(mergeOccasionRead({ "2026-11-20": "date" }, { "2026-11-20": null }, {}, { "2026-11-20": 1 })).toEqual({ "2026-11-20": "date" });
+  });
+  it("a clear after the read started stays cleared", () => {
+    expect(mergeOccasionRead({ d: null }, { d: "interview" }, { d: 2 }, { d: 3 })).toEqual({ d: null });
+  });
+  it("a change made before the read started does not block it", () => {
+    expect(mergeOccasionRead({ d: "date" }, { d: "event" }, { d: 1 }, { d: 1 })).toEqual({ d: "event" });
   });
 });

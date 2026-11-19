@@ -2,7 +2,7 @@ import { OCCASION_TYPES, type OccasionType } from "@fit-check/schema";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { cacheGet, cacheSet } from "./kv";
-import { manualPayload, occasionsFromRows, otherOccasionTypes, type OccasionRow } from "./occasionRows";
+import { manualPayload, mergeOccasionRead, occasionsFromRows, otherOccasionTypes, type OccasionRow } from "./occasionRows";
 import { isPreview, PreviewReadOnlyError } from "./preview";
 
 /**
@@ -79,18 +79,26 @@ export function useOccasions(userId: string, dates: readonly string[]): Occasion
     current.current = byDate;
   }, [byDate]);
   const queue = useRef<Promise<void>>(Promise.resolve());
+  // How many times the user has changed each date. A read applies to a date only if no change happened since the read
+  // started: a slow first read answering "none" must not wipe a choice made while it was on its way.
+  const changes = useRef<Record<string, number>>({});
 
   useEffect(() => {
     let active = true;
     const list = key.split(",");
+    const startedAt = { ...changes.current };
     void (async () => {
       const cached = await Promise.all(list.map(async (d) => [d, await cacheGet<OccasionRow | null>(cacheKey(d), CACHE_MS)] as const));
-      if (active) setByDate((cur) => ({ ...Object.fromEntries(cached.filter(([, v]) => v !== null)), ...cur }));
+      if (active) {
+        const known = Object.fromEntries(cached.filter(([, v]) => v !== null));
+        // The device copy only fills dates nothing else has answered yet.
+        setByDate((cur) => mergeOccasionRead(cur, Object.fromEntries(Object.entries(known).filter(([d]) => !(d in cur))), startedAt, changes.current));
+      }
       try {
         const fresh = await fetchOccasions(list);
         if (!active) return;
-        setByDate((cur) => ({ ...cur, ...fresh }));
-        for (const [d, v] of Object.entries(fresh)) void cacheSet(cacheKey(d), v);
+        setByDate((cur) => mergeOccasionRead(cur, fresh, startedAt, changes.current));
+        for (const [d, v] of Object.entries(fresh)) if ((changes.current[d] ?? 0) === (startedAt[d] ?? 0)) void cacheSet(cacheKey(d), v);
       } catch (error) {
         console.warn("Occasions unavailable, using the device copy", error);
       }
@@ -104,6 +112,7 @@ export function useOccasions(userId: string, dates: readonly string[]): Occasion
     (date: string, type: OccasionType | null) => {
       const before = current.current[date] ?? null;
       if ((before?.type ?? null) === type) return;
+      changes.current = { ...changes.current, [date]: (changes.current[date] ?? 0) + 1 };
       setFailure(null);
       // Optimistic: the chip and the outfit change now (item 4).
       setByDate((cur) => ({ ...cur, [date]: type ? { type, source: "manual", date, payload: {}, createdAt: new Date().toISOString() } : null }));
