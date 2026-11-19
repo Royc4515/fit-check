@@ -33,9 +33,9 @@ export function pointInPolygon(point: readonly [number, number], ring: Ring): bo
   return inside;
 }
 
-/** Inside a region: in some polygon's outer ring and not in one of that polygon's holes. */
+/** Inside a region: in any of its outer rings (enclaves are deliberately not excluded, see candleLightingBounds.ts). */
 function pointInRegion(point: readonly [number, number], region: Region): boolean {
-  return region.some(([outer, ...holes]) => outer !== undefined && pointInPolygon(point, outer) && !holes.some((h) => pointInPolygon(point, h)));
+  return region.some((ring) => pointInPolygon(point, ring));
 }
 
 /**
