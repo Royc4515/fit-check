@@ -36,6 +36,8 @@ verify_jwt = false   # invoked by pg_cron with the service role, not by the app
 verify_jwt = true
 [functions.import-sheet]
 verify_jwt = true
+[functions.tryon]
+verify_jwt = true
 # Deployed with their own checks instead of the gateway's JWT check (see each function's header):
 [functions.mcp]
 verify_jwt = false   # an MCP client sends an OAuth access token; the function verifies it itself and answers 401 + WWW-Authenticate
