@@ -53,7 +53,7 @@ interface Harness {
   setOnFigure(fn: () => void): void;
 }
 
-function harness(opts: { spend?: number | null; outfit?: () => TryonResult; withFigure?: boolean } = {}): Harness {
+function harness(opts: { spend?: number | null; outfit?: () => TryonResult; withFigure?: boolean; signFails?: boolean } = {}): Harness {
   const files = new Map<string, Uint8Array>();
   if (opts.withFigure) files.set(FIGURE_PATH, PNG);
   const uploads: Harness["uploads"] = [];
@@ -72,7 +72,7 @@ function harness(opts: { spend?: number | null; outfit?: () => TryonResult; with
       files.set(path, bytes);
       return Promise.resolve("ok");
     },
-    signedUrl: (path, ttl) => Promise.resolve(`https://project.supabase.co/storage/v1/object/sign/originals/${path}?token=t&ttl=${ttl}`),
+    signedUrl: (path, ttl) => Promise.resolve(opts.signFails ? null : `https://project.supabase.co/storage/v1/object/sign/originals/${path}?token=t&ttl=${ttl}`),
   };
   const deps: TryonDeps = {
     authenticate: (req) => {
@@ -244,4 +244,27 @@ Deno.test("a provider refusal is typed and still logged", async () => {
   assert(r.status === 200 && r.body.error === "provider_refused", JSON.stringify(r));
   assert(h.logs.length === 1 && h.logs[0]!.ok === false, "logged");
   assert(!h.files.has(await tryonImagePath(A, [TOP, BOTTOM, SHOES])), "nothing stored");
+});
+
+Deno.test("quote with a stored image returns its signed URL, and calls neither the provider nor logAiCall", async () => {
+  const h = harness({ withFigure: true });
+  const path = await tryonImagePath(A, [TOP, BOTTOM, SHOES]);
+  h.files.set(path, PNG);
+  const r = await call(h, { mode: "quote", items: outfit });
+  assert(r.body.ok === true && r.body.cached === true && String(r.body.image_url).includes(path) && r.body.expires_in_s === 600, JSON.stringify(r));
+  assert(h.calls.outfit === 0 && h.calls.figure === 0 && h.logs.length === 0 && h.uploads.length === 0, "no cost, no row, no write");
+});
+
+Deno.test("quote without a stored image has no URL", async () => {
+  const h = harness({ withFigure: true });
+  const r = await call(h, { mode: "quote", items: outfit });
+  assert(r.body.ok === true && r.body.cached === false && !("image_url" in r.body) && !("expires_in_s" in r.body), JSON.stringify(r));
+});
+
+Deno.test("quote: a stored image that cannot be signed is storage_error, never cached without a URL", async () => {
+  const h = harness({ withFigure: true, signFails: true });
+  h.files.set(await tryonImagePath(A, [TOP, BOTTOM, SHOES]), PNG);
+  const r = await call(h, { mode: "quote", items: outfit });
+  assert(r.body.ok === false && r.body.error === "storage_error", JSON.stringify(r));
+  assert(h.calls.outfit === 0 && h.logs.length === 0, "nothing generated or logged");
 });

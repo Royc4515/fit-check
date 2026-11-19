@@ -78,7 +78,8 @@ export async function tryonImagePath(userId: string, itemIds: readonly string[])
  *
  * Input (POST JSON, TryonRequestSchema): `{ mode: "quote" | "render" | "rerender", items: [{ item_id, slot }] }`.
  * - quote: price (plus the one-time figure while it is missing), the month's Google spend and cap, and whether an
- *   image for these garments is stored. Never generates, never costs, writes no ai_calls row.
+ *   image for these garments is stored; when it is, its signed URL too (so opening the sheet never needs render).
+ *   Never generates, never costs, writes nothing.
  * - render: the stored image when there is one (free); else generates, stores and returns it.
  * - rerender: always generates and replaces the stored image.
  * Before any generation: the shared monthly cap (spend + this call's price, unknown spend = spent), checked again
@@ -134,6 +135,15 @@ export async function handleTryon(req: Request, deps: TryonDeps): Promise<Respon
   if (mode === "quote") {
     const figureExists = await store.exists(FIGURE_PATH);
     if (figureExists === null) return error("storage_error");
+    // don't touch / quote is the only call the sheet makes without a press, so a stored image is signed right here:
+    // the sheet then never calls render just to show it (render would pay if the image vanished in between).
+    // Cached without a URL is never answered; a failed signature is storage_error.
+    let stored: { image_url: string; expires_in_s: number } | null = null;
+    if (cached) {
+      const url = await store.signedUrl(path, SIGNED_URL_TTL_S);
+      if (!url) return error("storage_error");
+      stored = { image_url: url, expires_in_s: SIGNED_URL_TTL_S };
+    }
     const spent = await deps.monthlySpend();
     return json(200, {
       ok: true,
@@ -143,6 +153,7 @@ export async function handleTryon(req: Request, deps: TryonDeps): Promise<Respon
       month_spend_usd: spent === null ? null : round(spent),
       budget_usd: MONTHLY_GOOGLE_BUDGET_USD,
       cached,
+      ...(stored ?? {}),
     });
   }
 

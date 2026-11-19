@@ -66,6 +66,11 @@ describe("tryonCacheKeyInput", () => {
 describe("responses", () => {
   it("parses each mode's success and the error shape", () => {
     expect(TryonQuoteResponseSchema.safeParse({ ok: true, mode: "quote", price_usd: 0.055, includes_figure: false, month_spend_usd: null, budget_usd: 8, cached: false }).success).toBe(true);
+    const quote = { ok: true, mode: "quote", price_usd: 0.055, includes_figure: false, month_spend_usd: 1, budget_usd: 8 };
+    const url = { image_url: "https://x.supabase.co/storage/v1/object/sign/a", expires_in_s: 600 };
+    expect(TryonQuoteResponseSchema.safeParse({ ...quote, cached: true, ...url }).success).toBe(true);
+    expect(TryonQuoteResponseSchema.safeParse({ ...quote, cached: true }).success).toBe(false);
+    expect(TryonQuoteResponseSchema.safeParse({ ...quote, cached: false, ...url }).success).toBe(false);
     expect(
       TryonRenderResponseSchema.safeParse({ ok: true, mode: "render", image_url: "https://x.supabase.co/storage/v1/object/sign/a", expires_in_s: 600, cached: true, cost_usd: 0, month_spend_usd: 1.2, budget_usd: 8 }).success,
     ).toBe(true);
