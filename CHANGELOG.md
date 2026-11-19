@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-19 (The `tryon` function, stage 5.3 server side)
+
+- New Edge Function `tryon` (`verify_jwt = true`): `quote` (price, month's Google spend and cap, whether a stored image exists; never costs), `render` (stored image if any, else generates), `rerender` (always generates and replaces). Zod first (`packages/schema/src/tryon.ts`: one top, one bottom, one shoes, at most one layer, no duplicate), items read with `user_id = caller` so another user's id is `item_not_found`, typed errors, CORS like the other app functions.
+- Model `gemini-nano-banana-2.1` at 1K, 4:5, in `_shared/ai/tryon.ts`; the id, price and 4:5 checked on Google's pages the same day. No automatic retry; a timeout is logged at the estimated price. One fixed figure, drawn from text once (`tryon/figure/v1.png`), reused by every render.
+- Images live in the private `originals` bucket under `tryon/{uid}/{sha256}.png` (no new bucket, no migration); the response carries a 10-minute signed URL.
+- Money: `monthlyGoogleSpend` now counts the try-on model; the cap is checked as spend + this call's price, before the figure (figure + outfit together), again before the outfit, and the stored image is looked for again right before paying. Shown price about $0.055 an image (not $0.034: that is the output image alone; input images and possible thinking are added), $0.047 once for the figure.
+- Look at: `supabase/functions/tryon/handler.ts`, `_shared/ai/tryon.ts` (prompts, tuck rule at formality 7), `handler_test.ts`. Built and tested with stubs only: not deployed, never called against Google, nothing spent.
+
 ## 2026-11-19 (Yom Kippur: only a shoe known not to be leather)
 
 - A shoe tagged `unknown` material is no longer offered on Yom Kippur: only one whose material is known and is not leather or suede (`YOM_KIPPUR_DENIED_SHOE_MATERIALS`). With none, the look comes without shoes and the line reads "אין בארון נעל שמסומנת כלא מעור. הלוק מוצע בלי נעליים."
