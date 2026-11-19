@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-19 (The "על דמות" sheet and its entry on Today, stage 5.3 app side)
+
+- A text button "על דמות" under the legend on Today (suggestion and worn state, phone and desktop, on the selected day's outfit as shown after swaps); absent when the outfit has no shoes or is incomplete. It sits below the hero and legend: the flat-lay's measured size is identical before and after (390x844 Thursday 419 high, Friday 354; 360x640 300; 1280x800 644).
+- The sheet (`features/tryon/TryOnSheet.tsx`, library `Sheet`): opens with ONE free `quote`; a stored image shows at once; else the price line built from the quote's numbers and one paying button "צור תמונה" (variant `ink`, like the redraw); generating keeps the 4:5 place with the quiet pulse and no button; result with the AI note and "צור שוב" with its price; every error code has its own words, and "נסה שוב" only where a retry can change something.
+- Money guards: the reducer (`features/tryon/model.ts`, tested) rejects a second paying press by identity; the request layer (`data/tryon.ts`) shares one running request per outfit, so a closed and reopened sheet attaches to it instead of offering the button; after a paying request whose answer never arrived (network, unparsable) the retry is the free `quote`, not a second payment; an expired or unloadable signed address is re-asked with `quote`, never `render`.
+- Not in the design preview: both data functions return a typed "preview" result without a request, and the sheet says so with no paying button. A known-unknown balance (`month_spend_usd` null) shows the price and "היתרה החודשית לא ידועה כרגע" and hides the button; a balance below one image shows the budget line and hides it.
+- Library: `PhotoTile` takes `onError` and `emptyLabel` (a still tile that says why there is no picture yet).
+- Look at: `features/tryon/model.ts` (+ test), `TryOnSheet.tsx`, `data/tryon.ts`, `legendBlock` in `TodayView.tsx`, strings under `tryon`, screenshots `design/screens/2026-11-19-tryon-*`. DESIGN.md "שלב 5.3" item 2 is amended to what was built.
+
 ## 2026-11-19 (Profile: the observance switch on the profile)
 
 - "שומר שבת וחג" now lives on `profile.observes_shabbat` (migration 0006) with the device copy shown at once; the profile's answer replaces it when it arrives (no row, a missing column or any read error: the device decides, logged once). A change is written to the profile (upsert, so the first write creates the row) optimistically and rolls back with an error line and "נסה שוב" when it fails (DESIGN.md "שלב 4.5" item 7).
