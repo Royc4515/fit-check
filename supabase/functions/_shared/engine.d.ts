@@ -17,8 +17,12 @@ export type DayWeather = {
   sky: string;
 };
 
+/** Today's manual nudges in taps; positive formality_steps = "dressier" (packages/engine/src/adjust.ts). */
+export type DayAdjustment = { temp_steps: number; formality_steps: number };
+
 export declare const DEFAULT_CONTEXT_RULES: Record<ContextType, ContextRules>;
 export declare const RECENT_WEARS_DAYS: number;
+export declare function adjustRequest(req: StylingRequest, adj: DayAdjustment): StylingRequest;
 export declare function generateCandidates(items: Item[], req: StylingRequest, weights: PairWeights): CandidateOutfit[];
 export declare function scoreOutfit(items: Item[], req: StylingRequest, weights: PairWeights): CandidateOutfit["breakdown"] & { score: number };
 export declare function pairKey(a: string, b: string): string;
