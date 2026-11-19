@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-19 (Spec: an outfit on a figure, first slice)
+
+- DESIGN.md "שלב 5.3": the "על דמות" entry under the legend on Today, the sheet (price and the month's remaining budget before every generation, no spinner, no automatic generation), the fixed faceless figure, and the `tryon` function's contract (quote / render / rerender, typed errors, the shared monthly cap, a row in `ai_calls`, the image stored by a hash of the item ids; no table, no migration).
+- The plan said the entry sits on the saved-outfit screen; it moves to Today, which exists, so the test does not wait for round B.
+- Spec only: nothing built, nothing deployed, nothing spent.
+
 ## 2026-11-19 (Try-on: decided from the research)
 
 - The research cost nothing (web sources only). Decision: one generated image of the whole outfit on a neutral figure, on demand; per-garment on-figure renders are dropped; no separate experiment, the first slice of the feature is the test. Reasons and prices: `docs/REDESIGN_PLAN.md` "Stage 5", "Try-on".

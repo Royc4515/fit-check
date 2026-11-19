@@ -138,7 +138,7 @@ three decisions to the lead: where saved outfits live, the migration they need, 
     function; a throwaway one costs as much to build as the first slice of the real one and leaves a function that
     cannot be deleted from here. The first slice is the test: an Edge Function `tryon` (signed-in user only, zod
     input, the shared Google budget cap, a row in `ai_calls`, the image stored per outfit so a second look costs
-    nothing) and one entry, "על דמות", on the outfit screen, with the price and the month's remaining budget shown
+    nothing) and one entry, "על דמות", under the legend on Today (the saved-outfit screen of round B reuses it), with the price and the month's remaining budget shown
     before each generation, as the redraw does. Roy tries three of his own outfits (about 0.10 USD, inside the
     Google credit). He judges by eye: colours and patterns kept, the right shoes, nothing invented. If not, the
     slice is removed in one revert.
@@ -157,7 +157,7 @@ three decisions to the lead: where saved outfits live, the migration they need, 
 | A (now) | 4.5 manual context in the app; 4.9 the observance setting read from the profile; 5.1 alternatives after wearing and a cue that garments are tappable; the Yom Kippur tightening | All in the Today screen and its data, one builder, one PR | - |
 | B | 5.2 outfits built by hand, the "לוקים" place with saved and favourites, the navigation change, the migration; saved and favourite outfits feed the pair weights | Largest feature; its output (Roy's own outfits) is what the algorithm work needs | - (decided above) |
 | C | 5.4 the algorithm's judgement: formality, layers | After B, tuned against Roy's hand-built and favourite outfits and his examples of wrong suggestions | Roy's examples |
-| beside B | 5.3 try-on, first slice: the `tryon` function is built beside round B and its entry attaches to the outfit screen of round B; then Roy's three outfits decide | The server part touches no file of round B; the screen it lives on is built there | - (inside the Google credit and the cap in code) |
+| beside B | 5.3 try-on, first slice: spec (DESIGN.md "שלב 5.3"), then the `tryon` function, then the sheet with its entry on Today; then Roy's three outfits decide | Touches no file of round B; Today exists, so the test does not wait for the saved-outfit screen | - (inside the Google credit and the cap in code) |
 | after B | 5.5 embeddings from `gemini-embedding-2` instead of the worker | Free tier; unblocks duplicates and the pre-purchase check | A migration for the vector size |
 | later | 4.6 reserve packing (needs the T-shirt number); 4.7b write races and offline history; 4.8 clean-up; 4.3 and 4.4 Android and the morning notification when the web app is final | Unchanged | As listed in stage 4 |
 
