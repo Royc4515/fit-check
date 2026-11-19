@@ -16,9 +16,15 @@ import {
   type TodayRecord,
 } from "./feedback";
 
+/**
+ * The day an answer is for, when it is not today: a planned day after today's candle lighting (DESIGN.md "שלב 4.1").
+ * Its date goes into `outfits.created_for_date` and `wears.worn_on`, its day type into `outfits.context_type`.
+ */
+export type FeedbackTarget = { date: string; dayType: DayType };
+
 export type FeedbackActions = {
-  wear: (outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment) => Promise<void>;
-  skip: (outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment) => Promise<void>;
+  wear: (outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment, target?: FeedbackTarget) => Promise<void>;
+  skip: (outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment, target?: FeedbackTarget) => Promise<void>;
   dislike: (record: TodayRecord) => Promise<void>;
   undo: (record: TodayRecord) => Promise<void>;
   /** Overrides the automatic laundry move: the items stay home and keep their wear count. */
@@ -37,8 +43,11 @@ export type FeedbackState = {
   /** null until the first load lands; Today waits for it so a worn outfit never flashes as a fresh suggestion. */
   history: FeedbackHistory | null;
   busy: boolean;
-  /** The last action failed; the screen says so and nothing changed. */
-  failed: boolean;
+  /**
+   * The date of the day whose last action failed (today's date when the history load failed), else null. The screen
+   * shows the failure line on that day's tab only: a failure belongs to the action that produced it.
+   */
+  failedOn: string | null;
   laundered: Laundered | null;
   actions: FeedbackActions;
 };
@@ -50,35 +59,45 @@ const sameItems = (a: readonly string[], b: readonly string[]) => a.length === b
  * weights in step (engine feedbackUpdates, PRD 4). Writes go to the DB first and the screen changes only after
  * they succeed: a "worn" that silently failed would teach the engine nothing while the user believes it did.
  *
- * A failed history load is not fatal: Today still works, just without freshness (logged, shown as `failed`).
+ * One hook for today and every planned day after it, not one instance per day: the planned days are 0 to 3 (a
+ * variable count of hooks is not allowed), they share one history read (`date..until`), one learned weights map
+ * and one laundry line, and a write for one day changes what the next day is offered. A wear or skip for a planned
+ * day passes its `target`; without one it is today's, exactly as before. A planned wear moves garments to the
+ * laundry at press time like any wear (DESIGN.md "שלב 4.1" item 6), so the wash count of migration 0003, which
+ * compares `wears.created_at` with `washed_at`, counts it from the moment it is pressed.
+ *
+ * A failed history load is not fatal: Today still works, just without freshness (logged, shown as `failedOn`).
  */
 export function useFeedback(args: {
   userId: string;
   date: string;
   dayType: DayType;
+  /** The last planned day (the chain's end); defaults to `date`. Wears up to it are read back. */
+  until?: string;
   items: Item[];
   pairWeights: PairWeights;
   patch: (fn: (data: WardrobeData) => WardrobeData) => void;
 }): FeedbackState {
-  const { userId, date, dayType, items, pairWeights, patch } = args;
+  const { userId, date, dayType, until = date, items, pairWeights, patch } = args;
   const [laundered, setLaundered] = useState<Laundered | null>(null);
   const itemsRef = useRef(items);
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
-  // Stored with the date it belongs to, so a new day reads as "not loaded" without resetting state in an effect.
-  const [loaded, setLoaded] = useState<{ date: string; history: FeedbackHistory } | null>(null);
-  const history = loaded?.date === date ? loaded.history : null;
+  // Stored with the range it belongs to, so a new day reads as "not loaded" without resetting state in an effect.
+  const range = `${date}..${until}`;
+  const [loaded, setLoaded] = useState<{ range: string; history: FeedbackHistory } | null>(null);
+  const history = loaded?.range === range ? loaded.history : null;
   const setHistory = useCallback(
     (fn: (h: FeedbackHistory | null) => FeedbackHistory | null) =>
       setLoaded((cur) => {
-        const next = fn(cur?.date === date ? cur.history : null);
-        return next ? { date, history: next } : cur;
+        const next = fn(cur?.range === range ? cur.history : null);
+        return next ? { range, history: next } : cur;
       }),
-    [date]
+    [range]
   );
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failedOn, setFailedOn] = useState<string | null>(null);
   // don't touch / actions read weights through a ref: closing over `pairWeights` would compute updates from the
   // weights of the render the button was drawn in, and two quick actions would each start from the same old map.
   const weights = useRef(pairWeights);
@@ -88,21 +107,21 @@ export function useFeedback(args: {
 
   useEffect(() => {
     let active = true;
-    fetchFeedback(date)
+    fetchFeedback(date, until)
       .then((h) => {
-        if (active) setLoaded({ date, history: h });
+        if (active) setLoaded({ range: `${date}..${until}`, history: h });
       })
       .catch((error: unknown) => {
         console.error("Wear history load failed", error);
         if (active) {
-          setLoaded({ date, history: EMPTY_HISTORY });
-          setFailed(true);
+          setLoaded({ range: `${date}..${until}`, history: EMPTY_HISTORY });
+          setFailedOn(date);
         }
       });
     return () => {
       active = false;
     };
-  }, [date]);
+  }, [date, until]);
 
   const learn = useCallback(
     async (itemIds: string[], feedback: WearFeedback, sign: 1 | -1) => {
@@ -125,6 +144,9 @@ export function useFeedback(args: {
     [patch]
   );
 
+  // The day of the wear the laundry line belongs to, so a failed "keep out of the laundry" shows on that day's tab.
+  const laundryDate = useRef(date);
+
   /** After a wear: whatever reached its wash count goes to the laundry (engine dueForLaundry, config per kind). */
   const launder = useCallback(
     async (record: TodayRecord) => {
@@ -132,19 +154,20 @@ export function useFeedback(args: {
       const worn = itemsRef.current.filter((i) => record.itemIds.includes(i.id));
       const due = dueForLaundry(worn, counts).map((i) => i.id);
       await move(due, "laundry");
+      laundryDate.current = record.date;
       setLaundered(due.length > 0 ? { wearId: record.wearId, itemIds: due } : null);
     },
     [move]
   );
 
-  const run = useCallback(async (fn: () => Promise<void>) => {
+  const run = useCallback(async (on: string, fn: () => Promise<void>) => {
     setBusy(true);
-    setFailed(false);
+    setFailedOn(null);
     try {
       await fn();
     } catch (error) {
       console.error("Feedback write failed", error);
-      setFailed(true);
+      setFailedOn(on);
     } finally {
       setBusy(false);
     }
@@ -152,12 +175,15 @@ export function useFeedback(args: {
 
   const actions = useMemo<FeedbackActions>(
     () => ({
-      wear: (outfit, source, adjustment) =>
-        run(async () => {
-          const record = await recordFeedback({ userId, date, dayType, outfit, source, feedback: "worn", adjustment });
+      wear: (outfit, source, adjustment, target = { date, dayType }) =>
+        run(target.date, async () => {
+          const record = await recordFeedback({ ...target, userId, outfit, source, feedback: "worn", adjustment });
+          const ahead = record.date !== date;
           setHistory((h) => ({
-            recent: [{ date, item_ids: record.itemIds, context_key: null }, ...(h?.recent ?? [])],
-            today: [...(h?.today ?? []), record],
+            // A planned day's wear is not "recent" for today; the planning counts it on its own date.
+            recent: ahead ? (h?.recent ?? []) : [{ date, item_ids: record.itemIds, context_key: null }, ...(h?.recent ?? [])],
+            today: ahead ? (h?.today ?? []) : [...(h?.today ?? []), record],
+            ahead: ahead ? [...(h?.ahead ?? []), record] : (h?.ahead ?? []),
             samples: [{ wearId: record.wearId, adjustment }, ...(h?.samples ?? [])],
           }));
           // The wear is stored even if learning fails; the weights are a derived signal, the wear is the fact. So a
@@ -167,26 +193,34 @@ export function useFeedback(args: {
           // A failed laundry move is logged, not shown: the wear itself succeeded and the user can move items by hand.
           await launder(record).catch((error: unknown) => console.error("Automatic laundry failed", error));
         }),
-      skip: (outfit, source, adjustment) =>
-        run(async () => {
-          const record = await recordFeedback({ userId, date, dayType, outfit, source, feedback: "skipped", adjustment });
-          setHistory((h) => ({ recent: h?.recent ?? [], today: [...(h?.today ?? []), record], samples: h?.samples ?? [] }));
+      skip: (outfit, source, adjustment, target = { date, dayType }) =>
+        run(target.date, async () => {
+          const record = await recordFeedback({ ...target, userId, outfit, source, feedback: "skipped", adjustment });
+          const ahead = record.date !== date;
+          setHistory((h) => ({
+            recent: h?.recent ?? [],
+            today: ahead ? (h?.today ?? []) : [...(h?.today ?? []), record],
+            ahead: ahead ? [...(h?.ahead ?? []), record] : (h?.ahead ?? []),
+            samples: h?.samples ?? [],
+          }));
         }),
       dislike: (record) =>
-        run(async () => {
+        run(record.date, async () => {
           await changeFeedback(record.wearId, "disliked");
-          setHistory((h) => h && { ...h, today: h.today.map((r) => (r.wearId === record.wearId ? { ...r, feedback: "disliked" } : r)) });
+          const mark = (r: TodayRecord): TodayRecord => (r.wearId === record.wearId ? { ...r, feedback: "disliked" } : r);
+          setHistory((h) => h && { ...h, today: h.today.map(mark), ahead: h.ahead.map(mark) });
           await learn(record.itemIds, "disliked", 1);
         }),
       undo: (record) =>
-        run(async () => {
+        run(record.date, async () => {
           await deleteFeedback(record);
           setHistory((h) => {
             if (!h) return h;
-            const idx = h.recent.findIndex((w) => w.date === date && sameItems(w.item_ids, record.itemIds));
+            const idx = h.recent.findIndex((w) => w.date === record.date && sameItems(w.item_ids, record.itemIds));
             return {
               recent: record.feedback === "worn" && idx >= 0 ? h.recent.filter((_, i) => i !== idx) : h.recent,
               today: h.today.filter((r) => r.wearId !== record.wearId),
+              ahead: h.ahead.filter((r) => r.wearId !== record.wearId),
               samples: h.samples.filter((x) => x.wearId !== record.wearId),
             };
           });
@@ -198,14 +232,14 @@ export function useFeedback(args: {
           }
         }),
       keepHome: (itemIds) =>
-        run(async () => {
+        run(laundered ? laundryDate.current : date, async () => {
           await move(itemIds, "home");
           setLaundered(null);
         }),
-      dismissFailure: () => setFailed(false),
+      dismissFailure: () => setFailedOn(null),
     }),
     [run, learn, launder, move, laundered, setHistory, userId, date, dayType]
   );
 
-  return { history, busy, failed, laundered, actions };
+  return { history, busy, failedOn, laundered, actions };
 }

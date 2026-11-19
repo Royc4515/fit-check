@@ -17,7 +17,7 @@ export type Explanation = {
  * (PLAN.md phase B) and stays as its fallback when the model's output fails validation. Split in two because a
  * pull quote only works when it is one sentence.
  */
-export function explainOutfit(t: TFunction, ctx: DayContext, outfit: CandidateOutfit, dayLabel: string): Explanation {
+export function explainOutfit(t: TFunction, ctx: Pick<DayContext, "weather" | "dayType">, outfit: CandidateOutfit, dayLabel: string): Explanation {
   const w = ctx.weather;
   const lead = w ? t("today.explain.base", { day: dayLabel, min: w.temp_min_c, max: w.temp_max_c }) : t("today.explain.noWeather", { day: dayLabel });
   const notes: string[] = [];

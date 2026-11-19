@@ -11,11 +11,15 @@ import {
 import { StylingRequestSchema, type CandidateOutfit, type Item, type Slot, type StylingRequest } from "@fit-check/schema";
 import type { FeedbackHistory, RecentWear, TodayRecord } from "../../data/feedback";
 import type { DayType } from "../../data/dayContext";
-import { israelDate } from "../../data/dayContext";
+import { israelDate } from "../../data/localDate";
 
 type Weather = { temp_min_c: number; temp_max_c: number; rain_probability: number };
 
-export type DayInput = { date: string; weather: Weather | null; dayType: DayType };
+/**
+ * `festive`: a holiday planned by the weekday rules (the observance switch off); it starts one "dressier" step up
+ * (plans.ts defaultAdjustment).
+ */
+export type DayInput = { date: string; weather: Weather | null; dayType: DayType; festive?: boolean };
 
 /**
  * Used only when no forecast is available (offline, rate-limited, first launch). Mild autumn day in the coastal

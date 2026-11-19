@@ -11,6 +11,28 @@ export const SCORING_WEIGHTS = {
   pair_weight: 0.2,
 } as const;
 
+/**
+ * Shabbat and holiday colour preference for the top (Roy, 2026-11-19; DESIGN.md "שלב 4.1" item 7). Not a rule: a
+ * white shirt is preferred, light colours and stripes pass without a penalty, dark colours and loud patterns lose a
+ * little. Added to the weighted score of shabbat and holiday contexts only; every other context scores as before.
+ * The bonus is smaller than one recently-worn item (RECENCY.item_penalty * 0.25 = 0.125), so a white shirt worn
+ * yesterday does not come straight back.
+ */
+export const SHABBAT_COLOR = {
+  contexts: ["shabbat", "holiday"] as readonly ContextType[],
+  /** color_name "white". */
+  white_top: 0.06,
+  /** HSL lightness of color_hex below this reads as dark (navy #1F2A44 is 0.19, mid blue #3B5B8C 0.39). */
+  dark_lightness: 0.3,
+  dark_top: -0.03,
+  /**
+   * Patterns that read loud on a Shabbat shirt. The tag schema has one `stripes` value (no thin/wide), so stripes are
+   * treated as the thin ones and stay neutral; `print` is already denied by the Shabbat context rules.
+   */
+  loud_patterns: ["check", "print"] as readonly string[],
+  loud_top: -0.03,
+} as const;
+
 export const RECENCY = {
   /** Days during which a worn item is penalized. */
   item_window_days: 3,
@@ -31,6 +53,12 @@ export const FEEDBACK = {
  * user wants warmer clothes, so the day is treated as colder, not the other way round.
  */
 export const ADJUST_STEP = { temp_c: 3, formality: 1 } as const;
+
+/**
+ * A holiday for someone who does not keep Shabbat and holidays (the profile switch off, DESIGN.md "שלב 4.1" item 10):
+ * weekday rules, "a bit more festive". Steps of the adjust sheet's "dressier", taken by default and shown as taken.
+ */
+export const FESTIVE_FORMALITY_STEPS = 1;
 
 /**
  * Wears before a garment goes to the wash (Roy's rules, 2026-11-08). Counted since the item's last wash.
