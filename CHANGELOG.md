@@ -588,3 +588,10 @@
 - Web keeps the button row above the on-screen keyboard (`visualViewport`); native relies on `automaticallyAdjustKeyboardInsets` and `keyboardShouldPersistTaps="handled"` on the item scroll view (unverified, no emulator).
 - Pure decisions in `features/item/writing.ts` with tests; state in `useTextWriting.ts`; gallery fixtures (rest, writing, saved, failed) in the item block of `/design-system`.
 - Look at: `design/screens/2026-11-19-item-writing-*`.
+
+## 2026-11-19 (Today: tomorrow on a holiday's end, fast ends on Yom Kippur)
+
+- The end in the times row says "מחר" / "tomorrow" when it is tomorrow's and today is not a Friday ("הדלקת נרות 18:54 · צאת החג מחר 19:53"); on a Friday it stays "כניסת שבת 16:18 · צאת שבת 17:17". Yom Kippur says "צאת הצום" / "Fast ends". `shabbatTimes` returns `end.day` and `end.kind: "fast"`; Yom Kippur is detected by `title_orig === "Yom Kippur"` (English whatever `lg` is) on the day the havdalah belongs to. New fixture: Yom Kippur day.
+- Labels use no-break spaces, so on a narrow screen the row breaks only at " · ".
+- Double Hebcal request: `getJson` (`dayContext.ts`) now shares an in-flight request per URL. A plain cold load in a fresh browser sent each URL once, so the doubling was not reproduced; the likely paths are `useDayContext` mounted in two screens (Today, sign-in) and its reloads on location or place-name events, both before the first answer reaches the cache.
+- Look at: `TodayView.tsx` (`endKeys`). Not verified: native.

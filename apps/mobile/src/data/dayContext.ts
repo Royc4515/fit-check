@@ -61,10 +61,21 @@ function stripNiqqud(s: string): string {
   return s.replace(/[֑-ׇ]/g, "");
 }
 
+// Requests in flight, by URL. Today's data is loaded by every mounted screen that uses useDayContext and again on each
+// reload (location or place-name change) before the first answer has reached the cache; without sharing, the same
+// Hebcal or Open-Meteo URL went out twice per load. Dropped on settle, so a later load asks again.
+const inFlight = new Map<string, Promise<unknown>>();
+
 async function getJson(url: string): Promise<unknown> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${res.status} ${url}`);
-  return res.json();
+  const shared = inFlight.get(url);
+  if (shared) return shared;
+  const request = (async () => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${res.status} ${url}`);
+    return res.json();
+  })().finally(() => inFlight.delete(url));
+  inFlight.set(url, request);
+  return request;
 }
 
 async function loadWeather(date: string, loc: ResolvedLocation): Promise<DayWeather | null> {

@@ -12,6 +12,7 @@ import rhEve from "./__fixtures__/rh-eve.json";
 import saturday from "./__fixtures__/saturday.json";
 import shavuotDay from "./__fixtures__/shavuot-day.json";
 import weekday from "./__fixtures__/weekday.json";
+import yomKippurDay from "./__fixtures__/yom-kippur-day.json";
 import yomKippurEve from "./__fixtures__/yom-kippur-eve.json";
 import { shabbatTimes, type HebcalItem } from "./shabbatTimes";
 
@@ -43,16 +44,26 @@ describe("shabbatTimes: edge cases", () => {
       "2026-12-31",
     );
     expect(r.candles).toEqual({ time: "16:30", kind: "other" });
-    expect(r.end).toEqual({ time: "17:30", kind: "holiday" });
+    expect(r.end).toEqual({ time: "17:30", kind: "holiday", day: "tomorrow" });
+  });
+  it("Yom Kippur on a Saturday ends as a fast, not as Shabbat", () => {
+    const r = shabbatTimes(
+      [
+        { title: "yk", date: "2026-10-03", category: "holiday", title_orig: "Yom Kippur", yomtov: true },
+        { title: "h", date: "2026-10-03T18:40:00+03:00", category: "havdalah" },
+      ],
+      "2026-10-03",
+    );
+    expect(r.end).toEqual({ time: "18:40", kind: "fast", day: "today" });
   });
 });
 
 describe("shabbatTimes: ordinary days", () => {
   it("weekday: nothing", () => expect(run(weekday, "2026-11-18")).toEqual({ yomtov: false, holiday: null, candles: null, end: null }));
   it("Friday: candles as Shabbat, end tomorrow (Saturday)", () =>
-    expect(run(friday, "2026-11-20")).toEqual({ yomtov: false, holiday: null, candles: { time: "16:18", kind: "shabbat" }, end: { time: "17:17", kind: "shabbat" } }));
+    expect(run(friday, "2026-11-20")).toEqual({ yomtov: false, holiday: null, candles: { time: "16:18", kind: "shabbat" }, end: { time: "17:17", kind: "shabbat", day: "tomorrow" } }));
   it("Saturday: end today, no candles", () =>
-    expect(run(saturday, "2026-11-21")).toEqual({ yomtov: false, holiday: null, candles: null, end: { time: "17:17", kind: "shabbat" } }));
+    expect(run(saturday, "2026-11-21")).toEqual({ yomtov: false, holiday: null, candles: null, end: { time: "17:17", kind: "shabbat", day: "today" } }));
 });
 
 describe("shabbatTimes: holidays (Israel, 2027)", () => {
@@ -61,22 +72,24 @@ describe("shabbatTimes: holidays (Israel, 2027)", () => {
       yomtov: false,
       holiday: "Erev Pesach",
       candles: { time: "18:54", kind: "other" },
-      end: { time: "19:53", kind: "holiday" },
+      end: { time: "19:53", kind: "holiday", day: "tomorrow" },
     }));
   it("Pesach I (Thursday): Yom Tov, no candles, end today", () =>
-    expect(run(pesachDay1, "2027-04-22")).toEqual({ yomtov: true, holiday: "Pesach I", candles: null, end: { time: "19:53", kind: "holiday" } }));
+    expect(run(pesachDay1, "2027-04-22")).toEqual({ yomtov: true, holiday: "Pesach I", candles: null, end: { time: "19:53", kind: "holiday", day: "today" } }));
   it("erev Rosh Hashana is a Friday: Shabbat candles, but the end is two days away so none", () =>
     expect(run(rhEve, "2027-10-01")).toEqual({ yomtov: false, holiday: "Erev Rosh Hashana", candles: { time: "18:06", kind: "shabbat" }, end: null }));
   it("Rosh Hashana day 1 (Saturday): candles after nightfall are 'other', the end is tomorrow", () =>
-    expect(run(rhDay1, "2027-10-02")).toEqual({ yomtov: true, holiday: "Rosh Hashana 5788", candles: { time: "19:01", kind: "other" }, end: { time: "19:00", kind: "holiday" } }));
+    expect(run(rhDay1, "2027-10-02")).toEqual({ yomtov: true, holiday: "Rosh Hashana 5788", candles: { time: "19:01", kind: "other" }, end: { time: "19:00", kind: "holiday", day: "tomorrow" } }));
   it("Rosh Hashana day 2 (Sunday): end today", () =>
-    expect(run(rhDay2, "2027-10-03")).toEqual({ yomtov: true, holiday: "Rosh Hashana II", candles: null, end: { time: "19:00", kind: "holiday" } }));
+    expect(run(rhDay2, "2027-10-03")).toEqual({ yomtov: true, holiday: "Rosh Hashana II", candles: null, end: { time: "19:00", kind: "holiday", day: "today" } }));
   it("erev Shavuot (Thursday), Shavuot on the Friday that runs into Shabbat: end is 2 days away, none", () =>
     expect(run(erevShavuot, "2027-06-10")).toEqual({ yomtov: false, holiday: "Erev Shavuot", candles: { time: "19:26", kind: "other" }, end: null }));
   it("Shavuot on a Friday: Shabbat candles, end is Saturday's", () =>
-    expect(run(shavuotDay, "2027-06-11")).toEqual({ yomtov: true, holiday: "Shavuot", candles: { time: "19:27", kind: "shabbat" }, end: { time: "20:30", kind: "shabbat" } }));
+    expect(run(shavuotDay, "2027-06-11")).toEqual({ yomtov: true, holiday: "Shavuot", candles: { time: "19:27", kind: "shabbat" }, end: { time: "20:30", kind: "shabbat", day: "tomorrow" } }));
   it("erev Yom Kippur (Sunday): candles 'other', end tomorrow (Hebcal gives a plain havdalah item)", () =>
-    expect(run(yomKippurEve, "2027-10-10")).toEqual({ yomtov: false, holiday: "Erev Yom Kippur", candles: { time: "17:54", kind: "other" }, end: { time: "18:50", kind: "holiday" } }));
+    expect(run(yomKippurEve, "2027-10-10")).toEqual({ yomtov: false, holiday: "Erev Yom Kippur", candles: { time: "17:54", kind: "other" }, end: { time: "18:50", kind: "fast", day: "tomorrow" } }));
+  it("Yom Kippur itself (Monday): the fast ends today; the day before it never said fast", () =>
+    expect(run(yomKippurDay, "2027-10-11")).toEqual({ yomtov: true, holiday: "Yom Kippur", candles: null, end: { time: "18:50", kind: "fast", day: "today" } }));
 });
 
 describe("shabbatTimes: Chanukah (its candles are 'holiday' events with a time, not 'candles')", () => {
@@ -87,5 +100,5 @@ describe("shabbatTimes: Chanukah (its candles are 'holiday' events with a time, 
   });
   it("Friday of Chanukah: only the real Shabbat candle item counts", () =>
     expect(run(chanukahFriday, "2026-12-04").candles).toEqual({ time: "16:15", kind: "shabbat" }));
-  it("and tomorrow's end is Shabbat's", () => expect(run(chanukahFriday, "2026-12-04").end).toEqual({ time: "17:16", kind: "shabbat" }));
+  it("and tomorrow's end is Shabbat's", () => expect(run(chanukahFriday, "2026-12-04").end).toEqual({ time: "17:16", kind: "shabbat", day: "tomorrow" }));
 });

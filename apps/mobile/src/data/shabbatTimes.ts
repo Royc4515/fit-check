@@ -15,8 +15,13 @@ export type ShabbatTimes = {
   yomtov: boolean;
   /** Candle lighting today as `HH:MM`; "shabbat" only on a Friday, "other" for a holiday eve or a second night. */
   candles: { time: string; kind: "shabbat" | "other" } | null;
-  /** The end of Shabbat or of the holiday as `HH:MM`, only when it falls today or tomorrow. */
-  end: { time: string; kind: "shabbat" | "holiday" } | null;
+  /**
+   * The end of Shabbat, of the holiday, or of the Yom Kippur fast as `HH:MM`, only when it falls today or tomorrow.
+   * `day` says which. Yom Kippur wins over "shabbat" when it falls on a Saturday. Combinations that occur: tomorrow
+   * with "shabbat" only from a Friday; tomorrow with "holiday" or "fast" only from a non-Friday; but the function
+   * decides from the data and stays total.
+   */
+  end: { time: string; kind: "shabbat" | "holiday" | "fast"; day: "today" | "tomorrow" } | null;
 };
 
 const NONE: ShabbatTimes = { holiday: null, yomtov: false, candles: null, end: null };
@@ -75,7 +80,13 @@ export function shabbatTimes(items: readonly HebcalItem[], date: string): Shabba
   const endItem = todayEnd ?? tomorrowEnd;
   const endDay = todayEnd ? today : tomorrow;
   const endTime = endItem ? timeOf(endItem) : null;
-  const end = endTime ? { time: endTime, kind: endDay.weekday === 6 ? ("shabbat" as const) : ("holiday" as const) } : null;
+  // Yom Kippur is found by the English event name Hebcal keeps in `title_orig` whatever `lg` is: the other fields
+  // are localized (`title`, `hebrew`, the havdalah item's `memo`) and `link` is a URL slug that is not a documented
+  // contract. Exact match, so "Erev Yom Kippur" and "Yom Kippur Katan" do not count. It is read on the day the
+  // havdalah belongs to, so the eve never says "fast".
+  const endIsFast = onDay(endDay.iso).some((i) => i.category === "holiday" && i.title_orig === "Yom Kippur");
+  const kind = endIsFast ? ("fast" as const) : endDay.weekday === 6 ? ("shabbat" as const) : ("holiday" as const);
+  const end = endTime ? { time: endTime, kind, day: todayEnd ? ("today" as const) : ("tomorrow" as const) } : null;
 
   return { holiday, yomtov: yomtovItem !== undefined, candles, end };
 }

@@ -407,7 +407,15 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // Spec DESIGN.md section 3 "היום" item 1: the entry line is named by the day, the end joins it only when it is
   // today or tomorrow (data/shabbatTimes.ts decides that).
   const entryLine = day.candles ? t(day.candles.kind === "shabbat" ? "today.candles" : "today.candlesOther", { time: ltr(day.candles.time) }) : null;
-  const endLine = day.end ? t(day.end.kind === "shabbat" ? "today.shabbatEnd" : "today.holidayEnd", { time: ltr(day.end.time) }) : null;
+  // "tomorrow" only when the end is tomorrow's and today is not a Friday: on a Friday every calendar prints just
+  // "Shabbat ends 17:17", on any other day a bare time would read as ending before the candles (DESIGN.md "היום").
+  const endTomorrow = day.end?.day === "tomorrow" && day.candles?.kind !== "shabbat";
+  const endKeys = {
+    shabbat: ["today.shabbatEnd", "today.shabbatEndTomorrow"],
+    holiday: ["today.holidayEnd", "today.holidayEndTomorrow"],
+    fast: ["today.fastEnd", "today.fastEndTomorrow"],
+  } as const;
+  const endLine = day.end ? t(endKeys[day.end.kind][endTomorrow ? 1 : 0], { time: ltr(day.end.time) }) : null;
   const timesLine = entryLine && endLine ? t("today.timesJoin", { first: entryLine, second: endLine }) : (entryLine ?? endLine);
 
   const masthead = (
