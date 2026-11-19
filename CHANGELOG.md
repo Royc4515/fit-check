@@ -11,6 +11,7 @@
 - The adjust sheet starts with "מה יש היום" (on a planned tab "מה יש באותו יום"): date, interview, event as chips; choosing closes the sheet and changes the look, the chosen chip clears it. The occasion shows first among the status lines above the hero ("ראיון · ראיון עבודה · מהיומן" · ביטול), measured with the hero (DESIGN.md "שלב 4.5").
 - The occasion's rules override the calendar's for its date (no festive step on top); the wear is recorded in its context, the stylist request carries it and the explanation names it. Rows of `contexts` are read per date on screen (newest wins, shared schema), cached on the device, and written by hand optimistically: upsert first, then the other occasion types removed, as the MCP server does; a failure rolls back with "נסה שוב".
 - Look at: `data/occasionRows.ts` (pure, tested), `data/occasions.ts`, the occasion line in `TodayView.tsx`, `AdjustSheet.tsx`. Unverified here: a real write (preview rejects writes); the MCP and the app writing the same date at the same moment.
+- Fixes after the independent verification: (1) precedence corrected in DESIGN.md "שלב 4.5" items 1 and 3 and PRD 7.1: with the switch on, Shabbat and holidays keep their rules until the day's havdalah and the occasion applies only after it, never on a date without a havdalah and never on a planned day's tab (no chips, no line there); `occasionMayApply` / `occasionInEffect` in `features/today/plans.ts`, tested. The MCP server is unchanged. (2) A read that started before the user changed a date no longer overwrites that date (`mergeOccasionRead`, tested). (3) After "ביטול" on the occasion line focus goes to `tune`; its accessible name says "ביטול ההקשר: ראיון".
 
 ## 2026-11-19 (Yom Kippur: only a shoe known not to be leather)
 
@@ -21,6 +22,19 @@
 
 - A complete outfit (the same item ids) worn in one of the last three wears of a context whose rules set `no_repeat_with_key` (today only `date`) is not offered for it again (PRD 7.1, DESIGN.md "שלב 4.5" item 5). `NO_REPEAT_LAST_WEARS = 3` in `packages/engine/config.ts`; the recent wears carry an optional `context_type`; nothing about a person is stored.
 - Look at: `noRepeatOutfits` in `packages/engine/src/candidates.ts`, `date-no-repeat.test.ts`. The app passes the context with each wear from "what is on today" on.
+- Fix after the independent verification: the last three are chosen by date inside `noRepeatOutfits` (stable sort, newest first), not by trusting the caller's order; a test with shuffled input, and one that fails if the rule line in `generateCandidates` is removed.
+
+## 2026-11-19 (Spec: an outfit on a figure, first slice)
+
+- DESIGN.md "שלב 5.3": the "על דמות" entry under the legend on Today, the sheet (price and the month's remaining budget before every generation, no spinner, no automatic generation), the fixed faceless figure, and the `tryon` function's contract (quote / render / rerender, typed errors, the shared monthly cap, a row in `ai_calls`, the image stored by a hash of the item ids; no table, no migration).
+- The plan said the entry sits on the saved-outfit screen; it moves to Today, which exists, so the test does not wait for round B.
+- Spec only: nothing built, nothing deployed, nothing spent.
+
+## 2026-11-19 (Try-on: decided from the research)
+
+- The research cost nothing (web sources only). Decision: one generated image of the whole outfit on a neutral figure, on demand; per-garment on-figure renders are dropped; no separate experiment, the first slice of the feature is the test. Reasons and prices: `docs/REDESIGN_PLAN.md` "Stage 5", "Try-on".
+- Side finding: `gemini-embedding-2` takes images and has a free tier; it becomes stage 5.5.
+- Look at: the plan section, `TASKS.md` rows 5.3 and 5.5, the try-on line in `CLAUDE.md`. Nothing was built and nothing was spent.
 
 ## 2026-11-19 (MCP bundle survives the deploy transport)
 

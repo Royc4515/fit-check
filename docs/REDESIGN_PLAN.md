@@ -122,12 +122,33 @@ three decisions to the lead: where saved outfits live, the migration they need, 
   that was only worn is not in the collection). Written with the 5.2 spec.
 - **Yom Kippur without leather shoes** stays (Roy: fine). To tighten: a shoe whose material is tagged `unknown`
   is not offered either.
-- **Try-on.** Not a 3D model per garment. Roy's second idea is different and worth testing: an on-figure image of
-  each garment made once at intake, and a default figure that can be adjusted by measurements or generated once
-  from a photo. The open question is consistency: garments rendered separately must line up on the same figure and
-  overlap correctly (collar under a knit, shirt over trousers). The other route is one generated image of the
-  whole outfit on the figure, on demand. Both cost about the price of a redraw per image. Decide from a small paid
-  experiment on real garments, not from opinion.
+- **Try-on (decided 2026-11-19, after the research; Roy left the decision to the lead).**
+  - Route: one generated image of the whole outfit on a figure, on demand. The other route (an on-figure image per
+    garment made once at intake, layered in the app) is dropped: the research found no product that does it well,
+    only patents and game paper-dolls with hand-drawn masks, and the hard part is the overlap between layers (a
+    collar under a knit, a shirt in or out of the trousers), not the price.
+  - Model: Nano Banana 2.1 at 1K, 0.0336 USD an image on Google's pricing page (seen 2026-11-19), documented for up
+    to 14 reference images. The Lite model the redraw uses costs the same and is documented as not optimised for
+    several references.
+  - What is known about quality is second-hand: a March 2026 benchmark (Garments2Look) scored general editing
+    models 0.93 to 0.98 on keeping the garments, above dedicated try-on models. Reported failures: logos and text
+    altered, stripes not kept, colour drift, a shirt tucked in by default. Nobody has tested three or four separate
+    garment photos in one image, which is exactly this app's case.
+  - No separate experiment. The provider key lives only in the function environment, so any test needs a deployed
+    function; a throwaway one costs as much to build as the first slice of the real one and leaves a function that
+    cannot be deleted from here. The first slice is the test: an Edge Function `tryon` (signed-in user only, zod
+    input, the shared Google budget cap, a row in `ai_calls`, the image stored per outfit so a second look costs
+    nothing) and one entry, "על דמות", under the legend on Today (the saved-outfit screen of round B reuses it), with the price and the month's remaining budget shown
+    before each generation, as the redraw does. Roy tries three of his own outfits (about 0.10 USD, inside the
+    Google credit). He judges by eye: colours and patterns kept, the right shoes, nothing invented. If not, the
+    slice is removed in one revert.
+  - The figure: one neutral, faceless figure in the app's own drawn style, generated once and stored. A figure
+    adjusted by measurements or made from a photo comes only if the default one passes.
+  - No schema change: the stored image is addressed by the outfit's item ids.
+- **Embeddings (found by the same research; not started).** `gemini-embedding-2` accepts images and has a free
+  tier (paid: 0.00012 USD an image). It could stand in for the FashionCLIP worker, which has been off since
+  2026-11-18, and bring back duplicates and the pre-purchase check at no cost. It needs a migration for the vector
+  size and a re-embed of the wardrobe, so it is its own stage (5.5), after round B.
 
 ### Order of work
 
@@ -136,7 +157,8 @@ three decisions to the lead: where saved outfits live, the migration they need, 
 | A (now) | 4.5 manual context in the app; 4.9 the observance setting read from the profile; 5.1 alternatives after wearing and a cue that garments are tappable; the Yom Kippur tightening | All in the Today screen and its data, one builder, one PR | - |
 | B | 5.2 outfits built by hand, the "לוקים" place with saved and favourites, the navigation change, the migration; saved and favourite outfits feed the pair weights | Largest feature; its output (Roy's own outfits) is what the algorithm work needs | - (decided above) |
 | C | 5.4 the algorithm's judgement: formality, layers | After B, tuned against Roy's hand-built and favourite outfits and his examples of wrong suggestions | Roy's examples |
-| beside B | 5.3 try-on, step 1: research of image-based try-on and on-figure rendering (no cost), then the experiment: 6 to 8 real garments, three outfits, both routes, on one neutral figure | Cheap to learn early; if per-garment renders win, intake changes, and it is better to know before more garments are added | Roy's go on a spend capped at 2 USD |
+| beside B | 5.3 try-on, first slice: spec (DESIGN.md "שלב 5.3"), then the `tryon` function, then the sheet with its entry on Today; then Roy's three outfits decide | Touches no file of round B; Today exists, so the test does not wait for the saved-outfit screen | - (inside the Google credit and the cap in code) |
+| after B | 5.5 embeddings from `gemini-embedding-2` instead of the worker | Free tier; unblocks duplicates and the pre-purchase check | A migration for the vector size |
 | later | 4.6 reserve packing (needs the T-shirt number); 4.7b write races and offline history; 4.8 clean-up; 4.3 and 4.4 Android and the morning notification when the web app is final | Unchanged | As listed in stage 4 |
 
 ## Delegation

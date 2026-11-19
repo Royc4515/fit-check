@@ -3,8 +3,8 @@ import { ItemSchema, type Item } from "@fit-check/schema";
 import { describe, expect, it } from "vitest";
 import wardrobeJson from "../../../../../packages/engine/__fixtures__/wardrobe.json";
 import type { FeedbackHistory, TodayRecord } from "../../data/feedback";
-import type { DayInput } from "./outfit";
-import { defaultAdjustment, planDays, type DayPlan } from "./plans";
+import { contextTypeOf, type DayInput } from "./outfit";
+import { defaultAdjustment, occasionInEffect, occasionMayApply, planDays, type DayPlan } from "./plans";
 
 // Not imported from data/feedback: that module talks to Supabase, and this runner never loads React Native.
 const EMPTY_HISTORY: FeedbackHistory = { recent: [], today: [], ahead: [], samples: [] };
@@ -125,5 +125,34 @@ describe("what is on the day (DESIGN.md 4.5)", () => {
     const blocked = ids(first);
     const history: FeedbackHistory = { ...EMPTY_HISTORY, recent: [{ date: "2026-10-01", item_ids: blocked, context_key: null, context_type: "date" }] };
     expect(ids(plan([{ ...friday, occasion: "date" }], history)[0]!)).not.toEqual(blocked);
+  });
+});
+
+describe("when an occasion decides the look (DESIGN.md 4.5 item 3, corrected)", () => {
+  const today = (dayType: DayInput["dayType"], havdalahToday: string | null, now: string) => ({ tab: "today" as const, dayType, havdalahToday, now });
+  it("a weekday: the occasion wins (Friday before candle lighting is a weekday)", () => {
+    expect(occasionInEffect("date", today("weekday", null, "10:00"))).toBe("date");
+  });
+  it("Shabbat before its havdalah: Shabbat's rules, no occasion", () => {
+    expect(occasionMayApply(today("shabbat", "17:17", "12:00"))).toBe(false);
+    expect(occasionInEffect("date", today("shabbat", "17:17", "17:16"))).toBeUndefined();
+  });
+  it("Shabbat after its havdalah: the occasion (a date on Saturday night)", () => {
+    expect(occasionInEffect("date", today("shabbat", "17:17", "17:17"))).toBe("date");
+    expect(occasionInEffect("date", today("shabbat", "17:17", "21:00"))).toBe("date");
+  });
+  it("the first day of a two-day holiday (no havdalah that day): never", () => {
+    expect(occasionInEffect("event", today("holiday", null, "23:00"))).toBeUndefined();
+  });
+  it("the switch off: Shabbat arrives as a weekday, so the occasion wins", () => {
+    expect(occasionInEffect("interview", today("weekday", null, "11:00"))).toBe("interview");
+  });
+  it("a planned day's tab never uses an occasion, even one stored on its date", () => {
+    expect(occasionInEffect("date", { tab: "planned", dayType: "shabbat", havdalahToday: "17:17", now: "21:00" })).toBeUndefined();
+  });
+  it("a wear on Shabbat before havdalah keeps context_type shabbat", () => {
+    const occasion = occasionInEffect("date", today("shabbat", "17:17", "12:00"));
+    expect(contextTypeOf({ dayType: "shabbat", occasion })).toBe("shabbat");
+    expect(plan([{ ...shabbat, occasion }])[0]!.plan.req.context.type).toBe("shabbat");
   });
 });

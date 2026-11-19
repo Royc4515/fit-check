@@ -12,7 +12,8 @@ const LOOK = {
   error: { icon: "error", iconColor: "warn", text: "text-warn" },
 } as const satisfies Record<StatusVariant, { icon: IconName; iconColor: "ink-soft" | "ok" | "warn"; text: string }>;
 
-type Action = { label: string; onPress: () => void };
+/** `accessibilityLabel`: a fuller name when the visible word alone is ambiguous ("Cancel" -> "Cancel the occasion"). */
+type Action = { label: string; onPress: () => void; accessibilityLabel?: string };
 
 type Props = {
   variant?: StatusVariant;
@@ -50,7 +51,9 @@ export function StatusLine({ variant = "info", message, action, secondaryAction,
     <View className="flex-row items-center" style={{ gap: GAP, minHeight: layout.hit }}>
       <Icon name={look.icon} color={look.iconColor} />
       <Text className={`flex-1 font-body text-body-sm ${look.text}`}>{message}</Text>
-      {action && !secondaryAction ? <Button variant="text" label={action.label} onPress={action.onPress} disabled={disabled} /> : null}
+      {action && !secondaryAction ? (
+        <Button variant="text" label={action.label} accessibilityLabel={action.accessibilityLabel} onPress={action.onPress} disabled={disabled} />
+      ) : null}
     </View>
   );
   if (!action || !secondaryAction) return <View {...a11y}>{line}</View>;
@@ -58,8 +61,8 @@ export function StatusLine({ variant = "info", message, action, secondaryAction,
     <View {...a11y}>
       {line}
       <View className="flex-row flex-wrap" style={{ paddingStart: ICON + GAP, columnGap: 24 }}>
-        <Button variant="text" label={action.label} onPress={action.onPress} disabled={disabled} />
-        <Button variant="text" label={secondaryAction.label} onPress={secondaryAction.onPress} disabled={disabled} />
+        <Button variant="text" label={action.label} accessibilityLabel={action.accessibilityLabel} onPress={action.onPress} disabled={disabled} />
+        <Button variant="text" label={secondaryAction.label} accessibilityLabel={secondaryAction.accessibilityLabel} onPress={secondaryAction.onPress} disabled={disabled} />
         {moreActions?.map((a) => <Button key={a.label} variant="text" label={a.label} onPress={a.onPress} disabled={disabled} />)}
       </View>
     </View>
