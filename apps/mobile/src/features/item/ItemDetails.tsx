@@ -1,12 +1,12 @@
 import type { PairWeights } from "@fit-check/engine";
 import { AVAILABILITIES, type Availability, type Item, type ItemTags } from "@fit-check/schema";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { SpecTable, type SpecRow } from "../../components/editorial/SpecTable";
 import { Chip, Display, Meta, Segmented, StatusLine } from "../../components/ui";
 import { hasSleeves, isBottom, legOf } from "../intake/tagRules";
-import { editPayload, NOTES_COUNTER_FROM, NOTES_MAX, type ItemChange, type ItemEdits } from "./edit";
+import { NOTES_COUNTER_FROM, NOTES_MAX, type ItemChange, type ItemEdits } from "./edit";
 import { GoesWith } from "./GoesWith";
 import { InlineText } from "./InlineText";
 import { fieldLabelKey, TagSheet, type TagField } from "./TagSheet";
@@ -27,7 +27,7 @@ type Props = {
   item: Item;
   items: Item[];
   pairWeights: PairWeights;
-  onAvailability?: (itemId: string, next: Availability, prev: Availability) => Promise<void>;
+  onAvailability?: (itemId: string, next: Availability) => Promise<void>;
   /** Absent in read-only contexts (no session): every chip is then plain text. */
   edits?: ItemEdits;
   /** A status about the picture (replacing, cutout fallback), shown first, right under the hero. */
@@ -45,8 +45,20 @@ type Props = {
  * this component only says that it failed, next to what failed.
  */
 export function ItemDetails({ item, items, pairWeights, onAvailability, edits, imageStatus, onOpenOther, onScrollTop, bleed }: Props) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [failure, setFailure] = useState<Failure | null>(null);
+  // A write can fail after the screen is gone (back right after an edit): the wardrobe store is still rolled back by
+  // the edit queue (editQueue.ts), only the line here has nobody left to show it to.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const fail = (where: Failure["where"]) => {
+    if (mounted.current) setFailure({ where });
+  };
   const [field, setField] = useState<TagField | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   // The item as it was when the screen opened: a pick back to it restores it exactly (edit.ts colorPatch/legPatch).
@@ -59,27 +71,29 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
    */
   const moveOn = () => setFailure(null);
   // Names are often Latin inside a Hebrew page; aligned to the page's start, not to the script's (web gives text
-  // dir="auto"), so a wrapped English name does not hang off the far edge.
-  const align = { textAlign: i18n.language === "en" ? "left" : "right" } as const;
+  // dir="auto"), so a wrapped English name does not hang off the far edge. Logical `start`: resolved from the layout
+  // direction, which on native is the drawn one even before a restart (verification D9).
+  const align = { textAlign: "start" } as const;
 
-  /** The one save path: "the item as it is now + this change", built exactly like the old editor's payload. */
+  /**
+   * The one save path: the change goes to the item route, which applies it to the item as currently shown (pending
+   * edits included) and queues the write; a no-op change resolves at once without a write.
+   */
   const change = (c: ItemChange, where: Failure["where"]) => {
     if (!edits) return;
-    const payload = editPayload(item, c);
-    if (!payload) return;
     setFailure(null);
-    edits.save(item.id, payload).catch((error: unknown) => {
+    edits.save(item.id, c).catch((error: unknown) => {
       console.error("Item save failed", error);
-      setFailure({ where });
+      fail(where);
     });
   };
 
   const changeAvailability = onAvailability
     ? (next: Availability) => {
         setFailure(null);
-        onAvailability(item.id, next, item.availability).catch((error: unknown) => {
+        onAvailability(item.id, next).catch((error: unknown) => {
           console.error("Availability update failed", error);
-          setFailure({ where: "availability" });
+          fail("availability");
         });
       }
     : undefined;
@@ -204,7 +218,7 @@ export function ItemDetails({ item, items, pairWeights, onAvailability, edits, i
             segments={AVAILABILITIES.map((a) => ({ key: a, label: t(`wardrobe.availability.${a}`) }))}
             value={item.availability}
             onChange={(a) => changeAvailability?.(a)}
-            disabled={!changeAvailability}
+            disabled={!onAvailability}
             accessibilityLabel={spoken(t("item.where"))}
           />
         </View>

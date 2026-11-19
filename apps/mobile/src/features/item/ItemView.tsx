@@ -28,12 +28,15 @@ const CORNER = 12;
 const DETAILS_TOP = 32;
 /** Room under the last section so it can scroll clear of the home indicator. */
 const BOTTOM_AIR = 64;
+/** Paint layers: the flying picture passes over the details, the two buttons sit over the picture. */
+const HERO_LAYER = 1;
+const BUTTONS_LAYER = 2;
 
 type Props = {
   id: string | undefined;
   items: Item[];
   pairWeights: PairWeights;
-  onAvailability?: (itemId: string, next: Availability, prev: Availability) => Promise<void>;
+  onAvailability?: (itemId: string, next: Availability) => Promise<void>;
   edits?: ItemEdits;
 };
 
@@ -95,7 +98,7 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
       accessible
       accessibilityRole="image"
       accessibilityLabel={spoken(item.name)}
-      style={{ position: "absolute", start: geo.start, top: ground.y, width: ground.width, height: ground.height }}
+      style={{ position: "absolute", start: geo.start, top: ground.y, width: ground.width, height: ground.height, zIndex: HERO_LAYER }}
     >
       <Animated.View style={[fill, { backgroundColor: colors[heroTone] }, flight.groundStyle]}>
         {originTone && originTone !== heroTone ? <Animated.View style={[fill, { backgroundColor: colors[originTone] }, flight.originToneStyle]} /> : null}
@@ -170,7 +173,13 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
     <Animated.View
       pointerEvents="box-none"
       style={[
-        { position: "absolute", top: buttonsTop, start: geo.start + CORNER, width: geo.desktop ? ground.width - 2 * CORNER : windowW - 2 * CORNER },
+        {
+          position: "absolute",
+          top: buttonsTop,
+          start: geo.start + CORNER,
+          width: geo.desktop ? ground.width - 2 * CORNER : windowW - 2 * CORNER,
+          zIndex: BUTTONS_LAYER,
+        },
         flight.fadeStyle,
       ]}
     >
@@ -185,17 +194,19 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
     <View style={{ flex: 1 }}>
       {/* The ivory page fades in over the screen underneath: "the rest fades" while the picture travels. */}
       <Animated.View pointerEvents="none" style={[fill, { backgroundColor: colors.ivory }, flight.fadeStyle]} />
+      {/* don't touch / the buttons come first in the tree on both layouts: tree order is the keyboard and reading
+          order, so Back and More are the first two stops, then the details (verification N2). The layers (zIndex)
+          keep the paint order: the flying picture over the text, the buttons over the picture. */}
+      {geo.desktop ? buttons : null}
       <Animated.ScrollView ref={scroll} onScroll={flight.onScroll} scrollEventThrottle={16} contentContainerStyle={{ paddingBottom: insets.bottom + BOTTOM_AIR }}>
+        {geo.desktop ? null : buttons}
         <View style={column}>
           <Animated.View style={[{ paddingHorizontal: geo.desktop ? 0 : layout.gutter }, flight.contentStyle]}>{details}</Animated.View>
         </View>
-        {/* After the details in the tree, so the flying picture passes over the text, not under it. */}
         {geo.desktop ? null : hero}
-        {geo.desktop ? null : buttons}
       </Animated.ScrollView>
       {/* Desktop: held in its column while the details scroll. */}
       {geo.desktop ? hero : null}
-      {geo.desktop ? buttons : null}
       {item && edits ? (
         <ItemActions item={item} edits={edits} open={actionsOpen} onClose={() => setActionsOpen(false)} onRemoved={() => void close()} onImageStatus={setImageStatus} />
       ) : null}

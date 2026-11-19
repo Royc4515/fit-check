@@ -3,8 +3,8 @@ import { COLOR_HEX } from "../intake/palette";
 import { normalizeTags, subcategoryForLeg, type LegLength } from "../intake/tagRules";
 
 /**
- * What the item screen saves: the whole editable identity of an item (`updateItemDetails`) and its notes
- * (`updateItemNotes`). The route writes only the part that differs from the stored item.
+ * The editable identity of an item (`updateItemDetails`) and its notes (`updateItemNotes`) after one change. The
+ * route writes only the part that differs from the server-confirmed state (editQueue.ts).
  */
 export type ItemDetailsPayload = { name: string; brand: string | null; tags: ItemTags; notes: string | null };
 
@@ -17,8 +17,12 @@ export const NOTES_COUNTER_FROM = 400;
 
 /** The item screen's writes, injected so the screen also renders read-only (no session) and in the design gallery. */
 export type ItemEdits = {
-  /** Saves the full payload; resolves after the write. Throws on failure (the caller rolls back and says so). */
-  save: (itemId: string, edit: ItemDetailsPayload) => Promise<void>;
+  /**
+   * Saves one change, applied to the item as it is shown at that moment (pending edits included, see editQueue.ts),
+   * not to the caller's render copy. Optimistic: shown at once. Resolves after the write; rejects after the change
+   * was rolled back (only its own fields), so the caller can say so.
+   */
+  save: (itemId: string, change: ItemChange) => Promise<void>;
   setImage: (itemId: string, cutoutPath: string, thumbPath: string | null) => Promise<void>;
   archive: (itemId: string) => Promise<void>;
   userId: string;

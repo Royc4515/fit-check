@@ -2,7 +2,7 @@ import type { Item } from "@fit-check/schema";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
-import { Button, Display, Skeleton, StatusLine } from "../../components/ui";
+import { Button, Display, Meta, Skeleton, StatusLine } from "../../components/ui";
 import { layout } from "../../theme/tokens";
 import { spoken } from "./a11y";
 import type { WearState } from "./useItemWears";
@@ -35,7 +35,8 @@ export function WearHistory({ itemId, items, state, onRetry, currentYear = new D
   const locale = i18n.language;
   const names = useMemo(() => new Map(items.map((i) => [i.id, i.name])), [items]);
   // Page start, not the script's: a Latin name list inside a Hebrew page would otherwise hang off the far edge.
-  const align = { textAlign: locale === "en" ? "left" : "right" } as const;
+  // Logical, so it follows the drawn direction on native too, also before a restart (verification D9).
+  const align = { textAlign: "start" } as const;
 
   let body;
   if (state.status === "loading") {
@@ -67,6 +68,13 @@ export function WearHistory({ itemId, items, state, onRetry, currentYear = new D
                 </View>
               );
             })}
+          </View>
+        ) : null}
+        {/* Only the newest ITEM_WEARS_LIMIT are fetched; when the count says more, the full list says where it stops
+            instead of claiming to be all of them (verification D16). */}
+        {shown.length === wears.length && total > wears.length ? (
+          <View className="mt-2">
+            <Meta>{t("item.wears.capped", { n: wears.length })}</Meta>
           </View>
         ) : null}
         {wears.length > FIRST_ROWS ? (
