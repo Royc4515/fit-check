@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-19 (Outfits: the place, the collection and the outfit screen)
+
+- The bar keeps five places: ארון, היום, הוספה, **לוקים** (Material Symbols `style`), פרופיל; the desktop top nav changes the same way. "תובנות" is the first row of the profile and opens as a screen above the tabs with a back arrow, at the same `/insights` URL (old links land on it; back after a deep link goes to the profile). DESIGN.md "שלד" and "פרופיל ותובנות" describe this.
+- "לוקים": header with count, "הכל" / "מועדפים", a grid of the new library `OutfitTile` (small unnumbered flat-lay, name or garment types, wear line, a separate 44 heart) in 2/3/4 columns. The heart is optimistic and rolls back with an error line and "נסה שוב". Loading keeps the tiles' size and pulses; empty and error states as specified, without the "לוק חדש" action until the build screen exists (pull request 4).
+- The outfit screen (`/outfit/<id>`): over everything like the item screen with its fade-in; back, favourite, more; a "לא בבית עכשיו" line; Today's flat-lay with numbers, fitted by the same rule (extracted to `components/ui/flatLayFit.ts` without changing Today); the name written in place (the item screen's mechanism, generalised to an outfit name: may be empty, at most 40); for when · worn · last date; the legend, which opens the item. "הסרה מהלוקים" behind a confirm step. A deleted garment leaves its place on the flat-lay empty, keeps its numbered legend row ("נמחק מהארון") and adds an info line.
+- Look at: `features/outfits/collection.ts` (pure, tested), `features/outfits/store.ts` (shared between the two screens), `useTextWriting`'s new `save(field, draft)`. Unverified: real writes (the preview rejects them; checked on a stubbed copy of the web build), native.
+
 ## 2026-11-19 (Saved outfits: migration 0007 and the data layer)
 
 - Migration 0007 adds `outfits.name` (null, or 1-40 characters already trimmed), `is_favorite` (a favourite must be saved) and `saved_at` (in the collection exactly when not null), with a partial index for the list. Not applied yet: the lead applies it at merge. PRD 6.1 updated.
