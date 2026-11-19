@@ -24,6 +24,23 @@ export type ShabbatTimes = {
   end: { time: string; kind: "shabbat" | "holiday" | "fast"; day: "today" | "tomorrow" } | null;
 };
 
+/** One day after candle lighting on which the phone stays off, planned ahead (DESIGN.md "שלב 4.1" item 8). */
+export type PhoneFreeDay = {
+  /** `YYYY-MM-DD`. */
+  date: string;
+  /** "shabbat" when the date is a Saturday (Rosh Hashana on Shabbat included), else "holiday". */
+  kind: "shabbat" | "holiday";
+  /** That date's Yom Tov name, niqqud stripped (he) and Hebcal's English (en); null for a plain Shabbat. */
+  holiday: { he: string; en: string } | null;
+};
+
+/**
+ * How many days after today the calendar must cover: the longest chain of phone-free days that one candle lighting
+ * opens. In Israel that is three (Rosh Hashana on Thursday and Friday, then Shabbat: 2028-09-21..23); abroad a
+ * two-day Yom Tov on Thursday and Friday followed by Shabbat is also three. Hebcal is asked for `date..date+3`.
+ */
+export const CHAIN_MAX_DAYS = 3;
+
 const NONE: ShabbatTimes = { holiday: null, yomtov: false, candles: null, end: null };
 
 /** `date + 1` for a `YYYY-MM-DD` string, and its weekday (0 = Sunday), in UTC so no device time zone is involved. */
@@ -36,9 +53,9 @@ function dayInfo(date: string, plus = 0): { iso: string; weekday: number } | nul
   return { iso: d.toISOString().slice(0, 10), weekday: d.getUTCDay() };
 }
 
-/** The day after a `YYYY-MM-DD` string (for Hebcal's `end=`), or null if the string is not a date. */
-export function nextDate(date: string): string | null {
-  return dayInfo(date, 1)?.iso ?? null;
+/** Hebcal returns pointed Hebrew (niqqud); the editorial lines read cleaner without it. */
+export function stripNiqqud(s: string): string {
+  return s.replace(/[\u0591-\u05C7]/g, "");
 }
 
 /** `HH:MM` from an ISO date-time, or null for a date-only item (candle and havdalah items always carry a time). */
@@ -89,4 +106,83 @@ export function shabbatTimes(items: readonly HebcalItem[], date: string): Shabba
   const end = endTime ? { time: endTime, kind, day: todayEnd ? ("today" as const) : ("tomorrow" as const) } : null;
 
   return { holiday, yomtov: yomtovItem !== undefined, candles, end };
+}
+
+/**
+ * The phone-free days that today's candle lighting opens: every date after today up to and including the date of the
+ * next `havdalah` item, in order. Pure; the items come in as data.
+ *
+ * @param items Hebcal events for `date..date+CHAIN_MAX_DAYS` (anything else is ignored by date).
+ * @param date `YYYY-MM-DD`, the local day.
+ * @returns [] when there is no candle lighting today, when the date is invalid, and when no havdalah falls within
+ * CHAIN_MAX_DAYS (a chain whose end cannot be seen is not planned: a guess would plan a weekday as Shabbat).
+ * Chanukah candles are `holiday` events, not `candles`, so they open nothing.
+ */
+export function phoneFreeChain(items: readonly HebcalItem[], date: string): PhoneFreeDay[] {
+  const today = dayInfo(date);
+  if (!today) return [];
+  const onDay = (iso: string) => items.filter((i) => i.date.startsWith(iso));
+  if (!onDay(today.iso).some((i) => i.category === "candles")) return [];
+  const chain: PhoneFreeDay[] = [];
+  for (let plus = 1; plus <= CHAIN_MAX_DAYS; plus++) {
+    const day = dayInfo(date, plus);
+    if (!day) return [];
+    const events = onDay(day.iso);
+    const yomtov = events.find((i) => i.yomtov === true);
+    chain.push({
+      date: day.iso,
+      kind: day.weekday === 6 ? "shabbat" : "holiday",
+      holiday: yomtov ? { he: stripNiqqud(yomtov.hebrew ?? yomtov.title), en: yomtov.title_orig ?? yomtov.title } : null,
+    });
+    // The havdalah closes the chain on its own date; candles on the evening of a chain day keep it going.
+    if (events.some((i) => i.category === "havdalah")) return chain;
+  }
+  return [];
+}
+
+/** What a tab after "today" is called (DESIGN.md "שלב 4.1" item 8); the screen maps it to its string. */
+export type ChainTabLabel = { kind: "shabbat" } | { kind: "holiday"; day: 1 | 2 | null };
+
+/**
+ * Tab labels for a chain, in its order: "for Shabbat" for a Saturday, "for the holiday" for a holiday day, and
+ * "holiday, day 1 / day 2" when two days of the chain are holiday days that are not Shabbat (Rosh Hashana on
+ * Thursday-Friday). Rosh Hashana on Saturday-Sunday is "for Shabbat", "for the holiday": one of its days is Shabbat.
+ */
+export function chainTabLabels(chain: readonly Pick<PhoneFreeDay, "kind">[]): ChainTabLabel[] {
+  const holidays = chain.filter((d) => d.kind === "holiday").length;
+  let n = 0;
+  return chain.map((d): ChainTabLabel => {
+    if (d.kind === "shabbat") return { kind: "shabbat" };
+    n++;
+    return { kind: "holiday", day: holidays >= 2 ? (n === 1 ? 1 : 2) : null };
+  });
+}
+
+/** How long before candle lighting Today opens on the first planned day (PRD 4.3; DESIGN.md "שלב 4.1" item 3). */
+export const PLAN_AHEAD_MINUTES = 180;
+
+const minutesOf = (hhmm: string): number | null => {
+  const m = /^(\d{2}):(\d{2})$/.exec(hhmm);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+};
+
+/**
+ * Which tab Today opens on, as an index into ["today", ...chain]. Today until three hours before candle lighting;
+ * from then on, or once today's outfit is recorded as worn, the first planned day not recorded yet (the first planned
+ * day when every one is). Pure: the clock comes in as data.
+ *
+ * @param args.now The local time `HH:MM`, in the same time zone as `candles`.
+ * @param args.candles Today's candle lighting `HH:MM`; null (no candles) or an unreadable time always gives 0.
+ * @param args.todayRecorded Today's outfit is already recorded as worn.
+ * @param args.recorded One flag per chain day: its outfit is recorded as worn. An empty chain always gives 0.
+ */
+export function defaultTab(args: { now: string; candles: string | null; todayRecorded: boolean; recorded: readonly boolean[] }): number {
+  const { now, candles, todayRecorded, recorded } = args;
+  if (!candles || recorded.length === 0) return 0;
+  const at = minutesOf(now);
+  const lighting = minutesOf(candles);
+  if (at === null || lighting === null) return 0;
+  if (!todayRecorded && at < lighting - PLAN_AHEAD_MINUTES) return 0;
+  const open = recorded.findIndex((r) => !r);
+  return 1 + (open === -1 ? 0 : open);
 }

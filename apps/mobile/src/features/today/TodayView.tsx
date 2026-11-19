@@ -11,6 +11,7 @@ import { Reveal } from "../../components/editorial/Reveal";
 import {
   ActionBar,
   Button,
+  CrossFade,
   Display,
   EmptyState,
   FLAT_LAY_ASPECT,
@@ -19,19 +20,22 @@ import {
   LegendRow,
   Meta,
   StatusLine,
+  TextTabs,
   type FlatLayPiece,
   type StatusVariant,
 } from "../../components/ui";
 import { focusRingProps } from "../../components/ui/interaction";
 import type { DayContext } from "../../data/dayContext";
 import type { FeedbackHistory } from "../../data/feedback";
-import type { FeedbackActions, Laundered } from "../../data/useFeedback";
+import { chainTabLabels, defaultTab, type ChainTabLabel } from "../../data/shabbatTimes";
+import type { FeedbackActions, FeedbackTarget, Laundered } from "../../data/useFeedback";
 import { layout } from "../../theme/tokens";
 import { flyFrom, registerOrigin } from "../item/transition";
 import { AdjustSheet, type Adjust } from "./AdjustSheet";
 import { explainOutfit } from "./explain";
-import { planToday, type Swaps } from "./outfit";
+import type { DayInput, Swaps, TodayPlan } from "./outfit";
 import { PieceSheet } from "./PieceSheet";
+import { defaultAdjustment, planDays } from "./plans";
 import { outfitIndex, SLOT_ORDER } from "./pieces";
 import { useSwipeToSkip } from "./useSwipeToSkip";
 
@@ -45,8 +49,14 @@ type Props = {
   history: FeedbackHistory;
   actions: FeedbackActions;
   busy: boolean;
-  failed: boolean;
+  /** The date of the day whose last action failed (useFeedback), or null; shown on that day's tab only. */
+  failedOn: string | null;
   laundered?: Laundered | null;
+  /**
+   * The local time `HH:MM` when the screen opened, for the opening tab on the eve of Shabbat or a holiday (three
+   * hours before candle lighting). Data, not a clock read here, so the choice is testable.
+   */
+  clock: string;
   /** The AI stylist (stage B). Absent or returning null means the engine's order and template text are used. */
   stylist?: (input: StylistInput) => Promise<StylistOutput | null>;
 };
@@ -75,6 +85,8 @@ const DESKTOP_HERO_MAX = 560;
 const DESKTOP_HERO_PAD = 32;
 const DESKTOP_GAP = 64;
 const DESKTOP_GUTTER = 32;
+/** Desktop: space between the day tabs and the flat-lay under them. */
+const DESKTOP_TABS_GAP = 24;
 /** Mobile layout, wide windows (>= this): the flat-lay is a centred card, not full-bleed, and capped to fit above the bar. */
 const CARD_MIN_WIDTH = 600;
 /**
@@ -100,6 +112,10 @@ const FOCUS_WEAR = "today-wear";
 const SHEET_SETTLE_MS = 700;
 const FIRST_TABBABLE = '[tabindex="0"]:not([aria-disabled="true"])';
 
+/** The i18n key of a planned day's tab ("for Shabbat", "for the holiday", "holiday, day 1"). */
+const tabKey = (label: ChainTabLabel) =>
+  label.kind === "shabbat" ? "today.tabs.shabbat" : label.day === null ? "today.tabs.holiday" : `today.tabs.holidayDay${label.day}`;
+
 type StatusItem = {
   key: string;
   variant: StatusVariant;
@@ -119,17 +135,52 @@ type StatusItem = {
  * view (DESIGN.md section 3 "היום" item 8). A failed "wearing it" is the only status that stays in the bar, next to
  * the button it belongs to. Desktop (>= 900): two columns, nothing floats.
  */
-export function TodayView({ items, pairWeights, day, history, actions, busy, failed, laundered, stylist }: Props) {
+export function TodayView({ items, pairWeights, day, history, actions, busy, failedOn, laundered, stylist, clock }: Props) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const desktop = width >= layout.desktopMin;
 
-  // Session-only nudges and swaps (see engine/adjust.ts). Swaps belong to one suggestion: anything that changes
-  // the suggestion (a nudge, a skip) clears them, or a swapped shirt would be pasted onto a different outfit.
-  const [adjustment, setAdjustment] = useState<DayAdjustment>(NO_ADJUSTMENT);
-  const [swaps, setSwaps] = useState<Swaps>({});
+  // Today first, then each phone-free day that today's candle lighting opens (DESIGN.md "שלב 4.1"). Without candles
+  // the list is just today and the screen is exactly what it was before the tabs.
+  const days = useMemo<DayInput[]>(
+    () => [
+      { date: day.date, weather: day.weather, dayType: day.dayType, festive: day.festive },
+      ...day.chain.map((d) => ({ date: d.date, weather: d.weather, dayType: d.dayType })),
+    ],
+    [day]
+  );
+  const tabLabels = useMemo(() => chainTabLabels(day.chain), [day.chain]);
+  const hasTabs = day.chain.length > 0;
+  // The opening tab, decided once from the clock and the answers at hand when the screen opened: wearing today's
+  // outfit must not pull the screen to Shabbat under the user's thumb (item 3 is about where the screen opens).
+  const [openingTab] = useState(() =>
+    day.chain[
+      defaultTab({
+        now: clock,
+        candles: day.candles?.time ?? null,
+        todayRecorded: history.today.some((r) => r.feedback === "worn"),
+        recorded: day.chain.map((d) => history.ahead.some((r) => r.date === d.date && r.feedback === "worn")),
+      }) - 1
+    ]?.date ?? day.date
+  );
+  // A tab chosen by hand lasts while the screen is mounted, no longer (item 3).
+  const [chosenTab, setChosenTab] = useState<string | null>(null);
+  const selectedDate = [chosenTab, openingTab].find((d) => d !== null && days.some((x) => x.date === d)) ?? day.date;
+  const sel = Math.max(0, days.findIndex((d) => d.date === selectedDate));
+  const planned = sel > 0 ? day.chain[sel - 1]! : null;
+  const target: FeedbackTarget | undefined = planned ? { date: planned.date, dayType: planned.dayType } : undefined;
+  const failed = failedOn !== null && failedOn === selectedDate;
+
+  // Session-only nudges and swaps (see engine/adjust.ts), per day. Swaps belong to one suggestion: anything that
+  // changes the suggestion (a nudge, a skip) clears them, or a swapped shirt would be pasted onto a different outfit.
+  const [adjustments, setAdjustments] = useState<Readonly<Record<string, DayAdjustment>>>({});
+  const [swapsByDay, setSwapsByDay] = useState<Readonly<Record<string, Swaps>>>({});
+  // A day's taps start from its default (one "dressier" step on a holiday with the observance switch off), so the
+  // sheet shows that step as taken and can take it back.
+  const tapsOf = (d: DayInput) => adjustments[d.date] ?? defaultAdjustment(d);
+  const adjustment = tapsOf(days[sel]!);
   // The piece sheet keeps the garment it was opened for, so its title does not change under the closing animation
   // when that garment has just been swapped out.
   const [piece, setPiece] = useState<{ slot: Slot; item: Item } | null>(null);
@@ -141,53 +192,104 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // The scene's height (desktop: under the top nav; mobile: down to the tab bar's top), to cap the flat-lay.
   const [viewportHeight, setViewportHeight] = useState(0);
   // Mobile layout: what stands above the flat-lay, measured, so the cap follows every line that joins it. The
-  // masthead (a Friday adds the times row) and the status stack (skip, worn, laundry and failure lines); null =
-  // not measured yet. Sizes, not positions: on web onLayout comes from a ResizeObserver, which a move does not fire.
+  // masthead (a Friday adds the times row) and the status stack (day tabs, forecast, skip, worn, laundry and failure
+  // lines); null = not measured yet. Sizes, not positions: on web onLayout comes from a ResizeObserver, which a move
+  // does not fire.
   const [mastheadHeight, setMastheadHeight] = useState(0);
   const [aboveHeroHeight, setAboveHeroHeight] = useState<number | null>(null);
+  // Desktop: the day tabs sit above the flat-lay column, so its cap subtracts them.
+  const [desktopTabsHeight, setDesktopTabsHeight] = useState(0);
   // Where focus goes once the action that was just taken has settled (web). The button the hand was on is replaced by
   // a status line when it works, and a focused element that unmounts drops focus to <body>.
   const [focusRequest, setFocusRequest] = useState<{ after: "wear" | "skip" | "undo"; n: number } | null>(null);
   const focusHandled = useRef(0);
   const requestFocus = (after: "wear" | "skip" | "undo") => setFocusRequest((cur) => ({ after, n: (cur?.n ?? 0) + 1 }));
 
-  // The standing lean learned from recent wears, then today's taps on top. The total is what gets stored with a
+  // The standing lean learned from recent wears, then each day's taps on top. The total is what gets stored with a
   // worn outfit (see engine learnedAdjustment for why the total and not the taps).
   const learned = useMemo(() => learnedAdjustment(history.samples.map((s) => s.adjustment)), [history.samples]);
-  const effective = useMemo(() => combineAdjustments(learned, adjustment), [learned, adjustment]);
+  const effectiveByDay = useMemo(
+    () => days.map((d) => combineAdjustments(learned, tapsOf(d))),
+    // tapsOf reads only `adjustments`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [days, learned, adjustments]
+  );
+  const effective = effectiveByDay[sel]!;
   const locale = i18n.language === "en" ? "en" : "he";
   const gregorian = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }).format(
     new Date(`${day.date}T12:00:00`)
   );
-  const dayLabel = day.holiday && day.dayType === "holiday" ? day.holiday[locale] : t(`today.dayType.${day.dayType}`);
+  /** A day's name in the explanation: the holiday's own name on a Yom Tov, else its day type. */
+  const dayLabelOf = (k: number, lng: "he" | "en" = locale) => {
+    const d = days[k]!;
+    const holiday = k === 0 ? day.holiday : (day.chain[k - 1]?.holiday ?? null);
+    // A festive weekday (the switch off) is still called by its holiday's name.
+    return holiday && (d.dayType === "holiday" || d.festive) ? holiday[lng] : t(`today.dayType.${d.dayType}`, { lng });
+  };
+  const dayLabel = dayLabelOf(sel);
 
-  // The engine's own order first; the stylist then picks among its open candidates (never outside them).
-  const base = useMemo(
-    () => planToday({ items, pairWeights, day, history, adjustment: effective }),
-    [items, pairWeights, day, history, effective]
+  // The stylist's answers, by request key, for every day asked so far this session. Each day is asked only when its
+  // tab is open (item 4: the planned day's request goes out when its tab is first opened, not with the screen).
+  const [answers, setAnswers] = useState<Readonly<Record<string, StylistOutput>>>({});
+  const asked = useRef(new Set<string>());
+  const labelHe = (k: number) => {
+    const d = days[k]!;
+    const holiday = k === 0 ? day.holiday : (day.chain[k - 1]?.holiday ?? null);
+    return `${d.date} ${holiday?.he ?? t(`today.dayType.${d.dayType}`, { lng: "he" })}`;
+  };
+  const keyFor = (k: number, base: TodayPlan) =>
+    base.kind === "suggestion" ? `${labelHe(k)}|${base.candidates.slice(0, 8).map((c) => c.outfit_id).join(",")}` : null;
+
+  // The engine's own order first; the stylist then picks among each day's open candidates (never outside them).
+  // Days are planned in order: a later day sees the looks chosen for the earlier ones (plans.ts).
+  const plans = useMemo(
+    () =>
+      planDays({
+        items,
+        pairWeights,
+        days,
+        history,
+        adjustments: effectiveByDay,
+        swaps: days.map((d) => swapsByDay[d.date]),
+        prefer: (k, base) => {
+          const key = keyFor(k, base);
+          return key ? (answers[key]?.chosen_outfit_id ?? null) : null;
+        },
+      }),
+    // keyFor reads only `days`, `day` and `t`, all listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items, pairWeights, days, day, history, effectiveByDay, swapsByDay, answers, t]
   );
+  const selected = plans[sel]!;
+  const base = selected.base;
+  const plan = selected.plan;
+  const dayHistory = selected.history;
+  const dayWeather = planned ? planned.weather : day.weather;
+  const stylistKey = keyFor(sel, base);
   const stylistInput = useMemo<StylistInput | null>(() => {
     if (base.kind !== "suggestion") return null;
     const byId = new Map(items.map((i) => [i.id, i.name]));
-    const w = day.weather;
+    const w = dayWeather;
     return {
-      context_type: day.dayType,
-      date_label_he: `${day.date} ${day.holiday?.he ?? t(`today.dayType.${day.dayType}`, { lng: "he" })}`,
+      context_type: days[sel]!.dayType,
+      date_label_he: labelHe(sel),
       weather_summary: w
         ? `${w.temp_min_c}-${w.temp_max_c}C, ${Math.round(w.rain_probability * 100)}% chance of rain, ${w.sky}`
         : "no forecast available",
       candidates: base.candidates.slice(0, 8),
-      recent_outfits_summary: history.recent.slice(0, 7).map((r) => `${r.date}: ${r.item_ids.map((id) => byId.get(id) ?? "?").join(", ")}`),
+      recent_outfits_summary: dayHistory.recent.slice(0, 7).map((r) => `${r.date}: ${r.item_ids.map((id) => byId.get(id) ?? "?").join(", ")}`),
     };
-  }, [base, items, day, history.recent, t]);
-  const stylistKey = stylistInput ? `${stylistInput.date_label_he}|${stylistInput.candidates.map((c) => c.outfit_id).join(",")}` : null;
-  const [styledAnswer, setStyledAnswer] = useState<{ key: string; output: StylistOutput } | null>(null);
+    // stylistKey captures the candidates and the day; the rest follows from them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stylistKey]);
   useEffect(() => {
-    if (!stylist || !stylistInput || !stylistKey) return;
+    if (!stylist || !stylistInput || !stylistKey || asked.current.has(stylistKey)) return;
     let active = true;
     const timer = setTimeout(() => {
+      // Marked when sent, not when scheduled: a tab left within the debounce has not been asked yet.
+      asked.current.add(stylistKey);
       void stylist(stylistInput).then((output) => {
-        if (active && output) setStyledAnswer({ key: stylistKey, output });
+        if (active && output) setAnswers((cur) => ({ ...cur, [stylistKey]: output }));
       });
     }, STYLIST_DEBOUNCE_MS);
     return () => {
@@ -197,12 +299,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     // stylistKey captures everything about the input that should trigger a new call.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stylist, stylistKey]);
-  const styled = styledAnswer && styledAnswer.key === stylistKey ? styledAnswer.output : null;
+  const styled = stylistKey ? (answers[stylistKey] ?? null) : null;
 
-  const plan = useMemo(
-    () => planToday({ items, pairWeights, day, history, adjustment: effective, swaps, preferredId: styled?.chosen_outfit_id ?? null }),
-    [items, pairWeights, day, history, effective, swaps, styled]
-  );
   const outfit = plan.kind === "empty" ? null : plan.outfit;
   /**
    * Slots the wardrobe has nothing in at all. Roy, 2026-11-10: after the spreadsheet items were deleted the
@@ -213,9 +311,10 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     [items]
   );
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  // Swap options come from the day's own pool: a garment kept for Shabbat is not offered on Friday as a swap either.
   const options = useMemo(
-    () => (plan.kind === "suggestion" && piece ? swapOptions(items, plan.req, pairWeights, plan.items, piece.slot) : []),
-    [plan, piece, items, pairWeights]
+    () => (plan.kind === "suggestion" && piece ? swapOptions(selected.pool, plan.req, pairWeights, plan.items, piece.slot) : []),
+    [plan, piece, selected.pool, pairWeights]
   );
 
   // A failed write is also felt, not only read (DESIGN.md section 5: `warning` on failure). Native only.
@@ -223,21 +322,25 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     if (failed && Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
   }, [failed]);
 
-  const resetSwaps = () => setSwaps({});
+  // Each acts on the selected day; the date is read when the action is taken, so a later tab change cannot redirect it.
+  const resetSwaps = (date: string = selectedDate) => setSwapsByDay((cur) => (cur[date] ? { ...cur, [date]: {} } : cur));
   const adjust = (a: Adjust) => {
     resetSwaps();
-    setAdjustment((cur) => ({
-      temp_steps: cur.temp_steps + ADJUST[a].temp_steps,
-      formality_steps: cur.formality_steps + ADJUST[a].formality_steps,
-    }));
+    setAdjustments((cur) => {
+      const now = cur[selectedDate] ?? defaultAdjustment(days[sel]!);
+      return {
+        ...cur,
+        [selectedDate]: { temp_steps: now.temp_steps + ADJUST[a].temp_steps, formality_steps: now.formality_steps + ADJUST[a].formality_steps },
+      };
+    });
   };
   const resetAdjust = () => {
     resetSwaps();
-    setAdjustment(NO_ADJUSTMENT);
+    setAdjustments((cur) => ({ ...cur, [selectedDate]: NO_ADJUSTMENT }));
   };
   const skip = () =>
     plan.kind === "suggestion"
-      ? actions.skip(plan.outfit, plan.source, effective).then(() => {
+      ? actions.skip(plan.outfit, plan.source, effective, target).then(() => {
           resetSwaps();
           requestFocus("skip");
         })
@@ -260,7 +363,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
 
   const hebrew = day.hebrewDate?.[locale];
   const w = day.weather;
-  const template = outfit ? explainOutfit(t, day, outfit, dayLabel) : null;
+  const template = outfit ? explainOutfit(t, { weather: dayWeather, dayType: days[sel]!.dayType }, outfit, dayLabel) : null;
   // The stylist's sentence replaces the template lead only for the outfit it actually chose (not after a swap).
   const explanation =
     template && plan.kind === "suggestion" && plan.styled && styled
@@ -277,7 +380,11 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         return [{ slot: p.slot, item, index: outfitIndex(outfit.items, p.id), accessibilityLabel: t("today.pieceLabel", { type: typeOf(p.subcategory), name: p.name }) }];
       })
     : [];
-  const heroLabel = t("today.heroLabel", { pieces: ordered.map((p) => `${typeOf(p.subcategory)} ${p.name}`).join(", ") });
+  const heroPieces = ordered.map((p) => `${typeOf(p.subcategory)} ${p.name}`).join(", ");
+  // A planned day's flat-lay is named by its tab ("For Shabbat: ..."), not as today's outfit.
+  const heroLabel = planned
+    ? t("today.heroLabelPlanned", { tab: t(tabKey(tabLabels[sel - 1]!)), pieces: heroPieces })
+    : t("today.heroLabel", { pieces: heroPieces });
 
   const openPiece = (slot: Slot) => {
     if (!swipe.pressAllowed()) return;
@@ -293,7 +400,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const statuses: StatusItem[] = [];
   if (plan.kind === "worn") {
     const record = plan.record;
-    statuses.push({ key: "worn", variant: "ok", message: t("today.status.worn"), action: { label: t("today.undo"), onPress: () => void actions.undo(record).then(() => requestFocus("undo")) } });
+    const wornMessage = planned ? t(planned.dayType === "shabbat" ? "today.status.wornShabbat" : "today.status.wornHoliday") : t("today.status.worn");
+    statuses.push({ key: "worn", variant: "ok", message: wornMessage, action: { label: t("today.undo"), onPress: () => void actions.undo(record).then(() => requestFocus("undo")) } });
     if (laundered && laundered.wearId === record.wearId) {
       const ids = laundered.itemIds;
       const names = ids.map((id) => {
@@ -415,6 +523,42 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     ? `${w.temp_min_c}–${w.temp_max_c}°, ${t("today.data.rain")} ${Math.round(w.rain_probability * 100)}%, ${t(`today.sky.${w.sky}`)}`
     : t("today.noWeather");
 
+  // The day tabs (DESIGN.md "שלב 4.1" item 2): today, then each planned day. Moving between them with the keyboard
+  // keeps focus on the tab (TextTabs stays mounted in one place in every state, see the layouts below).
+  const dayTabs = hasTabs ? (
+    <TextTabs
+      tabs={[{ key: day.date, label: t("today.tabs.today") }, ...day.chain.map((d, i) => ({ key: d.date, label: t(tabKey(tabLabels[i]!)) }))]}
+      value={selectedDate}
+      onChange={setChosenTab}
+      accessibilityLabel={t("today.tabs.label")}
+      inset={desktop ? 0 : layout.gutter}
+    />
+  ) : null;
+  // A planned day's own forecast, named by its day (item 8): "Shabbat · 14–22° · rain 0%", or "no forecast yet".
+  const plannedName = planned
+    ? planned.dayType === "shabbat"
+      ? t("today.dayType.shabbat")
+      : new Intl.DateTimeFormat(locale, { weekday: "long" }).format(new Date(`${planned.date}T12:00:00`))
+    : null;
+  const plannedForecast = planned ? (
+    <Meta>
+      {planned.weather
+        ? t("today.plannedForecast", {
+            day: plannedName,
+            range: ltr(`${planned.weather.temp_min_c}–${planned.weather.temp_max_c}°`),
+            rain: ltr(`${Math.round(planned.weather.rain_probability * 100)}%`),
+          })
+        : t("today.plannedNoForecast")}
+    </Meta>
+  ) : null;
+  // Mobile: tabs and the planned day's forecast open the measured block above the hero.
+  const tabsBlock = hasTabs ? (
+    <View className="mt-6">
+      {dayTabs}
+      {plannedForecast ? <View className="mt-4 px-5">{plannedForecast}</View> : null}
+    </View>
+  ) : null;
+
   // Spec DESIGN.md section 3 "היום" item 1: the entry line is named by the day, the end joins it only when it is
   // today or tomorrow (data/shabbatTimes.ts decides that).
   const entryLine = day.candles ? t(day.candles.kind === "shabbat" ? "today.candles" : "today.candlesOther", { time: ltr(day.candles.time) }) : null;
@@ -482,7 +626,9 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
             onPressPiece={openPiece}
             // The legend rows below the hero are the same action in 01-04 order; the hero stops would be duplicates.
             pieceFocusable={false}
-            instantKey={history.today.length}
+            instantKey={dayHistory.today.length}
+            // A tab change replaces the whole outfit in place: a still cross-fade (DESIGN.md "שלב 4.1" item 3).
+            fadeKey={selectedDate}
             radius={desktop || card ? "md" : "none"}
             accessibilityLabel={heroLabel}
             contentStyle={swipe.style}
@@ -508,6 +654,9 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     </View>
   ) : null;
 
+  // The legend changes with the day's tab: a still fade, like the garments (item 3). Plain on a day without tabs.
+  const legend = hasTabs && captions ? <CrossFade swapKey={selectedDate}>{captions}</CrossFade> : captions;
+
   const quote = explanation ? (
     <View>
       {/* Pull quote: the one sentence that says why, set in the display face under a 1px ink rule. */}
@@ -530,7 +679,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const wear = () => {
     if (plan.kind !== "suggestion") return;
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    void actions.wear(plan.outfit, plan.source, effective).then(() => {
+    void actions.wear(plan.outfit, plan.source, effective, target).then(() => {
       resetSwaps();
       requestFocus("wear");
     });
@@ -543,7 +692,13 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         {barStatusLine}
         <View className="flex-row items-center" style={{ gap: 8 }}>
           <View style={{ flex: 1 }} nativeID={FOCUS_WEAR}>
-            <Button variant="primary" label={t("today.wearing")} onPress={wear} disabled={busy} fullWidth />
+            <Button
+              variant="primary"
+              label={planned ? t(planned.dayType === "shabbat" ? "today.wearOnShabbat" : "today.wearOnHoliday") : t("today.wearing")}
+              onPress={wear}
+              disabled={busy}
+              fullWidth
+            />
           </View>
           <Button
             variant="icon"
@@ -589,7 +744,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         open={pieceOpen}
         alternatives={plan.kind === "suggestion" ? options : null}
         onSwap={(o) => {
-          if (piece) setSwaps((cur) => ({ ...cur, [piece.slot]: o.id }));
+          if (piece) setSwapsByDay((cur) => ({ ...cur, [selectedDate]: { ...cur[selectedDate], [piece.slot]: o.id } }));
           setPieceOpen(false);
         }}
         onOpenItem={(id) => {
@@ -620,7 +775,10 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
 
   if (desktop) {
     // The whole surface fits under the top nav: the scene's height minus the 32 above and below, as a 4:5 width.
-    const heroMax = viewportHeight > 0 ? Math.min(DESKTOP_HERO_MAX, (viewportHeight - 2 * DESKTOP_HERO_PAD) / FLAT_LAY_ASPECT) : DESKTOP_HERO_MAX;
+    // The day tabs above the column (and the 24 under them) come out of that height.
+    const tabsSpace = hasTabs ? desktopTabsHeight + DESKTOP_TABS_GAP : 0;
+    const heroMax =
+      viewportHeight > 0 ? Math.min(DESKTOP_HERO_MAX, (viewportHeight - 2 * DESKTOP_HERO_PAD - tabsSpace) / FLAT_LAY_ASPECT) : DESKTOP_HERO_MAX;
     return (
       <View className="flex-1 bg-ivory" onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}>
         <ScrollView contentContainerStyle={{ paddingTop: insets.top + DESKTOP_HERO_PAD, paddingBottom: 64 + insets.bottom }}>
@@ -629,10 +787,16 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
             style={{ width: "100%", maxWidth: layout.maxContentWidthWide, alignSelf: "center", paddingHorizontal: DESKTOP_GUTTER, gap: DESKTOP_GAP }}
           >
             <View style={{ flex: 1, maxWidth: heroMax }}>
+              {dayTabs ? (
+                <View style={{ marginBottom: DESKTOP_TABS_GAP }} onLayout={(e) => setDesktopTabsHeight(e.nativeEvent.layout.height)}>
+                  {dayTabs}
+                </View>
+              ) : null}
               <Reveal index={1}>{hero ?? empty}</Reveal>
             </View>
             <View style={{ flex: 1 }}>
               <Reveal index={0}>{masthead}</Reveal>
+              {plannedForecast ? <View className="mt-6">{plannedForecast}</View> : null}
               {skipStatus && outfit ? (
                 <View className="mt-6" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
                   {lineOf(skipStatus)}
@@ -642,7 +806,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
               {outfit ? (
                 <>
                   <Reveal index={2}>
-                    <View className="mt-12">{captions}</View>
+                    <View className="mt-12">{legend}</View>
                   </Reveal>
                   <Reveal index={3}>
                     <View className="mt-12">{quote}</View>
@@ -688,6 +852,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
               <Reveal index={1}>
                 {/* Everything between masthead and hero, measured as one block for the hero's cap. */}
                 <View onLayout={(e) => setAboveHeroHeight(e.nativeEvent.layout.height)}>
+                  {tabsBlock}
                   {skipStatus ? (
                     <View className="mt-6 px-5" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
                       {lineOf(skipStatus)}
@@ -698,7 +863,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
                 <View style={{ marginTop: MOBILE_HERO_GAP, ...(cardWidth ? { width: cardWidth, alignSelf: "center" as const } : null) }}>{hero}</View>
               </Reveal>
               <Reveal index={2}>
-                <View className="mt-6 px-5">{captions}</View>
+                <View className="mt-6 px-5">{legend}</View>
               </Reveal>
               <Reveal index={3}>
                 <View className="mt-12 px-5">{quote}</View>
@@ -706,10 +871,19 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
               </Reveal>
             </>
           ) : (
-            <View className="px-5">
-              {empty}
-              <View className="mt-12">{credits}</View>
-            </View>
+            <>
+              {/* Same place in the tree as the outfit branch's first block, so a keyboard user moving to a day with no
+                  outfit keeps focus on the tab. */}
+              {tabsBlock ? (
+                <Reveal index={1}>
+                  <View>{tabsBlock}</View>
+                </Reveal>
+              ) : null}
+              <View className="px-5">
+                {empty}
+                <View className="mt-12">{credits}</View>
+              </View>
+            </>
           )}
         </ScrollView>
         {hasBar ? (

@@ -1,7 +1,8 @@
 import type { PairWeights } from "@fit-check/engine";
 import type { Item } from "@fit-check/schema";
+import { useState } from "react";
 import { WardrobeGate } from "../../components/WardrobeGate";
-import type { DayContext } from "../../data/dayContext";
+import { localTime, type DayContext } from "../../data/dayContext";
 import { useDayContext } from "../../data/useDayContext";
 import { useFeedback } from "../../data/useFeedback";
 import { requestStyle } from "../../data/stylist";
@@ -20,6 +21,8 @@ export default function Index() {
   if (!day || !userId) return <WardrobeGate state={{ status: "loading" }} />;
   return (
     <Today
+      // A new day is a new screen: its opening tab and the session's nudges belong to the day they were made on.
+      key={day.date}
       userId={userId}
       items={wardrobe.items}
       pairWeights={wardrobe.pairWeights}
@@ -37,7 +40,11 @@ function Today(props: {
   day: DayContext;
 }) {
   const { userId, items, pairWeights, patch, day } = props;
-  const feedback = useFeedback({ userId, date: day.date, dayType: day.dayType, items, pairWeights, patch });
+  // On the eve of Shabbat or a holiday the history reaches the last planned day, so what was recorded ahead shows.
+  const until = day.chain.at(-1)?.date ?? day.date;
+  const feedback = useFeedback({ userId, date: day.date, dayType: day.dayType, until, items, pairWeights, patch });
+  // The clock when the screen opened, in the location's zone: it picks the opening tab (three hours before candles).
+  const [clock] = useState(() => localTime(day.tz));
   // Wait for today's answers so an outfit already marked worn never flashes as a fresh suggestion.
   if (!feedback.history) return <WardrobeGate state={{ status: "loading" }} />;
   return (
@@ -48,9 +55,10 @@ function Today(props: {
       history={feedback.history}
       actions={feedback.actions}
       busy={feedback.busy}
-      failed={feedback.failed}
+      failedOn={feedback.failedOn}
       laundered={feedback.laundered}
       stylist={requestStyle}
+      clock={clock}
     />
   );
 }

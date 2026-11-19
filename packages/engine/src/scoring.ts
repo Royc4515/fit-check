@@ -1,5 +1,5 @@
 import type { CandidateOutfit, Item, StylingRequest } from "@fit-check/schema";
-import { RECENCY, SCORING_WEIGHTS, SLOT_FORMALITY_WEIGHT } from "./config";
+import { RECENCY, SCORING_WEIGHTS, SHABBAT_COLOR, SLOT_FORMALITY_WEIGHT } from "./config";
 
 /** Stage 2: scoring one combination. All signals are 0..1 except recency, which is a penalty. */
 
@@ -128,6 +128,22 @@ export function pairScore(items: Item[], weights: PairWeights): number {
   return pairs === 0 ? 0 : Math.max(-1, Math.min(1, total / pairs));
 }
 
+/**
+ * The Shabbat colour term (config SHABBAT_COLOR): white top bonus, dark or loud top penalty, 0 for anything else and
+ * for every context outside SHABBAT_COLOR.contexts. Read from the top only: the shirt is what reads as "Shabbat".
+ * @returns a small signed number added to the weighted score.
+ */
+export function shabbatColor(items: Item[], req: StylingRequest): number {
+  if (!SHABBAT_COLOR.contexts.includes(req.context.type)) return 0;
+  const top = items.find((i) => i.tags.category === "top");
+  if (!top) return 0;
+  let term = 0;
+  if (top.tags.color_name === "white") term += SHABBAT_COLOR.white_top;
+  else if (hexToHsl(top.tags.color_hex).l < SHABBAT_COLOR.dark_lightness) term += SHABBAT_COLOR.dark_top;
+  if (SHABBAT_COLOR.loud_patterns.includes(top.tags.pattern)) term += SHABBAT_COLOR.loud_top;
+  return term;
+}
+
 export function scoreOutfit(items: Item[], req: StylingRequest, weights: PairWeights): CandidateOutfit["breakdown"] & { score: number } {
   const breakdown = {
     color_harmony: colorHarmony(items),
@@ -143,7 +159,8 @@ export function scoreOutfit(items: Item[], req: StylingRequest, weights: PairWei
     breakdown.formality_consistency * SCORING_WEIGHTS.formality_consistency +
     breakdown.context_fit * SCORING_WEIGHTS.context_fit +
     ((breakdown.pair_weight + 1) / 2) * SCORING_WEIGHTS.pair_weight;
-  // Penalty is applied after weighting so a repeated outfit drops out regardless of how good it is.
-  const score = Math.max(0, Math.min(1, weighted + breakdown.recency_penalty * 0.25));
+  // Penalty is applied after weighting so a repeated outfit drops out regardless of how good it is. The Shabbat colour
+  // term is not in `breakdown`: that object is the stylist's frozen input schema (packages/schema stylist.ts).
+  const score = Math.max(0, Math.min(1, weighted + breakdown.recency_penalty * 0.25 + shabbatColor(items, req)));
   return { ...breakdown, score };
 }

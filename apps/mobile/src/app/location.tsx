@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, ListRow, MetaLink, ScreenHeader, SearchField, StatusLine } from "../components/ui";
 import { cachedPlaceName, currentPosition, getSavedLocation, onPlaceNameChange, readLocationFacts, saveLocation, searchCities, type SavedLocation } from "../data/location";
 import { locationNotice, type LocationFacts } from "../data/locationNotice";
+import { useObservesShabbat } from "../data/useObservance";
 import { layout } from "../theme/tokens";
 
 type City = Extract<SavedLocation, { kind: "city" }>;
@@ -27,6 +28,8 @@ export default function LocationScreen() {
   const [facts, setFacts] = useState<Pick<LocationFacts, "permission" | "hasStoredFix"> | null>(null);
 
   const lang = i18n.language === "en" ? "en" : "he";
+  // Without "keeps Shabbat and holidays" the location sets only the weather (DESIGN.md "שלב 4.1" item 10).
+  const observes = useObservesShabbat();
   const [currentName, setCurrentName] = useState<string | null>(null);
 
   // Read without prompting (data/location.ts): only a tap on the row may ask. Read again when the app comes back to
@@ -120,7 +123,7 @@ export default function LocationScreen() {
           <Button variant="icon" icon="arrow_back" accessibilityLabel={t("common.back")} onPress={leave} />
         </View>
         <ScreenHeader title={t("location.title")} safeArea={false} />
-        <Text className="mt-2 font-body text-body-sm text-ink-soft">{t("location.hint")}</Text>
+        <Text className="mt-2 font-body text-body-sm text-ink-soft">{t(observes ? "location.hint" : "location.hintWeatherOnly")}</Text>
 
         <View className="mt-8 border-t border-hairline">
           <ListRow
@@ -131,7 +134,7 @@ export default function LocationScreen() {
           />
           <ListRow
             label={t("location.current")}
-            meta={currentName ?? t("location.currentMeta")}
+            meta={currentName ?? t(observes ? "location.currentMeta" : "location.currentMetaWeatherOnly")}
             selected={saved?.kind === "current"}
             onPress={() => void chooseCurrent()}
           />

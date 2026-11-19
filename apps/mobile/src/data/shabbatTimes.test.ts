@@ -14,7 +14,14 @@ import shavuotDay from "./__fixtures__/shavuot-day.json";
 import weekday from "./__fixtures__/weekday.json";
 import yomKippurDay from "./__fixtures__/yom-kippur-day.json";
 import yomKippurEve from "./__fixtures__/yom-kippur-eve.json";
-import { shabbatTimes, type HebcalItem } from "./shabbatTimes";
+import chainErevPesach from "./__fixtures__/chain-erev-pesach.json";
+import chainErevShavuot from "./__fixtures__/chain-erev-shavuot.json";
+import chainFriday from "./__fixtures__/chain-friday.json";
+import chainRhEve from "./__fixtures__/chain-rh-eve.json";
+import chainRhEve2028 from "./__fixtures__/chain-rh-eve-2028.json";
+import chainWeekday from "./__fixtures__/chain-weekday.json";
+import chainYomKippurEve from "./__fixtures__/chain-yom-kippur-eve.json";
+import { chainTabLabels, defaultTab, phoneFreeChain, shabbatTimes, type HebcalItem } from "./shabbatTimes";
 
 // Real Hebcal responses (geonameid 293397, lg=he, start=date, end=date+1, saved 2026-11-19). The expected values
 // below were read by hand from each response, not produced by the code under test.
@@ -101,4 +108,82 @@ describe("shabbatTimes: Chanukah (its candles are 'holiday' events with a time, 
   it("Friday of Chanukah: only the real Shabbat candle item counts", () =>
     expect(run(chanukahFriday, "2026-12-04").candles).toEqual({ time: "16:15", kind: "shabbat" }));
   it("and tomorrow's end is Shabbat's", () => expect(run(chanukahFriday, "2026-12-04").end).toEqual({ time: "17:16", kind: "shabbat", day: "tomorrow" }));
+});
+
+// The chain fixtures are real Hebcal responses for the app's default location (geonameid 294981, i=on, lg=he,
+// start=date, end=date+3: the range the calendar load asks for; saved 2026-11-19). Expected chains read by hand.
+const chain = (raw: unknown, date: string) => phoneFreeChain(items(raw), date);
+const RH1 = { he: "ראש השנה 5788", en: "Rosh Hashana 5788" };
+const RH2 = { he: "ראש השנה ב׳", en: "Rosh Hashana II" };
+
+describe("phoneFreeChain", () => {
+  it("an ordinary weekday (Thursday) opens nothing, though Friday's candles are in the response", () =>
+    expect(chain(chainWeekday, "2026-11-19")).toEqual([]));
+  it("an ordinary Friday: Shabbat", () => expect(chain(chainFriday, "2026-11-20")).toEqual([{ date: "2026-11-21", kind: "shabbat", holiday: null }]));
+  it("erev Rosh Hashana on a Friday: Saturday (RH I, as Shabbat), Sunday (RH II)", () =>
+    expect(chain(chainRhEve, "2027-10-01")).toEqual([
+      { date: "2027-10-02", kind: "shabbat", holiday: RH1 },
+      { date: "2027-10-03", kind: "holiday", holiday: RH2 },
+    ]));
+  it("erev Shavuot on a Thursday: Friday (Shavuot), then Shabbat", () =>
+    expect(chain(chainErevShavuot, "2027-06-10")).toEqual([
+      { date: "2027-06-11", kind: "holiday", holiday: { he: "שבועות", en: "Shavuot" } },
+      { date: "2027-06-12", kind: "shabbat", holiday: null },
+    ]));
+  it("Rosh Hashana on Thursday-Friday (5789): three days, the longest chain", () =>
+    expect(chain(chainRhEve2028, "2028-09-20")).toEqual([
+      { date: "2028-09-21", kind: "holiday", holiday: { he: "ראש השנה 5789", en: "Rosh Hashana 5789" } },
+      { date: "2028-09-22", kind: "holiday", holiday: RH2 },
+      { date: "2028-09-23", kind: "shabbat", holiday: null },
+    ]));
+  it("erev Pesach (Wednesday), a one-day weekday holiday: Thursday's havdalah ends it before Friday's candles", () =>
+    expect(chain(chainErevPesach, "2027-04-21")).toEqual([{ date: "2027-04-22", kind: "holiday", holiday: { he: "פסח א׳", en: "Pesach I" } }]));
+  it("erev Yom Kippur (Sunday): Monday", () =>
+    expect(chain(chainYomKippurEve, "2027-10-10")).toEqual([{ date: "2027-10-11", kind: "holiday", holiday: { he: "יום כיפור", en: "Yom Kippur" } }]));
+  it("a chain whose havdalah is out of range is not planned", () =>
+    expect(phoneFreeChain([{ title: "c", date: "2027-10-01T18:06:00+03:00", category: "candles" }], "2027-10-01")).toEqual([]));
+  it("an invalid date opens nothing", () => expect(chain(chainFriday, "20-11-2026")).toEqual([]));
+  it("the times row reads the wider range exactly as before", () => {
+    expect(run(chainFriday, "2026-11-20")).toEqual({ yomtov: false, holiday: null, candles: { time: "16:18", kind: "shabbat" }, end: { time: "17:17", kind: "shabbat", day: "tomorrow" } });
+    expect(run(chainErevShavuot, "2027-06-10").end).toBeNull();
+    expect(run(chainRhEve2028, "2028-09-20")).toEqual({ yomtov: false, holiday: "Erev Rosh Hashana", candles: { time: "18:19", kind: "other" }, end: null });
+  });
+});
+
+describe("chainTabLabels", () => {
+  const kinds = (raw: unknown, date: string) => chainTabLabels(chain(raw, date));
+  it("Friday: for Shabbat", () => expect(kinds(chainFriday, "2026-11-20")).toEqual([{ kind: "shabbat" }]));
+  it("a one-day holiday: for the holiday", () => expect(kinds(chainErevPesach, "2027-04-21")).toEqual([{ kind: "holiday", day: null }]));
+  it("Shavuot into Shabbat: for the holiday, for Shabbat", () =>
+    expect(kinds(chainErevShavuot, "2027-06-10")).toEqual([{ kind: "holiday", day: null }, { kind: "shabbat" }]));
+  it("Rosh Hashana on Saturday-Sunday: for Shabbat, for the holiday (only one non-Shabbat holiday day)", () =>
+    expect(kinds(chainRhEve, "2027-10-01")).toEqual([{ kind: "shabbat" }, { kind: "holiday", day: null }]));
+  it("Rosh Hashana on Thursday-Friday: holiday day 1, day 2, then Shabbat", () =>
+    expect(kinds(chainRhEve2028, "2028-09-20")).toEqual([{ kind: "holiday", day: 1 }, { kind: "holiday", day: 2 }, { kind: "shabbat" }]));
+  it("no chain, no tabs", () => expect(chainTabLabels([])).toEqual([]));
+});
+
+describe("defaultTab", () => {
+  const base = { candles: "16:18", todayRecorded: false, recorded: [false] };
+  it("today until three hours before candle lighting", () => {
+    expect(defaultTab({ ...base, now: "09:00" })).toBe(0);
+    expect(defaultTab({ ...base, now: "13:17" })).toBe(0);
+  });
+  it("the planned day from three hours before", () => {
+    expect(defaultTab({ ...base, now: "13:18" })).toBe(1);
+    expect(defaultTab({ ...base, now: "14:00" })).toBe(1);
+    expect(defaultTab({ ...base, now: "23:30" })).toBe(1);
+  });
+  it("the planned day as soon as today's outfit is worn, whatever the hour", () =>
+    expect(defaultTab({ ...base, now: "07:00", todayRecorded: true })).toBe(1));
+  it("the first planned day not recorded yet; the first one when all are", () => {
+    expect(defaultTab({ ...base, now: "15:00", recorded: [true, false, false] })).toBe(2);
+    expect(defaultTab({ ...base, now: "15:00", recorded: [true, true, false] })).toBe(3);
+    expect(defaultTab({ ...base, now: "15:00", recorded: [true, true] })).toBe(1);
+  });
+  it("no candles, no chain or an unreadable time: today", () => {
+    expect(defaultTab({ ...base, now: "15:00", candles: null })).toBe(0);
+    expect(defaultTab({ ...base, now: "15:00", recorded: [] })).toBe(0);
+    expect(defaultTab({ ...base, now: "3pm" })).toBe(0);
+  });
 });

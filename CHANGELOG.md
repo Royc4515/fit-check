@@ -7,6 +7,13 @@
 - Insights outfit sheet: type and Latin name are two texts (`features/insights/OutfitItemRow.tsx`), each in its own direction, so the Hebrew type sits at the start edge.
 - 115 new unit tests: wardrobe filters and search, intake tag rules / failure lines / upload captions, insights summaries, the date in the location's zone, the pager. None exposed a bug.
 - Look at: the remove flow with unsaved text on the item screen (browser: the preview rejects writes, so only the failing-save path was run), the location screen with the permission refused, an outfit's sheet in Hebrew.
+## 2026-11-19 (Friday is for Shabbat: every phone-free day planned ahead)
+
+- On a day with candle lighting Today shows tabs ("היום", then "לשבת" / "לחג" / "לחג א׳", "לחג ב׳") inside the measured hero block (DESIGN.md "שלב 4.1"). Each tab is its own day: Shabbat or holiday rules, its own forecast line, "אלבש בשבת" records the wear on that date (laundry at press time, undo brings it back), its own stylist request when the tab is first opened. A later day sees the earlier looks as worn; a garment recorded for a later day is not offered earlier. Opens on the planned day from three hours before candle lighting or once today is worn.
+- Hebcal is asked for date..date+3 (`phoneFreeChain`, cache v5), the forecast for 4 days (cache v3). Engine: a Shabbat colour term (white top preferred; `SHABBAT_COLOR` in config) and a fix: a wear dated after `req.today` no longer lowers its garments' pre-rank.
+- Profile: "שומר שבת וחג" (device setting, `useObservesShabbat` / `getObservesShabbat`). Off: no times, no tabs, no "לשבת" filter, short location hint, weekday rules; a Yom Tov is a weekday one "dressier" step up (shown in the adjust sheet).
+- Look at: `features/today/plans.ts` (pure, tested), `data/shabbatTimes.ts`, `useFeedback` (one hook, `target` per action), the tab block in `TodayView.tsx`. Checked in the browser on the read-only preview (writes stubbed locally in a throwaway build).
+- Unverified: native; real writes and the real `wear_counts_since_wash` SQL; the stylist's answer for a planned day (blocked in preview: the template text shows). The MCP tools do not know the observance switch. The location screen's current-location meta still mentions Shabbat times with the switch off (that row belongs to another task).
 
 ## 2026-11-19 (OpenStreetMap credit from the keyboard)
 

@@ -16,7 +16,10 @@ import { scoreOutfit, type PairWeights } from "./scoring";
 
 function lastWornIndex(item: Item, req: StylingRequest): number {
   // recent_wears is most-recent-first; a lower index means worn more recently.
-  const idx = req.recent_wears.findIndex((w) => w.item_ids.includes(item.id));
+  // don't touch / wears dated after req.today are skipped, as recencyPenalty skips them: a Shabbat outfit recorded on
+  // Friday is ahead of Friday's plan, and counting it pushed its garments out of Friday's pre-rank (a hidden reserve
+  // the screen never explained). ISO dates compare as strings.
+  const idx = req.recent_wears.filter((w) => w.date <= req.today).findIndex((w) => w.item_ids.includes(item.id));
   // don't touch / a finite sentinel, not Infinity: Infinity - Infinity is NaN, which made the
   // sort comparator skip the id tiebreak for every never-worn pair and leak DB row order into results.
   return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;

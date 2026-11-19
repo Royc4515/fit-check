@@ -7,19 +7,23 @@ import { getSnapshot, isPreview, PreviewReadOnlyError } from "./preview";
 
 export type RecentWear = StylingRequest["recent_wears"][number];
 
-/** A piece of feedback given today, kept so it can be shown and undone. */
-export type TodayRecord = { wearId: string; outfitId: string; feedback: WearFeedback; itemIds: string[] };
+/**
+ * A piece of feedback for one day, kept so it can be shown and undone. `date` is the day it is for (`wears.worn_on`):
+ * today, or a planned day after today's candle lighting.
+ */
+export type TodayRecord = { wearId: string; outfitId: string; feedback: WearFeedback; itemIds: string[]; date: string };
 
 /** The adjustment one worn outfit was chosen under (engine learnedAdjustment's samples). */
 export type AdjustmentSample = { wearId: string; adjustment: DayAdjustment };
 
 /**
- * `recent`: worn outfits, most recent first (the engine's recent_wears). `today`: today's records, oldest first.
- * `samples`: the adjustment of every recent worn outfit, for learning the user's standing lean.
+ * `recent`: worn outfits up to today, most recent first (the engine's recent_wears). `today`: today's records, oldest
+ * first. `ahead`: records for days after today (outfits planned on the eve of Shabbat or a holiday), oldest first.
+ * `samples`: the adjustment of every recent worn outfit, planned ones included, for learning the standing lean.
  */
-export type FeedbackHistory = { recent: RecentWear[]; today: TodayRecord[]; samples: AdjustmentSample[] };
+export type FeedbackHistory = { recent: RecentWear[]; today: TodayRecord[]; ahead: TodayRecord[]; samples: AdjustmentSample[] };
 
-export const EMPTY_HISTORY: FeedbackHistory = { recent: [], today: [], samples: [] };
+export const EMPTY_HISTORY: FeedbackHistory = { recent: [], today: [], ahead: [], samples: [] };
 
 /** yyyy-mm-dd minus `days`, in calendar days. UTC arithmetic so no local timezone can shift the date. */
 export function daysBefore(date: string, days: number): string {
@@ -28,31 +32,33 @@ export function daysBefore(date: string, days: number): string {
 }
 
 /**
- * Wears of the last RECENT_WEARS_DAYS days, up to and including `today` (the user's local date, not UTC: a wear
- * logged at 01:00 in Israel belongs to that Israeli day). Rows that fail the schema are skipped and logged, like
- * items: one bad row must not hide the rest. Throws on a network or permission error.
+ * Wears of the last RECENT_WEARS_DAYS days, up to and including `until` (default `today`; the last planned day on the
+ * eve of Shabbat or a holiday, so outfits already recorded for those days are read back). Dates are the user's local
+ * ones, not UTC: a wear logged at 01:00 in Israel belongs to that Israeli day. Rows that fail the schema are skipped and
+ * logged, like items: one bad row must not hide the rest. Throws on a network or permission error.
  */
-export async function fetchFeedback(today: string): Promise<FeedbackHistory> {
+export async function fetchFeedback(today: string, until: string = today): Promise<FeedbackHistory> {
   const from = daysBefore(today, RECENT_WEARS_DAYS);
+  const last = until > today ? until : today;
   // Design preview (web only, temporary): the snapshot's wears, in the same order, trimmed to the same window below.
-  if (isPreview()) return historyFromRows((await getSnapshot()).wears, from, today);
+  if (isPreview()) return historyFromRows((await getSnapshot()).wears, from, today, last);
   const { data, error } = await supabase
     .from("wears")
     .select(WEAR_READ_COLUMNS)
     .gte("worn_on", from)
-    .lte("worn_on", today)
+    .lte("worn_on", last)
     .order("worn_on", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return historyFromRows(data ?? [], from, today);
+  return historyFromRows(data ?? [], from, today, last);
 }
 
 /**
  * Wear rows, newest first, to history. The window check repeats the query's filter: the preview snapshot is cut on
  * the server's UTC date, which can be a day off the user's local one.
  */
-function historyFromRows(rows: readonly unknown[], from: string, today: string): FeedbackHistory {
-  const history: FeedbackHistory = { recent: [], today: [], samples: [] };
+function historyFromRows(rows: readonly unknown[], from: string, today: string, until: string): FeedbackHistory {
+  const history: FeedbackHistory = { recent: [], today: [], ahead: [], samples: [] };
   for (const raw of rows) {
     const parsed = WearRowSchema.safeParse(raw);
     if (!parsed.success) {
@@ -60,15 +66,19 @@ function historyFromRows(rows: readonly unknown[], from: string, today: string):
       continue;
     }
     const row = parsed.data;
-    if (row.worn_on < from || row.worn_on > today) continue;
+    if (row.worn_on < from || row.worn_on > until) continue;
     if (!row.outfits || !row.outfit_id) continue;
     const itemIds = row.outfits.outfit_items.map((i) => i.item_id);
+    const record: TodayRecord = { wearId: row.id, outfitId: row.outfit_id, feedback: row.feedback, itemIds, date: row.worn_on };
     if (row.feedback === "worn") {
-      history.recent.push({ date: row.worn_on, item_ids: itemIds, context_key: null });
+      // A planned day's wear has not happened yet: it is not "recent" for today (the planning adds it per day).
+      if (row.worn_on <= today) history.recent.push({ date: row.worn_on, item_ids: itemIds, context_key: null });
       const adjustment = row.outfits.breakdown?.adjustment ?? { temp_steps: 0, formality_steps: 0 };
       history.samples.push({ wearId: row.id, adjustment });
     }
-    if (row.worn_on === today) history.today.unshift({ wearId: row.id, outfitId: row.outfit_id, feedback: row.feedback, itemIds });
+    if (row.worn_on === today) history.today.unshift(record);
+    // Rows come newest date first, so unshift leaves the planned days in date order.
+    else if (row.worn_on > today) history.ahead.unshift(record);
   }
   return history;
 }
@@ -119,7 +129,7 @@ export async function recordFeedback(args: {
       .select("id")
       .single();
     if (wear.error) throw wear.error;
-    return { wearId: String(wear.data.id), outfitId, feedback, itemIds: outfit.items.map((i) => i.id) };
+    return { wearId: String(wear.data.id), outfitId, feedback, itemIds: outfit.items.map((i) => i.id), date };
   } catch (error) {
     await supabase.from("outfits").delete().eq("id", outfitId);
     throw error;
