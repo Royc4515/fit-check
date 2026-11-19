@@ -2,6 +2,7 @@ import { summarizeDay, type DayWeather } from "@fit-check/engine";
 import { HebcalConverterSchema, HebcalItemsSchema, OpenMeteoHourlySchema } from "@fit-check/schema";
 import { candleLightingMinutes } from "./candleLighting";
 import { cacheGet, cacheSet } from "./kv";
+import { nextDate, shabbatTimes, type ShabbatTimes } from "./shabbatTimes";
 import { resolveLocation, type ResolvedLocation } from "./location";
 
 /**
@@ -29,8 +30,10 @@ export type DayContext = {
   weather: DayWeather | null;
   dayType: DayType;
   holiday: { he: string; en: string } | null;
-  /** "HH:MM" when candles are lit today (Friday or a holiday eve), else null. */
-  candleLighting: string | null;
+  /** Candle lighting today ("shabbat" on a Friday, "other" for a holiday eve or night), else null. */
+  candles: ShabbatTimes["candles"];
+  /** The end of Shabbat or the holiday, only when it falls today or tomorrow (see shabbatTimes). */
+  end: ShabbatTimes["end"];
 };
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -95,12 +98,12 @@ async function loadHebrewDate(date: string): Promise<DayContext["hebrewDate"]> {
   }
 }
 
-async function loadCalendar(date: string, loc: ResolvedLocation): Promise<Pick<DayContext, "holiday" | "candleLighting"> & { yomtov: boolean }> {
-  // Coordinates carry the candle minutes in the key: the minutes depend on the point (city boundary), and v3 drops the
-  // v2 entries that were computed with Hebcal's coordinate default instead of the local custom.
+async function loadCalendar(date: string, loc: ResolvedLocation): Promise<Pick<DayContext, "holiday" | "candles" | "end"> & { yomtov: boolean }> {
+  // Coordinates carry the candle minutes in the key: the minutes depend on the point (city boundary), and v4 drops the
+  // entries from before the end-of-Shabbat fields (and, before v3, those computed with Hebcal's coordinate default).
   const minutes = loc.geonameid ? null : candleLightingMinutes(loc);
-  const key = `fitcheck:hebcal:v3:${date}:${loc.geonameid ?? `${placeKey(loc)}:b${minutes}`}`;
-  type Cal = { holiday: DayContext["holiday"]; candleLighting: string | null; yomtov: boolean };
+  const key = `fitcheck:hebcal:v4:${date}:${loc.geonameid ?? `${placeKey(loc)}:b${minutes}`}`;
+  type Cal = { holiday: DayContext["holiday"]; candles: DayContext["candles"]; end: DayContext["end"]; yomtov: boolean };
   const cached = await cacheGet<Cal>(key, 24 * HOUR);
   if (cached) return cached;
   try {
@@ -111,22 +114,24 @@ async function loadCalendar(date: string, loc: ResolvedLocation): Promise<Pick<D
       : `latitude=${loc.lat}&longitude=${loc.lon}&tzid=${encodeURIComponent(loc.tz)}&b=${minutes}`;
     // i=on is the Israel holiday schedule; it is correct only inside Israel (one day of Yom Tov, not two).
     const israel = loc.tz === "Asia/Jerusalem" ? "&i=on" : "";
-    const url = `https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&min=on${israel}&c=on&M=on&${where}&start=${date}&end=${date}&lg=he`;
+    // end=tomorrow: the end of Shabbat or of a one-day holiday falls on the next day when candles are lit today.
+    const tomorrow = nextDate(date) ?? date;
+    const url = `https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&min=on${israel}&c=on&M=on&${where}&start=${date}&end=${tomorrow}&lg=he`;
     const { items } = HebcalItemsSchema.parse(await getJson(url));
-    const yomtovItem = items.find((i) => i.yomtov === true);
-    const majorItem = yomtovItem ?? items.find((i) => i.category === "holiday");
-    const candles = items.find((i) => i.category === "candles");
+    const times = shabbatTimes(items, date);
     const value: Cal = {
-      // Detect Yom Tov from the `yomtov` flag, never from the title (Hebcal docs).
-      yomtov: yomtovItem !== undefined,
-      holiday: majorItem ? { he: stripNiqqud(majorItem.hebrew ?? majorItem.title), en: majorItem.title_orig ?? majorItem.title } : null,
-      candleLighting: candles ? candles.date.slice(11, 16) : null,
+      // Detect Yom Tov from the `yomtov` flag, never from the title (Hebcal docs). Only today's events count, so
+      // tomorrow's holiday (now in the response) can never change today's day type.
+      yomtov: times.yomtov,
+      holiday: times.holiday ? { he: stripNiqqud(times.holiday.hebrew ?? times.holiday.title), en: times.holiday.title_orig ?? times.holiday.title } : null,
+      candles: times.candles,
+      end: times.end,
     };
     await cacheSet(key, value);
     return value;
   } catch (error) {
     console.warn("Hebcal unavailable", error);
-    return { holiday: null, candleLighting: null, yomtov: false };
+    return { holiday: null, candles: null, end: null, yomtov: false };
   }
 }
 
@@ -145,6 +150,7 @@ export async function loadDayContext(now: Date = new Date()): Promise<DayContext
     weather,
     dayType,
     holiday: cal.holiday,
-    candleLighting: cal.candleLighting,
+    candles: cal.candles,
+    end: cal.end,
   };
 }
