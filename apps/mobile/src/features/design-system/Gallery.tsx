@@ -67,6 +67,8 @@ const ICONS: readonly IconName[] = [
   "error",
   "favorite",
   "favorite_fill",
+  "bookmark",
+  "bookmark_fill",
 ];
 const TONES: readonly TileTone[] = ["tile", "tile-deep", "tile-cool"];
 /** Enough combinations to see every arrangement with several garment shapes. */
