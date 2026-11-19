@@ -63,7 +63,9 @@
       "skipped": "דילגת על ההצעה הקודמת.",
       "disliked": "נרשם שהשילוב הקודם לא עבד.",
       "failed": "הפעולה לא נשמרה. נסה שוב.",
-      "laundry": "הועבר לכביסה: {{items}}."
+      "laundry": "הועבר לכביסה: {{items}}.",
+      "correctionNotSaved": "התיקון לא נשמר. הלבישה הקודמת נשארה.",
+      "correctionOldKept": "הלבישה הקודמת לא נמחקה."
     },
     "adjust": {
       "label": "כוונון להיום: {{parts}}",
@@ -106,7 +108,7 @@
     "woreSomethingElse": "לבשת משהו אחר?",
     "tapHint": "אפשר להקיש על כל בגד כדי להחליף אותו",
     "tapHintOk": "הבנתי",
-    "swapPiece": "החלפת {{name}}",
+    "swapPiece": "החלפת {{type}}: {{name}}",
     "occasion": {
       "title": "מה יש היום",
       "type": {
