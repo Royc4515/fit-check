@@ -61,6 +61,8 @@ export type OccasionsState = {
   byDate: Readonly<Record<string, OccasionRow | null>>;
   /** The date whose last write failed, and how to try it again; null otherwise. */
   failed: { date: string; retry: () => void } | null;
+  /** The server's answer for the dates on screen has arrived, or failed (the device copy then stands). */
+  settled: boolean;
   /** Sets (or with null clears) the occasion of a date, at once on screen; rolled back if the write fails. */
   choose: (date: string, type: OccasionType | null) => void;
 };
@@ -73,6 +75,8 @@ export type OccasionsState = {
 export function useOccasions(userId: string, dates: readonly string[]): OccasionsState {
   const key = dates.join(",");
   const [byDate, setByDate] = useState<Readonly<Record<string, OccasionRow | null>>>({});
+  // Which set of dates has had its read answered (or failed): stored with its key so a new set reads as unsettled.
+  const [settledKey, setSettledKey] = useState<string | null>(null);
   const [failure, setFailure] = useState<{ date: string; type: OccasionType | null } | null>(null);
   const current = useRef(byDate);
   useEffect(() => {
@@ -101,6 +105,8 @@ export function useOccasions(userId: string, dates: readonly string[]): Occasion
         for (const [d, v] of Object.entries(fresh)) if ((changes.current[d] ?? 0) === (startedAt[d] ?? 0)) void cacheSet(cacheKey(d), v);
       } catch (error) {
         console.warn("Occasions unavailable, using the device copy", error);
+      } finally {
+        if (active) setSettledKey(key);
       }
     })();
     return () => {
@@ -133,5 +139,5 @@ export function useOccasions(userId: string, dates: readonly string[]): Occasion
   );
 
   const failed = failure ? { date: failure.date, retry: () => choose(failure.date, failure.type) } : null;
-  return { byDate, failed, choose };
+  return { byDate, failed, settled: settledKey === key, choose };
 }
