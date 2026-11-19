@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-19 (Try-on: decided from the research)
+
+- The research cost nothing (web sources only). Decision: one generated image of the whole outfit on a neutral figure, on demand; per-garment on-figure renders are dropped; no separate experiment, the first slice of the feature is the test. Reasons and prices: `docs/REDESIGN_PLAN.md` "Stage 5", "Try-on".
+- Side finding: `gemini-embedding-2` takes images and has a free tier; it becomes stage 5.5.
+- Look at: the plan section, `TASKS.md` rows 5.3 and 5.5, the try-on line in `CLAUDE.md`. Nothing was built and nothing was spent.
+
 ## 2026-11-19 (MCP bundle survives the deploy transport)
 
 - What failed: the first production deploy of the mcp bundle was refused ("Unterminated regexp literal"). The deploy tool carries the bundle as a JSON string; esbuild's default ASCII output had written non-ASCII characters as `\uXXXX`, and the label's single-line regex held `\u2028` / `\u2029`, which decoded to raw line terminators. Production was unchanged.
