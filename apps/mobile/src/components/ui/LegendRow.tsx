@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 import { colors, layout } from "../../theme/tokens";
+import { Icon, type IconName } from "./Icon";
 import { focusRingProps } from "./interaction";
 
 type Props = {
@@ -11,6 +12,8 @@ type Props = {
   detail: string;
   onPress?: () => void;
   accessibilityLabel?: string;
+  /** A cue at the row's end edge for what pressing does (Today: `swap_horiz`), 20, ink-soft. */
+  trailingIcon?: IconName;
 };
 
 /**
@@ -18,7 +21,7 @@ type Props = {
  * Everything start-aligned, the detail takes the rest of the line and truncates. Pressable rows get the ListRow
  * wash (no scale: a full-width row shrinking reads as the page jumping). Min 44 high.
  */
-export function LegendRow({ index, title, detail, onPress, accessibilityLabel }: Props) {
+export function LegendRow({ index, title, detail, onPress, accessibilityLabel, trailingIcon }: Props) {
   const content = (
     <View className="flex-row items-baseline border-b border-hairline py-3" style={{ minHeight: layout.hit, gap: 12 }}>
       <Text className="font-mono text-num-sm text-ink-soft">{index}</Text>
@@ -30,6 +33,12 @@ export function LegendRow({ index, title, detail, onPress, accessibilityLabel }:
           {detail}
         </Text>
       </View>
+      {/* Centred on the row, not on the text baseline: an icon has no baseline. */}
+      {trailingIcon ? (
+        <View style={{ alignSelf: "center" }}>
+          <Icon name={trailingIcon} size={20} />
+        </View>
+      ) : null}
     </View>
   );
   if (!onPress) return content;
