@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-19 (MCP bundle survives the deploy transport)
+
+- What failed: the first production deploy of the mcp bundle was refused ("Unterminated regexp literal"). The deploy tool carries the bundle as a JSON string; esbuild's default ASCII output had written non-ASCII characters as `\uXXXX`, and the label's single-line regex held `\u2028` / `\u2029`, which decoded to raw line terminators. Production was unchanged.
+- Fix: `day-context.ts` checks line breaks by code point (no regex, no escapes); `redraw-spec.ts` `cleanFreeText` uses `\x00-\x1f` instead of `\u0000-\u001f`; `scripts/bundle-mcp.sh` passes `--charset=utf8`. `engine.js` had no escapes.
+- Guard: `scripts/bundle-mcp.sh` now fails if the bundle holds a backslash-u sequence, a raw U+2028/U+2029 or a control character U+0000-U+0008.
+
 ## 2026-11-19 (Friday is for Shabbat: fixes from the independent verification)
 
 - Day-tab change: one cross-fade in motion.state, the two looks at the same time (was a fade out then a fade in, about 440 ms: a garment's fade restarted when its old layer was cleared). The forecast line's slot is held on the today tab, so the hero keeps its box (390: 354 px at y 309 throughout, was 388 -> 354 and 275 -> 309); when status lines differ the hero keeps its size until the fade ends.
@@ -651,4 +657,9 @@
 - `supabase/functions/_shared/engine.js` rebuilt from the engine (`scripts/bundle-engine.sh`): the white-shirt preference, the future-dated wear fix and the Yom Kippur rule set are now in the bundle the `mcp` function runs. `supabase/config.toml` now lists `mcp` and `design-preview` with `verify_jwt = false`, as deployed.
 - `docs/REDESIGN_PLAN.md` "Stage 5": hand-built and saved outfits with favourites (a "לוקים" place in the bottom bar, Insights moves into the profile), alternatives after wearing, the algorithm's judgement, and a try-on experiment. Decisions and their reasons are there.
 - To deploy with this merge: migration 0006, then the `mcp` function from `scripts/bundle-mcp.sh` with verify_jwt off.
+
+## 2026-11-19 (deployed: migration 0006 and mcp version 9)
+
+- Migration `0006_profile_observance` applied to the project and checked in `information_schema`.
+- `mcp` redeployed as version 9 from `scripts/bundle-mcp.sh` (verify_jwt off, as before): the context tools, `outfit_today` honouring the day's occasion and the observance setting, and the rebuilt engine. Deployed source equals the bundle byte for byte; an anonymous call answers 401 with `www-authenticate`; `outfit_today` through the connector returns `context_used`.
 
