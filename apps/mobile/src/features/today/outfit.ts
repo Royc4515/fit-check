@@ -12,6 +12,7 @@ import {
 import { StylingRequestSchema, type CandidateOutfit, type ContextType, type Item, type OccasionType, type Slot, type StylingRequest } from "@fit-check/schema";
 import type { FeedbackHistory, RecentWear, TodayRecord } from "../../data/feedback";
 import type { DayType } from "../../data/dayContext";
+import { newestWorn } from "../../data/correction";
 import { israelDate } from "../../data/localDate";
 
 type Weather = { temp_min_c: number; temp_max_c: number; rain_probability: number };
@@ -128,7 +129,9 @@ export function planToday(args: {
   const req = adjustRequest(request(day, { recent_wears: history.recent }), adjustment);
   const byId = new Map(items.map((i) => [i.id, i]));
 
-  const worn = [...history.today].reverse().find((r) => r.feedback === "worn");
+  // The newest worn record: two exist for a moment when a correction stored its wear but could not delete the earlier
+  // one (data/correction.ts), and after a reload the day must show the correction.
+  const worn = newestWorn(history.today);
   if (worn) {
     // An item deleted since (archived, gone) simply drops out of the picture rather than blanking it.
     const wornItems = worn.itemIds.flatMap((id) => byId.get(id) ?? []);
