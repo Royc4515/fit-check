@@ -24,6 +24,21 @@ export function observanceFromProfile(data: unknown, error: unknown): boolean | 
   return typeof value === "boolean" ? value : null;
 }
 
+/**
+ * What a profile read changes once it answers: its value, unless the user changed the setting after the read started
+ * (their change is newer than the read's answer and must stand), or the answer leaves the device in charge (null).
+ * Pure: the change counters come in as data.
+ *
+ * @param answer The profile's value (observanceFromProfile), null for "the device copy stands".
+ * @param changesAtStart The number of user changes when the read started.
+ * @param changesNow The number of user changes now.
+ * @returns The value to apply, or null for nothing to do.
+ */
+export function profileReadResult(answer: boolean | null, changesAtStart: number, changesNow: number): boolean | null {
+  if (answer === null || changesNow !== changesAtStart) return null;
+  return answer;
+}
+
 /** The stored value to the setting: only an explicit "no" turns it off; missing or unreadable means on (the default). */
 export function parseObservance(raw: string | null): boolean {
   return raw !== "no";

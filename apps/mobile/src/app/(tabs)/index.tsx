@@ -61,6 +61,7 @@ function Today(props: {
       busy={feedback.busy}
       failedOn={feedback.failedOn}
       laundered={feedback.laundered}
+      correction={feedback.correction}
       stylist={requestStyle}
       occasions={occasions}
       clock={clock}

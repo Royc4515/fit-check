@@ -46,6 +46,29 @@ export function occasionsFromRows(rows: readonly unknown[], dates: readonly stri
   return out;
 }
 
+/**
+ * Applies the answer of a read to what is on screen, except for dates the user changed (chose, cleared, or a write
+ * settled) after that read started: their answer is older than the user's choice and must not undo it. Pure.
+ *
+ * @param current What is on screen now.
+ * @param read The read's answer, per date (only dates in it are touched).
+ * @param startedAt The per-date change counters when the read started.
+ * @param changesNow The per-date change counters now.
+ */
+export function mergeOccasionRead<T>(
+  current: Readonly<Record<string, T>>,
+  read: Readonly<Record<string, T>>,
+  startedAt: Readonly<Record<string, number>>,
+  changesNow: Readonly<Record<string, number>>
+): Record<string, T> {
+  const out: Record<string, T> = { ...current };
+  for (const [date, value] of Object.entries(read)) {
+    if ((changesNow[date] ?? 0) !== (startedAt[date] ?? 0)) continue;
+    out[date] = value;
+  }
+  return out;
+}
+
 /** The other occasion types of a date, which a write removes after storing its own (one occasion per date). */
 export function otherOccasionTypes(type: OccasionType): OccasionType[] {
   return OCCASION_TYPES.filter((t) => t !== type);
