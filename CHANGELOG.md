@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-19 (Yom Kippur: only a shoe known not to be leather)
+
+- A shoe tagged `unknown` material is no longer offered on Yom Kippur: only one whose material is known and is not leather or suede (`YOM_KIPPUR_DENIED_SHOE_MATERIALS`). With none, the look comes without shoes and the line reads "אין בארון נעל שמסומנת כלא מעור. הלוק מוצע בלי נעליים."
+- Look at: `packages/engine/src/config.ts`, `yom-kippur.test.ts` (other rule sets still give the recorded outfits).
+
 ## 2026-11-19 (Engine: a date without a name)
 
 - A complete outfit (the same item ids) worn in one of the last three wears of a context whose rules set `no_repeat_with_key` (today only `date`) is not offered for it again (PRD 7.1, DESIGN.md "שלב 4.5" item 5). `NO_REPEAT_LAST_WEARS = 3` in `packages/engine/config.ts`; the recent wears carry an optional `context_type`; nothing about a person is stored.
