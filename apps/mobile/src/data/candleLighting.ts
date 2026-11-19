@@ -7,9 +7,13 @@ import { HAIFA_BOUNDS, JERUSALEM_BOUNDS, ZIKHRON_BOUNDS, type Region, type Ring 
  * coordinates gave 16:17, the Jerusalem city id 15:57). The app sends the minutes itself as `b=`, so a current
  * location inside a city lights at the same minute as picking that city from the list.
  */
+/** Jerusalem: 40 minutes before sunset. */
 export const CANDLE_MINUTES_JERUSALEM = 40;
+/** Haifa and Zikhron Ya'akov: 30 minutes. */
 export const CANDLE_MINUTES_HAIFA_ZIKHRON = 30;
+/** The rest of Israel: 20 minutes. */
 export const CANDLE_MINUTES_ISRAEL = 20;
+/** Outside Israel: 18 minutes. */
 export const CANDLE_MINUTES_DIASPORA = 18;
 
 /**
