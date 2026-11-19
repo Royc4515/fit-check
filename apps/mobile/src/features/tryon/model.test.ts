@@ -191,13 +191,11 @@ describe("reducer: results and failures", () => {
 });
 
 describe("reducer: an image that will not load", () => {
-  it("asks quote again once, then reports it", () => {
+  it("asks quote again once, then reports it even when the new quote carries an image", () => {
     const a = reduceTryOn(result(), { type: "image_stale" });
     expect(a.phase).toBe("quoting");
     const b = reduceTryOn(reduceTryOn(a, { type: "quote_ok", quote: quote(), image: img(2000) }), { type: "image_stale" });
-    expect(b.phase).toBe("quoting");
-    const again = reduceTryOn(reduceTryOn(b, { type: "quote_ok", quote: quote(), image: img(3000) }), { type: "image_stale" });
-    expect(again.phase).toBe("quoting");
+    expect(b).toMatchObject({ phase: "failed", retry: "quote", failure: { reason: "image_load" } });
   });
   it("two failures in a row without a good quote in between end in an error with a free retry", () => {
     const a = reduceTryOn(result(), { type: "image_stale" });
