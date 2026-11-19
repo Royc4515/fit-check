@@ -213,8 +213,11 @@ export const DEFAULT_CONTEXT_RULES: Record<ContextType, ContextRules> = {
   },
 };
 
-/** Shoe materials that are not worn on Yom Kippur (PRD section 7, "יום כיפור"). */
-export const YOM_KIPPUR_DENIED_SHOE_MATERIALS = ["leather", "suede"] as const;
+/**
+ * Shoe materials not offered on Yom Kippur (PRD section 7, "יום כיפור"): leather and suede, and `unknown` too: only a
+ * shoe known not to be leather is offered (independent verification, 19.11: a sneaker tagged "unknown" may be leather).
+ */
+export const YOM_KIPPUR_DENIED_SHOE_MATERIALS = ["leather", "suede", "unknown"] as const;
 
 /**
  * Yom Kippur (PRD section 7, "יום כיפור", 19.11.2026): the holiday rules, except that no leather or suede shoe is

@@ -59,7 +59,7 @@
       "wornShabbat": "Logged: this is your outfit for Shabbat.",
       "wornHoliday": "Logged: this is your outfit for the holiday.",
       "wornYomKippur": "Logged: this is your outfit for Yom Kippur.",
-      "noLeatherFreeShoes": "No non-leather shoes in the wardrobe. The outfit is shown without shoes.",
+      "noLeatherFreeShoes": "No shoe in the wardrobe is marked as non-leather. The outfit is shown without shoes.",
       "skipped": "You skipped the previous suggestion.",
       "disliked": "Noted: the previous combination didn't work.",
       "failed": "That didn't save. Try again.",
