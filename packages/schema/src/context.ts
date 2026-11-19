@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SUBCATEGORIES, PATTERNS } from "./item-tags.ts";
+import { MATERIALS, SUBCATEGORIES, PATTERNS } from "./item-tags.ts";
 
 export const CONTEXT_TYPES = [
   "weekday",
@@ -23,7 +23,15 @@ export const SlotRuleSchema = z.object({
   allow_subcategories: z.array(z.enum(SUBCATEGORIES)).default([]),
   deny_subcategories: z.array(z.enum(SUBCATEGORIES)).default([]),
   deny_patterns: z.array(z.enum(PATTERNS)).default([]),
+  /** Materials this slot never takes (Yom Kippur: no leather or suede shoes). Reads the existing `material` tag. */
+  deny_materials: z.array(z.enum(MATERIALS)).default([]),
+  /**
+   * The item's own formality floor in this slot. When set it replaces the coarse band gate (band minus the slot's
+   * slack, engine filters.ts) for the slot: Yom Kippur lets any non-leather shoe in, however casual.
+   */
   min_formality: z.number().int().min(1).max(10).optional(),
+  /** The outfit may go without this slot when nothing passes (Yom Kippur shoes); otherwise an empty slot means no outfit. */
+  optional: z.boolean().default(false),
 });
 
 export const ContextRulesSchema = z.object({

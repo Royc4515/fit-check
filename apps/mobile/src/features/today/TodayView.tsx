@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
+import { useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Reveal } from "../../components/editorial/Reveal";
 import {
@@ -20,6 +21,7 @@ import {
   LegendRow,
   Meta,
   StatusLine,
+  TabPanel,
   TextTabs,
   type FlatLayPiece,
   type StatusVariant,
@@ -29,7 +31,7 @@ import type { DayContext } from "../../data/dayContext";
 import type { FeedbackHistory } from "../../data/feedback";
 import { chainTabLabels, defaultTab, type ChainTabLabel } from "../../data/shabbatTimes";
 import type { FeedbackActions, FeedbackTarget, Laundered } from "../../data/useFeedback";
-import { layout } from "../../theme/tokens";
+import { layout, motion } from "../../theme/tokens";
 import { flyFrom, registerOrigin } from "../item/transition";
 import { AdjustSheet, type Adjust } from "./AdjustSheet";
 import { explainOutfit } from "./explain";
@@ -111,10 +113,26 @@ const FOCUS_WEAR = "today-wear";
 /** A little longer than the sheet's critically damped close spring takes to settle (motion.spring). */
 const SHEET_SETTLE_MS = 700;
 const FIRST_TABBABLE = '[tabindex="0"]:not([aria-disabled="true"])';
+/** Ids of the day tabs and their panel (WAI-ARIA tabs pattern). */
+const DAY_TABS = "today-day";
 
-/** The i18n key of a planned day's tab ("for Shabbat", "for the holiday", "holiday, day 1"). */
+/** The i18n key of a planned day's tab ("for Shabbat", "for Yom Kippur", "for the holiday", "holiday, day 1"). */
 const tabKey = (label: ChainTabLabel) =>
-  label.kind === "shabbat" ? "today.tabs.shabbat" : label.day === null ? "today.tabs.holiday" : `today.tabs.holidayDay${label.day}`;
+  label.kind === "shabbat"
+    ? "today.tabs.shabbat"
+    : label.kind === "yom_kippur"
+      ? "today.tabs.yomKippur"
+      : label.day === null
+        ? "today.tabs.holiday"
+        : `today.tabs.holidayDay${label.day}`;
+
+/** A planned day's "I'll wear it on ..." and "Logged: ... for ..." keys, by what the day is. */
+const plannedKeys = (kind: "shabbat" | "holiday" | "yom_kippur") =>
+  kind === "shabbat"
+    ? { wear: "today.wearOnShabbat", worn: "today.status.wornShabbat" }
+    : kind === "yom_kippur"
+      ? { wear: "today.wearOnYomKippur", worn: "today.status.wornYomKippur" }
+      : { wear: "today.wearOnHoliday", worn: "today.status.wornHoliday" };
 
 type StatusItem = {
   key: string;
@@ -141,13 +159,14 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const desktop = width >= layout.desktopMin;
+  const reduceMotion = useReducedMotion();
 
   // Today first, then each phone-free day that today's candle lighting opens (DESIGN.md "שלב 4.1"). Without candles
   // the list is just today and the screen is exactly what it was before the tabs.
   const days = useMemo<DayInput[]>(
     () => [
-      { date: day.date, weather: day.weather, dayType: day.dayType, festive: day.festive },
-      ...day.chain.map((d) => ({ date: d.date, weather: d.weather, dayType: d.dayType })),
+      { date: day.date, weather: day.weather, dayType: day.dayType, festive: day.festive, yomKippur: day.yomKippur },
+      ...day.chain.map((d) => ({ date: d.date, weather: d.weather, dayType: d.dayType, yomKippur: d.yomKippur })),
     ],
     [day]
   );
@@ -197,6 +216,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // does not fire.
   const [mastheadHeight, setMastheadHeight] = useState(0);
   const [aboveHeroHeight, setAboveHeroHeight] = useState<number | null>(null);
+  // Mobile: the day tabs' row (with the space above it), measured apart: it stands outside the day's panel.
+  const [tabsHeight, setTabsHeight] = useState(0);
   // Desktop: the day tabs sit above the flat-lay column, so its cap subtracts them.
   const [desktopTabsHeight, setDesktopTabsHeight] = useState(0);
   // Where focus goes once the action that was just taken has settled (web). The button the hand was on is replaced by
@@ -400,7 +421,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const statuses: StatusItem[] = [];
   if (plan.kind === "worn") {
     const record = plan.record;
-    const wornMessage = planned ? t(planned.dayType === "shabbat" ? "today.status.wornShabbat" : "today.status.wornHoliday") : t("today.status.worn");
+    const wornMessage = planned ? t(plannedKeys(planned.kind).worn) : t("today.status.worn");
     statuses.push({ key: "worn", variant: "ok", message: wornMessage, action: { label: t("today.undo"), onPress: () => void actions.undo(record).then(() => requestFocus("undo")) } });
     if (laundered && laundered.wearId === record.wearId) {
       const ids = laundered.itemIds;
@@ -453,6 +474,11 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
       <View tabIndex={-1} style={{ gap: 8 }}>
         {barStatusLines}
       </View>
+    ) : null;
+  // Yom Kippur with no non-leather shoe at home: the look comes without shoes, and says so (PRD section 7).
+  const noShoesLine =
+    days[sel]!.yomKippur && outfit && !outfit.items.some((i) => i.slot === "shoes") ? (
+      <StatusLine variant="info" message={t("today.status.noLeatherFreeShoes")} />
     ) : null;
   // One focusable wrapper (tabIndex -1: reachable by script, not by Tab) so focus has a place to land when a line
   // has no action of its own, and screen readers read the whole stack when it arrives.
@@ -532,6 +558,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
       onChange={setChosenTab}
       accessibilityLabel={t("today.tabs.label")}
       inset={desktop ? 0 : layout.gutter}
+      idPrefix={DAY_TABS}
     />
   ) : null;
   // A planned day's own forecast, named by its day (item 8): "Shabbat · 14–22° · rain 0%", or "no forecast yet".
@@ -551,11 +578,15 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         : t("today.plannedNoForecast")}
     </Meta>
   ) : null;
-  // Mobile: tabs and the planned day's forecast open the measured block above the hero.
-  const tabsBlock = hasTabs ? (
-    <View className="mt-6">
-      {dayTabs}
-      {plannedForecast ? <View className="mt-4 px-5">{plannedForecast}</View> : null}
+  // Mobile: the planned day's forecast opens the measured block above the hero, inside the day's panel. Its line is
+  // held on the today tab too (empty, hidden from readers), so a tab change does not move the hero by a line's height.
+  const forecastSlot = hasTabs ? (
+    <View className="mt-4 px-5">
+      {plannedForecast ?? (
+        <View aria-hidden importantForAccessibility="no-hide-descendants" style={{ opacity: 0 }}>
+          <Meta>{"\u00a0"}</Meta>
+        </View>
+      )}
     </View>
   ) : null;
 
@@ -606,15 +637,32 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // don't touch / a bar that left (worn) must not keep capping the hero with its old height, and one that comes back
   // (undo) must not be capped against a stale one before it is measured again.
   if (!hasBar && barHeight !== 0) setBarHeight(0);
-  const measured = viewportHeight > 0 && mastheadHeight > 0 && aboveHeroHeight !== null && (!hasBar || barHeight > 0);
-  const heroTop = insets.top + MOBILE_TOP + mastheadHeight + (aboveHeroHeight ?? 0) + MOBILE_HERO_GAP;
+  const measured =
+    viewportHeight > 0 && mastheadHeight > 0 && aboveHeroHeight !== null && (!hasBar || barHeight > 0) && (!hasTabs || tabsHeight > 0);
+  const heroTop = insets.top + MOBILE_TOP + mastheadHeight + (hasTabs ? tabsHeight : 0) + (aboveHeroHeight ?? 0) + MOBILE_HERO_GAP;
   const heroSpace = viewportHeight - (hasBar ? barHeight : 0) - heroTop - HERO_CLEARANCE;
   // 600-899, a window wide enough for side margins: the flat-lay is a centred card as wide as the space allows.
   // Below 600 it stays full-bleed and full width, and only its height is capped (FlatLay lays the composition out in
   // a centred 4:5 frame). Until measured, both render as before (column width, plain 4:5), so first paint does not jump.
   const card = !desktop && width >= CARD_MIN_WIDTH;
   const cardWidth = card && measured ? Math.max(HERO_MIN, Math.min(layout.maxContentWidth, heroSpace / FLAT_LAY_ASPECT)) : null;
-  const heroMaxHeight = !desktop && !card && measured ? Math.max(HERO_MIN * FLAT_LAY_ASPECT, heroSpace) : undefined;
+  const measuredMax = !desktop && !card && measured ? Math.max(HERO_MIN * FLAT_LAY_ASPECT, heroSpace) : undefined;
+  // A tab change cross-fades the two looks in motion.state (item 3). Their status lines can differ in height, so the
+  // hero keeps the size it had for the duration and takes its new size when the old look is gone: the outgoing
+  // garments never move. Layout state on purpose: the fade itself runs on shared values inside FlatLay.
+  const [shownTab, setShownTab] = useState(selectedDate);
+  const [heldSize, setHeldSize] = useState<{ max: number | undefined; card: number | null } | null>(null);
+  if (shownTab !== selectedDate) {
+    setShownTab(selectedDate);
+    if (!reduceMotion) setHeldSize({ max: measuredMax, card: cardWidth });
+  }
+  useEffect(() => {
+    if (!heldSize) return;
+    const timer = setTimeout(() => setHeldSize(null), motion.stateMs);
+    return () => clearTimeout(timer);
+  }, [heldSize]);
+  const heroMaxHeight = heldSize ? heldSize.max : measuredMax;
+  const heroCardWidth = heldSize ? heldSize.card : cardWidth;
 
   const hero =
     pieces.length > 0 ? (
@@ -694,7 +742,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
           <View style={{ flex: 1 }} nativeID={FOCUS_WEAR}>
             <Button
               variant="primary"
-              label={planned ? t(planned.dayType === "shabbat" ? "today.wearOnShabbat" : "today.wearOnHoliday") : t("today.wearing")}
+              label={planned ? t(plannedKeys(planned.kind).wear) : t("today.wearing")}
               onPress={wear}
               disabled={busy}
               fullWidth
@@ -792,7 +840,9 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
                   {dayTabs}
                 </View>
               ) : null}
-              <Reveal index={1}>{hero ?? empty}</Reveal>
+              <TabPanel idPrefix={DAY_TABS} selectedKey={selectedDate} active={hasTabs}>
+                <Reveal index={1}>{hero ?? empty}</Reveal>
+              </TabPanel>
             </View>
             <View style={{ flex: 1 }}>
               <Reveal index={0}>{masthead}</Reveal>
@@ -803,6 +853,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
                 </View>
               ) : null}
               {outfit ? wornStatus("mt-6") : null}
+              {noShoesLine ? <View className="mt-6">{noShoesLine}</View> : null}
               {outfit ? (
                 <>
                   <Reveal index={2}>
@@ -847,44 +898,51 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
               {masthead}
             </View>
           </Reveal>
-          {outfit ? (
-            <>
-              <Reveal index={1}>
-                {/* Everything between masthead and hero, measured as one block for the hero's cap. */}
-                <View onLayout={(e) => setAboveHeroHeight(e.nativeEvent.layout.height)}>
-                  {tabsBlock}
-                  {skipStatus ? (
-                    <View className="mt-6 px-5" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
-                      {lineOf(skipStatus)}
-                    </View>
-                  ) : null}
-                  {wornStatus("mt-6 px-5")}
-                </View>
-                <View style={{ marginTop: MOBILE_HERO_GAP, ...(cardWidth ? { width: cardWidth, alignSelf: "center" as const } : null) }}>{hero}</View>
-              </Reveal>
-              <Reveal index={2}>
-                <View className="mt-6 px-5">{legend}</View>
-              </Reveal>
-              <Reveal index={3}>
-                <View className="mt-12 px-5">{quote}</View>
-                <View className="mt-12 px-5">{credits}</View>
-              </Reveal>
-            </>
-          ) : (
-            <>
-              {/* Same place in the tree as the outfit branch's first block, so a keyboard user moving to a day with no
-                  outfit keeps focus on the tab. */}
-              {tabsBlock ? (
-                <Reveal index={1}>
-                  <View>{tabsBlock}</View>
-                </Reveal>
-              ) : null}
-              <View className="px-5">
-                {empty}
-                <View className="mt-12">{credits}</View>
+          {/* The day tabs stay at one place in the tree whatever the day holds, so focus stays on a tab across changes. */}
+          {dayTabs ? (
+            <Reveal index={1}>
+              <View onLayout={(e) => setTabsHeight(e.nativeEvent.layout.height)}>
+                <View className="mt-6">{dayTabs}</View>
               </View>
-            </>
-          )}
+            </Reveal>
+          ) : null}
+          <TabPanel idPrefix={DAY_TABS} selectedKey={selectedDate} active={hasTabs}>
+            {outfit ? (
+              <>
+                <Reveal index={1}>
+                  {/* Everything between masthead and hero, measured as one block for the hero's cap. */}
+                  <View onLayout={(e) => setAboveHeroHeight(e.nativeEvent.layout.height)}>
+                    {forecastSlot}
+                    {skipStatus ? (
+                      <View className="mt-6 px-5" nativeID={FOCUS_SKIP_STATUS} tabIndex={-1}>
+                        {lineOf(skipStatus)}
+                      </View>
+                    ) : null}
+                    {wornStatus("mt-6 px-5")}
+                    {noShoesLine ? <View className="mt-6 px-5">{noShoesLine}</View> : null}
+                  </View>
+                  <View style={{ marginTop: MOBILE_HERO_GAP, ...(heroCardWidth ? { width: heroCardWidth, alignSelf: "center" as const } : null) }}>
+                    {hero}
+                  </View>
+                </Reveal>
+                <Reveal index={2}>
+                  <View className="mt-6 px-5">{legend}</View>
+                </Reveal>
+                <Reveal index={3}>
+                  <View className="mt-12 px-5">{quote}</View>
+                  <View className="mt-12 px-5">{credits}</View>
+                </Reveal>
+              </>
+            ) : (
+              <>
+                {forecastSlot}
+                <View className="px-5">
+                  {empty}
+                  <View className="mt-12">{credits}</View>
+                </View>
+              </>
+            )}
+          </TabPanel>
         </ScrollView>
         {hasBar ? (
           // safeArea off: Today always renders inside the tabs, whose bar below already takes the bottom inset.

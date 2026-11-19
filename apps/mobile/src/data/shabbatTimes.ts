@@ -28,8 +28,11 @@ export type ShabbatTimes = {
 export type PhoneFreeDay = {
   /** `YYYY-MM-DD`. */
   date: string;
-  /** "shabbat" when the date is a Saturday (Rosh Hashana on Shabbat included), else "holiday". */
-  kind: "shabbat" | "holiday";
+  /**
+   * "yom_kippur" for Yom Kippur (on a Saturday too: the fast is what the day is), else "shabbat" on a Saturday (Rosh
+   * Hashana on Shabbat included), else "holiday".
+   */
+  kind: "shabbat" | "holiday" | "yom_kippur";
   /** That date's Yom Tov name, niqqud stripped (he) and Hebcal's English (en); null for a plain Shabbat. */
   holiday: { he: string; en: string } | null;
 };
@@ -57,6 +60,12 @@ function dayInfo(date: string, plus = 0): { iso: string; weekday: number } | nul
 export function stripNiqqud(s: string): string {
   return s.replace(/[\u0591-\u05C7]/g, "");
 }
+
+/**
+ * Yom Kippur, found by the English event name Hebcal keeps in `title_orig` whatever `lg` is (see shabbatTimes for why
+ * not the localized fields). Exact match: "Erev Yom Kippur" and "Yom Kippur Katan" are not the day.
+ */
+export const isYomKippur = (item: HebcalItem): boolean => item.category === "holiday" && item.title_orig === "Yom Kippur";
 
 /** `HH:MM` from an ISO date-time, or null for a date-only item (candle and havdalah items always carry a time). */
 function timeOf(item: HebcalItem): string | null {
@@ -101,7 +110,7 @@ export function shabbatTimes(items: readonly HebcalItem[], date: string): Shabba
   // are localized (`title`, `hebrew`, the havdalah item's `memo`) and `link` is a URL slug that is not a documented
   // contract. Exact match, so "Erev Yom Kippur" and "Yom Kippur Katan" do not count. It is read on the day the
   // havdalah belongs to, so the eve never says "fast".
-  const endIsFast = onDay(endDay.iso).some((i) => i.category === "holiday" && i.title_orig === "Yom Kippur");
+  const endIsFast = onDay(endDay.iso).some(isYomKippur);
   const kind = endIsFast ? ("fast" as const) : endDay.weekday === 6 ? ("shabbat" as const) : ("holiday" as const);
   const end = endTime ? { time: endTime, kind, day: todayEnd ? ("today" as const) : ("tomorrow" as const) } : null;
 
@@ -131,7 +140,7 @@ export function phoneFreeChain(items: readonly HebcalItem[], date: string): Phon
     const yomtov = events.find((i) => i.yomtov === true);
     chain.push({
       date: day.iso,
-      kind: day.weekday === 6 ? "shabbat" : "holiday",
+      kind: events.some(isYomKippur) ? "yom_kippur" : day.weekday === 6 ? "shabbat" : "holiday",
       holiday: yomtov ? { he: stripNiqqud(yomtov.hebrew ?? yomtov.title), en: yomtov.title_orig ?? yomtov.title } : null,
     });
     // The havdalah closes the chain on its own date; candles on the evening of a chain day keep it going.
@@ -141,18 +150,20 @@ export function phoneFreeChain(items: readonly HebcalItem[], date: string): Phon
 }
 
 /** What a tab after "today" is called (DESIGN.md "שלב 4.1" item 8); the screen maps it to its string. */
-export type ChainTabLabel = { kind: "shabbat" } | { kind: "holiday"; day: 1 | 2 | null };
+export type ChainTabLabel = { kind: "shabbat" } | { kind: "yom_kippur" } | { kind: "holiday"; day: 1 | 2 | null };
 
 /**
  * Tab labels for a chain, in its order: "for Shabbat" for a Saturday, "for the holiday" for a holiday day, and
  * "holiday, day 1 / day 2" when two days of the chain are holiday days that are not Shabbat (Rosh Hashana on
  * Thursday-Friday). Rosh Hashana on Saturday-Sunday is "for Shabbat", "for the holiday": one of its days is Shabbat.
+ * Yom Kippur is named as itself, "for Yom Kippur" (the times row says "the fast ends").
  */
 export function chainTabLabels(chain: readonly Pick<PhoneFreeDay, "kind">[]): ChainTabLabel[] {
   const holidays = chain.filter((d) => d.kind === "holiday").length;
   let n = 0;
   return chain.map((d): ChainTabLabel => {
     if (d.kind === "shabbat") return { kind: "shabbat" };
+    if (d.kind === "yom_kippur") return { kind: "yom_kippur" };
     n++;
     return { kind: "holiday", day: holidays >= 2 ? (n === 1 ? 1 : 2) : null };
   });
