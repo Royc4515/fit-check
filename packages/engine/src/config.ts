@@ -33,6 +33,13 @@ export const SHABBAT_COLOR = {
   loud_top: -0.03,
 } as const;
 
+/**
+ * "A date without a name" (PRD 7.1, DESIGN.md "שלב 4.5" item 5): a complete outfit (the same item ids) worn in any of
+ * the last this many wears of a context whose rules set `no_repeat_with_key` (today only `date`) is not offered for
+ * it again. Counted in wears of that context, newest first, whatever the dates.
+ */
+export const NO_REPEAT_LAST_WEARS = 3;
+
 export const RECENCY = {
   /** Days during which a worn item is penalized. */
   item_window_days: 3,

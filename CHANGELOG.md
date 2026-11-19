@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-19 (Engine: a date without a name)
+
+- A complete outfit (the same item ids) worn in one of the last three wears of a context whose rules set `no_repeat_with_key` (today only `date`) is not offered for it again (PRD 7.1, DESIGN.md "שלב 4.5" item 5). `NO_REPEAT_LAST_WEARS = 3` in `packages/engine/config.ts`; the recent wears carry an optional `context_type`; nothing about a person is stored.
+- Look at: `noRepeatOutfits` in `packages/engine/src/candidates.ts`, `date-no-repeat.test.ts`. The app passes the context with each wear from "what is on today" on.
+
 ## 2026-11-19 (MCP bundle survives the deploy transport)
 
 - What failed: the first production deploy of the mcp bundle was refused ("Unterminated regexp literal"). The deploy tool carries the bundle as a JSON string; esbuild's default ASCII output had written non-ASCII characters as `\uXXXX`, and the label's single-line regex held `\u2028` / `\u2029`, which decoded to raw line terminators. Production was unchanged.
