@@ -15,6 +15,13 @@ import { useIsDesktop } from "../shell/ShellTabBar";
 import { legendEntries, outfitCaption, outfitGridColumns, outfitTileWidth, visibleOutfits, wornMeta, type OutfitsTab } from "./collection";
 import { refreshOutfits, toggleFavorite, useSavedOutfits } from "./store";
 
+/**
+ * Between rows of the grid. Wider than the wardrobe's 16 on purpose (lead's review of the first build, 2026-11-19):
+ * at 16 the meta line sat as close to the next row's flat-lay as to its own, so a caption read as the title of the
+ * outfit below it. 24 keeps each caption with the tile above.
+ */
+const OUTFIT_ROW_GAP = 24;
+
 /** Ids of the tabs and their panel (WAI-ARIA tabs pattern). */
 const TABS_ID = "outfits";
 /** Tiles shown while the collection loads: two rows on a phone, one on desktop. */
@@ -100,7 +107,7 @@ export function OutfitsView({ userId }: Props) {
   let body;
   if (state.status === "loading" && state.outfits.length === 0) {
     body = (
-      <View className="flex-row flex-wrap" style={{ gap: layout.gridGap, rowGap: 16 }}>
+      <View className="flex-row flex-wrap" style={{ gap: layout.gridGap, rowGap: OUTFIT_ROW_GAP }}>
         {Array.from({ length: SKELETON_TILES }, (_, n) => (
           <View key={n} style={{ width: tileW }}>
             <OutfitTileSkeleton />
@@ -119,8 +126,8 @@ export function OutfitsView({ userId }: Props) {
       );
   } else {
     body = (
-      // Row gap 16: caption to the next row's flat-lay, as in the wardrobe; 8 between columns.
-      <View className="flex-row flex-wrap" style={{ columnGap: layout.gridGap, rowGap: 16 }}>
+      // 8 between columns; OUTFIT_ROW_GAP between rows.
+      <View className="flex-row flex-wrap" style={{ columnGap: layout.gridGap, rowGap: OUTFIT_ROW_GAP }}>
         {shown.map(tile)}
       </View>
     );
