@@ -16,6 +16,7 @@ import {
   LegendRow,
   ListRow,
   MasonryGrid,
+  MetaLink,
   ScreenHeader,
   Segmented,
   Sheet,
@@ -425,6 +426,10 @@ export function Gallery() {
             </View>
           ))}
         </Wrap>
+      </Block>
+
+      <Block title={t("ds.section.metaLink")}>
+        <MetaLink label={t("location.osmCredit")} href="https://www.openstreetmap.org/copyright" />
       </Block>
 
       <Block title={t("ds.section.stepper")}>

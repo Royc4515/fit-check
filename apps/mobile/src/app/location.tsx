@@ -1,10 +1,10 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, Text, View } from "react-native";
+import { Platform, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Button, ListRow, ScreenHeader, SearchField, StatusLine } from "../components/ui";
-import { currentPosition, getSavedLocation, saveLocation, searchCities, type SavedLocation } from "../data/location";
+import { Button, ListRow, MetaLink, ScreenHeader, SearchField, StatusLine } from "../components/ui";
+import { cachedPlaceName, currentPosition, getSavedLocation, onPlaceNameChange, saveLocation, searchCities, type SavedLocation } from "../data/location";
 import { layout } from "../theme/tokens";
 
 type City = Extract<SavedLocation, { kind: "city" }>;
@@ -23,9 +23,24 @@ export default function LocationScreen() {
   const [searched, setSearched] = useState(false);
   const [denied, setDenied] = useState(false);
 
+  const lang = i18n.language === "en" ? "en" : "he";
+  const [currentName, setCurrentName] = useState<string | null>(null);
+
   useEffect(() => {
     void getSavedLocation().then(setSaved);
   }, []);
+
+  // Cache only: Today does the lookup, this row shows what is already known (and updates when Today stores a name).
+  useEffect(() => {
+    let active = true;
+    const load = () => void cachedPlaceName(lang).then((n) => active && setCurrentName(n));
+    load();
+    const off = onPlaceNameChange(load);
+    return () => {
+      active = false;
+      off();
+    };
+  }, [lang]);
 
   // Under two characters there is nothing to search or show; derived here so the effect never has to reset state.
   const searching = query.trim().length >= 2;
@@ -92,7 +107,7 @@ export default function LocationScreen() {
           />
           <ListRow
             label={t("location.current")}
-            meta={t("location.genericCandles")}
+            meta={currentName ?? t("location.genericCandles")}
             selected={saved?.kind === "current"}
             onPress={() => void chooseCurrent()}
           />
@@ -113,6 +128,12 @@ export default function LocationScreen() {
           ))}
           {searching && searched && results.length === 0 ? <Text className="mt-4 font-body text-body-sm text-ink-soft">{t("location.noResults")}</Text> : null}
         </View>
+        {/* The names come from OpenStreetMap on web only (data/location.ts); its licence asks for this credit. */}
+        {Platform.OS === "web" ? (
+          <View className="mt-12">
+            <MetaLink label={t("location.osmCredit")} href="https://www.openstreetmap.org/copyright" />
+          </View>
+        ) : null}
       </ScrollView>
     </View>
   );

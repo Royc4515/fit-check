@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-19 (place name for the current location)
+
+- "My current location" now shows the settlement name: Today's weather line, the profile row ("Current location · Ramat Gan") and the meta of the location screen row. Web asks Nominatim (rounded to 3 decimals, only after a move over 300 m or a language change, 3 s cap, cached on the device); native uses the device geocoder (not run here: no emulator). No name falls back to "current location" and never delays the weather.
+- New `ui/MetaLink` (a meta line that opens an address, 44 hit area, in the gallery) for the OpenStreetMap credit on the location screen (web only).
+- Look at: `data/placeName.ts` (pure rules, tested with real Nominatim fixtures), `placeNameFor` in `data/location.ts`, `loadDayContext` in `data/dayContext.ts`.
+
 ## 2026-11-06
 
 - Repo scaffolded: monorepo (pnpm + turbo), `packages/schema`, `packages/engine` with tests on the real wardrobe fixture, first Supabase migration, Edge Function stubs, Modal worker stub, Expo app skeleton with i18n (he/en) and design tokens.
