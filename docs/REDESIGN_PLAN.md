@@ -55,7 +55,7 @@ that always fits; the place name for the current location; candle lighting by th
 location; the end of Shabbat on Today. Verified twice by an agent that did not write the code
 (`docs/redesign-checklist-stage3.md`). What nobody could check is in `TASKS.md` "Open after stage 3".
 
-## Stage 4 - from a finished redesign to a daily habit (proposed 2026-11-19, waiting for Roy's go)
+## Stage 4 - from a finished redesign to a daily habit (approved by Roy 2026-11-19)
 
 The PRD has one success measure: 14 days in a row of daily use. The redesign made the app pleasant; it did not
 make it part of the morning. An inventory of the PRD against the code (2026-11-19) shows what stands between
@@ -67,6 +67,14 @@ the two:
 - The Android app has a build profile and has never been built or run. Everything was checked in Chromium.
 - Every write was verified with stubs. One real wear exists (Roy, 2026-11-19).
 - The design preview, the only way agents see real data, stops answering on 2026-11-25.
+
+### Roy's decisions (2026-11-19)
+
+- Start with 4.1, and run 4.5 and 4.7 beside it.
+- Android (4.3) and the morning notification (4.4) wait until the web app is declared final; the APK is built then.
+- The design preview (4.2): no decision now. Roy extends it if it is still needed when 2026-11-25 arrives.
+- `redraw-five`: left to the lead. Removed from the repo with this plan; the deployed copy answers 410 and Roy can delete it in the Supabase dashboard.
+- Shabbat colours: no hard rule. White is preferred through the scoring weights; every colour works, mostly light ones, and stripes too, as long as the result is "nice and respectable for Shabbat".
 
 ### Order of work
 
