@@ -107,3 +107,12 @@ Plan and reasons: `docs/REDESIGN_PLAN.md` "Stage 4". Stage 3 merged as PR #24.
 ## Later: the algorithm's judgement (Roy, 2026-11-19)
 
 Roy: "I do not 100% like the algorithm in how it understands formality levels, how it matches layers and so on; we will deal with the content of the algorithm and its recommendations afterwards." Not scheduled. When it starts: collect his concrete examples of wrong suggestions first, then change weights and rules in `packages/engine` against those examples as fixtures. Known items already noted: "cooler + dressier" can pair a gingham shirt with shorts; the Shabbat rules have no slot for outerwear and accessories; the 90-day learning window is configured and never applied.
+
+## Next features asked by Roy (2026-11-19), not scheduled yet
+
+| What | State today | Lead's note |
+| --- | --- | --- |
+| Alternatives for each garment when it is tapped on Today | Exists since stage 1 (tap a garment: sheet with up to three alternatives, tap one to swap), but only while the outfit is a suggestion. Once "wearing it" is pressed the sheet shows only the name and a link, and Roy's Today has been in the worn state, so he likely never saw it. Nothing on the flat-lay says garments can be tapped | Two gaps to close: alternatives after wearing (= correcting what was logged: "I wore another shirt in the end"), and a visible cue that garments are tappable. Small; candidate for the next round |
+| Build an outfit by hand | Not built. `outfits.source = 'manual'` exists in the schema and nothing writes it | A builder: pick a piece per slot from the wardrobe, see it as a flat-lay, then wear it today, plan it for a day, or keep it. Entry points and where saved outfits live change the navigation, so it needs Roy's decision. Hand-built outfits are also the best evidence of his taste for the algorithm work |
+| Try an outfit on a figure | Not built. CLAUDE.md forbids virtual try-on in the MVP; PRD lists it for version 2 with a paid provider | Options, cheapest first: the flat-lay drawn on a neutral figure outline (no AI, instant); an image generated on demand from a body photo (paid per image, like the redraw, uneven on exact garments, and a body photo is sensitive); a dedicated try-on service (best garment fidelity, paid); a 3D avatar (garments would need 3D models: not realistic here). Roy: "we will think about it" |
+
