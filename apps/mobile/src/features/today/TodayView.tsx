@@ -38,7 +38,7 @@ import { AdjustSheet, type Adjust } from "./AdjustSheet";
 import { explainOutfit } from "./explain";
 import { contextTypeOf, type DayInput, type Swaps, type TodayPlan } from "./outfit";
 import { PieceSheet } from "./PieceSheet";
-import { defaultAdjustment, planDays } from "./plans";
+import { defaultAdjustment, occasionInEffect, occasionMayApply, planDays } from "./plans";
 import { outfitIndex, SLOT_ORDER } from "./pieces";
 import { useSwipeToSkip } from "./useSwipeToSkip";
 
@@ -112,6 +112,8 @@ const MOBILE_HERO_GAP = 16;
 const FOCUS_WORN_STATUS = "today-worn-status";
 const FOCUS_SKIP_STATUS = "today-skip-status";
 const FOCUS_WEAR = "today-wear";
+/** The adjust button, where an occasion is chosen: focus goes there after the occasion line's "cancel". */
+const FOCUS_TUNE = "today-tune";
 /** The first thing in a container that a keyboard can reach: react-native-web gives every live pressable tabindex 0. */
 /** A little longer than the sheet's critically damped close spring takes to settle (motion.spring). */
 const SHEET_SETTLE_MS = 700;
@@ -166,12 +168,25 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
 
   // Today first, then each phone-free day that today's candle lighting opens (DESIGN.md "שלב 4.1"). Without candles
   // the list is just today and the screen is exactly what it was before the tabs.
+  // Whether today's occasion may decide its look now: a weekday, or Shabbat / a holiday after its havdalah (4.5 item 3).
+  const todayOccasion = useMemo(
+    () => ({ tab: "today" as const, dayType: day.dayType, havdalahToday: day.end?.day === "today" ? day.end.time : null, now: clock }),
+    [day, clock]
+  );
   const days = useMemo<DayInput[]>(
     () => [
-      { date: day.date, weather: day.weather, dayType: day.dayType, festive: day.festive, yomKippur: day.yomKippur, occasion: occasions.byDate[day.date]?.type },
-      ...day.chain.map((d) => ({ date: d.date, weather: d.weather, dayType: d.dayType, yomKippur: d.yomKippur, occasion: occasions.byDate[d.date]?.type })),
+      {
+        date: day.date,
+        weather: day.weather,
+        dayType: day.dayType,
+        festive: day.festive,
+        yomKippur: day.yomKippur,
+        occasion: occasionInEffect(occasions.byDate[day.date]?.type, todayOccasion),
+      },
+      // A planned day's tab is planned by Shabbat's or the holiday's rules, never by an occasion (4.5 item 3).
+      ...day.chain.map((d) => ({ date: d.date, weather: d.weather, dayType: d.dayType, yomKippur: d.yomKippur })),
     ],
-    [day, occasions.byDate]
+    [day, occasions.byDate, todayOccasion]
   );
   const tabLabels = useMemo(() => chainTabLabels(day.chain), [day.chain]);
   const hasTabs = day.chain.length > 0;
@@ -231,6 +246,15 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   const [focusRequest, setFocusRequest] = useState<{ after: "wear" | "skip" | "undo"; n: number } | null>(null);
   const focusHandled = useRef(0);
   const requestFocus = (after: "wear" | "skip" | "undo") => setFocusRequest((cur) => ({ after, n: (cur?.n ?? 0) + 1 }));
+  // After "cancel" on the occasion line the line is gone and focus would drop to the page: send it to `tune`, where an
+  // occasion is chosen again (web; on the next frame, once the line has left). Worn days have no bar: the status stack.
+  const focusTune = () => {
+    if (Platform.OS !== "web") return;
+    requestAnimationFrame(() => {
+      const box = document.getElementById(FOCUS_TUNE) ?? document.getElementById(FOCUS_WORN_STATUS);
+      (box?.querySelector<HTMLElement>(FIRST_TABBABLE) ?? box)?.focus();
+    });
+  };
 
   // The standing lean learned from recent wears, then each day's taps on top. The total is what gets stored with a
   // worn outfit (see engine learnedAdjustment for why the total and not the taps).
@@ -486,8 +510,10 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     ) : null;
   // What is on the day (4.5 item 2): first among the status lines, with its label and, unless set by hand, where it
   // came from; "cancel" clears it. A failed write takes its place, with "try again" (item 4).
-  const occasionRow = occasions.byDate[selectedDate] ?? null;
-  const occasionFailed = occasions.failed?.date === selectedDate ? occasions.failed : null;
+  // Only where an occasion can apply: today, on a weekday or after the day's havdalah (4.5 items 1 and 3).
+  const occasionChoosable = !planned && occasionMayApply(todayOccasion);
+  const occasionRow = occasionChoosable ? (occasions.byDate[selectedDate] ?? null) : null;
+  const occasionFailed = occasionChoosable && occasions.failed?.date === selectedDate ? occasions.failed : null;
   const occasionText = occasionRow
     ? [t(`today.occasion.type.${occasionRow.type}`), occasionRow.label, occasionRow.source === "calendar" ? t("today.occasion.fromCalendar") : undefined]
         .filter((part): part is string => Boolean(part))
@@ -499,7 +525,15 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     <StatusLine
       variant="info"
       message={occasionText}
-      action={{ label: t("today.occasion.cancel"), onPress: () => occasions.choose(selectedDate, null) }}
+      action={{
+        label: t("today.occasion.cancel"),
+        // The visible word is the screen's usual "cancel"; the name says what it cancels.
+        accessibilityLabel: occasionRow ? t("today.occasion.cancelLabel", { type: t(`today.occasion.type.${occasionRow.type}`) }) : undefined,
+        onPress: () => {
+          occasions.choose(selectedDate, null);
+          focusTune();
+        },
+      }}
       disabled={busy}
     />
   ) : null;
@@ -776,18 +810,20 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
               fullWidth
             />
           </View>
-          <Button
-            variant="icon"
-            outlined
-            icon="tune"
-            selected={adjustActive}
-            accessibilityLabel={tuneLabel}
-            onPress={() => {
-              actions.dismissFailure();
-              setAdjustOpen(true);
-            }}
-            disabled={busy}
-          />
+          <View nativeID={FOCUS_TUNE}>
+            <Button
+              variant="icon"
+              outlined
+              icon="tune"
+              selected={adjustActive}
+              accessibilityLabel={tuneLabel}
+              onPress={() => {
+                actions.dismissFailure();
+                setAdjustOpen(true);
+              }}
+              disabled={busy}
+            />
+          </View>
         </View>
       </>
     ) : null;
@@ -837,12 +873,16 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         onAdjust={adjust}
         onReset={resetAdjust}
         occasion={occasion}
-        occasionTitle={t(planned ? "today.occasion.titlePlanned" : "today.occasion.title")}
-        onOccasion={(type) => {
-          setAdjustOpen(false);
-          resetSwaps();
-          occasions.choose(selectedDate, type);
-        }}
+        occasionTitle={t("today.occasion.title")}
+        onOccasion={
+          occasionChoosable
+            ? (type) => {
+                setAdjustOpen(false);
+                resetSwaps();
+                occasions.choose(selectedDate, type);
+              }
+            : undefined
+        }
         onSkip={
           plan.kind === "suggestion"
             ? () => {
