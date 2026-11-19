@@ -15,7 +15,7 @@ import {
   type FeedbackHistory,
   type TodayRecord,
 } from "./feedback";
-import { itemsBackHome, type CorrectionStage } from "./correction";
+import { keepHomeLaundry, laundryAfterCorrection, type CorrectionStage } from "./correction";
 
 /**
  * The day an answer is for, when it is not today: a planned day after today's candle lighting (DESIGN.md "שלב 4.1").
@@ -45,7 +45,11 @@ export type FeedbackActions = {
 };
 
 /** Items the last "wearing" sent to the laundry, so Today can name them and offer to keep them home. */
-export type Laundered = { wearId: string; itemIds: string[] };
+/**
+ * Items the day's wear sent to the laundry (`itemIds`, the set L of data/correction.ts), so Today can name them, offer
+ * to keep them home and bring them all back on undo; `keptHome` are the ones the user kept out (never re-laundered).
+ */
+export type Laundered = { wearId: string; itemIds: string[]; keptHome: string[] };
 
 export type FeedbackState = {
   /** null until the first load lands; Today waits for it so a worn outfit never flashes as a fresh suggestion. */
@@ -169,7 +173,7 @@ export function useFeedback(args: {
       const due = dueForLaundry(worn, counts).map((i) => i.id);
       await move(due, "laundry");
       laundryDate.current = record.date;
-      setLaundered(due.length > 0 ? { wearId: record.wearId, itemIds: due } : null);
+      setLaundered(due.length > 0 ? { wearId: record.wearId, itemIds: due, keptHome: [] } : null);
     },
     [move]
   );
@@ -240,23 +244,36 @@ export function useFeedback(args: {
      * laundry move took that the corrected outfit does not hold, then the corrected outfit's own laundry pass (counted
      * without the earlier wear). Throws only if the delete fails; the steps after it are logged, never shown.
      */
-    const retireEarlier = async (earlier: TodayRecord, corrected: TodayRecord) => {
+    const retireEarlier = async (earlier: TodayRecord) => {
       await deleteFeedback(earlier);
       dropRecord(earlier);
       await learn(earlier.itemIds, "worn", -1).catch((error: unknown) => console.error("Pair weights update failed", error));
-      const back = itemsBackHome(laundered?.wearId === earlier.wearId ? laundered.itemIds : null, corrected.itemIds);
-      await move(back, "home").catch((error: unknown) => console.error("Laundry move back failed", error));
-      await launder(corrected).catch((error: unknown) => console.error("Automatic laundry failed", error));
+    };
+    /**
+     * The laundry after a correction (data/correction.ts laundryAfterCorrection): L's garments not in the corrected
+     * outfit go home, the corrected outfit's due garments not already in L go to the laundry, and L becomes their
+     * union, kept under the corrected wear so its status line names all of it and its undo brings all of it home.
+     * Runs BEFORE the earlier wear is deleted, so a failed delete leaves the laundry already matching the outfit shown.
+     */
+    const relaunder = async (earlier: TodayRecord, corrected: TodayRecord) => {
+      const day = laundered?.wearId === earlier.wearId ? { moved: laundered.itemIds, keptHome: laundered.keptHome } : { moved: [], keptHome: [] };
+      const counts = await fetchWearCounts(corrected.itemIds);
+      const items = itemsRef.current.filter((i) => corrected.itemIds.includes(i.id));
+      const next = laundryAfterCorrection({ day, earlier: earlier.itemIds, corrected: items, counts });
+      await move(next.home, "home");
+      await move(next.laundry, "laundry");
+      laundryDate.current = corrected.date;
+      setLaundered({ wearId: corrected.wearId, itemIds: next.day.moved, keptHome: next.day.keptHome });
     };
     /** The earlier wear could not be deleted: retried alone, the corrected wear already stands. */
-    const retryRetire = async (earlier: TodayRecord, corrected: TodayRecord) => {
+    const retryRetire = async (earlier: TodayRecord) => {
       setBusy(true);
       setCorrection(null);
       try {
-        await retireEarlier(earlier, corrected);
+        await retireEarlier(earlier);
       } catch (error) {
         console.error("Deleting the earlier wear failed", error);
-        setCorrection({ date: earlier.date, stage: "delete", retry: () => void retryRetire(earlier, corrected) });
+        setCorrection({ date: earlier.date, stage: "delete", retry: () => void retryRetire(earlier) });
       } finally {
         setBusy(false);
       }
@@ -285,11 +302,14 @@ export function useFeedback(args: {
         }
         addWorn(corrected, target, adjustment);
         await learn(corrected.itemIds, "worn", 1).catch((error: unknown) => console.error("Pair weights update failed", error));
+        // A failed laundry move is logged, not shown, as for any wear: the record is right, garments can be moved by hand.
+        await relaunder(earlier, corrected).catch((error: unknown) => console.error("Laundry after the correction failed", error));
         try {
-          await retireEarlier(earlier, corrected);
+          await retireEarlier(earlier);
         } catch (error) {
           console.error("Deleting the earlier wear failed", error);
-          setCorrection({ date: earlier.date, stage: "delete", retry: () => void retryRetire(earlier, corrected) });
+          // The retry only deletes and unlearns: the laundry has already been moved and is never moved twice.
+          setCorrection({ date: earlier.date, stage: "delete", retry: () => void retryRetire(earlier) });
         }
       } finally {
         setBusy(false);
@@ -320,7 +340,12 @@ export function useFeedback(args: {
       keepHome: (itemIds) =>
         run(laundered ? laundryDate.current : date, async () => {
           await move(itemIds, "home");
-          setLaundered(null);
+          // Kept home: out of L for good today (a correction will not send them back), the rest stays in L.
+          setLaundered((cur) => {
+            if (!cur) return cur;
+            const day = keepHomeLaundry({ moved: cur.itemIds, keptHome: cur.keptHome }, itemIds);
+            return { wearId: cur.wearId, itemIds: day.moved, keptHome: day.keptHome };
+          });
         }),
       dismissFailure: () => setFailedOn(null),
     };
