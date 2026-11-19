@@ -4,6 +4,7 @@
 
 - A complete outfit (the same item ids) worn in one of the last three wears of a context whose rules set `no_repeat_with_key` (today only `date`) is not offered for it again (PRD 7.1, DESIGN.md "שלב 4.5" item 5). `NO_REPEAT_LAST_WEARS = 3` in `packages/engine/config.ts`; the recent wears carry an optional `context_type`; nothing about a person is stored.
 - Look at: `noRepeatOutfits` in `packages/engine/src/candidates.ts`, `date-no-repeat.test.ts`. The app passes the context with each wear from "what is on today" on.
+- Fix after the independent verification: the last three are chosen by date inside `noRepeatOutfits` (stable sort, newest first), not by trusting the caller's order; a test with shuffled input, and one that fails if the rule line in `generateCandidates` is removed.
 
 ## 2026-11-19 (Spec: an outfit on a figure, first slice)
 
