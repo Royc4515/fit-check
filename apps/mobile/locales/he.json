@@ -102,7 +102,19 @@
       "yomKippur": "ליום כיפור"
     },
     "plannedForecast": "{{day}} · {{range}} · גשם {{rain}}",
-    "plannedNoForecast": "אין עדיין תחזית"
+    "plannedNoForecast": "אין עדיין תחזית",
+    "occasion": {
+      "title": "מה יש היום",
+      "type": {
+        "date": "דייט",
+        "interview": "ראיון",
+        "event": "אירוע"
+      },
+      "fromCalendar": "מהיומן",
+      "cancel": "ביטול",
+      "cancelLabel": "ביטול ההקשר: {{type}}",
+      "failed": "ההקשר לא נשמר."
+    }
   },
   "wardrobe": {
     "title": "ארון",
@@ -274,6 +286,7 @@
       "bodyPreview": "התצוגה המקדימה תיסגר ותחזור למסך הכניסה.",
       "confirm": "התנתק",
       "cancel": "ביטול",
+      "cancelLabel": "ביטול ההקשר: {{type}}",
       "failed": "ההתנתקות נכשלה. נסה שוב."
     }
   },
