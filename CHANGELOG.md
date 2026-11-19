@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-19 (context through the MCP, observance setting on the profile)
+
+- **NOTHING IS APPLIED OR DEPLOYED YET.** Files only, on branch `work-mcp-context`; the owner approved the migration and the tools on 2026-11-19.
+- Migration `0006_profile_observance.sql`: `profile.observes_shabbat boolean not null default true`. No generated Supabase types file exists in the repo, so none to update.
+- `packages/schema/src/day-context.ts`: shared zod schema of a day's context (type date | interview | event, date, label 1-60 chars one line, source manual | calendar), the date window (1 day back .. 14 ahead) and `planDay` (which rule set a day follows). 15 vitest tests.
+- MCP (`supabase/functions/mcp/context.ts`, version 0.4.0): `context_set`, `context_get`, `context_clear`. One occasion per date (new row written first, then the other two occasion types deleted; readers take the newest). A calendar write over a hand-set context is refused (`manual_context_exists`). No person's name is accepted or stored; `context_key` stays null. Weekday, Shabbat, holiday, reserve and trip rows are never touched. 11 Deno tests with an in-memory fake database.
+- `outfit_today`: a stored occasion beats the calendar; with `profile.observes_shabbat` false, Shabbat plans as a weekday and a holiday as a weekday plus one "dressier" step (engine `adjustRequest`). The answer has `context_used` and `calendar_day_type`. `engine.d.ts` now declares `adjustRequest` and `DayAdjustment` (the bundle already exported them).
+- Workflow for the user's own assistant: `docs/mcp/daily-context-workflow.md` (Hebrew, then English).
+- Look at: the walk-through of `context_set` failure cases in `supabase/functions/mcp/context_test.ts`.
+- To apply, in this order: (1) merge; (2) apply `0006_profile_observance.sql`; (3) `pnpm db:types` is not needed (no types file); (4) `scripts/bundle-engine.sh` only if `packages/engine` changed since the last bundle, then `scripts/bundle-mcp.sh /tmp/mcp.bundle.js`; (5) deploy the bundle as the `mcp` function (verify_jwt off), check it boots with 401 + WWW-Authenticate, then call `context_get` from the connector. Deploying before the migration is safe: a missing column reads as "keeps Shabbat".
+
 ## 2026-11-19 (stage 4 hardening: removal, location, insights, tests)
 
 - Item screen: "remove from the wardrobe" now follows the leave rule (`decideRemove` in `features/item/writing.ts`, tested). An open, changed, valid field is saved first (one write) and the item is archived only after that save succeeded; if it fails the item stays, the confirm sheet closes, and the field keeps its typed text, the error line and "נסה שוב". An unchanged or cancelled field does not block removal.
