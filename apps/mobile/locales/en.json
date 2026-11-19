@@ -476,7 +476,9 @@
     "selected": "Selected",
     "back": "Today",
     "label": "Location: {{place}}",
-    "genericCandles": "Shabbat times by coordinates (18 minutes before sunset)"
+    "genericCandles": "Shabbat times by coordinates (18 minutes before sunset)",
+    "currentWithPlace": "Current location · {{place}}",
+    "osmCredit": "Place names: © OpenStreetMap"
   },
   "intake": {
     "title": "Add clothes",
@@ -712,6 +714,7 @@
     "title": "Design system",
     "intro": "Every component, every variant, every state. Internal page, not linked from the app.",
     "section": {
+      "metaLink": "Meta link",
       "buttons": "Buttons",
       "chips": "Chips",
       "segmented": "Segmented control",

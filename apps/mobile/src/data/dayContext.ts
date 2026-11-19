@@ -3,7 +3,8 @@ import { HebcalConverterSchema, HebcalItemsSchema, OpenMeteoHourlySchema } from 
 import { candleLightingMinutes } from "./candleLighting";
 import { cacheGet, cacheSet } from "./kv";
 import { nextDate, shabbatTimes, type ShabbatTimes } from "./shabbatTimes";
-import { resolveLocation, type ResolvedLocation } from "./location";
+import { placeNameFor, resolveLocation, type ResolvedLocation } from "./location";
+import type { PlaceLang } from "./placeName";
 
 /**
  * What kind of day it is, from the real world: Israel-local date, Hebrew date and holidays from Hebcal, and the
@@ -23,7 +24,10 @@ export type DayContext = {
   date: string;
   /** 0 = Sunday ... 6 = Saturday, in that time zone. */
   weekday: number;
-  /** City name for a chosen city; null for the default or "current location" (the screen labels those). */
+  /**
+   * City name for a chosen city, or the settlement name of "current location" when it could be found; null for the
+   * default, and for a current location with no name (the screen labels those).
+   */
   place: string | null;
   usesCurrentLocation: boolean;
   hebrewDate: { he: string; en: string } | null;
@@ -135,16 +139,26 @@ async function loadCalendar(date: string, loc: ResolvedLocation): Promise<Pick<D
   }
 }
 
-/** Loads today's context for the saved location; never throws. */
-export async function loadDayContext(now: Date = new Date()): Promise<DayContext> {
+/**
+ * Loads today's context for the saved location; never throws. `lang` is the app language, used only for the place
+ * name of "my current location" (Nominatim answers in it).
+ */
+export async function loadDayContext(now: Date = new Date(), lang: PlaceLang = "he"): Promise<DayContext> {
   const loc = await resolveLocation();
   const { date, weekday } = localDate(loc.tz, now);
+  // Started now, in parallel with the three loads below, never before them.
+  const namePromise = loc.kind === "current" ? placeNameFor(loc, lang) : Promise.resolve(null);
   const [weather, hebrewDate, cal] = await Promise.all([loadWeather(date, loc), loadHebrewDate(date), loadCalendar(date, loc)]);
+  // don't touch / the name is NOT in the Promise.all: a slow or blocked geocoder (3 s cap) must not hold back the
+  // weather, the date or the Shabbat times. We take it only if it has already settled; otherwise the screen says
+  // "current location" now, and useDayContext reloads when the lookup stores its result (onPlaceNameChange).
+  // The already-resolved null is second in the race, so a settled name wins the tie.
+  const placeName = await Promise.race([namePromise, Promise.resolve(null)]);
   const dayType: DayType = cal.yomtov ? "holiday" : weekday === 6 ? "shabbat" : "weekday";
   return {
     date,
     weekday,
-    place: loc.label,
+    place: loc.label ?? placeName,
     usesCurrentLocation: loc.geonameid === null,
     hebrewDate,
     weather,

@@ -14,6 +14,7 @@ export { LegendRow } from "./LegendRow";
 export { ListRow } from "./ListRow";
 export { setOriginHidden, useOriginVisibility } from "./originVisibility";
 export { computeMasonry, MasonryGrid, type MasonryCellInfo, type MasonryLayout, type MasonrySection } from "./MasonryGrid";
+export { MetaLink } from "./MetaLink";
 export { ScreenColumn } from "./ScreenColumn";
 export { ScreenHeader } from "./ScreenHeader";
 export { SearchField } from "./SearchField";
