@@ -340,7 +340,8 @@ export function BuilderView({ userId, editId }: Props) {
 
   const missingText = missingKey(missing);
   // Hidden while the refusal line says another outfit has these garments: then nothing will be saved as new.
-  const copyNote = editKeepsWornCopy(Boolean(editId), wearCount, draft, initial) && failure?.kind !== "same";
+  // The note promises what a save WILL do: not while a refusal shows, and not once the copy already exists (half done).
+  const copyNote = editKeepsWornCopy(Boolean(editId), wearCount, draft, initial) && failure?.kind !== "same" && failure?.kind !== "half_done";
   const leaveWords = leaveCopy(failure?.kind === "half_done" ? "half_done" : null);
   const failureLine =
     failure?.kind === "same" ? (
