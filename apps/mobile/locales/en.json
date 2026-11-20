@@ -1066,7 +1066,8 @@
     "tileLabel": "{{title}}. {{pieces}}. {{meta}}",
     "empty": {
       "title": "No outfits yet",
-      "body": "An outfit you liked on Today is saved from there, or you build one by hand."
+      "body": "An outfit you liked on Today is saved from there, or you build one by hand.",
+      "action": "New outfit"
     },
     "emptyFavorites": {
       "title": "No favourites yet",
@@ -1129,6 +1130,64 @@
       "bottom": "Trousers",
       "shoes": "Shoes",
       "layer": "Layer"
+    },
+    "edit": "Edit",
+    "alreadySaved": "This outfit is already saved"
+  },
+  "builder": {
+    "titleNew": "New outfit",
+    "titleEdit": "Edit outfit",
+    "choose": "Choose",
+    "chooseSlot": {
+      "top": "Choose a top",
+      "bottom": "Choose trousers",
+      "shoes": "Choose shoes",
+      "layer": "Choose a layer"
+    },
+    "rowChosen": "{{index}} {{slot}}: {{type}} {{name}}, change",
+    "rowEmpty": "{{index}} {{slot}}, choose",
+    "heroLabel": "The outfit being built: {{pieces}}",
+    "heroEmpty": "The outfit being built, nothing chosen yet",
+    "context": "For when",
+    "name": "Name (optional)",
+    "nameCount": "{{n}} of {{max}} characters",
+    "save": "Save",
+    "saving": "Saving",
+    "missing": {
+      "top": "Missing a top",
+      "bottom": "Missing trousers",
+      "shoes": "Missing shoes",
+      "top_bottom": "Missing a top and trousers",
+      "top_shoes": "Missing a top and shoes",
+      "bottom_shoes": "Missing trousers and shoes",
+      "all": "Missing a top, trousers and shoes"
+    },
+    "saveFailed": "The outfit was not saved. {{reason}}",
+    "sameAsOther": "A saved outfit already has these garments",
+    "openOther": "Open it",
+    "alreadySaved": "This outfit is already saved",
+    "loadFailed": "The wardrobe could not be loaded",
+    "leave": {
+      "title": "Leave without saving?",
+      "body": "What you chose here will not be kept.",
+      "confirm": "Leave",
+      "stay": "Keep editing"
+    },
+    "picker": {
+      "search": "Search by name or brand",
+      "remove": "Remove",
+      "removeLabel": "Remove {{name}} from the outfit",
+      "noResults": "No results for \"{{query}}\"",
+      "empty": "No garments of this kind in the wardrobe",
+      "more": "Show more ({{n}})",
+      "tileLabel": "{{name}}, {{type}}, {{color}}",
+      "tileLabelWhere": "{{name}}, {{type}}, not at home: {{where}}",
+      "chosen": "{{label}}, chosen"
     }
+  },
+  "add": {
+    "title": "Add",
+    "garment": "New garment",
+    "outfit": "New outfit"
   }
 }
