@@ -1138,6 +1138,9 @@
     "wearToday": "Wearing it today",
     "replace": {
       "body": "Another outfit is already logged for today. Replace it with this one?",
+      "body_shabbat": "Another outfit is already logged for Shabbat. Replace it with this one?",
+      "body_holiday": "Another outfit is already logged for the holiday. Replace it with this one?",
+      "body_yom_kippur": "Another outfit is already logged for Yom Kippur. Replace it with this one?",
       "confirm": "Replace"
     },
     "cannotWear": {

@@ -46,11 +46,12 @@ export type FeedbackActions = {
    */
   correct: (record: TodayRecord, outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment, target?: FeedbackTarget) => Promise<void>;
   /**
-   * "לובש היום" on a saved outfit's screen: records today's wear on that saved row (recordWearOfSaved), then learns
-   * and moves to the laundry exactly as `wear` does. The wear's adjustment sample is none: nothing was nudged. A
-   * failure is published as `failedOn` (today), like `wear`.
+   * "לובש היום" on a saved outfit's screen: records the wear on that saved row (recordWearOfSaved) for `target`, the
+   * day in force (features/today/dayInForce.ts: today, or Shabbat / the holiday after its eve's cut-off, as Today
+   * records), then learns and moves to the laundry exactly as `wear` does. The wear's adjustment sample is none:
+   * nothing was nudged. A failure is published as `failedOn` (the target's date), like `wear`. `target` defaults to today.
    */
-  wearSaved: (saved: SavedWear) => Promise<void>;
+  wearSaved: (saved: SavedWear, target?: FeedbackTarget) => Promise<void>;
   /**
    * The same from the saved outfit's screen when today already has another wear: `correct`'s path and order (this
    * wear first, then the laundry, then the earlier wear deleted, then unlearned), the new wear on the saved row.
@@ -384,9 +385,9 @@ export function useFeedback(args: {
     return {
       wear: (outfit, source, adjustment, target = { date, dayType }) =>
         run(target.date, () => wearNow(candidateWrite(outfit, source, adjustment), adjustment, target)),
-      // Today's own date: this button means today (DESIGN.md "שלב 5.2" item 4). The day type goes into no row: the
-      // saved outfit keeps its own "למתי".
-      wearSaved: (saved) => run(date, () => wearNow(savedWrite(saved), NO_ADJUSTMENT, { date, dayType })),
+      // The day in force, decided by the caller with Today's rule. The day type goes into no row: the saved outfit
+      // keeps its own "למתי".
+      wearSaved: (saved, target = { date, dayType }) => run(target.date, () => wearNow(savedWrite(saved), NO_ADJUSTMENT, target)),
       correctToSaved: (record, saved) => correctNow(record, savedWrite(saved), NO_ADJUSTMENT, { date: record.date, dayType }),
       skip: (outfit, source, adjustment, target = { date, dayType }) =>
         run(target.date, async () => {
