@@ -1,8 +1,8 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { markOutfitSaved, removeSavedOutfit, saveOutfit } from "../../data/outfits";
 import { withOutfit, withoutOutfit } from "../outfits/collection";
-import { patchOutfits, savedOutfitsNow, useSavedOutfits } from "../outfits/store";
-import type { BookmarkIntent, SavedLookup } from "./bookmark";
+import { patchOutfits, refreshOutfits, useSavedOutfits } from "../outfits/store";
+import type { BookmarkFailureInfo, BookmarkIntent, SavedLookup } from "./bookmark";
 
 /** A bookmark that can be pressed: `hidden` is never pressed. */
 export type PressableIntent = Exclude<BookmarkIntent, { kind: "hidden" }>;
@@ -10,12 +10,17 @@ export type PressableIntent = Exclude<BookmarkIntent, { kind: "hidden" }>;
 /** What the last press did, for the screen reader: the screen turns it into "saved to the outfits" / "removed". */
 export type BookmarkAnnouncement = { kind: "saved" | "removed"; n: number };
 
-/** A press that failed: where it happened and what to repeat. Shown on that tab, for that garment set, until the next press. */
-export type BookmarkFailure = { intent: PressableIntent; date: string };
+/**
+ * A press that failed: the garment set, the day and what the user wanted. It is data, not an action: "try again" is
+ * recomputed from the state at the moment of the retry (bookmarkFailureAction), never replayed.
+ */
+export type BookmarkFailure = BookmarkFailureInfo;
 
 export type BookmarkApi = {
   /** The saved outfits have been read: until then the bookmark is drawn "not saved" but cannot be pressed. */
   ready: boolean;
+  /** The read failed (and nothing was read before): the bookmark says why it is disabled. Retried once after 5 s. */
+  unavailable: boolean;
   /** The saved outfits, for "is the shown outfit saved" and "which row does this wear point at". Empty until `ready`. */
   saved: SavedLookup;
   /** The state a press has already drawn and not yet confirmed, by garment set (see `shownSaved`). */
@@ -25,12 +30,10 @@ export type BookmarkApi = {
   /** Saves or removes optimistically; a second press while one is on its way is ignored. `date` is the tab's date. */
   press: (intent: PressableIntent, date: string) => Promise<void>;
   /**
-   * Resolves when no press is on its way (never rejects). A wear waits for it: a save that has not answered yet is not
-   * in `saved`, and a wear recorded meanwhile would get a row of its own instead of the saved outfit's.
+   * Resolves when no press is on its way (never rejects). A feedback write waits for it: a save that has not answered
+   * yet is not in the list, and a wear recorded meanwhile would get a row of its own instead of the saved outfit's.
    */
   settled: () => Promise<void>;
-  /** The saved outfits at this moment, not at the last render: what a wear reads after `settled`. */
-  savedNow: () => SavedLookup;
   /** The failure belongs to the press that made it: the screen clears it when the user starts something else. */
   dismissFailure: () => void;
 };
@@ -78,7 +81,7 @@ export function useBookmark(userId: string): BookmarkApi {
         setAnnouncement({ kind: intent.kind === "saved" ? "removed" : "saved", n: count.current });
       } catch (error) {
         console.error("Bookmark write failed", error);
-        setFailure({ intent, date });
+        setFailure({ key: intent.key, date, wantSaved: intent.kind !== "saved" });
       } finally {
         // Cleared with the store already patched (success) or not (failure): either way the next render is the truth.
         setPending(null);
@@ -97,9 +100,22 @@ export function useBookmark(userId: string): BookmarkApi {
     [run]
   );
   const settled = useCallback(() => inFlight.current ?? Promise.resolve(), []);
-  const savedNow = useCallback((): SavedLookup => savedOutfitsNow(userId), [userId]);
+  // A failed read recovers by itself once, after 5 s, instead of only when the user leaves and returns.
+  const failedRead = outfits.status === "error";
+  const retried = useRef(false);
+  const answered = outfits.status === "ready";
+  useEffect(() => {
+    // Re-armed only by a good read: the retry itself passes through `loading`, which must not re-arm it.
+    if (answered) retried.current = false;
+    if (!failedRead || retried.current) return;
+    const timer = setTimeout(() => {
+      retried.current = true;
+      void refreshOutfits(userId);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [failedRead, answered, userId]);
 
   const dismissFailure = useCallback(() => setFailure(null), []);
   const saved: SavedLookup = outfits.status === "ready" ? outfits.outfits : [];
-  return { ready: outfits.status === "ready", saved, pending, failure, announcement, press, settled, savedNow, dismissFailure };
+  return { ready: outfits.status === "ready", unavailable: failedRead, saved, pending, failure, announcement, press, settled, dismissFailure };
 }

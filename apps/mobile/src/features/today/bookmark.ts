@@ -92,3 +92,78 @@ export function shownSaved(intent: BookmarkIntent, pending: { key: string; saved
   if (intent.kind === "hidden") return false;
   return pending !== null && pending.key === intent.key ? pending.saved : intent.kind === "saved";
 }
+
+/** The saved list as the store holds it: `loading` (not answered yet), `error` (the first read failed), `ready`. */
+export type SavedListState = { status: "loading" | "ready" | "error"; outfits: SavedLookup };
+
+/**
+ * What a write of feedback (worn, the Shabbat wear, skipped, corrected) does about its outfit row, from the state of
+ * the saved list: `row` (decided: the saved outfit's id, or undefined for a new unsaved row), `wait` (the list has not
+ * answered yet) or `reread` (it failed: read it once more). A row is never decided from a list that has not arrived,
+ * since an empty placeholder would write a copy of a saved outfit. Pure.
+ */
+export type WearRowDecision = { kind: "row"; id: string | undefined } | { kind: "wait" } | { kind: "reread" };
+
+/** See WearRowDecision. */
+export function wearRowDecision(itemIds: readonly string[], list: SavedListState): WearRowDecision {
+  if (list.status === "ready") return { kind: "row", id: wearOutfitId(itemIds, list.outfits) };
+  return list.status === "loading" ? { kind: "wait" } : { kind: "reread" };
+}
+
+/** Thrown when the saved list cannot be read: the write fails instead of writing a copy of a saved outfit. */
+export class SavedListUnavailableError extends Error {
+  constructor() {
+    super("the saved outfits could not be read");
+    this.name = "SavedListUnavailableError";
+  }
+}
+
+/** The store, as the resolver needs it. */
+export type SavedListDeps = {
+  read: () => SavedListState;
+  /** Resolves when the list is no longer `loading`, or after `ms`. */
+  settled: (ms: number) => Promise<void>;
+  /** One fresh read of the list. */
+  reread: () => Promise<void>;
+};
+
+/** How long a write waits for a list that is still loading before treating it as failed. */
+export const SAVED_LIST_WAIT_MS = 8000;
+
+/**
+ * The outfit row a feedback write points at, decided at write time from a settled list: waits (up to 8 s) while the
+ * list loads, reads once more when it failed or the wait ran out, and only then decides (wearRowDecision).
+ *
+ * @returns the saved outfit's id, or undefined for a new unsaved row.
+ * @throws SavedListUnavailableError when the list is still unavailable after that one fresh read. The caller's write
+ *   then fails like any failed wear (its failure line and "try again"): without the list the rule "the same garments
+ *   are the same outfit" cannot be honoured, and a read that fails almost always means the write would fail too.
+ */
+export async function resolveWearRow(itemIds: readonly string[], deps: SavedListDeps, waitMs: number = SAVED_LIST_WAIT_MS): Promise<string | undefined> {
+  let decision = wearRowDecision(itemIds, deps.read());
+  if (decision.kind === "wait") {
+    await deps.settled(waitMs);
+    decision = wearRowDecision(itemIds, deps.read());
+    if (decision.kind === "wait") decision = { kind: "reread" };
+  }
+  if (decision.kind === "reread") {
+    await deps.reread();
+    decision = wearRowDecision(itemIds, deps.read());
+  }
+  if (decision.kind === "row") return decision.id;
+  throw new SavedListUnavailableError();
+}
+
+/** A failed save or removal: the garment set and day it was for, and whether the user wanted it saved. Not an action. */
+export type BookmarkFailureInfo = { key: string; date: string; wantSaved: boolean };
+
+/**
+ * Whether a failure line still belongs to what is on screen. `show` only while the same garment set on the same day is
+ * still not in the state the user asked for; then "try again" is recomputed from the CURRENT intent (the outfit may
+ * have been worn since, so the write is `markOutfitSaved` of the worn row, not the save that failed). `drop` when the
+ * set changed (a swap, another tab), the outfit can no longer be saved, or the state already is what was wanted.
+ */
+export function bookmarkFailureAction(failure: BookmarkFailureInfo, intent: BookmarkIntent, selectedDate: string): "show" | "drop" {
+  if (intent.kind === "hidden" || failure.key !== intent.key || failure.date !== selectedDate) return "drop";
+  return (intent.kind === "saved") === failure.wantSaved ? "drop" : "show";
+}

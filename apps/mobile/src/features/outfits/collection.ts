@@ -87,6 +87,20 @@ export function withName(outfits: readonly SavedOutfit[], id: string, name: stri
   return outfits.map((o) => (o.id === id ? { ...o, name } : o));
 }
 
+/**
+ * The list with one outfit's wear count changed by +1 (a wear recorded on it: the date becomes the last one if newer)
+ * or -1 (one undone: never below 0, no count means no date; otherwise the date stays until the next read corrects it).
+ * Only `worn` feedback counts, so the caller passes nothing for a skip. Unknown ids leave the list as it is.
+ */
+export function withWornChange(outfits: readonly SavedOutfit[], id: string, delta: 1 | -1, date: string): SavedOutfit[] {
+  return outfits.map((o) => {
+    if (o.id !== id) return o;
+    const wornCount = Math.max(0, o.wornCount + delta);
+    const lastWornOn = wornCount === 0 ? null : delta === 1 && (o.lastWornOn === null || date > o.lastWornOn) ? date : o.lastWornOn;
+    return { ...o, wornCount, lastWornOn };
+  });
+}
+
 /** The list without one outfit (removed from the collection). */
 export function withoutOutfit(outfits: readonly SavedOutfit[], id: string): SavedOutfit[] {
   return outfits.filter((o) => o.id !== id);

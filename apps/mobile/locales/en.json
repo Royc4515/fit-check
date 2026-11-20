@@ -127,7 +127,8 @@
       "saved": "Saved to outfits",
       "removed": "Removed from outfits",
       "saveFailed": "Couldn't save it to your outfits.",
-      "removeFailed": "Couldn't remove it from your outfits."
+      "removeFailed": "Couldn't remove it from your outfits.",
+      "unavailable": "Can't check right now whether this outfit is saved"
     }
   },
   "wardrobe": {
