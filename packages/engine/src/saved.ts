@@ -38,9 +38,14 @@ export function savedPairBonus(saved: readonly SavedOutfitSignal[]): Map<string,
  * plus the saved bonus (savedPairBonus), bounded by `FEEDBACK.max_pair_weight` AFTER the addition, so worn and saved
  * together never pass the bound that wears alone have.
  *
- * A saved outfit acts only through these pairs: it is never offered as it is, and the hard filters (weather, context,
- * laundry, location), the formality band and the no-repeat and recency rules all still run on every candidate. An id
- * that is not in the wardrobe (a deleted or archived garment) only adds a pair no candidate holds, so it changes
+ * A saved outfit has no path of its own: it is scored like any candidate, and the hard filters (weather, context,
+ * laundry, location), the formality band and the no-repeat and recency rules all still run on it. The bonus is small,
+ * but candidate scores are often bunched (ties are common), so among candidates the engine scores (nearly) the same the
+ * saved one comes first: on a day when a saved outfit is valid and was not worn recently it is often the suggestion.
+ * That is wanted. Saving also offsets dislikes: one save cancels one dislike on a pair (0.1 against -0.1), a favourite
+ * two. The score and breakdown stored with a wear include the bonus; the learned `pair_weights` never do.
+ *
+ * An id that is not in the wardrobe (a deleted or archived garment) only adds a pair no candidate holds, so it changes
  * nothing and never throws.
  *
  * Pure. The result is computed from the list each time; nothing is stored, so removing an outfit from the collection

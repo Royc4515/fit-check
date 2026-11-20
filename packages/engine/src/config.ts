@@ -60,8 +60,10 @@ export const FEEDBACK = {
   saved_pair_delta: 0.1,
   /**
    * The same pair inside a favourite outfit, instead of `saved_pair_delta` (never both): four wears' worth, "a few
-   * wears". Even a whole favourite outfit adds only 0.2 * 0.5 * pair_weight 0.2 = 0.02 to its score, far under one
-   * garment worn yesterday (RECENCY.item_penalty * 0.25 = 0.125), so "worn recently" still wins.
+   * wears". A whole favourite outfit adds 0.2 * 0.5 * pair_weight 0.2 = 0.02 to its score, far under one garment worn
+   * yesterday (RECENCY.item_penalty * 0.25 = 0.125), so "worn recently" still wins. Small, but candidate scores are
+   * often bunched, so between near-equal candidates it decides: a valid saved outfit is often the suggestion. It also
+   * cancels two dislikes on a pair (disliked_pair_delta -0.1), a plain save one.
    */
   favorite_pair_delta: 0.2,
   /**
