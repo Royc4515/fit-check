@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-20 (A saved outfit counts every wear of its garments, stage 5.2 follow-up)
+
+- "נלבש N פעמים · תאריך" on a tile and on the outfit screen now counts every worn wear of the same garments (the same set of item ids, any order), whichever `outfits` row the wear points at, saved or not. Before, an outfit worn on three days and then saved showed "פעם אחת", because each day had made its own row and the count used only the saved row's wears. DESIGN.md "שלב 5.2" says it in the principle paragraph.
+- Decided at read time: no wear moves, no row is merged or deleted, no migration. `fetchSavedOutfits` and `fetchSavedOutfit` add one read (worn wears with the item ids of their outfit row, paged like Insights) sent together with the outfits read, so a typical collection is two requests instead of one. Pure rule: `wornBySet` / `wornIndex` in `data/savedOutfit.ts`, tested.
+- If that read fails (or passes the pager's 20,000-row limit) the collection still loads and each outfit counts only the wears on its own row, as before; the failure is logged. A count never takes the collection down.
+- What happens to a ROW still goes by the wears that point at it: `removalAction`, `editPlan`, the builder's "copy" note and the undo check use `wearCount`, not `wornCount`. So an outfit saved from a never-worn build is deleted (not unsaved) on removal even if its garments were worn before on other rows; those wears stay in Insights and still count for the set. Two wears on the same date count as two (the table has no one-per-day key).
+- `markOutfitSaved` on a row that is already saved now reads it back, so the shared store is patched with the count by set.
+- Look at: `data/outfits.ts` `fetchWornIndex` (fallback in its TSDoc), the "wear count by garment set" tests in `outfits.test.ts`. Checked in the web build at 390, Hebrew, on a stubbed copy outside the repo (an in-memory `outfits` / `outfit_items` / `wears` model running the real data layer; no write left the browser): three worn rows of one set in Insights, saved through the middle one, the tile and the outfit screen say "נלבש 3 פעמים · 17.11"; removed through another row (the row stays unsaved, it has a wear) and saved through a third: still 3; with the wears read failing the tile says "נלבש פעם אחת" and the collection loads. Unverified: the live counts on the real database, native.
+
 ## 2026-11-20 (Outfits: building one by hand, editing a saved one, and the "+" choice)
 
 - The bar's centre "+" and the desktop "הוספה" open a sheet with "בגד חדש" (the add-garment screen, as before) and "לוק חדש". Escape closes it and focus returns to the "+".
