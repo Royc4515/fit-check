@@ -109,6 +109,23 @@ describe("recordWornChange (after a wear or an undo)", () => {
     expect(shown(u)).toBeNull();
   });
 
+  it("a replace changes two sets in one action: this outfit's up, the replaced one's down, rows saved or not", async () => {
+    const SET_B = ["t2", "b1", "s1"];
+    serve(wornIndex([{ date: "2026-11-02", itemIds: SET }, { date: "2026-11-05", itemIds: SET }, { date: "2026-11-20", itemIds: SET_B }, { date: "2026-11-10", itemIds: SET_B }]));
+    await refreshTally(u);
+    // The truth after the replace: the wear of B on 11-20 is gone, a wear of A on 11-20 exists.
+    serve(wornIndex([{ date: "2026-11-02", itemIds: SET }, { date: "2026-11-05", itemIds: SET }, { date: "2026-11-20", itemIds: SET }, { date: "2026-11-10", itemIds: SET_B }]));
+    // useFeedback order: the corrected wear (on this outfit's saved row) first, then the earlier one (an unsaved row
+    // whose set is B, itself a saved outfit's set) deleted.
+    recordWornChange(u, { outfitId: "saved-a", itemIds: SET, date: "2026-11-20" }, 1);
+    recordWornChange(u, { outfitId: "unsaved-b", itemIds: ["s1", "b1", "t2"], date: "2026-11-20" }, -1);
+    expect(shown(u)).toEqual({ wornCount: 3, lastWornOn: "2026-11-20" });
+    expect(tallyFor(tallyNow(u), SET_B)).toEqual({ wornCount: 1, lastWornOn: "2026-11-20" });
+    // The refresh corrects what the optimistic step cannot know (the date of B after losing its newest wear).
+    await vi.waitFor(() => expect(tallyFor(tallyNow(u), SET_B)).toEqual({ wornCount: 1, lastWornOn: "2026-11-10" }));
+    expect(shown(u)).toEqual({ wornCount: 3, lastWornOn: "2026-11-20" });
+  });
+
   it("a read that started before the patch does not overwrite it", async () => {
     serve(index("2026-11-02"));
     await refreshTally(u);
