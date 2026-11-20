@@ -15,7 +15,7 @@ vi.mock("./preview", () => ({
   PreviewReadOnlyError: class PreviewReadOnlyError extends Error {},
 }));
 
-const { fetchSavedOutfits, markOutfitSaved, removeSavedOutfit, renameOutfit, saveOutfit, setOutfitFavorite } = await import("./outfits");
+const { fetchSavedOutfits, markOutfitSaved, removeSavedOutfit, renameOutfit, saveOutfit, setOutfitFavorite, updateSavedOutfit } = await import("./outfits");
 const { SavedOutfitError } = await import("./savedOutfit");
 
 function use(respond: (c: FakeCall) => FakeResponse) {
@@ -220,6 +220,132 @@ describe("fetchSavedOutfits", () => {
     state.preview = true;
     use(() => ({}));
     expect(await fetchSavedOutfits()).toEqual([]);
+    expect(fake.calls).toEqual([]);
+  });
+});
+
+describe("updateSavedOutfit", () => {
+  // One outfit row "o1" and its outfit_items, changed by the requests as a database would, so the order of writes
+  // and what a failure leaves behind can be asserted. "o2" is another saved outfit (t2, b1, s1).
+  type Row = { item_id: string; slot: "top" | "bottom" | "shoes" | "layer" };
+  const before: Row[] = [
+    { item_id: "t1", slot: "top" },
+    { item_id: "b1", slot: "bottom" },
+    { item_id: "s1", slot: "shoes" },
+  ];
+  const after = [
+    { item_id: "t3", slot: "top" as const },
+    { item_id: "b1", slot: "bottom" as const },
+    { item_id: "s1", slot: "shoes" as const },
+    { item_id: "l1", slot: "layer" as const },
+  ];
+  const edit = { garments: after, contextType: "shabbat" as const, name: "  שבת " };
+
+  // `use` under another name: the hooks lint rule reads any `use(...)` inside a named function as a React hook.
+  const answer = use;
+  function model(failAt: string | null) {
+    const db = { items: [...before], row: { context_type: "weekday", name: null as string | null, saved_at: "2026-11-10T08:00:00Z" } };
+    answer((c) => {
+      const step = `${c.op} ${c.table}`;
+      if (failAt === step) return { error: new Error(`failed: ${step}`) };
+      if (c.table === "outfit_items" && c.op === "insert") db.items.push(...(c.payload as (Row & { outfit_id: string })[]).map(({ item_id, slot }) => ({ item_id, slot })));
+      if (c.table === "outfit_items" && c.op === "delete") {
+        const gone = c.filters.find((f) => f[0] === "in")![2] as string[];
+        db.items = db.items.filter((i) => !gone.includes(i.item_id));
+      }
+      if (c.table === "outfits" && c.op === "update") {
+        Object.assign(db.row, c.payload);
+        return { data: [{ id: "o1" }] };
+      }
+      if (c.op === "select" && c.payload === "saved_at,outfit_items(item_id,slot)") return { data: { saved_at: db.row.saved_at, outfit_items: db.items } };
+      if (c.op === "select" && c.payload === "id,outfit_items(item_id)") {
+        return { data: [{ id: "o1", outfit_items: db.items }, { id: "o2", outfit_items: [{ item_id: "t2" }, { item_id: "b1" }, { item_id: "s1" }] }] };
+      }
+      if (isReadById(c)) return { data: { ...outfitRow("o1", db.row.saved_at), context_type: db.row.context_type, name: db.row.name } };
+      return {};
+    });
+    return db;
+  }
+
+  it("inserts what it gains, deletes what it loses, then updates the row; keeps saved_at", async () => {
+    const db = model(null);
+    const outfit = await updateSavedOutfit("o1", edit);
+    expect(ops()).toEqual(["select outfits", "select outfits", "insert outfit_items", "delete outfit_items", "update outfits", "select outfits"]);
+    expect(fake.calls[2]!.payload).toEqual([
+      { outfit_id: "o1", item_id: "t3", slot: "top" },
+      { outfit_id: "o1", item_id: "l1", slot: "layer" },
+    ]);
+    expect(fake.calls[3]!.filters).toEqual([
+      ["eq", "outfit_id", "o1"],
+      ["in", "item_id", ["t1"]],
+    ]);
+    expect(fake.calls[4]!.payload).toEqual({ context_type: "shabbat", name: "שבת" });
+    expect(fake.calls[4]!.filters).toContainEqual(["not", "saved_at", "is", null]);
+    expect(db.items.map((i) => i.item_id).sort()).toEqual(["b1", "l1", "s1", "t3"]);
+    expect(outfit.id).toBe("o1");
+  });
+
+  it("never leaves part of a set at a failing step (the old one until the garments are written), and a retry finishes", async () => {
+    for (const failAt of ["insert outfit_items", "delete outfit_items", "update outfits"]) {
+      const db = model(failAt);
+      await expect(updateSavedOutfit("o1", edit)).rejects.toThrow(`failed: ${failAt}`);
+      const ids = db.items.map((i) => i.item_id);
+      // Whole old set or whole new set, never part of one: the outfit always has a top, a bottom and shoes.
+      const whole = (set: readonly { item_id: string }[]) => set.every((g) => ids.includes(g.item_id));
+      expect(whole(before) || whole(after), failAt).toBe(true);
+      if (failAt !== "update outfits") for (const old of before) expect(ids, failAt).toContain(old.item_id);
+      // The retry, as "נסה שוב" sends it: the same edit, now without the failure.
+      const items = db.items;
+      const row = db.row;
+      use((c) => {
+        if (c.table === "outfit_items" && c.op === "insert") items.push(...(c.payload as (Row & { outfit_id: string })[]).map(({ item_id, slot }) => ({ item_id, slot })));
+        if (c.table === "outfit_items" && c.op === "delete") {
+          const gone = c.filters.find((f) => f[0] === "in")![2] as string[];
+          for (let n = items.length - 1; n >= 0; n--) if (gone.includes(items[n]!.item_id)) items.splice(n, 1);
+        }
+        if (c.table === "outfits" && c.op === "update") {
+          Object.assign(row, c.payload);
+          return { data: [{ id: "o1" }] };
+        }
+        if (c.op === "select" && c.payload === "saved_at,outfit_items(item_id,slot)") return { data: { saved_at: row.saved_at, outfit_items: items } };
+        if (c.op === "select" && c.payload === "id,outfit_items(item_id)") return { data: [{ id: "o1", outfit_items: items }] };
+        if (isReadById(c)) return { data: outfitRow("o1", row.saved_at) };
+        return {};
+      });
+      await updateSavedOutfit("o1", edit);
+      expect(items.map((i) => i.item_id).sort(), failAt).toEqual(["b1", "l1", "s1", "t3"]);
+      expect(fake.calls.filter((c) => c.op === "insert").length, failAt).toBeLessThanOrEqual(1);
+      expect(row).toMatchObject({ context_type: "shabbat", name: "שבת" });
+    }
+  });
+
+  it("refuses the garments of another saved outfit, naming it, and writes nothing", async () => {
+    model(null);
+    const err = await updateSavedOutfit("o1", { ...edit, garments: [{ item_id: "s1", slot: "shoes" }, { item_id: "t2", slot: "top" }, { item_id: "b1", slot: "bottom" }] }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SavedOutfitError);
+    expect(err).toMatchObject({ code: "same_garments", otherId: "o2" });
+    expect(fake.calls.some((c) => c.op !== "select")).toBe(false);
+  });
+
+  it("changes only the row when the garments are the same (another order)", async () => {
+    model(null);
+    await updateSavedOutfit("o1", { garments: [...before].reverse(), contextType: "date", name: null });
+    expect(ops()).toEqual(["select outfits", "select outfits", "update outfits", "select outfits"]);
+    expect(fake.calls[2]!.payload).toEqual({ context_type: "date", name: null });
+  });
+
+  it("validates before any request, refuses an unsaved row, and rejects in the design preview", async () => {
+    use(() => ({}));
+    await expect(updateSavedOutfit("o1", { ...edit, garments: after.slice(1) })).rejects.toMatchObject({ code: "invalid_outfit" });
+    await expect(updateSavedOutfit("o1", { ...edit, name: "x".repeat(41) })).rejects.toMatchObject({ code: "name_too_long" });
+    expect(fake.calls).toEqual([]);
+    use(() => ({ data: { saved_at: null, outfit_items: before } }));
+    await expect(updateSavedOutfit("o1", edit)).rejects.toMatchObject({ code: "not_saved" });
+    use(() => ({ data: null }));
+    await expect(updateSavedOutfit("o1", edit)).rejects.toMatchObject({ code: "not_found" });
+    state.preview = true;
+    use(() => ({}));
+    await expect(updateSavedOutfit("o1", edit)).rejects.toThrow();
     expect(fake.calls).toEqual([]);
   });
 });

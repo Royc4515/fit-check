@@ -5,15 +5,19 @@ import { isPreview, PreviewReadOnlyError } from "./preview";
 import {
   assertSaveable,
   findSameOutfit,
+  garmentChanges,
   itemSetKey,
   normalizeOutfitName,
+  OutfitPieceSchema,
   parseOutfitRow,
   removalAction,
   SavedOutfitError,
   SaveOutfitInputSchema,
   savedOutfitFromRow,
+  UpdateOutfitInputSchema,
   savedOutfitsFromRows,
   type SavedOutfit,
+  type UpdateOutfitInput,
 } from "./savedOutfit";
 
 /**
@@ -246,4 +250,83 @@ export async function renameOutfit(outfitId: string, name: string | null): Promi
   if (error) throw error;
   requireUpdated(data, outfitId);
   return stored;
+}
+
+const EditRowSchema = z.object({
+  saved_at: z.string().nullable(),
+  outfit_items: z.array(OutfitPieceSchema),
+});
+
+/**
+ * Changes a saved outfit in place (the build screen's edit, DESIGN.md "שלב 5.2" item 5): its garments, "למתי" and
+ * its name, all three at once. The same row: its id, wears, favourite and `saved_at` stay, so its history and its
+ * place in the collection do not move. Returns the outfit as stored.
+ *
+ * Validation before any request: zod (`invalid_input`), exactly one top, bottom and shoes and at most one layer, no
+ * garment twice (`invalid_outfit`), a name over 40 characters (`name_too_long`). Then, in the design preview,
+ * PreviewReadOnlyError. Then reads: `not_found` (no such row, or RLS hides it), `not_saved` (the row is not in the
+ * collection), `same_garments` with `otherId` when ANOTHER saved outfit already has exactly these garments: nothing is
+ * merged and nothing written; the screen offers that outfit instead.
+ *
+ * Write order, and why. supabase-js sends each statement as its own request, so the edit is not one transaction
+ * (that would need an RPC, i.e. a migration). The order is chosen so that a failure at any step leaves an outfit that
+ * still has every garment it had, never fewer, and that running the same edit again finishes it:
+ * 1. insert the garments it gains (`outfit_items`);
+ * 2. re-slot kept garments whose slot changed (only after an item was re-tagged; normally nothing);
+ * 3. delete the garments it loses;
+ * 4. update `context_type` and `name` on the `outfits` row (guarded on it still being saved).
+ * Failure modes of the writes, and what the user sees then:
+ * - step 1 fails: nothing changed; the error is thrown and the build screen keeps every choice with "נסה שוב".
+ * - step 2 or 3 fails: the outfit holds its old garments AND the new ones (e.g. two tops) until the edit is run
+ *   again; the collection shows the first garment of each slot. The error is thrown. "נסה שוב" re-reads the row,
+ *   so it inserts nothing twice and only deletes what is left over.
+ * - step 4 fails: garments are the new ones, "למתי" and name still the old ones; the error is thrown and a retry
+ *   writes only the row. `not_saved` here means the outfit was removed from the collection meanwhile.
+ * - the read-back after success fails: the error is thrown although the edit is complete; a retry finds nothing to
+ *   change in the garments and rewrites the same row values.
+ * Never: an outfit with no garments or with only part of the old set (that was the risk of "delete all, insert new",
+ * which this order avoids). Network and permission errors are thrown as they come.
+ */
+export async function updateSavedOutfit(outfitId: string, changes: UpdateOutfitInput): Promise<SavedOutfit> {
+  const parsed = UpdateOutfitInputSchema.safeParse(changes);
+  if (!parsed.success) throw new SavedOutfitError("invalid_input", parsed.error.message);
+  const input = parsed.data;
+  assertSaveable(input.garments);
+  const name = normalizeOutfitName(input.name);
+  if (isPreview()) throw new PreviewReadOnlyError("updateSavedOutfit");
+
+  const read = await supabase.from("outfits").select("saved_at,outfit_items(item_id,slot)").eq("id", outfitId).maybeSingle();
+  if (read.error) throw read.error;
+  if (!read.data) throw new SavedOutfitError("not_found", `outfit ${outfitId} not found`);
+  const row = EditRowSchema.parse(read.data);
+  if (row.saved_at === null) throw new SavedOutfitError("not_saved", `outfit ${outfitId} is not saved`);
+
+  const other = await findSavedWithItems(
+    input.garments.map((g) => g.item_id),
+    outfitId
+  );
+  if (other) throw new SavedOutfitError("same_garments", `saved outfit ${other} already has these garments`, [], other);
+
+  const plan = garmentChanges(row.outfit_items, input.garments);
+  if (plan.add.length > 0) {
+    const res = await supabase.from("outfit_items").insert(plan.add.map((g) => ({ outfit_id: outfitId, item_id: g.item_id, slot: g.slot })));
+    if (res.error) throw res.error;
+  }
+  for (const g of plan.reslot) {
+    const res = await supabase.from("outfit_items").update({ slot: g.slot }).eq("outfit_id", outfitId).eq("item_id", g.item_id);
+    if (res.error) throw res.error;
+  }
+  if (plan.remove.length > 0) {
+    const res = await supabase.from("outfit_items").delete().eq("outfit_id", outfitId).in("item_id", plan.remove);
+    if (res.error) throw res.error;
+  }
+  const updated = await supabase
+    .from("outfits")
+    .update({ context_type: input.contextType, name })
+    .eq("id", outfitId)
+    .not("saved_at", "is", null)
+    .select("id");
+  if (updated.error) throw updated.error;
+  requireUpdated(updated.data, outfitId);
+  return mustFetch(outfitId);
 }

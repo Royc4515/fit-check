@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   assertSaveable,
   findSameOutfit,
+  garmentChanges,
   itemSetKey,
   normalizeOutfitName,
   outfitProblems,
@@ -240,5 +241,31 @@ describe("delete decisions", () => {
     expect(undoKeepsOutfit({ savedAt: "2026-11-19T08:00:00Z", remainingWears: 0 })).toBe(true);
     expect(undoKeepsOutfit({ savedAt: null, remainingWears: 2 })).toBe(true);
     expect(undoKeepsOutfit(null)).toBe(true);
+  });
+});
+
+describe("garmentChanges", () => {
+  const cur: OutfitPiece[] = [
+    { item_id: "t1", slot: "top" },
+    { item_id: "b1", slot: "bottom" },
+    { item_id: "s1", slot: "shoes" },
+    { item_id: "l1", slot: "layer" },
+  ];
+
+  it("adds what is new, removes what is gone, keeps the rest untouched", () => {
+    const next: OutfitPiece[] = [
+      { item_id: "t2", slot: "top" },
+      { item_id: "b1", slot: "bottom" },
+      { item_id: "s1", slot: "shoes" },
+    ];
+    expect(garmentChanges(cur, next)).toEqual({ add: [{ item_id: "t2", slot: "top" }], reslot: [], remove: ["t1", "l1"] });
+  });
+
+  it("is empty for the same garments in another order", () => {
+    expect(garmentChanges(cur, [...cur].reverse())).toEqual({ add: [], reslot: [], remove: [] });
+  });
+
+  it("re-slots a kept garment whose slot changed, never deleting and inserting it (the key is the item)", () => {
+    expect(garmentChanges(cur, [{ item_id: "l1", slot: "top" }, ...cur.slice(1, 3)])).toEqual({ add: [], reslot: [{ item_id: "l1", slot: "top" }], remove: ["t1"] });
   });
 });
