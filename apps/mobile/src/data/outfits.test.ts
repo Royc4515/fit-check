@@ -6,7 +6,8 @@ import { fakeSupabase, type FakeCall, type FakeResponse } from "./__fixtures__/f
 // The requests of the saved-outfit data layer against a recording stand-in for supabase-js: validation before any
 // request, the duplicate rule, no orphan row after a failed outfit_items insert, and the remove decision. The rules
 // themselves are covered in savedOutfit.test.ts.
-const state = vi.hoisted(() => ({ respond: (_: unknown): unknown => ({}), preview: false }));
+// `wears`: what the worn-wears read (table "wears") answers; null hands that read to the test's own responder.
+const state = vi.hoisted(() => ({ respond: (_: unknown): unknown => ({}), preview: false, wears: [] as unknown[] | null }));
 let fake = fakeSupabase((c) => state.respond(c) as FakeResponse);
 vi.mock("../lib/supabase", () => ({ supabase: { from: (t: string) => fake.client.from(t) } }));
 vi.mock("./preview", () => ({
@@ -15,14 +16,19 @@ vi.mock("./preview", () => ({
   PreviewReadOnlyError: class PreviewReadOnlyError extends Error {},
 }));
 
-const { fetchSavedOutfits, markOutfitSaved, removeSavedOutfit, renameOutfit, saveOutfit, setOutfitFavorite, updateSavedOutfit } = await import("./outfits");
+const { fetchSavedOutfit, fetchSavedOutfits, markOutfitSaved, removeSavedOutfit, renameOutfit, saveOutfit, setOutfitFavorite, updateSavedOutfit } = await import("./outfits");
 const { SavedOutfitError } = await import("./savedOutfit");
 
 function use(respond: (c: FakeCall) => FakeResponse) {
-  state.respond = (c) => respond(c as FakeCall);
+  state.respond = (c) => {
+    const call = c as FakeCall;
+    return call.table === "wears" && call.op === "select" && state.wears !== null ? { data: state.wears } : respond(call);
+  };
   fake = fakeSupabase((c) => state.respond(c) as FakeResponse);
 }
-const ops = () => fake.calls.map((c) => `${c.op} ${c.table}`);
+// The worn-wears read behind every outfit read is covered by its own tests (fetchSavedOutfits); the write-sequence
+// assertions leave it out.
+const ops = () => fake.calls.filter((c) => c.table !== "wears").map((c) => `${c.op} ${c.table}`);
 const isReadById = (c: FakeCall) => c.op === "select" && c.filters.some((f) => f[0] === "maybeSingle");
 
 function item(id: string, sub: "tshirt" | "chinos" | "sneakers"): Item {
@@ -60,6 +66,12 @@ function outfitRow(id: string, savedAt: string | null, wears: { worn_on: string;
   };
 }
 
+let wornRows = 0;
+/** A worn wear as the worn-wears read returns it: its date and the item ids of the outfit row it points at. */
+function wornRow(worn_on: string, itemIds: string[] | null) {
+  return { id: `w${++wornRows}`, worn_on, outfits: itemIds && { outfit_items: itemIds.map((item_id) => ({ item_id })) } };
+}
+
 const pieces = [
   { item_id: "t1", slot: "top" as const },
   { item_id: "b1", slot: "bottom" as const },
@@ -68,7 +80,9 @@ const pieces = [
 const saveArgs = { userId: "u1", date: "2026-11-19", contextType: "weekday" as const, source: "manual" as const, pieces, now: new Date("2026-11-19T08:00:00Z") };
 
 beforeEach(() => {
+  vi.restoreAllMocks();
   state.preview = false;
+  state.wears = [];
 });
 
 describe("saveOutfit", () => {
@@ -140,6 +154,7 @@ describe("saveOutfit", () => {
 describe("markOutfitSaved", () => {
   it("sets saved_at on the same row, guarded on it being unsaved", async () => {
     let saved = false;
+    state.wears = [wornRow("2026-11-12", ["t1", "b1", "s1"])];
     use((c) => {
       if (c.op === "update") {
         saved = true;
@@ -221,6 +236,83 @@ describe("fetchSavedOutfits", () => {
     use(() => ({}));
     expect(await fetchSavedOutfits()).toEqual([]);
     expect(fake.calls).toEqual([]);
+  });
+});
+
+describe("wear count by garment set (fetchSavedOutfits, fetchSavedOutfit)", () => {
+  const SET = ["t1", "b1", "s1"];
+  const wearsCalls = () => fake.calls.filter((c) => c.table === "wears");
+
+  it("three unsaved rows of one set worn on three days, one of them saved: 3 and the newest date, in two requests", async () => {
+    // The saved row is the middle one; its own embedded wear is one of the three the wears read returns.
+    state.wears = [wornRow("2026-11-18", SET), wornRow("2026-11-12", ["s1", "t1", "b1"]), wornRow("2026-11-05", SET)];
+    use((c) => (c.table === "outfits" ? { data: [outfitRow("u2", "2026-11-19T08:00:00Z", [{ worn_on: "2026-11-12", feedback: "worn" }])] } : {}));
+    const [o] = await fetchSavedOutfits();
+    expect(o).toMatchObject({ id: "u2", wornCount: 3, lastWornOn: "2026-11-18", wearCount: 1 });
+    expect(fake.calls.map((c) => c.table).sort()).toEqual(["outfits", "wears"]);
+    expect(wearsCalls()[0]!.filters).toContainEqual(["eq", "feedback", "worn"]);
+  });
+
+  it("counts only the wears the read returns: a skip on the row, a different set and a deleted outfit add nothing", async () => {
+    state.wears = [wornRow("2026-11-18", ["t2", "b1", "s1"]), wornRow("2026-11-17", [...SET, "l1"]), wornRow("2026-11-16", null), wornRow("2026-11-02", SET)];
+    use((c) => (c.table === "outfits" ? { data: [outfitRow("o1", "2026-11-10T08:00:00Z", [{ worn_on: "2026-11-09", feedback: "skipped" }, { worn_on: "2026-11-02", feedback: "worn" }])] } : {}));
+    const [o] = await fetchSavedOutfits();
+    // wornCount 1 (the wear on 11-02, once, though the row's embedded wears list it too), wearCount 2 (any feedback).
+    expect(o).toMatchObject({ wornCount: 1, lastWornOn: "2026-11-02", wearCount: 2 });
+  });
+
+  it("reads the next page when the first is full, and counts across both", async () => {
+    const page1 = Array.from({ length: 1000 }, (_, n) => wornRow("2026-10-01", [`x${n}`, "b1", "s1"]));
+    state.wears = null;
+    use((c) => {
+      if (c.table === "outfits") return { data: [outfitRow("o1", "2026-11-10T08:00:00Z")] };
+      const range = c.filters.find((f) => f[0] === "range")!;
+      return { data: range[1] === 0 ? page1 : [wornRow("2026-09-01", SET)] };
+    });
+    const [o] = await fetchSavedOutfits();
+    expect(o).toMatchObject({ wornCount: 1, lastWornOn: "2026-09-01" });
+    expect(wearsCalls().map((c) => c.filters.find((f) => f[0] === "range")!.slice(1))).toEqual([
+      [0, 999],
+      [1000, 1999],
+    ]);
+  });
+
+  it("falls back to the row's own worn wears, and still loads the collection, when the wears read fails", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    state.wears = null;
+    const own = [{ worn_on: "2026-11-02", feedback: "worn" }, { worn_on: "2026-11-09", feedback: "worn" }, { worn_on: "2026-11-11", feedback: "skipped" }];
+    use((c) => (c.table === "wears" ? { error: new Error("wears down") } : { data: [outfitRow("o1", "2026-11-10T08:00:00Z", own)] }));
+    const [o] = await fetchSavedOutfits();
+    expect(o).toMatchObject({ id: "o1", wornCount: 2, lastWornOn: "2026-11-09", wearCount: 3 });
+    expect(log).toHaveBeenCalled();
+  });
+
+  it("an outfits read that fails still throws", async () => {
+    use((c) => (c.table === "outfits" ? { error: new Error("outfits down") } : {}));
+    await expect(fetchSavedOutfits()).rejects.toThrow("outfits down");
+  });
+
+  it("one saved outfit counts by set too, and is null when it is not saved", async () => {
+    state.wears = [wornRow("2026-11-18", SET), wornRow("2026-11-05", SET), wornRow("2026-11-01", SET)];
+    use((c) => (c.table === "outfits" ? { data: outfitRow("o1", "2026-11-10T08:00:00Z") } : {}));
+    expect(await fetchSavedOutfit("o1")).toMatchObject({ wornCount: 3, lastWornOn: "2026-11-18", wearCount: 0 });
+    expect(fake.calls).toHaveLength(2);
+    use((c) => (c.table === "outfits" ? { data: outfitRow("o1", null) } : {}));
+    expect(await fetchSavedOutfit("o1")).toBeNull();
+  });
+
+  it("removal still goes by the row's own wears: a saved build never worn on its own row is deleted, though its set was worn on other rows", async () => {
+    state.wears = [wornRow("2026-11-18", SET), wornRow("2026-11-05", SET)];
+    use((c) => {
+      if (c.table === "outfits" && c.op === "select" && c.payload === "saved_at,wears(id)") return { data: { saved_at: "2026-11-19T08:00:00Z", wears: [] } };
+      if (c.table === "outfits" && c.op === "select") return { data: [outfitRow("built", "2026-11-19T08:00:00Z")] };
+      return {};
+    });
+    expect(await fetchSavedOutfits()).toMatchObject([{ id: "built", wornCount: 2, wearCount: 0 }]);
+    fake.calls.length = 0;
+    expect(await removeSavedOutfit("built")).toBe("deleted");
+    expect(ops()).toEqual(["select outfits", "delete outfits"]);
+    expect(wearsCalls()).toEqual([]);
   });
 });
 
