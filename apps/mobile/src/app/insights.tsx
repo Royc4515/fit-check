@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { sessionUserId, useSession } from "../features/auth/SessionProvider";
 import { InsightsView } from "../features/insights/InsightsView";
 
 /**
@@ -10,5 +11,7 @@ export default function Insights() {
   const router = useRouter();
   // A deep link to /insights has no history, so back would do nothing; Profile is where the Insights row lives.
   const back = () => (router.canGoBack() ? router.back() : router.replace("/profile"));
-  return <InsightsView onBack={back} />;
+  // The root layout only shows this screen to a signed-in user (or the design preview's owner); null is for the type.
+  const userId = sessionUserId(useSession());
+  return userId ? <InsightsView onBack={back} userId={userId} /> : null;
 }
