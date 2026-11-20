@@ -13,7 +13,10 @@ import {
   SavedOutfitError,
   savedOutfitsFromRows,
   undoKeepsOutfit,
+  withTallyChange,
   wornBySet,
+  wornIndex,
+  wornTallyOf,
   type OutfitPiece,
 } from "./savedOutfit";
 
@@ -353,13 +356,33 @@ describe("wornBySet (a saved outfit counts every wear of its garments)", () => {
     expect(tally.get("empty")).toEqual({ wornCount: 0, lastWornOn: null });
   });
 
-  it("leaves wearCount (the row's own wears) alone when counting by set", () => {
-    const [o] = savedOutfitsFromRows(
-      [row({ wears: [{ worn_on: "2026-11-02", feedback: "worn" }, { worn_on: "2026-11-03", feedback: "skipped" }] })],
-      new Map([[itemSetKey(["t1", "b1", "s1", "l1"]), { wornCount: 5, lastWornOn: "2026-11-09" }]])
-    );
-    expect(o!.wornCount).toBe(5);
-    expect(o!.lastWornOn).toBe("2026-11-09");
-    expect(o!.wearCount).toBe(2);
+  it("a saved outfit carries only its own row's wears: the tally by set is separate", () => {
+    const [o] = savedOutfitsFromRows([row({ wears: [{ worn_on: "2026-11-02", feedback: "worn" }, { worn_on: "2026-11-03", feedback: "skipped" }] })]);
+    expect(o).toMatchObject({ wornCount: 1, lastWornOn: "2026-11-02", wearCount: 2 });
+  });
+});
+
+describe("withTallyChange (the optimistic step, by set)", () => {
+  const ids = ["t1", "b1", "s1"];
+  const base = wornIndex([{ date: "2026-11-02", itemIds: ids }, { date: "2026-11-05", itemIds: ["s1", "t1", "b1"] }]);
+
+  it("a wear counts one more and moves the date forward only, whatever the garment order", () => {
+    expect(wornTallyOf(withTallyChange(base, ["b1", "s1", "t1"], 1, "2026-11-09"), ids)).toEqual({ wornCount: 3, lastWornOn: "2026-11-09" });
+    expect(wornTallyOf(withTallyChange(base, ids, 1, "2026-11-01"), ids)).toEqual({ wornCount: 3, lastWornOn: "2026-11-05" });
+  });
+
+  it("an undo counts one less and keeps the date until a read corrects it; at zero there is no date; never below zero", () => {
+    expect(wornTallyOf(withTallyChange(base, ids, -1, "2026-11-05"), ids)).toEqual({ wornCount: 1, lastWornOn: "2026-11-05" });
+    const none = wornIndex([]);
+    expect(wornTallyOf(withTallyChange(none, ids, -1, "2026-11-05"), ids)).toEqual({ wornCount: 0, lastWornOn: null });
+    expect(wornTallyOf(withTallyChange(withTallyChange(none, ids, 1, "2026-11-05"), ids, -1, "2026-11-05"), ids)).toEqual({ wornCount: 0, lastWornOn: null });
+  });
+
+  it("a set nobody wore starts at one; other sets and an empty set are untouched; the old index is not mutated", () => {
+    const next = withTallyChange(base, ["t2", "b1", "s1"], 1, "2026-11-09");
+    expect(wornTallyOf(next, ["t2", "b1", "s1"])).toEqual({ wornCount: 1, lastWornOn: "2026-11-09" });
+    expect(wornTallyOf(next, ids)).toEqual({ wornCount: 2, lastWornOn: "2026-11-05" });
+    expect(wornTallyOf(base, ["t2", "b1", "s1"])).toEqual({ wornCount: 0, lastWornOn: null });
+    expect(withTallyChange(base, [], 1, "2026-11-09")).toBe(base);
   });
 });

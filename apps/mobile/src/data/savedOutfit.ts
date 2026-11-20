@@ -227,15 +227,14 @@ export type SavedOutfit = {
   /** Every item id in `outfit_items`, readable or not: what "the same garments" compares. */
   itemIds: string[];
   /**
-   * Wears with feedback `worn` of these garments, and the newest of their dates (null = never worn). Counted by
-   * garment set ("אותם בגדים = אותו לוק"): every worn wear whose outfit row has exactly this set, on this row, on the
-   * unsaved rows the same garments were worn on before the outfit was saved, or on another saved row. Only what the
-   * screens SHOW. Never use it to decide what happens to this row: that is `wearCount`.
+   * Wears with feedback `worn` that point at THIS row, and the newest of their dates (null = none). The row's own
+   * count only: what the screens SHOW is the tally by garment set (`WornIndex`, `fetchWornTally`, the store's
+   * `useWornTally`), which also counts the wears of the same garments on other rows. Never present this as the count.
    */
   wornCount: number;
   /**
    * Every `wears` row that points at THIS row, any feedback: what editing the garments must keep this row for
-   * (EditPlan, the builder's copy note). Not the same number as `wornCount`, on purpose.
+   * (EditPlan, the builder's copy note, `removalAction`).
    */
   wearCount: number;
   lastWornOn: string | null;
@@ -276,11 +275,32 @@ export function wornIndex(wears: readonly WornWear[]): WornIndex {
  */
 export function wornBySet(saved: readonly { id: string; itemIds: readonly string[] }[], wears: readonly WornWear[]): Map<string, WornTally> {
   const index = wornIndex(wears);
-  return new Map(saved.map((o) => [o.id, tallyOf(index, o.itemIds)] as const));
+  return new Map(saved.map((o) => [o.id, wornTallyOf(index, o.itemIds)] as const));
 }
 
-function tallyOf(index: WornIndex, itemIds: readonly string[]): WornTally {
+/**
+ * The tally of one garment set in an index: `{ 0, null }` when no worn wear has exactly these garments (a real "never
+ * worn", since the index covers every wear), and always that for an empty set.
+ */
+export function wornTallyOf(index: WornIndex, itemIds: readonly string[]): WornTally {
   return (itemIds.length === 0 ? undefined : index.get(itemSetKey(itemIds))) ?? { wornCount: 0, lastWornOn: null };
+}
+
+/**
+ * The index after a wear of `itemIds` was recorded (+1) or undone (-1), without a read: the optimistic step. The count
+ * moves by one (never below 0); the date only moves FORWARD on a wear, and stays on an undo (the previous newest date
+ * is not known without the wears: the background refresh corrects it), except that no wears left means no date.
+ * An empty set changes nothing. Pure: returns a new Map.
+ */
+export function withTallyChange(index: WornIndex, itemIds: readonly string[], delta: 1 | -1, date: string): WornIndex {
+  if (itemIds.length === 0) return index;
+  const key = itemSetKey(itemIds);
+  const now = wornTallyOf(index, itemIds);
+  const wornCount = Math.max(0, now.wornCount + delta);
+  const lastWornOn = wornCount === 0 ? null : delta === 1 && (now.lastWornOn === null || date > now.lastWornOn) ? date : now.lastWornOn;
+  const next = new Map(index);
+  next.set(key, { wornCount, lastWornOn });
+  return next;
 }
 
 /** The outfit row parsed, or null (logged) when it does not match the schema. */
@@ -295,12 +315,10 @@ export function parseOutfitRow(raw: unknown): SavedOutfitRow | null {
 
 /**
  * A parsed outfit row to the model; null when the row is not saved (`saved_at` null), since only saved outfits are
- * in the collection. `wornCount` / `lastWornOn` come from `worn` (every worn wear grouped by garment set) when given;
- * without it they are the row's own worn wears, which is what a failed wears read leaves (see `fetchSavedOutfits`).
- * A garment whose item does not parse is logged and counted as missing, not fatal: one bad item
+ * in the collection. A garment whose item does not parse is logged and counted as missing, not fatal: one bad item
  * must not hide the outfit. A second garment for a slot that is taken is left out of the picture (kept in itemIds).
  */
-export function savedOutfitFromRow(row: SavedOutfitRow, worn: WornIndex | null = null): SavedOutfit | null {
+export function savedOutfitFromRow(row: SavedOutfitRow): SavedOutfit | null {
   if (row.saved_at === null) return null;
   const bySlot = new Map<Slot, Item>();
   for (const oi of row.outfit_items) {
@@ -317,9 +335,6 @@ export function savedOutfitFromRow(row: SavedOutfitRow, worn: WornIndex | null =
   });
   const itemIds = row.outfit_items.map((oi) => oi.item_id);
   const own = row.wears.filter((w) => w.feedback === "worn").map((w) => w.worn_on);
-  const tally: WornTally = worn
-    ? tallyOf(worn, itemIds)
-    : { wornCount: own.length, lastWornOn: own.reduce<string | null>((last, d) => (last === null || d > last ? d : last), null) };
   return {
     id: row.id,
     name: row.name,
@@ -331,22 +346,21 @@ export function savedOutfitFromRow(row: SavedOutfitRow, worn: WornIndex | null =
     pieces,
     missing: REQUIRED_SLOTS.filter((slot) => !bySlot.has(slot)),
     itemIds,
-    wornCount: tally.wornCount,
+    wornCount: own.length,
     wearCount: row.wears.length,
-    lastWornOn: tally.lastWornOn,
+    lastWornOn: own.reduce<string | null>((last, d) => (last === null || d > last ? d : last), null),
   };
 }
 
 /**
  * Rows to the collection, newest `saved_at` first (ties: id, so the order is stable). Repeats the query's order so a
  * caller that merges rows (an optimistic insert) gets the same list. Malformed and unsaved rows are skipped.
- * @param worn - every worn wear by garment set, or null to count each row's own wears only.
  */
-export function savedOutfitsFromRows(rows: readonly unknown[], worn: WornIndex | null = null): SavedOutfit[] {
+export function savedOutfitsFromRows(rows: readonly unknown[]): SavedOutfit[] {
   const out: SavedOutfit[] = [];
   for (const raw of rows) {
     const row = parseOutfitRow(raw);
-    const outfit = row ? savedOutfitFromRow(row, worn) : null;
+    const outfit = row ? savedOutfitFromRow(row) : null;
     if (outfit) out.push(outfit);
   }
   const time = (o: SavedOutfit) => Date.parse(o.savedAt);
