@@ -34,7 +34,7 @@ export function feedbackUpdates(itemIds: readonly string[], feedback: Feedback, 
       const a = ids[i]!;
       const b = ids[j]!;
       const old = weights.get(pairKey(a, b)) ?? 0;
-      const weight = round3(Math.max(-1, Math.min(1, old + delta)));
+      const weight = round3(Math.max(-FEEDBACK.max_pair_weight, Math.min(FEEDBACK.max_pair_weight, old + delta)));
       if (weight !== old) out.push({ a, b, weight });
     }
   }
