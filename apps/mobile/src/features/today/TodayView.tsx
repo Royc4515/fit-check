@@ -1,4 +1,13 @@
-import { combineAdjustments, learnedAdjustment, NO_ADJUSTMENT, swapOptions, type DayAdjustment, type PairWeights } from "@fit-check/engine";
+import {
+  combineAdjustments,
+  learnedAdjustment,
+  NO_ADJUSTMENT,
+  swapOptions,
+  withSavedPairs,
+  type DayAdjustment,
+  type PairWeights,
+  type SavedOutfitSignal,
+} from "@fit-check/engine";
 import type { Item, Slot, StylistInput, StylistOutput } from "@fit-check/schema";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -43,6 +52,7 @@ import { explainOutfit } from "./explain";
 import { settingGetNow, settingGet, settingSet } from "../../data/kv";
 import { asCandidate, contextTypeOf, type DayInput, type Swaps, type TodayPlan } from "./outfit";
 import { bookmarkFailureAction, bookmarkIntent, shownSaved, type BookmarkIntent } from "./bookmark";
+import { initialLearn, learnedFrom, nextLearn, skipCount } from "./learning";
 import { PieceSheet } from "./PieceSheet";
 import type { BookmarkApi } from "./useBookmark";
 import { defaultAdjustment, occasionInEffect, occasionMayApply, planDays } from "./plans";
@@ -75,6 +85,11 @@ type Props = {
   occasions: OccasionsState;
   /** Saving the shown outfit to the collection, and the saved outfits it is compared with (DESIGN.md "שלב 5.2" item 6). */
   bookmark: BookmarkApi;
+  /**
+   * The saved outfits the engine learns from (DESIGN.md "שלב 5.2" item 8), or null while they have not been read
+   * (loading, or failed). Taken in only when the outfit is regenerated anyway (learning.ts), never on arrival.
+   */
+  savedOutfits?: readonly SavedOutfitSignal[] | null;
 };
 
 /** Waits for taps (nudges, swaps) to settle before asking the stylist, so a burst of taps costs one call. */
@@ -166,7 +181,22 @@ type StatusItem = {
  * view (DESIGN.md section 3 "היום" item 8). A failed "wearing it" is the only status that stays in the bar, next to
  * the button it belongs to. Desktop (>= 900): two columns, nothing floats.
  */
-export function TodayView({ items, pairWeights, day, history, actions, busy, failedOn, laundered, correction = null, stylist, clock, occasions, bookmark }: Props) {
+export function TodayView({
+  items,
+  pairWeights,
+  day,
+  history,
+  actions,
+  busy,
+  failedOn,
+  laundered,
+  correction = null,
+  stylist,
+  clock,
+  occasions,
+  bookmark,
+  savedOutfits = null,
+}: Props) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -225,6 +255,17 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   // changes the suggestion (a nudge, a skip) clears them, or a swapped shirt would be pasted onto a different outfit.
   const [adjustments, setAdjustments] = useState<Readonly<Record<string, DayAdjustment>>>({});
   const [swapsByDay, setSwapsByDay] = useState<Readonly<Record<string, Swaps>>>({});
+  // The saved outfits the engine learns from: fixed when the screen opens, replaced only by a new skip or a nudge, so
+  // a list that arrives after the first paint never re-ranks the outfit on screen (learning.ts). Updated during render
+  // (React's "state from the previous render" pattern), so a skip and its new list land in the same frame.
+  const skips = skipCount(history);
+  const [learn, setLearn] = useState(() => initialLearn(skips, adjustments, savedOutfits));
+  const learnNow = nextLearn(learn, skips, adjustments, savedOutfits);
+  if (learnNow !== learn) setLearn(learnNow);
+  // don't touch / every engine call on this screen scores with these, never with `pairWeights`: a swap list or a
+  // corrected wear ranked without the saved bonus would disagree with the outfit above it. And never the other way:
+  // the learned weights written by a wear (useFeedback) stay `pairWeights`, or the bonus would be banked as wears.
+  const scoringWeights = useMemo(() => withSavedPairs(pairWeights, learnedFrom(learnNow)), [pairWeights, learnNow]);
   // A day's taps start from its default (one "dressier" step on a holiday with the observance switch off), so the
   // sheet shows that step as taken and can take it back.
   const tapsOf = (d: DayInput) => adjustments[d.date] ?? defaultAdjustment(d);
@@ -335,7 +376,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     () =>
       planDays({
         items,
-        pairWeights,
+        pairWeights: scoringWeights,
         days,
         history,
         adjustments: effectiveByDay,
@@ -347,7 +388,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
       }),
     // keyFor reads only `days`, `day` and `t`, all listed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, pairWeights, days, day, history, effectiveByDay, swapsByDay, answers, t]
+    [items, scoringWeights, days, day, history, effectiveByDay, swapsByDay, answers, t]
   );
   const selected = plans[sel]!;
   const base = selected.base;
@@ -407,8 +448,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     [plan, itemById]
   );
   const options = useMemo(
-    () => (plan.kind !== "empty" && piece ? swapOptions(selected.pool, plan.req, pairWeights, shownItems, piece.slot) : []),
-    [plan, piece, selected.pool, pairWeights, shownItems]
+    () => (plan.kind !== "empty" && piece ? swapOptions(selected.pool, plan.req, scoringWeights, shownItems, piece.slot) : []),
+    [plan, piece, selected.pool, scoringWeights, shownItems]
   );
 
   // A failed write is also felt, not only read (DESIGN.md section 5: `warning` on failure). Native only.
@@ -1034,7 +1075,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
             const corrected = correctedPieces(shownItems, piece.item.id, o);
             const record = plan.record;
             void actions
-              .correct(record, asCandidate(corrected, plan.req, pairWeights), "swap", effective, { date: record.date, dayType: contextTypeOf(days[sel]!) })
+              .correct(record, asCandidate(corrected, plan.req, scoringWeights), "swap", effective, { date: record.date, dayType: contextTypeOf(days[sel]!) })
               .then(() => requestFocus("wear"));
             return;
           }
