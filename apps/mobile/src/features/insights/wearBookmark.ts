@@ -71,11 +71,27 @@ export function wearFailureLine(failure: BookmarkFailureInfo & { unsaveable: boo
   return { kind: "retry", wantSaved: failure.wantSaved, intent: current };
 }
 
-/** The first row with this garment set, as the bookmark sees it now; null when none is listed. */
-export function bookmarkOfKey(rows: readonly WornRow[], saved: SavedLookup, key: string): WearBookmark | null {
+/**
+ * The bookmark of a garment set as it is now, for a failure line's retry; null when no listed row has the set.
+ * `preferOutfitId` is the row that was pressed: while it is still listed and still unsaved the retry marks THAT row (its
+ * wear is the one that counts for the saved outfit), else the first row of the set.
+ */
+export function bookmarkOfKey(rows: readonly WornRow[], saved: SavedLookup, key: string, preferOutfitId: string | null = null): WearBookmark | null {
+  let first: WearBookmark | null = null;
   for (const row of rows) {
     const b = wearBookmark(row, saved);
-    if (b.key === key) return b;
+    if (b.key !== key) continue;
+    if (preferOutfitId !== null && row.outfitId === preferOutfitId && b.kind === "unsaved") return b;
+    first ??= b;
   }
-  return null;
+  return first;
+}
+
+/**
+ * Whether every bookmark in the list is inert: until the saved list has been read, and while ANY write is on its way.
+ * One write at a time (as on Today's single bookmark): a second press would be dropped by the hook, and a failure line
+ * would then belong to the wrong row. Pure.
+ */
+export function bookmarksDisabled(ready: boolean, pending: { key: string; saved: boolean } | null): boolean {
+  return !ready || pending !== null;
 }

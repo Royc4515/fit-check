@@ -11,7 +11,7 @@ import { spoken } from "../item/a11y";
 import type { BookmarkApi } from "../today/useBookmark";
 import { longDate, ltr, shortDate, weekday } from "./format";
 import { OutfitItemRow } from "./OutfitItemRow";
-import { bookmarkOfKey, wearBookmark, wearFailureLine, wearShownSaved, type WearBookmark, type WearFailureLine } from "./wearBookmark";
+import { bookmarkOfKey, bookmarksDisabled, wearBookmark, wearFailureLine, wearShownSaved, type WearBookmark, type WearFailureLine } from "./wearBookmark";
 
 /** Outfits listed before "show more" (brief: up to 10). */
 const FIRST_PAGE = 10;
@@ -75,6 +75,9 @@ function WearsContent({ summary, onOpenItem, bookmark }: { summary: WearSummary;
   // scrolled out of sight when a write fails.
   const [anchor, setAnchor] = useState<string | null>(null);
   const press = (row: Outfit, b: WearBookmark) => {
+    // Every bookmark is disabled while a write is on its way; this guard is for two presses inside one frame, which
+    // render has not yet seen. A press that is not accepted changes nothing, the anchor and the blocked line included.
+    if (bookmark.isBusy()) return;
     setAnchor(row.wearId);
     if (b.kind === "unsaveable") {
       bookmark.dismissFailure();
@@ -91,10 +94,11 @@ function WearsContent({ summary, onOpenItem, bookmark }: { summary: WearSummary;
   if (blocked !== null) {
     line = bookmarkOfKey(summary.outfits, bookmark.saved, blocked)?.kind === "unsaveable" ? { kind: "cannotSave" } : { kind: "none" };
   } else if (bookmark.failure) {
-    line = wearFailureLine(bookmark.failure, bookmarkOfKey(summary.outfits, bookmark.saved, bookmark.failure.key));
+    line = wearFailureLine(bookmark.failure, bookmarkOfKey(summary.outfits, bookmark.saved, bookmark.failure.key, bookmark.failure.outfitId));
     lineDate = bookmark.failure.date;
   }
 
+  const disabled = bookmarksDisabled(bookmark.ready, bookmark.pending);
   const lineUnderRow = anchor !== null && shown.some((o) => o.wearId === anchor);
   const lineView =
     line.kind === "none" ? null : (
@@ -106,6 +110,7 @@ function WearsContent({ summary, onOpenItem, bookmark }: { summary: WearSummary;
             : t(line.wantSaved ? "insights.wears.bookmark.saveFailed" : "insights.wears.bookmark.removeFailed")
         }
         action={line.kind === "retry" ? { label: t("common.retry"), onPress: () => void bookmark.press(line.intent, lineDate) } : undefined}
+        disabled={disabled}
       />
     );
 
@@ -114,14 +119,19 @@ function WearsContent({ summary, onOpenItem, bookmark }: { summary: WearSummary;
   const announcement = bookmark.announcement;
   const [announceCleared, setAnnounceCleared] = useState(0);
   const announceKey = announcement?.kind === "saved" ? "insights.wears.bookmark.saved" : "insights.wears.bookmark.removed";
-  const announceText = announcement && announcement.n !== announceCleared ? t(announceKey) : "";
+  // The date is part of the sentence: two saves a few seconds apart must not read as the same text, or the second may
+  // not be announced.
+  const anchorDate = summary.outfits.find((o) => o.wearId === anchor)?.date;
+  const announceWords = t(announceKey, { date: anchorDate ? longDate(anchorDate, locale) : "" });
+  const announceText = announcement && announcement.n !== announceCleared ? announceWords : "";
   useEffect(() => {
     if (!announcement) return;
-    if (Platform.OS !== "web") void AccessibilityInfo.announceForAccessibility(t(announceKey));
+    if (Platform.OS !== "web") void AccessibilityInfo.announceForAccessibility(announceWords);
     // Emptied after a while so a reader's browse mode does not find a stale sentence.
     const timer = setTimeout(() => setAnnounceCleared(announcement.n), 4000);
     return () => clearTimeout(timer);
-  }, [announcement, announceKey, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the sentence is fixed at the moment of the announcement
+  }, [announcement]);
   // Closing first: the item route is pushed over a screen with no modal left on it.
   const openItem = (id: string) => {
     setOpen(null);
@@ -173,9 +183,9 @@ function WearsContent({ summary, onOpenItem, bookmark }: { summary: WearSummary;
                   onPress={() => setOpen(o)}
                   bookmark={{
                     filled: wearShownSaved(b, bookmark.pending),
-                    // Drawn "not saved" and inert until the saved outfits have been read: before then a press could not
-                    // tell a saved outfit from one that is not (Today does the same).
-                    disabled: !bookmark.ready,
+                    // Drawn as it is, and inert, until the saved outfits have been read (a press could not tell a saved
+                    // outfit from one that is not) and while any bookmark's write is on its way (one write at a time).
+                    disabled,
                     unavailable: bookmark.unavailable,
                     onPress: () => press(o, b),
                   }}
@@ -301,7 +311,8 @@ function OutfitRow({
         icon={bookmark.filled ? "bookmark_fill" : "bookmark"}
         selected={bookmark.filled}
         // When the saved list could not be read the label also says why the button is disabled (as on Today).
-        accessibilityLabel={[bookmark.filled ? t("insights.wears.bookmark.remove") : t("insights.wears.bookmark.save"), bookmark.unavailable ? t("insights.wears.bookmark.unavailable") : null]
+        // The name carries the row's date: a list of identical "save" buttons tells a screen-reader user nothing.
+        accessibilityLabel={[spoken(t(bookmark.filled ? "insights.wears.bookmark.remove" : "insights.wears.bookmark.save", { date: longDate(outfit.date, locale) })), bookmark.unavailable ? t("insights.wears.bookmark.unavailable") : null]
           .filter(Boolean)
           .join(". ")}
         onPress={bookmark.onPress}

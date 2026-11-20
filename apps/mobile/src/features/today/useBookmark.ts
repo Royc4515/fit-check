@@ -3,7 +3,7 @@ import { markOutfitSaved, removeSavedOutfit, saveOutfit } from "../../data/outfi
 import { SavedOutfitError } from "../../data/savedOutfit";
 import { withOutfit, withoutOutfit } from "../outfits/collection";
 import { patchOutfits, refreshOutfits, useSavedOutfits } from "../outfits/store";
-import type { BookmarkFailureInfo, BookmarkIntent, SavedLookup } from "./bookmark";
+import { writeFailureKind, type BookmarkFailureInfo, type BookmarkIntent, type SavedLookup } from "./bookmark";
 
 /** A bookmark that can be pressed: `hidden` is never pressed. */
 export type PressableIntent = Exclude<BookmarkIntent, { kind: "hidden" }>;
@@ -18,6 +18,8 @@ export type BookmarkAnnouncement = { kind: "saved" | "removed"; n: number };
 export type BookmarkFailure = BookmarkFailureInfo & {
   /** The data layer refused the outfit itself (`invalid_outfit`: a garment was deleted), so no retry could pass. */
   unsaveable: boolean;
+  /** The outfit row a failed SAVE was marking (the pressed row's), so a retry writes the same row; null for a removal. */
+  outfitId: string | null;
 };
 
 export type BookmarkApi = {
@@ -33,6 +35,8 @@ export type BookmarkApi = {
   announcement: BookmarkAnnouncement | null;
   /** Saves or removes optimistically; a second press while one is on its way is ignored. `date` is the tab's date. */
   press: (intent: PressableIntent, date: string) => Promise<void>;
+  /** A write is on its way right now (read at call time, not render time: two presses in one frame both see it). */
+  isBusy: () => boolean;
   /**
    * Resolves when no press is on its way (never rejects). A feedback write waits for it: a save that has not answered
    * yet is not in the list, and a wear recorded meanwhile would get a row of its own instead of the saved outfit's.
@@ -85,7 +89,20 @@ export function useBookmark(userId: string): BookmarkApi {
         setAnnouncement({ kind: intent.kind === "saved" ? "removed" : "saved", n: count.current });
       } catch (error) {
         console.error("Bookmark write failed", error);
-        setFailure({ key: intent.key, date, wantSaved: intent.kind !== "saved", unsaveable: error instanceof SavedOutfitError && error.code === "invalid_outfit" });
+        const wantSaved = intent.kind !== "saved";
+        const kind = writeFailureKind(wantSaved, error instanceof SavedOutfitError ? error.code : undefined);
+        if (kind === "met") {
+          // A removal of an outfit that is already gone: nothing to tell the user; read the list so the shape follows.
+          void refreshOutfits(userId);
+        } else {
+          setFailure({
+            key: intent.key,
+            date,
+            wantSaved,
+            unsaveable: kind === "unsaveable",
+            outfitId: intent.kind === "unsaved" && intent.write.op === "mark" ? intent.write.outfitId : null,
+          });
+        }
       } finally {
         // Cleared with the store already patched (success) or not (failure): either way the next render is the truth.
         setPending(null);
@@ -103,6 +120,7 @@ export function useBookmark(userId: string): BookmarkApi {
     },
     [run]
   );
+  const isBusy = useCallback(() => busy.current, []);
   const settled = useCallback(() => inFlight.current ?? Promise.resolve(), []);
   // A failed read recovers by itself once, after 5 s, instead of only when the user leaves and returns.
   const failedRead = outfits.status === "error";
@@ -121,5 +139,5 @@ export function useBookmark(userId: string): BookmarkApi {
 
   const dismissFailure = useCallback(() => setFailure(null), []);
   const saved: SavedLookup = outfits.status === "ready" ? outfits.outfits : [];
-  return { ready: outfits.status === "ready", unavailable: failedRead, saved, pending, failure, announcement, press, settled, dismissFailure };
+  return { ready: outfits.status === "ready", unavailable: failedRead, saved, pending, failure, announcement, press, isBusy, settled, dismissFailure };
 }
