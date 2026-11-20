@@ -14,7 +14,7 @@ import { sessionUserId, useSession } from "../../features/auth/SessionProvider";
 import { withWornChange } from "../../features/outfits/collection";
 import { listNow, patchOutfits, refreshOutfits, useSavedOutfits, whenSettled } from "../../features/outfits/store";
 import { resolveWearRow } from "../../features/today/bookmark";
-import { firstGeneration, SAVED_LIST_GRACE_MS } from "../../features/today/learning";
+import { firstSuggestion, SAVED_LIST_GRACE_MS, WEATHER_GRACE_MS } from "../../features/today/learning";
 import { TodayView } from "../../features/today/TodayView";
 import { useBookmark } from "../../features/today/useBookmark";
 
@@ -97,15 +97,33 @@ function Today(props: {
     const timer = setTimeout(() => setGraceOver(true), SAVED_LIST_GRACE_MS);
     return () => clearTimeout(timer);
   }, [othersReady]);
+  // And for the forecast, at most WEATHER_GRACE_MS after its request started (not after the rest is in: it runs in
+  // parallel). The timer is set for what is left of that bound when Today mounts; a forecast that has already
+  // settled needs none.
+  const forecast = day.forecast;
+  const [weatherGraceOver, setWeatherGraceOver] = useState(false);
+  useEffect(() => {
+    if (!forecast.pending) return;
+    const timer = setTimeout(() => setWeatherGraceOver(true), Math.max(0, forecast.startedAt + WEATHER_GRACE_MS - Date.now()));
+    return () => clearTimeout(timer);
+  }, [forecast.pending, forecast.startedAt]);
   // don't touch / latched: once the first generation has happened, a list that is loading again (a focus read after a
-  // failure) must not take the outfit off the screen.
+  // failure) must not take the outfit off the screen, and a forecast that arrives later must not either (TodayView
+  // keeps the forecast the outfit was planned with until the user asks for another outfit).
   const [started, setStarted] = useState(false);
   const gate = started
     ? "started"
-    : firstGeneration({ othersReady, saved: saved.status, waitedMs: graceOver ? SAVED_LIST_GRACE_MS : 0 });
+    : firstSuggestion({
+        othersReady,
+        saved: saved.status,
+        savedWaitedMs: graceOver ? SAVED_LIST_GRACE_MS : 0,
+        forecast: forecast.pending ? "loading" : forecast.source.kind === "fresh" ? "fresh" : "failed",
+        cached: forecast.source.kind === "cached",
+        forecastWaitedMs: weatherGraceOver ? WEATHER_GRACE_MS : 0,
+      });
   if (gate !== "wait" && !started) setStarted(true);
   // Wait for today's answers so an outfit already marked worn never flashes as a fresh suggestion, and briefly for the
-  // saved list (same loading line).
+  // saved list and the forecast (same loading line).
   if (!feedback.history || gate === "wait") return <WardrobeGate state={{ status: "loading" }} />;
   return (
     <TodayView
