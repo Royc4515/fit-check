@@ -19,6 +19,7 @@ import { GestureDetector } from "react-native-gesture-handler";
 import { useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Reveal } from "../../components/editorial/Reveal";
+import { WardrobeGate } from "../../components/WardrobeGate";
 import {
   ActionBar,
   Button,
@@ -53,7 +54,7 @@ import { explainOutfit } from "./explain";
 import { settingGetNow, settingGet, settingSet } from "../../data/kv";
 import { asCandidate, contextTypeOf, weatherStillFits, type DayInput, type Swaps, type TodayPlan } from "./outfit";
 import { bookmarkFailureAction, bookmarkIntent, shownSaved, type BookmarkIntent } from "./bookmark";
-import { initialLearn, learnedFrom, nextLearn, nextWeatherInForce, skipCount, type WeatherInForce } from "./learning";
+import { initialLearn, initialWeatherInForce, learnedFrom, nextLearn, nextWeatherInForce, skipCount, weatherInForceFor, type WeatherInForce } from "./learning";
 import { PieceSheet } from "./PieceSheet";
 import type { BookmarkApi } from "./useBookmark";
 import { defaultAdjustment, occasionInEffect, occasionMayApply, planDays } from "./plans";
@@ -273,22 +274,27 @@ export function TodayView({
   const [learn, setLearn] = useState(() => initialLearn(skips, adjustments, savedOutfits));
   const learnNow = nextLearn(learn, skips, adjustments, savedOutfits);
   if (learnNow !== learn) setLearn(learnNow);
-  // The forecast the outfits are planned with, the same way: what the day had when the screen opened (Index waited for
-  // it at most WEATHER_GRACE_MS), replaced only by a new skip, a nudge, a tab change, a different occasion or "update
-  // the suggestion" (learning.ts nextWeatherInForce). A forecast that answers later updates the weather line at once
-  // (the numbers are facts) and never re-ranks the outfit on screen; if it makes that outfit wrong, a line says so.
+  // The forecast each tab's outfit is planned with, the same way: fixed when that tab's outfit is first generated
+  // (today's when the screen opened; Index waited for it at most WEATHER_GRACE_MS), replaced only by a skip, a nudge, a
+  // different occasion or "update the suggestion" on that day, and brought back by an undo (learning.ts
+  // nextWeatherInForce). Changing tabs is not a trigger. A forecast that answers later updates every printed number at
+  // once (they are facts) and never re-ranks an outfit already shown; if it makes that outfit wrong, a line says so.
   const [refresh, setRefresh] = useState(0);
-  const liveWeather = useMemo(() => ({ today: day.weather, chain: day.chain.map((d) => d.weather) }), [day]);
-  const weatherTriggers = { skips, adjustments, tab: selectedDate, occasion: days[0]!.occasion ?? null, refresh };
-  const [weatherState, setWeatherState] = useState<WeatherInForce<typeof liveWeather>>(() => ({ ...weatherTriggers, weather: liveWeather }));
-  const weatherNow = nextWeatherInForce(weatherState, weatherTriggers, liveWeather);
+  const liveOf = (date: string): DayWeather | null =>
+    date === day.date ? day.weather : (day.chain.find((d) => d.date === date)?.weather ?? null);
+  const weatherTriggers = { skips, adjustments, tab: selectedDate, today: day.date, occasion: days[0]!.occasion ?? null, refresh };
+  const [weatherState, setWeatherState] = useState<WeatherInForce<DayWeather | null>>(() => initialWeatherInForce(weatherTriggers, liveOf));
+  const weatherNow = nextWeatherInForce(weatherState, weatherTriggers, liveOf);
   if (weatherNow !== weatherState) setWeatherState(weatherNow);
-  const inForce = weatherNow.weather;
-  const inForceOf = (k: number): DayWeather | null => (k === 0 ? inForce.today : (inForce.chain[k - 1] ?? null));
-  // The days as they are planned: the calendar's days with the forecast in force.
+  const inForceOf = (k: number): DayWeather | null => weatherInForceFor(weatherNow, days[k]!.date, liveOf);
+  // The days as they are planned: the calendar's days with the forecast in force for each.
+  const plannedWeather = days.map((_, k) => inForceOf(k));
+  const plannedKey = JSON.stringify(plannedWeather);
   const planningDays = useMemo<DayInput[]>(
-    () => days.map((d, k) => ({ ...d, weather: k === 0 ? inForce.today : (inForce.chain[k - 1] ?? null) })),
-    [days, inForce]
+    () => days.map((d, k) => ({ ...d, weather: plannedWeather[k] ?? null })),
+    // plannedKey carries plannedWeather by value, so a new array with the same forecasts does not re-plan.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [days, plannedKey]
   );
   // don't touch / every engine call on this screen scores with these, never with `pairWeights`: a swap list or a
   // corrected wear ranked without the saved bonus would disagree with the outfit above it. And never the other way:
@@ -527,10 +533,14 @@ export function TodayView({
 
   const hebrew = day.hebrewDate?.[locale];
   const w = day.weather;
-  const template = outfit ? explainOutfit(t, { weather: dayWeather, dayType: days[sel]!.dayType, occasion: occasion ?? undefined }, outfit, dayLabel) : null;
-  // The stylist's sentence replaces the template lead only for the outfit it actually chose (not after a swap).
+  // The selected day's live forecast: every temperature the screen prints is this one (the numbers are facts); only the
+  // outfit stays as it was planned (dayWeather).
+  const liveSelWeather = liveOf(selectedDate);
+  const template = outfit ? explainOutfit(t, { weather: liveSelWeather, dayType: days[sel]!.dayType, occasion: occasion ?? undefined }, outfit, dayLabel) : null;
+  // The stylist's sentence replaces the template lead only for the outfit it actually chose (not after a swap), and
+  // only while the forecast it was told is still the live one: its words may carry the older numbers.
   const explanation =
-    template && plan.kind === "suggestion" && plan.styled && styled
+    template && plan.kind === "suggestion" && plan.styled && styled && sameWeather(dayWeather, liveSelWeather)
       ? { ...template, lead: locale === "en" ? styled.explanation_en : styled.explanation_he }
       : template;
   const place = day.place ?? (day.usesCurrentLocation ? t("location.currentShort") : t("location.default"));
@@ -691,7 +701,6 @@ export function TodayView({
   // too light or too warm for the new range, a layer missing or out of place): said once, above the hero, with the
   // way to a new outfit. Never swapped silently; a forecast that only changes the ranking is not mentioned (it is
   // taken in at the next change). Rain alone is not a rule in the engine, so it does not raise this line.
-  const liveSelWeather = sel === 0 ? day.weather : (day.chain[sel - 1]?.weather ?? null);
   const plannedSelWeather = dayWeather;
   // Not memoized: the engine is asked only while the two forecasts differ, which is rare and brief.
   const forecastOutdated =
@@ -795,7 +804,7 @@ export function TodayView({
   const weatherWords = w
     ? [
         `${w.temp_min_c}–${w.temp_max_c}°, ${t("today.data.rain")} ${Math.round(w.rain_probability * 100)}%, ${t(`today.sky.${w.sky}`)}`,
-        forecastAge ? `${t(forecastAge.key)}${forecastAge.time}` : null,
+        forecastAge ? `${t(forecastAge.key)}${ltr(forecastAge.time)}` : null,
       ]
         .filter(Boolean)
         .join(", ")
@@ -1201,6 +1210,11 @@ export function TodayView({
       />
     </>
   );
+
+  // The older forecast left nothing to suggest while the fresh one is still on its way: the same quiet loading line as
+  // before the first suggestion, not "no suggestion" under an old forecast. Bounded by the request's own timeout; when it
+  // answers the day takes it at once (the empty-day rule above), when it fails the empty state is the true answer.
+  if (plan.kind === "empty" && day.forecast.pending) return <WardrobeGate state={{ status: "loading" }} />;
 
   if (desktop) {
     // The whole surface fits under the top nav: the scene's height minus the 32 above and below, as a 4:5 width.
