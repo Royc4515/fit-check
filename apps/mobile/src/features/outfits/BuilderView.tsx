@@ -61,6 +61,8 @@ const DESKTOP_HERO_MAX = 560;
 const META_LINE = 18;
 /** Web: the close button's box, focused when the screen opens (focus otherwise stays on <body> under the sheet). */
 const FOCUS_CLOSE = "builder-close";
+/** Longest wait for the opening sheet to leave before the first focus is given up (its exit is under 500 ms). */
+const FOCUS_WAIT_MS = 1000;
 
 const fill = { position: "absolute", top: 0, bottom: 0, start: 0, end: 0 } as const;
 
@@ -173,23 +175,33 @@ export function BuilderView({ userId, editId }: Props) {
   }, [close, pickerSlot, leaveOpen]);
   useEffect(() => {
     // Web Escape outside the sheets (they close themselves on it): the same as `close`.
+    // don't touch / on keyup, like react-native-web's Modal: on keydown the confirm sheet opened here mounted in time
+    // for the same key's keyup, and its own Escape handler closed it again at once (seen in the browser check).
     if (Platform.OS !== "web" || pickerSlot || leaveOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || e.defaultPrevented) return;
-      e.preventDefault();
+      if (e.key !== "Escape" || document.querySelector('[aria-modal="true"]')) return;
       close();
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.addEventListener("keyup", onKey);
+    return () => document.removeEventListener("keyup", onKey);
   }, [close, pickerSlot, leaveOpen]);
   useEffect(() => {
-    // Web: start keyboard users at the screen's first control (the sheet that opened it left focus on <body>).
+    // Web: start keyboard users at the screen's first control. The "+" sheet that opened this screen is still sliding
+    // away when it mounts and drops focus on <body> only when it is gone (its opener is inert under this screen), so
+    // this waits for that, for at most FOCUS_WAIT_MS, and never takes focus from anything the user already reached.
     if (Platform.OS !== "web") return;
-    const frame = requestAnimationFrame(() => {
-      const box = document.getElementById(FOCUS_CLOSE);
+    const started = Date.now();
+    let frame = 0;
+    const tick = () => {
       const at = document.activeElement;
-      if (box && (at === null || at === document.body)) box.querySelector<HTMLElement>("[role=button], button")?.focus();
-    });
+      if (at === null || at === document.body) {
+        document.getElementById(FOCUS_CLOSE)?.querySelector<HTMLElement>("[role=button], button")?.focus();
+        return;
+      }
+      const inSheet = at instanceof HTMLElement && at.closest('[aria-modal="true"]') !== null;
+      if (inSheet && Date.now() - started < FOCUS_WAIT_MS) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, []);
 
@@ -212,7 +224,7 @@ export function BuilderView({ userId, editId }: Props) {
     } catch (error) {
       console.error("Outfit save failed", error);
       if (error instanceof SavedOutfitError && error.code === "same_garments" && error.otherId) setFailure({ kind: "same", otherId: error.otherId });
-      else setFailure({ kind: "error", message: t("builder.saveFailed", { reason: failureMessage(t, reasonOf(error), "save") }) });
+      else setFailure({ kind: "error", message: t("builder.saveFailed", { reason: failureMessage(t, reasonOf(error)) }) });
     } finally {
       setSaving(false);
     }
@@ -361,8 +373,15 @@ export function BuilderView({ userId, editId }: Props) {
     <View style={{ gap: 8 }}>
       <Meta tone="text-ink-soft">{t("builder.context")}</Meta>
       <View role="group" accessibilityLabel={t("builder.context")}>
-        {/* One row that scrolls sideways when it does not fit; 4 above and below so the chips' 44 boxes are not cut. */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }} style={{ marginVertical: -4 }}>
+        {/* One row that scrolls sideways when it does not fit; 4 above and below so the chips' 44 boxes are not cut.
+            On a phone it runs to the screen's edges (the gutter moves inside it), so a chip that does not fit is cut by
+            the screen, which reads as "more this way", not by an invisible line 20 in. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 8, paddingVertical: 4, paddingHorizontal: desktop ? 0 : layout.gutter }}
+          style={{ marginVertical: -4, marginHorizontal: desktop ? 0 : -layout.gutter }}
+        >
           {contexts.map((c) => (
             <Chip key={c} label={t(`outfit.context.${c}`)} selected={draft.contextType === c} onPress={() => setDraft((d) => ({ ...d, contextType: c }))} />
           ))}
@@ -475,9 +494,13 @@ export function BuilderView({ userId, editId }: Props) {
         onChoose={choose}
         onClose={() => setPickerSlot(null)}
       />
-      <Sheet open={leaveOpen} onClose={() => setLeaveOpen(false)} title={t("builder.leave.title")}>
-        <View style={{ gap: 16 }}>
-          <Text className="font-body text-body-sm text-ink-soft">{t("builder.leave.body")}</Text>
+      {/* The two answers sit in the footer: the sheet's first focus skips it (lands on the title), so an Enter pressed
+          out of habit does not throw the work away. */}
+      <Sheet
+        open={leaveOpen}
+        onClose={() => setLeaveOpen(false)}
+        title={t("builder.leave.title")}
+        footer={
           <View className="flex-row flex-wrap items-center" style={{ columnGap: 24, rowGap: 8 }}>
             <Button
               variant="ink"
@@ -489,7 +512,9 @@ export function BuilderView({ userId, editId }: Props) {
             />
             <Button variant="text" label={t("builder.leave.stay")} onPress={() => setLeaveOpen(false)} />
           </View>
-        </View>
+        }
+      >
+        <Text className="font-body text-body-sm text-ink-soft">{t("builder.leave.body")}</Text>
       </Sheet>
     </View>
   );

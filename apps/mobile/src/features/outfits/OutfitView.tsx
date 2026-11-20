@@ -379,6 +379,8 @@ export function OutfitView({ id, userId, notice }: Props) {
                 label={t("outfit.edit")}
                 onPress={() => {
                   closeMore();
+                  // "Already saved" was about how this screen was reached; after an edit it would read as news.
+                  if (notice) router.setParams({ notice: undefined });
                   // The build screen, filled with this outfit (stage 5.2 item 5); its save comes back here.
                   router.push({ pathname: "/outfit/[id]/edit", params: { id: outfit.id } });
                 }}
