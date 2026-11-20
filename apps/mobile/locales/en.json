@@ -1173,7 +1173,8 @@
       "title": "Leave without saving?",
       "body": "What you chose here will not be kept.",
       "confirm": "Leave",
-      "stay": "Keep editing"
+      "stay": "Keep editing",
+      "titleHalfDone": "Leave now?"
     },
     "picker": {
       "search": "Search by name or brand",
@@ -1186,7 +1187,8 @@
       "tileLabelWhere": "{{name}}, {{type}}, not at home: {{where}}",
       "chosen": "{{label}}, chosen"
     },
-    "wornCopy": "This outfit has been worn. The garments that were worn stay in the history, and the edit is saved as a new outfit in its place."
+    "wornCopy": "This outfit has been worn. The garments that were worn stay in the history, and the edit is saved as a new outfit in its place.",
+    "halfDone": "The new outfit is saved, but the old one is still in your outfits. \"Retry\" removes it."
   },
   "add": {
     "title": "Add",

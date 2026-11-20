@@ -1,11 +1,14 @@
 import type { Availability, Item, ItemTags, Subcategory } from "@fit-check/schema";
 import { SUBCATEGORY_TO_CATEGORY } from "@fit-check/schema";
 import { describe, expect, it } from "vitest";
+import { SavedOutfitError } from "../../data/savedOutfit";
 import {
   draftFromOutfit,
   draftPieces,
   editKeepsWornCopy,
   emptyDraft,
+  leaveCopy,
+  saveFailureOf,
   isDirty,
   missingKey,
   missingSlots,
@@ -148,5 +151,19 @@ describe("editKeepsWornCopy", () => {
     expect(editKeepsWornCopy(true, 1, { ...initial, name: "חדש", contextType: "date" }, initial)).toBe(false);
     // Changed and changed back: nothing differs any more.
     expect(editKeepsWornCopy(true, 1, withPiece(withPiece(initial, "top", other), "top", polo), initial)).toBe(false);
+  });
+});
+
+describe("a failed save, in the user's words", () => {
+  it("tells apart another outfit, a half-done edit and nothing saved", () => {
+    expect(saveFailureOf(new SavedOutfitError("same_garments", "x", [], "o2"))).toEqual({ kind: "same", otherId: "o2" });
+    expect(saveFailureOf(new SavedOutfitError("copy_saved_old_kept", "x", [], "n1", new Error("net")))).toEqual({ kind: "half_done" });
+    expect(saveFailureOf(new SavedOutfitError("not_saved", "x"))).toEqual({ kind: "failed" });
+    expect(saveFailureOf(new Error("offline"))).toEqual({ kind: "failed" });
+  });
+
+  it("does not say 'nothing will be saved' when leaving after a half-done edit", () => {
+    expect(leaveCopy("half_done")).toEqual({ title: "builder.leave.titleHalfDone", body: "builder.halfDone" });
+    expect(leaveCopy(null)).toEqual({ title: "builder.leave.title", body: "builder.leave.body" });
   });
 });

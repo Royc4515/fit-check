@@ -332,6 +332,7 @@ describe("updateSavedOutfit", () => {
 
   it("worn, the copy's garments fail: the new row is deleted again and nothing changed", async () => {
     const db = model({ wears: 1, fail: "insert outfit_items" });
+    // Not the half-done error: nothing is saved, so the screen may say "not saved".
     await expect(updateSavedOutfit("o1", edit)).rejects.toThrow("failed: insert outfit_items");
     expect(db.outfits.map((o) => [o.id, o.saved_at !== null])).toEqual([
       ["o1", true],
@@ -341,7 +342,11 @@ describe("updateSavedOutfit", () => {
 
   it("worn, unsaving the old row fails: two saved rows; the retry finishes the edit instead of answering 'already saved'", async () => {
     const db = model({ wears: 1, fail: "update outfits" });
-    await expect(updateSavedOutfit("o1", edit)).rejects.toThrow("failed: update outfits");
+    // Typed: the new outfit is saved, the old one still in the collection; the request's error is the cause.
+    const err = await updateSavedOutfit("o1", edit).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SavedOutfitError);
+    expect(err).toMatchObject({ code: "copy_saved_old_kept", otherId: "n1" });
+    expect((err as Error).cause).toMatchObject({ message: "failed: update outfits" });
     expect(db.outfits.filter((o) => o.saved_at !== null).map((o) => o.id)).toEqual(["o1", "o2", "n1"]);
     const from = fake.calls.length;
     const retry = await updateSavedOutfit("o1", { ...edit, contextType: "date", name: "אחר" });

@@ -1,6 +1,6 @@
 import { orderByCompatibility, slotOf, type PairWeights } from "@fit-check/engine";
 import type { ContextType, Item, Slot } from "@fit-check/schema";
-import { REQUIRED_SLOTS, type OutfitPiece, type SavedOutfit } from "../../data/savedOutfit";
+import { REQUIRED_SLOTS, SavedOutfitError, type OutfitPiece, type SavedOutfit } from "../../data/savedOutfit";
 import { byName, listed, matchesQuery } from "../wardrobe/filters";
 
 /*
@@ -94,6 +94,25 @@ export function garmentsChanged(draft: Draft, initial: Draft): boolean {
  */
 export function editKeepsWornCopy(editing: boolean, wearCount: number, draft: Draft, initial: Draft): boolean {
   return editing && wearCount > 0 && garmentsChanged(draft, initial);
+}
+
+/**
+ * What a failed save means for the user: `same` another saved outfit has these garments (offer it); `half_done` the
+ * new outfit of an edit IS saved but the old one is still in the collection ("נסה שוב" finishes); `failed` nothing
+ * was saved. Anything that is not a SavedOutfitError (network, permission, preview) is `failed`.
+ */
+export type SaveFailure = { kind: "same"; otherId: string } | { kind: "half_done" } | { kind: "failed" };
+export function saveFailureOf(error: unknown): SaveFailure {
+  if (error instanceof SavedOutfitError && error.code === "same_garments" && error.otherId) return { kind: "same", otherId: error.otherId };
+  if (error instanceof SavedOutfitError && error.code === "copy_saved_old_kept") return { kind: "half_done" };
+  return { kind: "failed" };
+}
+
+/** The leave sheet's words: after a half-done edit, leaving loses nothing, and "nothing will be saved" would be false. */
+export function leaveCopy(failure: SaveFailure["kind"] | null): { title: string; body: string } {
+  return failure === "half_done"
+    ? { title: "builder.leave.titleHalfDone", body: "builder.halfDone" }
+    : { title: "builder.leave.title", body: "builder.leave.body" };
 }
 
 /** Code points, as the database counts a name. */

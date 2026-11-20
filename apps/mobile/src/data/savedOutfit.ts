@@ -48,15 +48,19 @@ export type OutfitProblem =
  * Every failure the saved-outfit data layer reports on purpose (network and permission errors are thrown as they
  * come). `invalid_outfit` carries the problems; `invalid_input` the zod message.
  */
-export type SavedOutfitErrorCode = "invalid_input" | "invalid_outfit" | "name_too_long" | "not_found" | "not_saved" | "same_garments";
+/**
+ * `copy_saved_old_kept`: an edit of a worn outfit wrote the new outfit, then failed to take the old one out of the
+ * collection (`otherId` = the new outfit; `cause` = the original error). Both are saved until the edit is retried.
+ */
+export type SavedOutfitErrorCode = "invalid_input" | "invalid_outfit" | "name_too_long" | "not_found" | "not_saved" | "same_garments" | "copy_saved_old_kept";
 
 export class SavedOutfitError extends Error {
   readonly code: SavedOutfitErrorCode;
   readonly problems: readonly OutfitProblem[];
-  /** `same_garments` only: the other saved outfit that already has exactly these garments. */
+  /** `same_garments`: the other saved outfit with exactly these garments; `copy_saved_old_kept`: the new outfit. */
   readonly otherId: string | null;
-  constructor(code: SavedOutfitErrorCode, message: string, problems: readonly OutfitProblem[] = [], otherId: string | null = null) {
-    super(message);
+  constructor(code: SavedOutfitErrorCode, message: string, problems: readonly OutfitProblem[] = [], otherId: string | null = null, cause?: unknown) {
+    super(message, cause === undefined ? undefined : { cause });
     this.name = "SavedOutfitError";
     this.code = code;
     this.problems = problems;
