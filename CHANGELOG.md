@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-20 (The server's outfit_today follows the app's rules; NOT deployed)
+
+- Why: the `mcp` function's engine bundle predated the date no-repeat rule, the Yom Kippur `unknown` shoe rule and the saved-outfit bonus, and `outfit_today` still let a calendar occasion beat Shabbat or a holiday.
+- One rule for both: `planDay`, `occasionMayApply`, `occasionInEffect`, `dayTypeFor`, `ruleSetOf`, `hebcalDayFacts` and `calendarAnswerUsable` in `packages/schema/src/day-context.ts`. The app re-exports the moved functions where it read them; its tests are unchanged and pass. Table-driven test `day-rule.test.ts`; `apps/mobile/src/data/hebcalParity.test.ts` checks the server's Hebcal reading against the app's on every real fixture.
+- `supabase/functions/_shared/engine.js` rebuilt with `scripts/bundle-engine.sh`; `scripts/engine-bundle.test.ts` rebuilds it into a temp file and fails `pnpm test` when the committed copy is stale.
+- `outfit_today` (`supabase/functions/mcp/outfit.ts`): Shabbat and holidays until havdalah, the occasion after it; wears read with their context; Yom Kippur rules with a `shoes_note` when no shoe qualifies; saved outfits through `withSavedPairs`; at most 8 candidates. Hebcal is asked with a 5 s timeout; without it the civil calendar is used and the answer carries `warning: {code: "hebrew_calendar_unavailable", message}`. Strict zod inputs with typed errors. `outfit_log` records the context the same rule gives the date. No AI call in either tool.
+- Look at: `mcp/outfit_test.ts` (real supabase-js over a fake PostgREST that refuses reads without the caller's `user_id`), the tool descriptions in `mcp/tools.ts`, `context_set`'s `effect` text.
+- Deploy bundle built (guard passed), sha256 `52590e0b0e2c5a4c41512fba595d32723d00cd796184bdee5f1089c5cde61678`; NOT deployed: the deploy waits for Roy's approval.
+
 ## 2026-11-20 (Today's frame never waits on an outside service)
 
 - Why: the independent check of the weather wait measured two holes. Hebcal had no timeout: answering at 3 s put the first outfit at 3.5 s, never answering kept Today on the loading line forever. And a stored forecast that left nothing to suggest kept the whole screen (no date, weather or tabs) on the loading line until the fresh request settled, up to 8 s.
