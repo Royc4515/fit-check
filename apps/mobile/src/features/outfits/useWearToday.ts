@@ -47,10 +47,16 @@ export type WearToday = {
   /** The replace step is open. */
   confirming: boolean;
   /**
-   * The planned day the wear is for when the day in force is not today (Friday evening for an observant user:
-   * Shabbat), else null: the button and the recorded line then use Today's planned-day words (plannedKeys).
+   * The kind of the selected tab's planned day (Shabbat, the holiday, Yom Kippur), or null on today's tab or with no
+   * tabs: the button, the recorded line and the replace step then use Today's planned-day words (plannedKeys).
    */
   planned: "shabbat" | "holiday" | "yom_kippur" | null;
+  /** The day tabs to draw (DayTabs), or null when there is no planned day (no tabs; the screen is about today). */
+  days: { date: string; chain: readonly PlannedDay[] } | null;
+  /** The selected tab's date: the day the button records on and the lines are about. */
+  selected: string;
+  /** Chooses a tab by hand; it lasts while the screen is mounted. */
+  select: (date: string) => void;
   press: () => void;
   confirmReplace: () => void;
   cancelReplace: () => void;
@@ -93,22 +99,25 @@ export function useWearToday(userId: string, outfit: SavedOutfit | null, garment
   });
   const { actions, history, busy, failedOn, correction } = feedback;
 
-  // The day a wear pressed here belongs to: Today's own rule (dayInForce), decided once when the day's records are
-  // read, as Today decides its opening tab, so a press here never flips the screen to Shabbat under the thumb. The
-  // rule's clock is the location's local time at that moment.
-  const [inForce, setInForce] = useState<{ date: string; planned: PlannedDay | null } | null>(null);
-  if (inForce === null && day && history) {
-    const forDate = dayInForce({ day, now: localTime(day.tz), history });
-    setInForce({ date: forDate, planned: day.chain.find((d) => d.date === forDate) ?? null });
-  }
-  const forDate = inForce?.date ?? date;
-  const planned = inForce?.planned ?? null;
+  // The day tabs, as Today's (DayTabs): today, then each planned day, only when there is a planned day. The opening
+  // tab is Today's own rule (dayInForce), decided once when the day's records are read, as Today decides it, so a
+  // press never flips the screen to Shabbat under the thumb; a tab chosen by hand lasts while the screen is mounted.
+  // The rule's clock is the location's local time at that moment.
+  const [opening, setOpening] = useState<string | null>(null);
+  if (opening === null && day && history) setOpening(dayInForce({ day, now: localTime(day.tz), history }));
+  const [chosen, setChosen] = useState<string | null>(null);
+  const dayDates = day ? [day.date, ...day.chain.map((d) => d.date)] : [date];
+  // Everything about a day follows the selected tab: the label, the date a wear gets, "already recorded", the
+  // replace step, the laundry line. A wear on another tab's day is not shown here, as on Today.
+  const forDate = [chosen, opening].find((d): d is string => d !== null && dayDates.includes(d)) ?? date;
+  const planned: PlannedDay | null = day?.chain.find((d) => d.date === forDate) ?? null;
+  const decided = opening !== null;
 
   const state = useMemo<WearTodayState>(() => {
     if (!outfit) return { kind: "loading" };
-    const records = inForce && ready && history ? (inForce.planned ? history.ahead.filter((r) => r.date === inForce.date) : history.today) : null;
+    const records = decided && ready && history ? (forDate === date ? history.today : history.ahead.filter((r) => r.date === forDate)) : null;
     return wearTodayState({ outfit, garments, today: records });
-  }, [outfit, garments, inForce, ready, history]);
+  }, [outfit, garments, decided, forDate, date, ready, history]);
 
   // The replacement the user confirmed, by the earlier wear's id: a "try again" of it does not ask a second time.
   const [confirmedEarlier, setConfirmedEarlier] = useState<string | null>(null);
@@ -203,5 +212,8 @@ export function useWearToday(userId: string, outfit: SavedOutfit | null, garment
     undo,
     keepHome,
     planned: planned?.kind ?? null,
+    days: day && day.chain.length > 0 && decided ? { date: day.date, chain: day.chain } : null,
+    selected: forDate,
+    select: setChosen,
   };
 }
