@@ -226,12 +226,62 @@ export type SavedOutfit = {
   missing: Slot[];
   /** Every item id in `outfit_items`, readable or not: what "the same garments" compares. */
   itemIds: string[];
-  /** Wears with feedback `worn`, and the newest of their dates (null = never worn). */
+  /**
+   * Wears with feedback `worn` of these garments, and the newest of their dates (null = never worn). Counted by
+   * garment set ("אותם בגדים = אותו לוק"): every worn wear whose outfit row has exactly this set, on this row, on the
+   * unsaved rows the same garments were worn on before the outfit was saved, or on another saved row. Only what the
+   * screens SHOW. Never use it to decide what happens to this row: that is `wearCount`.
+   */
   wornCount: number;
-  /** Every `wears` row, any feedback: whether editing the garments must keep this row for history (EditPlan). */
+  /**
+   * Every `wears` row that points at THIS row, any feedback: what editing the garments must keep this row for
+   * (EditPlan, the builder's copy note). Not the same number as `wornCount`, on purpose.
+   */
   wearCount: number;
   lastWornOn: string | null;
 };
+
+/** One worn wear for counting: its date and the item ids of the `outfits` row it points at (any order). */
+export type WornWear = { date: string; itemIds: readonly string[] };
+
+/** The wear count and newest date of one garment set. */
+export type WornTally = { wornCount: number; lastWornOn: string | null };
+
+/** Worn wears grouped by garment set (`itemSetKey`), built once and asked for each outfit. */
+export type WornIndex = ReadonlyMap<string, WornTally>;
+
+/**
+ * Groups worn wears by the garment set of their outfit row. A wear whose row holds no garments is left out: an empty
+ * set is not an outfit, and it must not count for a saved outfit whose garments were all deleted. Every wear row
+ * counts once: the data model allows several wears on one date (`wears` has no unique key on the day), and each is
+ * a wear Roy recorded, so two on one date are two.
+ * @param wears - worn wears only (feedback `worn`); the caller filters, this does not know feedback.
+ */
+export function wornIndex(wears: readonly WornWear[]): WornIndex {
+  const index = new Map<string, WornTally>();
+  for (const w of wears) {
+    if (w.itemIds.length === 0) continue;
+    const key = itemSetKey(w.itemIds);
+    const tally = index.get(key) ?? { wornCount: 0, lastWornOn: null };
+    index.set(key, { wornCount: tally.wornCount + 1, lastWornOn: tally.lastWornOn === null || w.date > tally.lastWornOn ? w.date : tally.lastWornOn });
+  }
+  return index;
+}
+
+/**
+ * For each saved outfit: how many worn wears, and the newest date, over every wear of the same garments, whichever
+ * `outfits` row it points at (saved or not). The outfit's set is the ids its row still holds (`itemIds`), as
+ * `findSameOutfit` compares, so an outfit with a deleted garment matches the wears of rows that lost the same one.
+ * Keyed by outfit id; an outfit nothing matches maps to `{ wornCount: 0, lastWornOn: null }`.
+ */
+export function wornBySet(saved: readonly { id: string; itemIds: readonly string[] }[], wears: readonly WornWear[]): Map<string, WornTally> {
+  const index = wornIndex(wears);
+  return new Map(saved.map((o) => [o.id, tallyOf(index, o.itemIds)] as const));
+}
+
+function tallyOf(index: WornIndex, itemIds: readonly string[]): WornTally {
+  return (itemIds.length === 0 ? undefined : index.get(itemSetKey(itemIds))) ?? { wornCount: 0, lastWornOn: null };
+}
 
 /** The outfit row parsed, or null (logged) when it does not match the schema. */
 export function parseOutfitRow(raw: unknown): SavedOutfitRow | null {
@@ -245,10 +295,12 @@ export function parseOutfitRow(raw: unknown): SavedOutfitRow | null {
 
 /**
  * A parsed outfit row to the model; null when the row is not saved (`saved_at` null), since only saved outfits are
- * in the collection. A garment whose item does not parse is logged and counted as missing, not fatal: one bad item
+ * in the collection. `wornCount` / `lastWornOn` come from `worn` (every worn wear grouped by garment set) when given;
+ * without it they are the row's own worn wears, which is what a failed wears read leaves (see `fetchSavedOutfits`).
+ * A garment whose item does not parse is logged and counted as missing, not fatal: one bad item
  * must not hide the outfit. A second garment for a slot that is taken is left out of the picture (kept in itemIds).
  */
-export function savedOutfitFromRow(row: SavedOutfitRow): SavedOutfit | null {
+export function savedOutfitFromRow(row: SavedOutfitRow, worn: WornIndex | null = null): SavedOutfit | null {
   if (row.saved_at === null) return null;
   const bySlot = new Map<Slot, Item>();
   for (const oi of row.outfit_items) {
@@ -263,7 +315,11 @@ export function savedOutfitFromRow(row: SavedOutfitRow): SavedOutfit | null {
     const item = bySlot.get(slot);
     return item ? [{ slot, item }] : [];
   });
-  const worn = row.wears.filter((w) => w.feedback === "worn").map((w) => w.worn_on);
+  const itemIds = row.outfit_items.map((oi) => oi.item_id);
+  const own = row.wears.filter((w) => w.feedback === "worn").map((w) => w.worn_on);
+  const tally: WornTally = worn
+    ? tallyOf(worn, itemIds)
+    : { wornCount: own.length, lastWornOn: own.reduce<string | null>((last, d) => (last === null || d > last ? d : last), null) };
   return {
     id: row.id,
     name: row.name,
@@ -274,22 +330,23 @@ export function savedOutfitFromRow(row: SavedOutfitRow): SavedOutfit | null {
     createdForDate: row.created_for_date,
     pieces,
     missing: REQUIRED_SLOTS.filter((slot) => !bySlot.has(slot)),
-    itemIds: row.outfit_items.map((oi) => oi.item_id),
-    wornCount: worn.length,
+    itemIds,
+    wornCount: tally.wornCount,
     wearCount: row.wears.length,
-    lastWornOn: worn.reduce<string | null>((last, d) => (last === null || d > last ? d : last), null),
+    lastWornOn: tally.lastWornOn,
   };
 }
 
 /**
  * Rows to the collection, newest `saved_at` first (ties: id, so the order is stable). Repeats the query's order so a
  * caller that merges rows (an optimistic insert) gets the same list. Malformed and unsaved rows are skipped.
+ * @param worn - every worn wear by garment set, or null to count each row's own wears only.
  */
-export function savedOutfitsFromRows(rows: readonly unknown[]): SavedOutfit[] {
+export function savedOutfitsFromRows(rows: readonly unknown[], worn: WornIndex | null = null): SavedOutfit[] {
   const out: SavedOutfit[] = [];
   for (const raw of rows) {
     const row = parseOutfitRow(raw);
-    const outfit = row ? savedOutfitFromRow(row) : null;
+    const outfit = row ? savedOutfitFromRow(row, worn) : null;
     if (outfit) out.push(outfit);
   }
   const time = (o: SavedOutfit) => Date.parse(o.savedAt);
@@ -299,6 +356,9 @@ export function savedOutfitsFromRows(rows: readonly unknown[]): SavedOutfit[] {
 /**
  * Removing an outfit from the collection: with any wear (any feedback; each one points at the row) the row stays,
  * only unsaved, so history keeps its garments; with none it is deleted (`outfit_items` cascade).
+ * @param wearCount - the wears pointing at THIS row (`SavedOutfit.wearCount`), never `wornCount`: wears of the same
+ *   garments on other rows do not need this row, so an outfit saved from a never-worn build is deleted even when its
+ *   set was worn before on other rows; the screens still count those wears afterwards, since they count by set.
  */
 export function removalAction(wearCount: number): "unsave" | "delete" {
   return wearCount > 0 ? "unsave" : "delete";
