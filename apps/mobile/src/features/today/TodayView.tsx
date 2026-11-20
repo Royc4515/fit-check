@@ -738,23 +738,27 @@ export function TodayView({
       setRefresh((n) => n + 1);
     },
   };
-  const forecastUpdatedLine = calendarOutdated ? (
-    <StatusLine variant="info" message={t("today.calendarUpdated")} action={updateAction} disabled={busy} />
-  ) : forecastOutdated ? (
+  const forecastUpdatedLine = forecastOutdated ? (
     <StatusLine variant="info" message={t("today.forecastUpdated")} action={updateAction} disabled={busy} />
   ) : null;
   // The Hebrew calendar is not known (no stored answer, and none in time): with the observance switch on, the outfit
   // was drawn by the civil calendar alone and may be wrong for a holiday or its eve; say so, plainly, above the hero
-  // (DESIGN.md "היום" item 1). "Try again" asks Hebcal again; the line leaves when the calendar arrives.
-  const calendarMissingLine =
-    day.observes && !day.calendar.known ? (
-      <StatusLine
-        variant="info"
-        message={t(day.weekday === 6 ? "today.calendarMissingShabbat" : "today.calendarMissing")}
-        action={{ label: t("common.retry"), onPress: reloadDayContext }}
-        disabled={busy}
-      />
-    ) : null;
+  // (DESIGN.md "היום" item 1). "Try again" asks Hebcal again. When the calendar arrives the same line says so in place
+  // ("the Hebrew calendar has loaded"), so the hero under it does not move; it offers "update the suggestion" only when
+  // the outfit on screen breaks the rules the calendar gives the day, and stays, quiet, while the screen is mounted.
+  const calendarMissing = day.observes && !day.calendar.known;
+  const [calendarWasMissing, setCalendarWasMissing] = useState(calendarMissing);
+  if (calendarMissing && !calendarWasMissing) setCalendarWasMissing(true);
+  const calendarMissingLine = calendarMissing ? (
+    <StatusLine
+      variant="info"
+      message={t(day.weekday === 6 ? "today.calendarMissingShabbat" : "today.calendarMissing")}
+      action={{ label: t("common.retry"), onPress: reloadDayContext }}
+      disabled={busy}
+    />
+  ) : calendarWasMissing || calendarOutdated ? (
+    <StatusLine variant="info" message={t("today.calendarUpdated")} action={calendarOutdated ? updateAction : undefined} disabled={busy} />
+  ) : null;
   // One focusable wrapper (tabIndex -1: reachable by script, not by Tab) so focus has a place to land when a line
   // has no action of its own, and screen readers read the whole stack when it arrives.
   const wornStatus = (className: string) =>
