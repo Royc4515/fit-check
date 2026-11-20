@@ -3,7 +3,9 @@ import type { Item } from "@fit-check/schema";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform } from "react-native";
+import { addDays } from "../../data/calendarWindow";
 import { correctionFailure } from "../../data/correction";
+import { CHAIN_MAX_DAYS } from "../../data/shabbatTimes";
 import type { PlannedDay } from "../../data/dayContext";
 import { israelDate, localTime } from "../../data/localDate";
 import type { SavedOutfit } from "../../data/savedOutfit";
@@ -87,8 +89,9 @@ export function useWearToday(userId: string, outfit: SavedOutfit | null, garment
   const feedback = useFeedback({
     userId,
     date,
-    // Read up to the last planned day, as Today does, so a wear recorded there for Shabbat is seen here.
-    until: day?.chain.at(-1)?.date ?? date,
+    // Read up to the longest chain of planned days, as Today does, so a wear recorded there for Shabbat is seen here,
+    // and so a chain that arrives late (the calendar was slow) does not read the history again and blank the screen.
+    until: addDays(date, CHAIN_MAX_DAYS).iso,
     dayType: day?.dayType ?? "weekday",
     items: ready ? wardrobe.items : NO_ITEMS,
     pairWeights: ready ? wardrobe.pairWeights : NO_WEIGHTS,
@@ -101,7 +104,10 @@ export function useWearToday(userId: string, outfit: SavedOutfit | null, garment
   // The day tabs, as Today's (DayTabs): today, then each planned day, only when there is a planned day. The opening
   // tab is Today's own rule (dayInForce), decided once when the day's records are read, as Today decides it, so a
   // press never flips the screen to Shabbat under the thumb; a tab chosen by hand lasts while the screen is mounted.
-  // The rule's clock is the location's local time at that moment.
+  // The rule's clock is the location's local time at that moment. The Hebrew calendar is not waited for here: while it
+  // is missing the day has no planned days but the civil calendar's (a Friday's Shabbat) and no candle time, so the
+  // rule gives today and a wear pressed meanwhile is recorded on the civil date. Planned days that arrive later add
+  // tabs and move nothing, as on Today (DESIGN.md "היום" item 1).
   const [opening, setOpening] = useState<string | null>(null);
   if (opening === null && day && history) setOpening(dayInForce({ day, now: localTime(day.tz), history }));
   const [chosen, setChosen] = useState<string | null>(null);

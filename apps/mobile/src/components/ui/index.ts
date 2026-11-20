@@ -2,7 +2,8 @@
  * The component library (DESIGN.md section 4). Screens build from these; a missing piece is added here, never
  * styled ad hoc in a screen. The gallery at /design-system shows each one in every state.
  */
-export { ActionBar } from "./ActionBar";
+export { ACTION_BAR_HEIGHT, ActionBar } from "./ActionBar";
+export { FlatLayPlaceholder } from "./FlatLayPlaceholder";
 export { Button, type ButtonProps } from "./Button";
 export { Chip } from "./Chip";
 export { CrossFade } from "./CrossFade";

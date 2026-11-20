@@ -22,6 +22,13 @@ type Props = {
 const PAD_Y = 12;
 
 /**
+ * The floating bar's height with one row of controls and nothing else (no status line, no safe area): its top hairline,
+ * the padding and one `layout.control` button. A screen that keeps the hero's place before its bar exists (Today's frame)
+ * reserves this, so the flat-lay does not change size when the bar arrives with the outfit.
+ */
+export const ACTION_BAR_HEIGHT = 1 + 2 * PAD_Y + layout.control;
+
+/**
  * Floating action bar (DESIGN.md sections 2-3): ivory, `shadow.sheet` plus a top hairline, 20 gutter, 12 vertical
  * padding plus the safe area. The one other place besides an open sheet where a shadow is allowed. Content is the
  * screen's (primary button, icon buttons, status lines), stacked with 8 between rows.
