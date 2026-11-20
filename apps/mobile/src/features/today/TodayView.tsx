@@ -754,11 +754,13 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         variant="icon"
         icon={bookmarked ? "bookmark_fill" : "bookmark"}
         selected={bookmarked}
-        accessibilityLabel={bookmarked ? t("today.bookmark.remove") : t("today.bookmark.save")}
+        // When the saved list could not be read the label also says why the button is disabled (no visible line;
+        // react-native-web drops accessibilityHint and aria-description on a Pressable, so it rides on the label).
+        accessibilityLabel={[bookmarked ? t("today.bookmark.remove") : t("today.bookmark.save"), bookmark.unavailable ? t("today.bookmark.unavailable") : null]
+          .filter(Boolean)
+          .join(". ")}
         onPress={pressBookmark}
         disabled={!bookmark.ready || busy}
-        // Why it cannot be pressed, when the saved list could not be read (no visible line).
-        description={bookmark.unavailable ? t("today.bookmark.unavailable") : undefined}
       />
     );
   // The polite announcement of a finished save or removal (item 6): the icon changing shape is for the eyes. Web reads
