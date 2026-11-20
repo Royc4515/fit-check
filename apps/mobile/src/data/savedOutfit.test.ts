@@ -13,6 +13,10 @@ import {
   SavedOutfitError,
   savedOutfitsFromRows,
   undoKeepsOutfit,
+  withTallyChange,
+  wornBySet,
+  wornIndex,
+  wornTallyOf,
   type OutfitPiece,
 } from "./savedOutfit";
 
@@ -299,5 +303,86 @@ describe("editPlan: what was worn is never rewritten", () => {
   it("does not take a same-saved_at row for a copy when the edit is in place (never worn)", () => {
     const twin = { id: "n1", savedAt: AT, itemIds: ["t3", "b1", "s1"] };
     expect(editPlan({ ...base, wearCount: 0, saved: [self, twin] })).toEqual({ kind: "same_garments", otherId: "n1" });
+  });
+});
+
+describe("wornBySet (a saved outfit counts every wear of its garments)", () => {
+  const saved = [
+    { id: "s", itemIds: ["t1", "b1", "s1"] },
+    { id: "other", itemIds: ["t2", "b1", "s1"] },
+  ];
+
+  it("counts wears on other rows with the same set, in any order, and gives the newest date", () => {
+    const tally = wornBySet(saved, [
+      { date: "2026-11-02", itemIds: ["t1", "b1", "s1"] },
+      { date: "2026-11-09", itemIds: ["s1", "t1", "b1"] },
+      { date: "2026-11-05", itemIds: ["b1", "s1", "t1"] },
+    ]);
+    expect(tally.get("s")).toEqual({ wornCount: 3, lastWornOn: "2026-11-09" });
+    expect(tally.get("other")).toEqual({ wornCount: 0, lastWornOn: null });
+  });
+
+  it("does not count a different set, a set with one more garment, or an outfit row with no garments", () => {
+    const tally = wornBySet(saved, [
+      { date: "2026-11-02", itemIds: ["t2", "b1", "s1"] },
+      { date: "2026-11-03", itemIds: ["t1", "b1", "s1", "l1"] },
+      { date: "2026-11-04", itemIds: ["t1", "b1"] },
+      { date: "2026-11-05", itemIds: [] },
+    ]);
+    expect(tally.get("s")).toEqual({ wornCount: 0, lastWornOn: null });
+    expect(tally.get("other")).toEqual({ wornCount: 1, lastWornOn: "2026-11-02" });
+  });
+
+  it("counts two wears on one date twice: the data model does not limit a day to one wear", () => {
+    const tally = wornBySet(saved, [
+      { date: "2026-11-02", itemIds: ["t1", "b1", "s1"] },
+      { date: "2026-11-02", itemIds: ["t1", "b1", "s1"] },
+    ]);
+    expect(tally.get("s")).toEqual({ wornCount: 2, lastWornOn: "2026-11-02" });
+  });
+
+  it("matches an outfit with a deleted garment by the ids its row still holds, and never an empty set", () => {
+    const tally = wornBySet(
+      [
+        { id: "gap", itemIds: ["t1", "s1"] },
+        { id: "empty", itemIds: [] },
+      ],
+      [
+        { date: "2026-11-02", itemIds: ["s1", "t1"] },
+        { date: "2026-11-03", itemIds: [] },
+      ]
+    );
+    expect(tally.get("gap")).toEqual({ wornCount: 1, lastWornOn: "2026-11-02" });
+    expect(tally.get("empty")).toEqual({ wornCount: 0, lastWornOn: null });
+  });
+
+  it("a saved outfit carries only its own row's wears: the tally by set is separate", () => {
+    const [o] = savedOutfitsFromRows([row({ wears: [{ worn_on: "2026-11-02", feedback: "worn" }, { worn_on: "2026-11-03", feedback: "skipped" }] })]);
+    expect(o).toMatchObject({ wornCount: 1, lastWornOn: "2026-11-02", wearCount: 2 });
+  });
+});
+
+describe("withTallyChange (the optimistic step, by set)", () => {
+  const ids = ["t1", "b1", "s1"];
+  const base = wornIndex([{ date: "2026-11-02", itemIds: ids }, { date: "2026-11-05", itemIds: ["s1", "t1", "b1"] }]);
+
+  it("a wear counts one more and moves the date forward only, whatever the garment order", () => {
+    expect(wornTallyOf(withTallyChange(base, ["b1", "s1", "t1"], 1, "2026-11-09"), ids)).toEqual({ wornCount: 3, lastWornOn: "2026-11-09" });
+    expect(wornTallyOf(withTallyChange(base, ids, 1, "2026-11-01"), ids)).toEqual({ wornCount: 3, lastWornOn: "2026-11-05" });
+  });
+
+  it("an undo counts one less and keeps the date until a read corrects it; at zero there is no date; never below zero", () => {
+    expect(wornTallyOf(withTallyChange(base, ids, -1, "2026-11-05"), ids)).toEqual({ wornCount: 1, lastWornOn: "2026-11-05" });
+    const none = wornIndex([]);
+    expect(wornTallyOf(withTallyChange(none, ids, -1, "2026-11-05"), ids)).toEqual({ wornCount: 0, lastWornOn: null });
+    expect(wornTallyOf(withTallyChange(withTallyChange(none, ids, 1, "2026-11-05"), ids, -1, "2026-11-05"), ids)).toEqual({ wornCount: 0, lastWornOn: null });
+  });
+
+  it("a set nobody wore starts at one; other sets and an empty set are untouched; the old index is not mutated", () => {
+    const next = withTallyChange(base, ["t2", "b1", "s1"], 1, "2026-11-09");
+    expect(wornTallyOf(next, ["t2", "b1", "s1"])).toEqual({ wornCount: 1, lastWornOn: "2026-11-09" });
+    expect(wornTallyOf(next, ids)).toEqual({ wornCount: 2, lastWornOn: "2026-11-05" });
+    expect(wornTallyOf(base, ["t2", "b1", "s1"])).toEqual({ wornCount: 0, lastWornOn: null });
+    expect(withTallyChange(base, [], 1, "2026-11-09")).toBe(base);
   });
 });
