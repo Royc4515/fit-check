@@ -1,7 +1,7 @@
 import type { SavedOutfitSignal } from "@fit-check/engine";
 import { describe, expect, it } from "vitest";
 import type { TodayRecord } from "../../data/feedback";
-import { initialLearn, learnedFrom, nextLearn, skipCount } from "./learning";
+import { firstGeneration, initialLearn, learnedFrom, nextLearn, SAVED_LIST_GRACE_MS, skipCount } from "./learning";
 
 const A: readonly SavedOutfitSignal[] = [{ itemIds: ["1", "2", "3"], isFavorite: false }];
 const B: readonly SavedOutfitSignal[] = [...A, { itemIds: ["4", "5", "6"], isFavorite: true }];
@@ -58,5 +58,24 @@ describe("the saved outfits Today learns from", () => {
   it("undoing a skip recorded before the screen opened takes the latest list", () => {
     const opened = initialLearn(2, taps, null);
     expect(learnedFrom(nextLearn(opened, 1, taps, A))).toBe(A);
+  });
+});
+
+describe("the first generation and the saved list", () => {
+  it("waits while the other inputs are not ready, whatever the list", () => {
+    expect(firstGeneration({ othersReady: false, saved: "ready", waitedMs: 0 })).toBe("wait");
+    expect(firstGeneration({ othersReady: false, saved: "error", waitedMs: 9999 })).toBe("wait");
+  });
+
+  it("goes with the list as soon as it has answered, without it as soon as it failed", () => {
+    expect(firstGeneration({ othersReady: true, saved: "ready", waitedMs: 0 })).toBe("with");
+    expect(firstGeneration({ othersReady: true, saved: "ready", waitedMs: 5000 })).toBe("with");
+    expect(firstGeneration({ othersReady: true, saved: "error", waitedMs: 0 })).toBe("without");
+  });
+
+  it("waits for a loading list for the grace period only", () => {
+    expect(firstGeneration({ othersReady: true, saved: "loading", waitedMs: 0 })).toBe("wait");
+    expect(firstGeneration({ othersReady: true, saved: "loading", waitedMs: SAVED_LIST_GRACE_MS - 1 })).toBe("wait");
+    expect(firstGeneration({ othersReady: true, saved: "loading", waitedMs: SAVED_LIST_GRACE_MS })).toBe("without");
   });
 });

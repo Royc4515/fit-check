@@ -5,10 +5,10 @@ import type { FeedbackHistory } from "../../data/feedback";
  * Which saved outfits Today's engine learns from (DESIGN.md "שלב 5.2" item 8), and when that list may change. Pure, so
  * the rule is tested without a screen.
  *
- * The saved list is read after the day's outfit is drawn (it never delays the first paint), so on a cold start it
- * arrives while the user is already looking at an outfit. Taking it in on arrival would re-rank every tab under the
- * user's eyes, and a new shortlist also costs a new stylist call. So the list in force is fixed when the screen opens
- * (the store's list if it was already read, else none) and is replaced only when the user asks for a different
+ * The saved list is read together with the day's other data, and the first suggestion waits for it a little
+ * (firstGeneration, at most SAVED_LIST_GRACE_MS after the rest). A list that answers later would re-rank every tab
+ * under the user's eyes, and a new shortlist also costs a new stylist call. So the list in force is fixed when the
+ * screen opens (the list if it answered in time, else none) and is replaced only when the user asks for a different
  * outfit anyway: a new skip or dislike, or a nudge in the adjust sheet. An undone skip goes back to the list that was
  * in force before that skip, so undo shows the outfit it took away.
  */
@@ -63,4 +63,32 @@ export function nextLearn(prev: LearnState, skips: number, adjustments: unknown,
 /** The saved outfits the engine learns from in this state. */
 export function learnedFrom(state: LearnState): readonly SavedOutfitSignal[] {
   return state.byCount.get(state.skips) ?? NONE;
+}
+
+/**
+ * How long Today's first suggestion may wait for the saved list once everything else it needs (wardrobe, day, wear
+ * history) is in. The first suggestion of the day is the one Roy sees most, so it should carry the saved bonus; but a
+ * slow or failed list must not hold the screen: 1.5 s is about what the other reads already take on a phone, so the
+ * wait is rarely felt, and past it the outfit is drawn without the list (taken in at the next skip or nudge).
+ */
+export const SAVED_LIST_GRACE_MS = 1500;
+
+/** What Today's first generation does about the saved list. */
+export type FirstGeneration = "wait" | "with" | "without";
+
+/**
+ * The first generation's decision. Pure: the time since the other inputs were ready comes in as data.
+ *
+ * - the other inputs are not ready: `wait` (the screen already waits for them);
+ * - the list has answered: `with`;
+ * - the list failed: `without`, at once (no retry is waited for; the bookmark says the list is unavailable);
+ * - still loading: `wait` until `SAVED_LIST_GRACE_MS` has passed since the other inputs were ready, then `without`.
+ *
+ * The caller latches the first answer that is not `wait`: a list that arrives later never re-ranks the outfit shown.
+ */
+export function firstGeneration(args: { othersReady: boolean; saved: "loading" | "ready" | "error"; waitedMs: number }): FirstGeneration {
+  if (!args.othersReady) return "wait";
+  if (args.saved === "ready") return "with";
+  if (args.saved === "error") return "without";
+  return args.waitedMs >= SAVED_LIST_GRACE_MS ? "without" : "wait";
 }

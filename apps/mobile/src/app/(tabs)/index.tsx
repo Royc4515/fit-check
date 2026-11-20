@@ -1,7 +1,7 @@
 import type { PairWeights } from "@fit-check/engine";
 import type { Item } from "@fit-check/schema";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { WardrobeGate } from "../../components/WardrobeGate";
 import { localTime, type DayContext } from "../../data/dayContext";
 import { useDayContext } from "../../data/useDayContext";
@@ -14,6 +14,7 @@ import { sessionUserId, useSession } from "../../features/auth/SessionProvider";
 import { withWornChange } from "../../features/outfits/collection";
 import { listNow, patchOutfits, refreshOutfits, useSavedOutfits, whenSettled } from "../../features/outfits/store";
 import { resolveWearRow } from "../../features/today/bookmark";
+import { firstGeneration, SAVED_LIST_GRACE_MS } from "../../features/today/learning";
 import { TodayView } from "../../features/today/TodayView";
 import { useBookmark } from "../../features/today/useBookmark";
 
@@ -76,20 +77,35 @@ function Today(props: {
   const occasions = useOccasions(userId, dates);
   // The clock when the screen opened, in the location's zone: it picks the opening tab (three hours before candles).
   const [clock] = useState(() => localTime(day.tz));
-  // The saved outfits (the bookmark, and which row a wear points at). One read, started only once the day's outfit
-  // has what it needs to be drawn, so it never delays the first paint; and again whenever Today is focused, as the
-  // collection does, so an outfit removed elsewhere is not still "saved" here.
-  const outfitReady = feedback.history !== null;
-  // The same list, for the engine to learn from (DESIGN.md "שלב 5.2" item 8). Null until read: Today never waits for
-  // it, and TodayView takes it in only at the next regeneration (features/today/learning.ts).
+  // The saved outfits (the bookmark, which row a wear points at, and what the engine learns from, DESIGN.md "שלב 5.2"
+  // item 8). Read when Today opens, in parallel with the day's other reads, and again whenever Today is focused, as
+  // the collection does, so an outfit removed elsewhere is not still "saved" here.
   const saved = useSavedOutfits(userId);
   useFocusEffect(
     useCallback(() => {
-      if (outfitReady) void refreshOutfits(userId);
-    }, [userId, outfitReady])
+      void refreshOutfits(userId);
+    }, [userId])
   );
-  // Wait for today's answers so an outfit already marked worn never flashes as a fresh suggestion.
-  if (!feedback.history) return <WardrobeGate state={{ status: "loading" }} />;
+  // The first suggestion waits for the saved list, at most SAVED_LIST_GRACE_MS after everything else is in
+  // (firstGeneration). The only moment of that wait that changes the answer is its end, so a timer started when the
+  // rest is in marks it; no clock is read during render.
+  const othersReady = feedback.history !== null;
+  const [graceOver, setGraceOver] = useState(false);
+  useEffect(() => {
+    if (!othersReady) return;
+    const timer = setTimeout(() => setGraceOver(true), SAVED_LIST_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, [othersReady]);
+  // don't touch / latched: once the first generation has happened, a list that is loading again (a focus read after a
+  // failure) must not take the outfit off the screen.
+  const [started, setStarted] = useState(false);
+  const gate = started
+    ? "started"
+    : firstGeneration({ othersReady, saved: saved.status, waitedMs: graceOver ? SAVED_LIST_GRACE_MS : 0 });
+  if (gate !== "wait" && !started) setStarted(true);
+  // Wait for today's answers so an outfit already marked worn never flashes as a fresh suggestion, and briefly for the
+  // saved list (same loading line).
+  if (!feedback.history || gate === "wait") return <WardrobeGate state={{ status: "loading" }} />;
   return (
     <TodayView
       items={items}
