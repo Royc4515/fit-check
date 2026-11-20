@@ -699,6 +699,10 @@ export function TodayView({
     liveSelWeather !== null &&
     !sameWeather(plannedSelWeather, liveSelWeather) &&
     !weatherStillFits({ outfit: plan.items, pool: selected.pool, day: { ...days[sel]!, weather: liveSelWeather }, adjustment: effective });
+  // don't touch / no outfit on screen (the older forecast left nothing to suggest): there is nothing to keep still, so
+  // a newer forecast is taken in at once. Found in the browser check: a warm stored forecast emptied the day and the
+  // late cold one was never used. Guarded by the forecasts differing, which the refresh itself ends: no loop.
+  if (plan.kind === "empty" && liveSelWeather !== null && !sameWeather(plannedSelWeather, liveSelWeather)) setRefresh((n) => n + 1);
   const forecastUpdatedLine = forecastOutdated ? (
     <StatusLine
       variant="info"
