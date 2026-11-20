@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { BackHandler, Platform, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ActionBar, Button, Display, EmptyState, FlatLay, LegendRow, ListRow, Meta, Sheet, Skeleton, StatusLine, type FlatLayPiece } from "../../components/ui";
+import { ActionBar, Button, Display, EmptyState, FlatLay, LegendRow, ListRow, Meta, Sheet, Skeleton, StatusLine, TabPanel, type FlatLayPiece } from "../../components/ui";
 import { fitFlatLay } from "../../components/ui/flatLayFit";
 import { useRtl } from "../../components/ui/interaction";
 import { reasonOf } from "../../data/intake";
@@ -22,6 +22,7 @@ import { useTextWriting } from "../item/useTextWriting";
 import type { TextField } from "../item/writing";
 import { awayGarments, legendEntries, outfitCaption, wornMeta } from "./collection";
 import { loadOutfit, removeFromCollection, renameSavedOutfit, toggleFavorite, useSavedOutfits } from "./store";
+import { DayTabs } from "../today/DayTabs";
 import { plannedKeys } from "../today/dayInForce";
 import { FOCUS_WEAR, FOCUS_WORN, useWearToday } from "./useWearToday";
 
@@ -36,6 +37,8 @@ const UNDER_BAR = 24;
  * is fitted against the bar from the first paint while today's records are read, instead of shrinking when it lands.
  */
 const BAR_ESTIMATE = 73;
+/** Ids of the day tabs and the panel they control (WAI-ARIA tabs pattern). */
+const DAY_TABS = "outfit-day";
 /** Desktop: air above and below the flat-lay column, and the gap between the two columns (as on Today). */
 const DESKTOP_PAD = 32;
 const DESKTOP_GAP = 64;
@@ -445,7 +448,21 @@ export function OutfitView({ id, userId, notice }: Props) {
           {/* Everything above the hero, measured as one block for the hero's cap (its bottom padding is the gap). */}
           <View onLayout={(e) => setAboveHeight(e.nativeEvent.layout.height)} style={{ ...gutter, paddingTop: insets.top + 8, paddingBottom: HERO_GAP, gap: 8 }}>
             {header}
-            {statuses}
+            {/* Today's day tabs, on the same days and with the same labels (stage 5.2 #5): the day the button records
+                on. Full-bleed on the phone with the gutter as inset, like Today's row; in the column on desktop. */}
+            {wear.days ? (
+              <View style={desktop ? undefined : { marginHorizontal: -layout.gutter }}>
+                <DayTabs day={wear.days} value={wear.selected} onChange={wear.select} inset={desktop ? 0 : layout.gutter} idPrefix={DAY_TABS} />
+              </View>
+            ) : null}
+            {wear.days ? (
+              // The selected day's lines are the panel the tabs control (the hero and legend are the same on every tab).
+              <TabPanel idPrefix={DAY_TABS} selectedKey={wear.selected}>
+                <View style={{ gap: 8 }}>{statuses}</View>
+              </TabPanel>
+            ) : (
+              statuses
+            )}
           </View>
           {content}
         </Animated.View>
