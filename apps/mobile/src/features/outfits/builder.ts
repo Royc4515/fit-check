@@ -80,6 +80,22 @@ export function isDirty(draft: Draft, initial: Draft): boolean {
   return BUILDER_SLOTS.some((slot) => draft.pieces[slot]?.id !== initial.pieces[slot]?.id);
 }
 
+/** Whether the draft's garment set differs from the one the screen opened with (any order is the same set). */
+export function garmentsChanged(draft: Draft, initial: Draft): boolean {
+  const ids = (d: Draft) => draftPieces(d).map((p) => p.item_id).sort().join(",");
+  return ids(draft) !== ids(initial);
+}
+
+/**
+ * Whether saving this edit will keep the worn outfit for history and save a new one in its place (the data layer's
+ * `copy`, DESIGN.md "שלב 5.2" item 4): an edit, of an outfit with any wear, whose garments now differ. The screen says
+ * so above "שמור" exactly then.
+ * @param wearCount - every `wears` row of the outfit being edited (any feedback); 0 for a new outfit.
+ */
+export function editKeepsWornCopy(editing: boolean, wearCount: number, draft: Draft, initial: Draft): boolean {
+  return editing && wearCount > 0 && garmentsChanged(draft, initial);
+}
+
 /** Code points, as the database counts a name. */
 export function nameLength(name: string): number {
   return [...name].length;

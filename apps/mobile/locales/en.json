@@ -1185,7 +1185,8 @@
       "tileLabel": "{{name}}, {{type}}, {{color}}",
       "tileLabelWhere": "{{name}}, {{type}}, not at home: {{where}}",
       "chosen": "{{label}}, chosen"
-    }
+    },
+    "wornCopy": "This outfit has been worn. The garments that were worn stay in the history, and the edit is saved as a new outfit in its place."
   },
   "add": {
     "title": "Add",
