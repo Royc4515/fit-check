@@ -43,6 +43,8 @@ type IconOnly = Common & {
    * DESIGN.md section 3 "פריט"): the glyph stays readable on any tile tone without a shadow or a scrim.
    */
   surface?: boolean;
+  /** Said after the label by a screen reader (`accessibilityHint`): why the button is disabled, say. Not shown. */
+  description?: string;
   /** Glyph size: 24 by default; 20 for an icon inside a line of text (the pencil of in-place writing). The box stays 44. */
   iconSize?: 20 | 24;
 };
@@ -90,6 +92,7 @@ export function Button(props: ButtonProps) {
       <Pressable
         {...common}
         accessibilityLabel={props.accessibilityLabel}
+        accessibilityHint={props.description}
         accessibilityState={{ disabled, selected, expanded }}
         {...webStateProps({ pressed: props.selected, expanded })}
         className={`items-center justify-center rounded ${props.outlined ? `border ${selected ? "border-ink" : "border-hairline"}` : ""} ${props.surface ? "bg-ivory" : ""}`}

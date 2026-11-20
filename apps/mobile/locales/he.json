@@ -120,6 +120,15 @@
       "cancel": "ביטול",
       "cancelLabel": "ביטול ההקשר: {{type}}",
       "failed": "ההקשר לא נשמר."
+    },
+    "bookmark": {
+      "save": "שמור בלוקים",
+      "remove": "הסר מהלוקים",
+      "saved": "נשמר בלוקים",
+      "removed": "הוסר מהלוקים",
+      "saveFailed": "הלוק לא נשמר.",
+      "removeFailed": "הלוק לא הוסר מהלוקים.",
+      "unavailable": "לא ניתן לבדוק כרגע אם הלוק שמור"
     }
   },
   "wardrobe": {

@@ -80,6 +80,31 @@ export async function loadOutfit(userId: string, id: string): Promise<SavedOutfi
   return outfit;
 }
 
+/**
+ * The list's state right now, for an action that must decide at the moment it runs (which row a wear points at):
+ * `loading` for another user, so nothing of theirs is ever used.
+ */
+export function listNow(userId: string): OutfitsState {
+  return owner === userId ? state : EMPTY;
+}
+
+/** Resolves when the list is no longer `loading`, or after `ms`, whichever comes first. */
+export function whenSettled(userId: string, ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    if (listNow(userId).status !== "loading") return resolve();
+    const done = () => {
+      clearTimeout(timer);
+      listeners.delete(check);
+      resolve();
+    };
+    const check = () => {
+      if (listNow(userId).status !== "loading") done();
+    };
+    const timer = setTimeout(done, ms);
+    listeners.add(check);
+  });
+}
+
 /** A local change (optimistic write, roll back, removal): applied at once, and wins over a read in flight. */
 export function patchOutfits(userId: string, change: (outfits: readonly SavedOutfit[]) => SavedOutfit[]): void {
   if (owner !== userId) return;
