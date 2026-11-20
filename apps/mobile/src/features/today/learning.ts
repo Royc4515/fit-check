@@ -125,14 +125,55 @@ export function firstWeather(args: { othersReady: boolean; forecast: ForecastSta
   return args.cached ? "cached" : "without";
 }
 
-/** Both decisions of the first suggestion, or `wait` while either one still waits. */
-export type FirstSuggestion = "wait" | { saved: Exclude<FirstGeneration, "wait">; weather: Exclude<FirstWeather, "wait"> };
+/**
+ * How long Today's first suggestion may wait for the Hebrew calendar, counted from when its request started (in
+ * parallel with the forecast's, so the two bounds end together and never add up). The calendar decides the engine's
+ * hard rules (Shabbat or holiday clothes, Yom Kippur's shoes) and the planned days; a suggestion made without it on a
+ * holiday is a wrong suggestion, so it is waited for as long as the weather and no longer: past the bound the
+ * suggestion is drawn by what the civil calendar knows, and a line says the calendar is missing. Hebcal answers in
+ * about 0.4 s (measured 2026-11-20), and a stored answer (the ordinary morning) needs no wait at all.
+ */
+export const CALENDAR_GRACE_MS = 2500;
+
+/** Where the calendar stands: known (stored or answered), its request still on its way, or given up with none. */
+export type CalendarStatus = "known" | "loading" | "failed";
+
+/** What Today's first generation knows of the calendar: the real one, only the civil calendar, or it does not matter. */
+export type FirstCalendar = "wait" | "known" | "civil" | "unused";
 
 /**
- * Composes the two bounded waits of the first suggestion: the saved list (from when the other inputs were ready) and
- * the weather (from when the forecast request started). Each is measured from its own start and both run at once, so
- * the first suggestion is drawn when the later of the two ends: the waits never add up. Worst case, from opening:
- * max(others ready + SAVED_LIST_GRACE_MS, forecast start + WEATHER_GRACE_MS). Pure; never throws.
+ * The first generation's calendar decision. Pure: the time since the calendar request started comes in as data.
+ *
+ * - the other inputs are not ready: `wait`;
+ * - the observance switch is off: `unused` at once (the outfit is planned by the weekday rules whatever the day; only
+ *   the Hebrew date line and a holiday's one "dressier" step depend on it, and neither is worth a wait);
+ * - the calendar is known (a stored answer counts, even while its refresh is on its way): `known`;
+ * - it failed: `civil` at once;
+ * - still loading: `wait` until `CALENDAR_GRACE_MS` has passed since the request started, then `civil`.
+ *
+ * Never throws. The caller latches the first answer that is not `wait`; a calendar that arrives later updates the
+ * lines and the tabs, never the outfit on screen (TodayView's conditions in force).
+ */
+export function firstCalendar(args: { othersReady: boolean; observes: boolean; calendar: CalendarStatus; waitedMs: number }): FirstCalendar {
+  if (!args.othersReady) return "wait";
+  if (!args.observes) return "unused";
+  if (args.calendar === "known") return "known";
+  if (args.calendar === "loading" && args.waitedMs < CALENDAR_GRACE_MS) return "wait";
+  return "civil";
+}
+
+/** The three decisions of the first suggestion, or `wait` while any one still waits. */
+export type FirstSuggestion =
+  | "wait"
+  | { saved: Exclude<FirstGeneration, "wait">; weather: Exclude<FirstWeather, "wait">; calendar: Exclude<FirstCalendar, "wait"> };
+
+/**
+ * Composes the three bounded waits of the first suggestion: the saved list (from when the other inputs were ready),
+ * the weather (from when the forecast request started) and the calendar (from when its request started). Each is
+ * measured from its own start and all run at once, so the first suggestion is drawn when the latest of them ends: the
+ * waits never add up. Worst case, from opening: max(others ready + SAVED_LIST_GRACE_MS, forecast start +
+ * WEATHER_GRACE_MS, calendar start + CALENDAR_GRACE_MS); the two requests start together, as soon as the location is
+ * read. Pure; never throws.
  */
 export function firstSuggestion(args: {
   othersReady: boolean;
@@ -141,10 +182,14 @@ export function firstSuggestion(args: {
   forecast: ForecastStatus;
   cached: boolean;
   forecastWaitedMs: number;
+  observes: boolean;
+  calendar: CalendarStatus;
+  calendarWaitedMs: number;
 }): FirstSuggestion {
   const saved = firstGeneration({ othersReady: args.othersReady, saved: args.saved, waitedMs: args.savedWaitedMs });
   const weather = firstWeather({ othersReady: args.othersReady, forecast: args.forecast, cached: args.cached, waitedMs: args.forecastWaitedMs });
-  return saved === "wait" || weather === "wait" ? "wait" : { saved, weather };
+  const calendar = firstCalendar({ othersReady: args.othersReady, observes: args.observes, calendar: args.calendar, waitedMs: args.calendarWaitedMs });
+  return saved === "wait" || weather === "wait" || calendar === "wait" ? "wait" : { saved, weather, calendar };
 }
 
 /**

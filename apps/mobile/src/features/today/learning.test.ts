@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { TodayRecord } from "../../data/feedback";
 import {
   firstGeneration,
+  CALENDAR_GRACE_MS,
+  firstCalendar,
   firstSuggestion,
   firstWeather,
   initialLearn,
@@ -121,11 +123,21 @@ describe("the first suggestion's weather", () => {
   });
 });
 
-describe("the two bounded waits together", () => {
-  const base = { othersReady: true, saved: "ready" as const, savedWaitedMs: 0, forecast: "fresh" as const, cached: false, forecastWaitedMs: 0 };
+describe("the bounded waits together", () => {
+  const base = {
+    othersReady: true,
+    saved: "ready" as const,
+    savedWaitedMs: 0,
+    forecast: "fresh" as const,
+    cached: false,
+    forecastWaitedMs: 0,
+    observes: true,
+    calendar: "known" as const,
+    calendarWaitedMs: 0,
+  };
 
-  it("goes when both have answered", () => {
-    expect(firstSuggestion(base)).toEqual({ saved: "with", weather: "fresh" });
+  it("goes when all have answered", () => {
+    expect(firstSuggestion(base)).toEqual({ saved: "with", weather: "fresh", calendar: "known" });
   });
 
   it("waits while either waits", () => {
@@ -148,17 +160,73 @@ describe("the two bounded waits together", () => {
         forecast: "loading",
         cached: true,
         forecastWaitedMs: t - forecastStart,
+        observes: true,
+        calendar: "known",
+        calendarWaitedMs: t - forecastStart,
       });
     expect(at(2600)).toBe("wait");
     expect(at(3299)).toBe("wait");
-    expect(at(3300)).toEqual({ saved: "without", weather: "cached" });
+    expect(at(3300)).toEqual({ saved: "without", weather: "cached", calendar: "known" });
   });
 
   it("with the other inputs ready early, the weather bound decides", () => {
     const at = (t: number) =>
-      firstSuggestion({ othersReady: true, saved: "ready", savedWaitedMs: t, forecast: "loading", cached: false, forecastWaitedMs: t });
+      firstSuggestion({ ...base, savedWaitedMs: t, forecast: "loading", cached: false, forecastWaitedMs: t, calendarWaitedMs: t });
     expect(at(2499)).toBe("wait");
-    expect(at(2500)).toEqual({ saved: "with", weather: "without" });
+    expect(at(2500)).toEqual({ saved: "with", weather: "without", calendar: "known" });
+  });
+
+  it("the calendar and the forecast start together and their bounds end together, never one after the other", () => {
+    // Timeline in ms from opening: the location is read at 40 and both requests start then; the wardrobe and the
+    // records are in at 900; neither service answers. Drawn at 40 + 2500 = 2540, not at 40 + 2500 + 2500.
+    const start = 40;
+    const at = (t: number) =>
+      firstSuggestion({
+        ...base,
+        othersReady: t >= 900,
+        forecast: "loading",
+        forecastWaitedMs: t - start,
+        calendar: "loading",
+        calendarWaitedMs: t - start,
+      });
+    expect(at(2539)).toBe("wait");
+    expect(at(2540)).toEqual({ saved: "with", weather: "without", calendar: "civil" });
+  });
+
+  it("waits for the calendar while only it is missing", () => {
+    expect(firstSuggestion({ ...base, calendar: "loading", calendarWaitedMs: 300 })).toBe("wait");
+    expect(firstSuggestion({ ...base, calendar: "loading", calendarWaitedMs: 300, observes: false })).toEqual({ saved: "with", weather: "fresh", calendar: "unused" });
+  });
+});
+
+describe("the first generation's calendar", () => {
+  const ready = { othersReady: true, observes: true, calendar: "loading" as const, waitedMs: 0 };
+
+  it("waits for the other inputs first", () => {
+    expect(firstCalendar({ ...ready, othersReady: false, calendar: "known" })).toBe("wait");
+  });
+
+  it("a known calendar, stored or answered, is used at once", () => {
+    expect(firstCalendar({ ...ready, calendar: "known" })).toBe("known");
+  });
+
+  it("waits at most CALENDAR_GRACE_MS from the request's start, then plans by the civil calendar", () => {
+    expect(firstCalendar({ ...ready, waitedMs: CALENDAR_GRACE_MS - 1 })).toBe("wait");
+    expect(firstCalendar({ ...ready, waitedMs: CALENDAR_GRACE_MS })).toBe("civil");
+  });
+
+  it("a failed request is not waited for", () => {
+    expect(firstCalendar({ ...ready, calendar: "failed" })).toBe("civil");
+  });
+
+  it("with the observance switch off the calendar does not decide the outfit: no wait", () => {
+    expect(firstCalendar({ ...ready, observes: false })).toBe("unused");
+    expect(firstCalendar({ ...ready, observes: false, calendar: "failed" })).toBe("unused");
+  });
+
+  it("the bound is 2.5 s, as the weather's", () => {
+    expect(CALENDAR_GRACE_MS).toBe(2500);
+    expect(CALENDAR_GRACE_MS).toBe(WEATHER_GRACE_MS);
   });
 });
 

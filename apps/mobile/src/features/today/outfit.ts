@@ -5,6 +5,7 @@ import {
   fitsWeather,
   generateCandidates,
   NO_ADJUSTMENT,
+  passesContextRules,
   scoreOutfit,
   slotOf,
   type DayAdjustment,
@@ -78,6 +79,22 @@ export function getOutfit(items: Item[], pairWeights: PairWeights, day: DayInput
  */
 export function weatherStillFits(args: { outfit: readonly Item[]; pool: readonly Item[]; day: DayInput; adjustment: DayAdjustment }): boolean {
   return fitsWeather(args.outfit, args.pool, adjustRequest(request(args.day), args.adjustment));
+}
+
+/**
+ * Whether the outfit on screen still passes the hard rules of the day's context as the calendar now says it is
+ * (Shabbat or holiday clothes, Yom Kippur's shoes, an occasion), after the day's nudges: every piece passes the
+ * engine's own context filter for its slot (`passesContextRules`, the filter hardFilter uses). Today asks this when
+ * the Hebrew calendar arrives after the outfit was drawn: true keeps the outfit quietly, false says the calendar
+ * changed the day and offers to update. Weather is not judged here (weatherStillFits does that). Pure; never throws.
+ *
+ * @param args.outfit the garments on screen, after swaps (pieces with no slot pass, as in the engine).
+ * @param args.day the day with the calendar's context (`dayType`, `yomKippur`, `festive`, `occasion`).
+ * @param args.adjustment the day's effective adjustment (learned lean plus taps): a "dressier" step moves the range.
+ */
+export function rulesStillFit(args: { outfit: readonly Item[]; day: DayInput; adjustment: DayAdjustment }): boolean {
+  const req = adjustRequest(request(args.day), args.adjustment);
+  return args.outfit.every((item) => passesContextRules(item, req.context));
 }
 
 /** Scores a hand-assembled outfit (worn, or swapped) exactly like the engine scores its own candidates. */
