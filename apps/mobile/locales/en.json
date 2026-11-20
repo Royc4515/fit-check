@@ -327,6 +327,16 @@
       "recent": "Recent outfits",
       "outfitLabel": "{{date}}: {{pieces}}",
       "rowHint": "Opens the outfit's garments",
+      "bookmark": {
+        "save": "Save to outfits: the outfit of {{date}}",
+        "remove": "Remove from outfits: the outfit of {{date}}",
+        "saved": "Saved to outfits: the outfit of {{date}}",
+        "removed": "Removed from outfits: the outfit of {{date}}",
+        "saveFailed": "Couldn't save it to your outfits.",
+        "removeFailed": "Couldn't remove it from your outfits.",
+        "cannotSave": "This outfit can't be saved: one of its garments was deleted.",
+        "unavailable": "Can't check right now whether this outfit is saved"
+      },
       "showMore": "Show more",
       "empty": {
         "title": "No wears logged yet",

@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, ScreenColumn, ScreenHeader } from "../../components/ui";
 import { fetchMonthSpend, fetchWornOutfits, summarizeSpend, summarizeWears, wearsToday, type AiCallRow, type WornOutfit } from "../../data/insights";
 import { useWardrobe } from "../../data/WardrobeProvider";
+import { refreshOutfits } from "../outfits/store";
+import { useBookmark } from "../today/useBookmark";
 import { SpendSection, type SpendState } from "./SpendSection";
 import { WearsSection, type WearsState } from "./WearsSection";
 
@@ -58,13 +60,24 @@ const loadSpend = (): Promise<{ kind: "rows"; rows: AiCallRow[]; partial: boolea
  * Data: worn outfits from `wears` (or the design-preview snapshot) joined to the loaded wardrobe; spend from the
  * user's own `ai_calls` rows (RLS). Each section loads and fails on its own, with its own retry.
  */
-/** @param onBack - the back arrow: to the profile underneath (or to it, after a deep link). */
-export function InsightsView({ onBack }: { onBack: () => void }) {
+/**
+ * @param onBack - the back arrow: to the profile underneath (or to it, after a deep link).
+ * @param userId - whose saved outfits the worn rows' bookmarks read and write.
+ */
+export function InsightsView({ onBack, userId }: { onBack: () => void; userId: string }) {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const wardrobe = useWardrobe();
 
+  const bookmark = useBookmark(userId);
+  // The saved outfits (which worn rows show a filled bookmark): read on every focus, as Today and the collection do,
+  // so an outfit removed elsewhere is not still "saved" here. The wears list does not wait for it.
+  useFocusEffect(
+    useCallback(() => {
+      void refreshOutfits(userId);
+    }, [userId])
+  );
   const [worn, retryWorn] = useOnFocus(loadWorn);
   const [spend, retrySpend] = useOnFocus(loadSpend);
 
@@ -100,7 +113,7 @@ export function InsightsView({ onBack }: { onBack: () => void }) {
             <ScreenHeader title={t("insights.title")} safeArea={false} />
           </View>
           <View className="mt-8">
-            <WearsSection state={wears} onOpenItem={openItem} onEmptyAction={() => router.navigate("/")} />
+            <WearsSection state={wears} onOpenItem={openItem} onEmptyAction={() => router.navigate("/")} bookmark={bookmark} />
           </View>
           <View className="mt-12">
             <SpendSection state={spendState} />

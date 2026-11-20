@@ -8,6 +8,7 @@ import {
   shownSaved,
   wearOutfitId,
   wearRowDecision,
+  writeFailureKind,
   type SavedListDeps,
   type SavedListState,
   type SavedLookup,
@@ -195,5 +196,23 @@ describe("bookmarkFailureAction", () => {
   });
   it("a failed removal shows while the outfit is still saved", () => {
     expect(bookmarkFailureAction({ ...failure, wantSaved: false }, { kind: "saved", key: "k", savedId: "A" }, "2026-11-20")).toBe("show");
+  });
+});
+
+describe("writeFailureKind", () => {
+  it("a remove that finds the outfit gone or not saved already has its wish met", () => {
+    expect(writeFailureKind(false, "not_saved")).toBe("met");
+    expect(writeFailureKind(false, "not_found")).toBe("met");
+  });
+  it("a save of an outfit that cannot be saved has no retry", () => {
+    expect(writeFailureKind(true, "invalid_outfit")).toBe("unsaveable");
+    expect(writeFailureKind(true, "not_found")).toBe("unsaveable");
+    expect(writeFailureKind(false, "invalid_outfit")).toBe("unsaveable");
+  });
+  it("everything else is a plain failure with a retry", () => {
+    expect(writeFailureKind(true, undefined)).toBe("failed");
+    expect(writeFailureKind(true, "not_saved")).toBe("failed");
+    expect(writeFailureKind(false, "name_too_long")).toBe("failed");
+    expect(writeFailureKind(false, undefined)).toBe("failed");
   });
 });
