@@ -40,6 +40,7 @@ function item(name: string, sub: Subcategory = "tshirt"): Item {
 }
 const wear = (id: string, date: string, ...items: (Item | { id: string })[]): WornOutfit => ({
   wearId: id,
+  outfitId: `o-${id}`,
   date,
   pieces: items.map((i) => ({ itemId: i.id, slot: null as Slot | null })),
 });
@@ -90,6 +91,7 @@ describe("wornFromRows", () => {
     id: "w1",
     worn_on: "2026-11-18",
     feedback: "worn",
+    outfit_id: "o1",
     outfits: { outfit_items: [{ item_id: "a", slot: "top" }, { item_id: "b" }] },
     ...over,
   });
@@ -97,13 +99,14 @@ describe("wornFromRows", () => {
 
   it("reads a row with and without the slot (the live query and the preview snapshot)", () => {
     expect(wornFromRows([row()], from, TODAY)).toEqual([
-      { wearId: "w1", date: "2026-11-18", pieces: [{ itemId: "a", slot: "top" }, { itemId: "b", slot: null }] },
+      { wearId: "w1", outfitId: "o1", date: "2026-11-18", pieces: [{ itemId: "a", slot: "top" }, { itemId: "b", slot: null }] },
     ]);
   });
 
   it("drops what is not a wear: another feedback, no outfit, an outfit with no garments", () => {
     expect(wornFromRows([row({ feedback: "skipped" }), row({ feedback: "disliked" })], from, TODAY)).toEqual([]);
     expect(wornFromRows([row({ outfits: null })], from, TODAY)).toEqual([]);
+    expect(wornFromRows([row({ outfit_id: null })], from, TODAY)).toEqual([]);
     expect(wornFromRows([row({ outfits: { outfit_items: [] } })], from, TODAY)).toEqual([]);
   });
 
@@ -195,6 +198,7 @@ describe("summarizeWears", () => {
     const tee2 = item("Second tee");
     const outfit: WornOutfit = {
       wearId: "x",
+      outfitId: "o-x",
       date: TODAY,
       pieces: [
         { itemId: tee.id, slot: null },
@@ -211,6 +215,27 @@ describe("summarizeWears", () => {
       ["shoes", shoes.id],
     ]);
     expect(s.outfits[0]?.items.map((i) => i.id)).toEqual([tee.id, tee2.id, belt.id, chinos.id, shoes.id]);
+  });
+
+  it("carries the outfit row, every garment id and the slotted pieces a save is checked against", () => {
+    const outfit: WornOutfit = {
+      wearId: "x",
+      outfitId: "row-9",
+      date: TODAY,
+      pieces: [
+        { itemId: tee.id, slot: null },
+        { itemId: chinos.id, slot: "bottom" },
+        { itemId: "gone", slot: null },
+      ],
+    };
+    const o = summarizeWears([outfit], wardrobe, TODAY).outfits[0];
+    expect(o?.outfitId).toBe("row-9");
+    expect(o?.itemIds).toEqual([tee.id, chinos.id, "gone"]);
+    // The slot of the row when it has one, the engine's when not, and none for a garment nobody knows.
+    expect(o?.savePieces).toEqual([
+      { item_id: tee.id, slot: "top" },
+      { item_id: chinos.id, slot: "bottom" },
+    ]);
   });
 
   it("keeps the newest-first order it is given", () => {

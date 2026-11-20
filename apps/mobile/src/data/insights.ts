@@ -41,8 +41,11 @@ export async function wearsToday(now: Date = new Date()): Promise<string> {
 // Wears
 // ---------------------------------------------------------------------------------------------------------------
 
-/** One worn outfit: the wear's date and its garments (with the slot when the row says it). */
-export type WornOutfit = { wearId: string; date: string; pieces: { itemId: string; slot: Slot | null }[] };
+/**
+ * One worn outfit: the wear's date, the `outfits` row it points at (what saving it from Insights marks) and its
+ * garments (with the slot when the row says it).
+ */
+export type WornOutfit = { wearId: string; outfitId: string; date: string; pieces: { itemId: string; slot: Slot | null }[] };
 
 /**
  * Wear rows as both read paths return them: the live query below (with `slot`) and the preview snapshot's
@@ -52,12 +55,14 @@ const WornRowSchema = z.object({
   id: z.string(),
   worn_on: z.string().date(),
   feedback: z.string(),
+  // Null when the outfit row was deleted: such a wear has no garments and is dropped below.
+  outfit_id: z.string().nullable(),
   outfits: z
     .object({ outfit_items: z.array(z.object({ item_id: z.string(), slot: z.enum(SLOTS).optional() })) })
     .nullable(),
 });
 
-const WORN_COLUMNS = "id,worn_on,feedback,outfits(outfit_items(item_id,slot))";
+const WORN_COLUMNS = "id,worn_on,feedback,outfit_id,outfits(outfit_items(item_id,slot))";
 
 /** First day of the window that ends on `today`. */
 export function windowStart(today: string, days = WEAR_WINDOW_DAYS): string {
@@ -94,10 +99,10 @@ export function wornFromRows(rows: readonly unknown[], from: string, today: stri
       continue;
     }
     const row = parsed.data;
-    if (row.feedback !== "worn" || row.worn_on < from || row.worn_on > today || !row.outfits) continue;
+    if (row.feedback !== "worn" || row.worn_on < from || row.worn_on > today || !row.outfits || row.outfit_id === null) continue;
     const pieces = row.outfits.outfit_items.map((i) => ({ itemId: i.item_id, slot: i.slot ?? null }));
     if (pieces.length === 0) continue;
-    out.push({ wearId: row.id, date: row.worn_on, pieces });
+    out.push({ wearId: row.id, outfitId: row.outfit_id, date: row.worn_on, pieces });
   }
   return out;
 }
@@ -116,7 +121,22 @@ export type WearSummary = {
    * are all the outfit's garments the wardrobe knows, accessories and a second garment for a taken slot included (what
    * the row's name and sheet list).
    */
-  outfits: { wearId: string; date: string; pieces: { slot: Slot; item: Item }[]; items: Item[] }[];
+  outfits: {
+    wearId: string;
+    /** The `outfits` row of the wear: several wears can share one, and one set of garments can sit on several rows. */
+    outfitId: string;
+    date: string;
+    pieces: { slot: Slot; item: Item }[];
+    items: Item[];
+    /** Every garment id of the outfit row, known to the wardrobe or not: what "the same garments" compares. */
+    itemIds: string[];
+    /**
+     * The garments with the slot the outfit row gives them (the engine's slot when the row has none, as in the preview
+     * snapshot): what a save is checked against. A garment with no slot at all is left out, so the check fails
+     * closed (the outfit then misses a required slot and is not offered for saving).
+     */
+    savePieces: { item_id: string; slot: Slot }[];
+  }[];
 };
 
 /**
@@ -153,9 +173,16 @@ export function summarizeWears(worn: readonly WornOutfit[], items: readonly Item
   });
   const outfits = inWindow.map((w) => ({
     wearId: w.wearId,
+    outfitId: w.outfitId,
     date: w.date,
     pieces: placePieces(w.pieces, byId),
     items: w.pieces.flatMap((p) => byId.get(p.itemId) ?? []),
+    itemIds: w.pieces.map((p) => p.itemId),
+    savePieces: w.pieces.flatMap((p) => {
+      const item = byId.get(p.itemId);
+      const slot = p.slot ?? (item ? slotOf(item) : null);
+      return slot ? [{ item_id: p.itemId, slot }] : [];
+    }),
   }));
   return { daysWorn: wornDates.size, distinctItems: counts.size, mostWorn, days: strip, outfits };
 }
