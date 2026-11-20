@@ -87,6 +87,28 @@ export function civilCalendar(date: string, weekday: number, observes: boolean):
   return { ...NO_CALENDAR, chain: [{ date: saturday.iso, kind: "shabbat", holiday: null }] };
 }
 
+/**
+ * Whether a Hebcal events answer for `start..end` can be the calendar. Every week has a Friday, and Hebcal (asked with
+ * `c=on`) gives a candle lighting for it, so a window of seven days or more with no candle-lighting item is not a real
+ * calendar: an empty or truncated answer that still passes the schema. Stored as known it would hide every Shabbat and
+ * holiday for two months with no warning line, so the caller treats it as a failed request. Pure; never throws. A
+ * window shorter than seven days, or with unreadable dates, is judged by the schema alone (true).
+ */
+export function calendarAnswerUsable(items: readonly Pick<HebcalItem, "category">[], start: string, end: string): boolean {
+  const a = Date.parse(`${start}T00:00:00Z`);
+  const b = Date.parse(`${end}T00:00:00Z`);
+  if (Number.isNaN(a) || Number.isNaN(b) || (b - a) / 86_400_000 + 1 < 7) return true;
+  return items.some((i) => i.category === "candles");
+}
+
+/**
+ * Whether a Hebcal converter answer can be the Hebrew-date window: it holds the date asked for. An empty `hdates`
+ * passes the schema; stored, it would leave the Hebrew date missing for the window's life. Pure; never throws.
+ */
+export function hebrewDatesUsable(dates: Readonly<Record<string, unknown>>, date: string): boolean {
+  return date in dates;
+}
+
 /** The Hebrew date of `date` from a stored window, or null when the window does not hold it. */
 export function hebrewDateOn(window: HebrewDateWindow, date: string): { he: string; en: string } | null {
   return window.dates[date] ?? null;

@@ -4,10 +4,12 @@ import { z } from "zod";
 import { candleLightingMinutes } from "./candleLighting";
 import {
   addDays,
+  calendarAnswerUsable,
   CALENDAR_WINDOW_DAYS,
   calendarOn,
   civilCalendar,
   hebrewDateOn,
+  hebrewDatesUsable,
   windowCovers,
   type CalendarWindow,
   type HebrewDateWindow,
@@ -314,6 +316,9 @@ function startCalendar(date: string, loc: ResolvedLocation): WindowLoad<Calendar
       const end = addDays(date, CALENDAR_WINDOW_DAYS).iso;
       const url = `https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&min=on${israel}&c=on&M=on&${where}&start=${date}&end=${end}&lg=he`;
       const { items } = HebcalItemsSchema.parse(await getJson(url, CALENDAR_TIMEOUT_MS));
+      // don't touch / a 200 with no candle lighting in 60 days is not a calendar (an empty or cut answer): failing it
+      // keeps the warning line and stores nothing, instead of two months of days with no Shabbat and no holiday.
+      if (!calendarAnswerUsable(items, date, end)) throw new Error("Hebcal answered with no candle lighting in the window");
       return { start: date, end, items };
     },
   });
@@ -336,6 +341,7 @@ function startHebrewDates(date: string): WindowLoad<HebrewDateWindow> {
       );
       const dates: HebrewDateWindow["dates"] = {};
       for (const [iso, d] of Object.entries(r.hdates)) dates[iso] = { he: stripNiqqud(d.hebrew), en: `${d.hd} ${d.hm} ${d.hy}` };
+      if (!hebrewDatesUsable(dates, date)) throw new Error("Hebcal converter answered without the date asked for");
       // The converter caps a range (180 days today): the window is what it answered, not what was asked.
       return { start: r.start, end: r.end, dates };
     },
