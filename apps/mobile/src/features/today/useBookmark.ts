@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { markOutfitSaved, removeSavedOutfit, saveOutfit } from "../../data/outfits";
+import { SavedOutfitError } from "../../data/savedOutfit";
 import { withOutfit, withoutOutfit } from "../outfits/collection";
 import { patchOutfits, refreshOutfits, useSavedOutfits } from "../outfits/store";
 import type { BookmarkFailureInfo, BookmarkIntent, SavedLookup } from "./bookmark";
@@ -14,7 +15,10 @@ export type BookmarkAnnouncement = { kind: "saved" | "removed"; n: number };
  * A press that failed: the garment set, the day and what the user wanted. It is data, not an action: "try again" is
  * recomputed from the state at the moment of the retry (bookmarkFailureAction), never replayed.
  */
-export type BookmarkFailure = BookmarkFailureInfo;
+export type BookmarkFailure = BookmarkFailureInfo & {
+  /** The data layer refused the outfit itself (`invalid_outfit`: a garment was deleted), so no retry could pass. */
+  unsaveable: boolean;
+};
 
 export type BookmarkApi = {
   /** The saved outfits have been read: until then the bookmark is drawn "not saved" but cannot be pressed. */
@@ -81,7 +85,7 @@ export function useBookmark(userId: string): BookmarkApi {
         setAnnouncement({ kind: intent.kind === "saved" ? "removed" : "saved", n: count.current });
       } catch (error) {
         console.error("Bookmark write failed", error);
-        setFailure({ key: intent.key, date, wantSaved: intent.kind !== "saved" });
+        setFailure({ key: intent.key, date, wantSaved: intent.kind !== "saved", unsaveable: error instanceof SavedOutfitError && error.code === "invalid_outfit" });
       } finally {
         // Cleared with the store already patched (success) or not (failure): either way the next render is the truth.
         setPending(null);
