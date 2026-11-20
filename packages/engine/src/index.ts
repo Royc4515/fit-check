@@ -8,4 +8,5 @@ export * from "./adjust";
 export * from "./swap";
 export * from "./laundry";
 export * from "./redraw";
+export * from "./compatibility";
 export * from "./saved";

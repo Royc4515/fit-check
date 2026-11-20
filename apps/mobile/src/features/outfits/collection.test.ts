@@ -60,6 +60,7 @@ function outfit(id: string, over: Partial<SavedOutfit> = {}): SavedOutfit {
     missing: [],
     itemIds: ["t1", "b1", "s1"],
     wornCount: 0,
+    wearCount: 0,
     lastWornOn: null,
     ...over,
   };
