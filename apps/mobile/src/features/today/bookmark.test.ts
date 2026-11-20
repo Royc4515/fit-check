@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { OutfitPiece } from "../../data/savedOutfit";
-import { bookmarkIntent, shownSaved, wearOutfitId, type SavedLookup } from "./bookmark";
+import {
+  bookmarkFailureAction,
+  bookmarkIntent,
+  resolveWearRow,
+  SavedListUnavailableError,
+  shownSaved,
+  wearOutfitId,
+  wearRowDecision,
+  type SavedListDeps,
+  type SavedListState,
+  type SavedLookup,
+} from "./bookmark";
 
 const TOP: OutfitPiece = { item_id: "t1", slot: "top" };
 const BOTTOM: OutfitPiece = { item_id: "b1", slot: "bottom" };
@@ -104,5 +115,85 @@ describe("shownSaved", () => {
 
   it("is never saved when hidden", () => {
     expect(shownSaved({ kind: "hidden" }, { key: "k", saved: true })).toBe(false);
+  });
+});
+
+describe("wearRowDecision", () => {
+  const outfits: SavedLookup = [{ id: "A", itemIds: ["t1", "b1", "s1"] }];
+  it("ready: the saved row for a saved set, undefined (a new row) for any other", () => {
+    expect(wearRowDecision(["s1", "t1", "b1"], { status: "ready", outfits })).toEqual({ kind: "row", id: "A" });
+    expect(wearRowDecision(["t9", "b1", "s1"], { status: "ready", outfits })).toEqual({ kind: "row", id: undefined });
+  });
+  it("loading: waits, even when the placeholder list is empty (it would write a copy)", () => {
+    expect(wearRowDecision(["t1", "b1", "s1"], { status: "loading", outfits: [] })).toEqual({ kind: "wait" });
+  });
+  it("error: reads again", () => {
+    expect(wearRowDecision(["t1", "b1", "s1"], { status: "error", outfits: [] })).toEqual({ kind: "reread" });
+  });
+});
+
+describe("resolveWearRow", () => {
+  const ids = ["t1", "b1", "s1"];
+  const saved: SavedLookup = [{ id: "A", itemIds: ids }];
+  const mk = (states: SavedListState[]) => {
+    let i = 0;
+    const calls = { settled: 0, reread: 0 };
+    const deps: SavedListDeps = {
+      read: () => states[Math.min(i, states.length - 1)]!,
+      settled: async () => {
+        calls.settled += 1;
+        i += 1;
+      },
+      reread: async () => {
+        calls.reread += 1;
+        i += 1;
+      },
+    };
+    return { deps, calls };
+  };
+  it("ready at once: no wait, no read", async () => {
+    const { deps, calls } = mk([{ status: "ready", outfits: saved }]);
+    await expect(resolveWearRow(ids, deps)).resolves.toBe("A");
+    expect(calls).toEqual({ settled: 0, reread: 0 });
+  });
+  it("loading then ready: waits, then points at the saved row", async () => {
+    const { deps, calls } = mk([{ status: "loading", outfits: [] }, { status: "ready", outfits: saved }]);
+    await expect(resolveWearRow(ids, deps)).resolves.toBe("A");
+    expect(calls).toEqual({ settled: 1, reread: 0 });
+  });
+  it("loading that never answers: treated as failed, one fresh read, which may succeed", async () => {
+    const { deps, calls } = mk([{ status: "loading", outfits: [] }, { status: "loading", outfits: [] }, { status: "ready", outfits: saved }]);
+    await expect(resolveWearRow(ids, deps)).resolves.toBe("A");
+    expect(calls).toEqual({ settled: 1, reread: 1 });
+  });
+  it("failed: one fresh read; if that works the wear points at the saved row", async () => {
+    const { deps, calls } = mk([{ status: "error", outfits: [] }, { status: "ready", outfits: saved }]);
+    await expect(resolveWearRow(ids, deps)).resolves.toBe("A");
+    expect(calls).toEqual({ settled: 0, reread: 1 });
+  });
+  it("failed twice: throws, never a silent copy", async () => {
+    const { deps, calls } = mk([{ status: "error", outfits: [] }]);
+    await expect(resolveWearRow(ids, deps)).rejects.toBeInstanceOf(SavedListUnavailableError);
+    expect(calls.reread).toBe(1);
+  });
+});
+
+describe("bookmarkFailureAction", () => {
+  const failure = { key: "k", date: "2026-11-20", wantSaved: true };
+  const unsaved = { kind: "unsaved", key: "k", write: { op: "mark", outfitId: "r" } } as const;
+  it("shows while the same set on the same day is still not saved", () => {
+    expect(bookmarkFailureAction(failure, unsaved, "2026-11-20")).toBe("show");
+  });
+  it("drops when the set changed, the day changed, or the outfit cannot be saved", () => {
+    expect(bookmarkFailureAction(failure, { ...unsaved, key: "other" }, "2026-11-20")).toBe("drop");
+    expect(bookmarkFailureAction(failure, unsaved, "2026-11-21")).toBe("drop");
+    expect(bookmarkFailureAction(failure, { kind: "hidden" }, "2026-11-20")).toBe("drop");
+  });
+  it("drops when the state already is what was wanted", () => {
+    expect(bookmarkFailureAction(failure, { kind: "saved", key: "k", savedId: "A" }, "2026-11-20")).toBe("drop");
+    expect(bookmarkFailureAction({ ...failure, wantSaved: false }, unsaved, "2026-11-20")).toBe("drop");
+  });
+  it("a failed removal shows while the outfit is still saved", () => {
+    expect(bookmarkFailureAction({ ...failure, wantSaved: false }, { kind: "saved", key: "k", savedId: "A" }, "2026-11-20")).toBe("show");
   });
 });

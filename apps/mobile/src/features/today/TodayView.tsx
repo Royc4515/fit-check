@@ -42,7 +42,7 @@ import { AdjustSheet, type Adjust } from "./AdjustSheet";
 import { explainOutfit } from "./explain";
 import { settingGetNow, settingGet, settingSet } from "../../data/kv";
 import { asCandidate, contextTypeOf, type DayInput, type Swaps, type TodayPlan } from "./outfit";
-import { bookmarkIntent, shownSaved, wearOutfitId, type BookmarkIntent } from "./bookmark";
+import { bookmarkFailureAction, bookmarkIntent, shownSaved, type BookmarkIntent } from "./bookmark";
 import { PieceSheet } from "./PieceSheet";
 import type { BookmarkApi } from "./useBookmark";
 import { defaultAdjustment, occasionInEffect, occasionMayApply, planDays } from "./plans";
@@ -551,13 +551,17 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
   }
   if (failed) statuses.push({ key: "failed", variant: "error", message: t("today.status.failed") });
   // A failed save or removal stays with the outfit it was for, on its day's tab, with "try again" (item 6).
+  // "Try again" never replays the press that failed: it presses the CURRENT intent (a save that failed, then a wear,
+  // now offers "mark this worn row as saved"). A line whose outfit or day is gone, or whose wish is already met, is
+  // not shown (bookmarkFailureAction).
   const bookmarkFailure = bookmark.failure;
-  if (bookmarkFailure && intent.kind !== "hidden" && bookmarkFailure.date === selectedDate && bookmarkFailure.intent.key === intent.key) {
+  if (bookmarkFailure && intent.kind !== "hidden" && bookmarkFailureAction(bookmarkFailure, intent, selectedDate) === "show") {
+    const current = intent;
     statuses.push({
       key: "bookmark",
       variant: "error",
-      message: t(bookmarkFailure.intent.kind === "saved" ? "today.bookmark.removeFailed" : "today.bookmark.saveFailed"),
-      action: { label: t("common.retry"), onPress: () => void bookmark.press(bookmarkFailure.intent, bookmarkFailure.date) },
+      message: t(bookmarkFailure.wantSaved ? "today.bookmark.saveFailed" : "today.bookmark.removeFailed"),
+      action: { label: t("common.retry"), onPress: () => void bookmark.press(current, selectedDate) },
     });
   }
 
@@ -753,6 +757,8 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
         accessibilityLabel={bookmarked ? t("today.bookmark.remove") : t("today.bookmark.save")}
         onPress={pressBookmark}
         disabled={!bookmark.ready || busy}
+        // Why it cannot be pressed, when the saved list could not be read (no visible line).
+        description={bookmark.unavailable ? t("today.bookmark.unavailable") : undefined}
       />
     );
   // The polite announcement of a finished save or removal (item 6): the icon changing shape is for the eyes. Web reads
@@ -946,17 +952,12 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     if (plan.kind !== "suggestion") return;
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     bookmark.dismissFailure();
-    const wearing = plan.outfit;
-    const source = plan.source;
-    // A saved outfit is worn on its own row (item 6). A save still on its way finishes first, so the wear sees it; the
-    // saved outfits are then read at this moment, not as of the render the button was drawn in.
-    void bookmark
-      .settled()
-      .then(() => actions.wear(wearing, source, effective, target, wearOutfitId(wearing.items.map((i) => i.id), bookmark.savedNow())))
-      .then(() => {
-        resetSwaps();
-        requestFocus("wear");
-      });
+    // Which row the wear is recorded on (a saved outfit's own, else a new one) is decided inside the write, from a
+    // settled saved list (useFeedback `resolveRow`).
+    void actions.wear(plan.outfit, plan.source, effective, target).then(() => {
+      resetSwaps();
+      requestFocus("wear");
+    });
   };
   const adjustActive = adjustment.temp_steps !== 0 || adjustment.formality_steps !== 0;
 
@@ -1031,15 +1032,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
             const corrected = correctedPieces(shownItems, piece.item.id, o);
             const record = plan.record;
             void actions
-              .correct(
-                record,
-                asCandidate(corrected, plan.req, pairWeights),
-                "swap",
-                effective,
-                { date: record.date, dayType: contextTypeOf(days[sel]!) },
-                // The corrected set may itself be a saved outfit: then the corrected wear goes on that row.
-                wearOutfitId(corrected.map((i) => i.id), bookmark.savedNow())
-              )
+              .correct(record, asCandidate(corrected, plan.req, pairWeights), "swap", effective, { date: record.date, dayType: contextTypeOf(days[sel]!) })
               .then(() => requestFocus("wear"));
             return;
           }
