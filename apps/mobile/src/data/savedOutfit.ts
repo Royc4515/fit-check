@@ -64,8 +64,13 @@ export class SavedOutfitError extends Error {
   }
 }
 
-/** What an edit of a saved outfit sets: all its garments, "למתי" and the name (null or empty = no name). */
+/**
+ * What an edit of a saved outfit sets: all its garments, "למתי" and the name (null or empty = no name). `userId` and
+ * `date` (the caller's local yyyy-mm-dd) are used only when the edit becomes a new row (see `editPlan`).
+ */
 export const UpdateOutfitInputSchema = z.object({
+  userId: z.string().min(1),
+  date: z.string().date(),
   garments: z.array(OutfitPieceSchema),
   contextType: z.enum(CONTEXT_TYPES),
   name: z.string().nullable(),
@@ -153,6 +158,45 @@ export function findSameOutfit(
   return outfits.find((o) => o.id !== exceptId && itemSetKey(o.itemIds) === key)?.id ?? null;
 }
 
+/**
+ * How an edit of a saved outfit is written (DESIGN.md "שלב 5.2" item 4: what was worn is never rewritten):
+ * - `in_place`: the garment set is unchanged (only "למתי" or the name), or the row has no wears at all: that row.
+ * - `copy`: the set changes and the row has a wear (any feedback: each `wears` row is what was shown that day): a new
+ *   saved row with the new garments and the old row's name, favourite and exact `saved_at`; then the old row is
+ *   unsaved and keeps its garments and wears.
+ * - `resume`: a `copy` that stopped half way (the new row exists, the old one is still saved). Recognised by a saved
+ *   row other than this one with exactly the new garments AND exactly this row's `saved_at`: a copy carries it to the
+ *   microsecond, a separately saved outfit never shares it. Finish: write "למתי" and the name on that row, unsave this.
+ * - `same_garments`: another saved outfit (not such a copy) already has the new set: refused, naming it.
+ * Pure: the caller reads this row and every saved row's garments and `saved_at`.
+ */
+export type EditPlan =
+  | { kind: "in_place" }
+  | { kind: "copy" }
+  | { kind: "resume"; copyId: string }
+  | { kind: "same_garments"; otherId: string };
+
+/** See EditPlan. `wearCount` counts every `wears` row of the edited outfit, any feedback. */
+export function editPlan(args: {
+  id: string;
+  savedAt: string;
+  currentItemIds: readonly string[];
+  wearCount: number;
+  nextItemIds: readonly string[];
+  saved: readonly { id: string; savedAt: string | null; itemIds: readonly string[] }[];
+}): EditPlan {
+  const key = itemSetKey(args.nextItemIds);
+  const changed = itemSetKey(args.currentItemIds) !== key;
+  const others = args.saved.filter((o) => o.id !== args.id && o.savedAt !== null && itemSetKey(o.itemIds) === key);
+  if (changed && args.wearCount > 0) {
+    const copy = others.find((o) => o.savedAt === args.savedAt);
+    if (copy) return { kind: "resume", copyId: copy.id };
+  }
+  const other = others[0];
+  if (other) return { kind: "same_garments", otherId: other.id };
+  return changed && args.wearCount > 0 ? { kind: "copy" } : { kind: "in_place" };
+}
+
 /** A saved outfit as the screens use it. */
 export type SavedOutfit = {
   id: string;
@@ -180,6 +224,8 @@ export type SavedOutfit = {
   itemIds: string[];
   /** Wears with feedback `worn`, and the newest of their dates (null = never worn). */
   wornCount: number;
+  /** Every `wears` row, any feedback: whether editing the garments must keep this row for history (EditPlan). */
+  wearCount: number;
   lastWornOn: string | null;
 };
 
@@ -226,6 +272,7 @@ export function savedOutfitFromRow(row: SavedOutfitRow): SavedOutfit | null {
     missing: REQUIRED_SLOTS.filter((slot) => !bySlot.has(slot)),
     itemIds: row.outfit_items.map((oi) => oi.item_id),
     wornCount: worn.length,
+    wearCount: row.wears.length,
     lastWornOn: worn.reduce<string | null>((last, d) => (last === null || d > last ? d : last), null),
   };
 }

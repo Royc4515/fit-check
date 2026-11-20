@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { fetchSavedOutfit, fetchSavedOutfits, removeSavedOutfit, renameOutfit, saveOutfit, setOutfitFavorite, updateSavedOutfit, type SaveResult } from "../../data/outfits";
+import { fetchSavedOutfit, fetchSavedOutfits, removeSavedOutfit, renameOutfit, saveOutfit, setOutfitFavorite, updateSavedOutfit, type EditResult, type SaveResult } from "../../data/outfits";
 import type { SavedOutfit, UpdateOutfitInput } from "../../data/savedOutfit";
 import { withFavorite, withName, withOutfit, withoutOutfit } from "./collection";
 
@@ -160,22 +160,18 @@ export async function createSavedOutfit(userId: string, args: Parameters<typeof 
 }
 
 /**
- * Edits a saved outfit (`updateSavedOutfit`) and replaces it in the collection with the row as stored. On failure the
- * outfit is read again (best effort): a partly written edit (see updateSavedOutfit) must not be shown as the old one
- * by the collection; the error is thrown either way.
+ * Edits a saved outfit (`updateSavedOutfit`) and puts the result into the collection: the same row replaced, or, when
+ * the edit became a new row (a worn outfit's garments changed), the old one dropped and the new one added (same
+ * `saved_at`, so the same place). On failure the collection is read again (best effort): a half-written edit (two saved
+ * rows, or a row with extra garments) must not be shown as if nothing happened; the error is thrown either way.
  */
-export async function editSavedOutfit(userId: string, id: string, changes: UpdateOutfitInput): Promise<SavedOutfit> {
+export async function editSavedOutfit(userId: string, id: string, changes: UpdateOutfitInput): Promise<EditResult> {
   try {
-    const outfit = await updateSavedOutfit(id, changes);
-    patchOutfits(userId, (list) => withOutfit(list, outfit));
-    return outfit;
+    const result = await updateSavedOutfit(id, changes);
+    patchOutfits(userId, (list) => withOutfit(result.replacedId ? withoutOutfit(list, result.replacedId) : list, result.outfit));
+    return result;
   } catch (error) {
-    void fetchSavedOutfit(id).then(
-      (fresh) => {
-        if (fresh) patchOutfits(userId, (list) => withOutfit(list, fresh));
-      },
-      () => undefined
-    );
+    void refreshOutfits(userId);
     throw error;
   }
 }

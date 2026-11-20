@@ -1196,7 +1196,8 @@
       "tileLabel": "{{name}}, {{type}}, {{color}}",
       "tileLabelWhere": "{{name}}, {{type}}, לא בבית: {{where}}",
       "chosen": "{{label}}, נבחר"
-    }
+    },
+    "wornCopy": "הלוק נלבש כבר. הבגדים שנלבשו נשארים בהיסטוריה, והעריכה נשמרת כלוק חדש במקומו."
   },
   "add": {
     "title": "הוספה",

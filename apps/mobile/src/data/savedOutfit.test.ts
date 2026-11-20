@@ -3,6 +3,7 @@ import { SAVED_OUTFIT_NAME_MAX, SUBCATEGORY_TO_CATEGORY } from "@fit-check/schem
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   assertSaveable,
+  editPlan,
   findSameOutfit,
   garmentChanges,
   itemSetKey,
@@ -267,5 +268,36 @@ describe("garmentChanges", () => {
 
   it("re-slots a kept garment whose slot changed, never deleting and inserting it (the key is the item)", () => {
     expect(garmentChanges(cur, [{ item_id: "l1", slot: "top" }, ...cur.slice(1, 3)])).toEqual({ add: [], reslot: [{ item_id: "l1", slot: "top" }], remove: ["t1"] });
+  });
+});
+
+describe("editPlan: what was worn is never rewritten", () => {
+  const AT = "2026-11-10T08:00:00.123456+00:00";
+  const base = { id: "o1", savedAt: AT, currentItemIds: ["t1", "b1", "s1"], nextItemIds: ["t3", "b1", "s1"] };
+  const self = { id: "o1", savedAt: AT, itemIds: ["t1", "b1", "s1"] };
+
+  it("edits in place when never worn, or when only the name or context changes", () => {
+    expect(editPlan({ ...base, wearCount: 0, saved: [self] })).toEqual({ kind: "in_place" });
+    expect(editPlan({ ...base, wearCount: 3, nextItemIds: ["s1", "t1", "b1"], saved: [self] })).toEqual({ kind: "in_place" });
+  });
+
+  it("copies when worn (any feedback counts) and the garments change", () => {
+    expect(editPlan({ ...base, wearCount: 1, saved: [self] })).toEqual({ kind: "copy" });
+  });
+
+  it("recognises a half-done copy by the same garments AND the exact saved_at, and resumes it", () => {
+    const copy = { id: "n1", savedAt: AT, itemIds: ["s1", "b1", "t3"] };
+    expect(editPlan({ ...base, wearCount: 1, saved: [self, copy] })).toEqual({ kind: "resume", copyId: "n1" });
+  });
+
+  it("refuses another saved outfit with the new garments: a different saved_at is not a copy", () => {
+    const other = { id: "o2", savedAt: "2026-11-10T08:00:00.123457+00:00", itemIds: ["t3", "b1", "s1"] };
+    expect(editPlan({ ...base, wearCount: 1, saved: [self, other] })).toEqual({ kind: "same_garments", otherId: "o2" });
+    expect(editPlan({ ...base, wearCount: 0, saved: [self, other] })).toEqual({ kind: "same_garments", otherId: "o2" });
+  });
+
+  it("does not take a same-saved_at row for a copy when the edit is in place (never worn)", () => {
+    const twin = { id: "n1", savedAt: AT, itemIds: ["t3", "b1", "s1"] };
+    expect(editPlan({ ...base, wearCount: 0, saved: [self, twin] })).toEqual({ kind: "same_garments", otherId: "n1" });
   });
 });

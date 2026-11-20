@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   draftFromOutfit,
   draftPieces,
+  editKeepsWornCopy,
   emptyDraft,
   isDirty,
   missingKey,
@@ -134,5 +135,18 @@ describe("pickerItems", () => {
     expect(pickerItems(wardrobe, "top", "", withTop, new Map()).map((i) => i.id)).toEqual(["t-a", "t-away", "t-b", "t-c"]);
     // Deterministic.
     expect(pickerItems(wardrobe, "top", "", draft, new Map()).map((i) => i.id)).toEqual(order);
+  });
+});
+
+describe("editKeepsWornCopy", () => {
+  const initial = withPiece(withPiece(withPiece(emptyDraft(), "top", polo), "bottom", chinos), "shoes", sneakers);
+  const other = item("t9", "polo");
+  it("is true only when editing a worn outfit whose garments now differ", () => {
+    expect(editKeepsWornCopy(true, 1, withPiece(initial, "top", other), initial)).toBe(true);
+    expect(editKeepsWornCopy(true, 0, withPiece(initial, "top", other), initial)).toBe(false);
+    expect(editKeepsWornCopy(false, 1, withPiece(initial, "top", other), initial)).toBe(false);
+    expect(editKeepsWornCopy(true, 1, { ...initial, name: "חדש", contextType: "date" }, initial)).toBe(false);
+    // Changed and changed back: nothing differs any more.
+    expect(editKeepsWornCopy(true, 1, withPiece(withPiece(initial, "top", other), "top", polo), initial)).toBe(false);
   });
 });

@@ -37,6 +37,7 @@ import {
   BUILDER_SLOTS,
   draftFromOutfit,
   draftPieces,
+  editKeepsWornCopy,
   emptyDraft,
   isDirty,
   missingKey,
@@ -70,7 +71,7 @@ type Props = { userId: string; /** Present = editing that saved outfit; absent =
 
 type Load = "loading" | "missing" | "error" | "done";
 type Failure = { kind: "error"; message: string } | { kind: "same"; otherId: string };
-type Done = { kind: "created" | "existing" | "edited"; id: string };
+type Done = { kind: "created" | "existing" | "edited" | "replaced"; id: string };
 
 /** Device-local yyyy-mm-dd: the day the outfit was built (`created_for_date`). */
 function today(): string {
@@ -105,6 +106,8 @@ export function BuilderView({ userId, editId }: Props) {
   const [attempt, setAttempt] = useState(0);
   const [initial, setInitial] = useState<Draft>(emptyDraft);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
+  // The edited outfit's wears (any feedback): with one, changed garments are saved as a new outfit (item 4).
+  const [wearCount, setWearCount] = useState(0);
   useEffect(() => {
     if (!editId) return;
     let active = true;
@@ -113,6 +116,7 @@ export function BuilderView({ userId, editId }: Props) {
         if (!active) return;
         if (!o) return setLoad("missing");
         const start = draftFromOutfit(o);
+        setWearCount(o.wearCount);
         setInitial(start);
         setDraft(start);
         setLoad("done");
@@ -215,8 +219,9 @@ export function BuilderView({ userId, editId }: Props) {
     setFailure(null);
     try {
       if (editId) {
-        await editSavedOutfit(userId, editId, { garments: draftPieces(draft), contextType: draft.contextType, name: draft.name });
-        setDone({ kind: "edited", id: editId });
+        const result = await editSavedOutfit(userId, editId, { userId, date: today(), garments: draftPieces(draft), contextType: draft.contextType, name: draft.name });
+        // A worn outfit with new garments became a new row: the old id is no longer in the collection.
+        setDone(result.replacedId ? { kind: "replaced", id: result.outfit.id } : { kind: "edited", id: editId });
       } else {
         const result = await createSavedOutfit(userId, { userId, date: today(), contextType: draft.contextType, source: "manual", pieces: draftPieces(draft), name: draft.name });
         setDone({ kind: result.created ? "created" : "existing", id: result.outfit.id });
@@ -233,6 +238,8 @@ export function BuilderView({ userId, editId }: Props) {
   // edit goes back to the outfit it came from.
   useEffect(() => {
     if (!done) return;
+    // Created, found, or an edit saved as a new row: the outfit screen of that id, over the collection (the old id's
+    // screen beneath the edit would now say "not found").
     if (done.kind === "edited") {
       if (router.canGoBack()) router.back();
       else router.replace({ pathname: "/outfit/[id]", params: { id: done.id } });
@@ -295,6 +302,7 @@ export function BuilderView({ userId, editId }: Props) {
   );
 
   const missingText = missingKey(missing);
+  const copyNote = editKeepsWornCopy(Boolean(editId), wearCount, draft, initial);
   const failureLine =
     failure?.kind === "same" ? (
       <StatusLine
@@ -312,6 +320,18 @@ export function BuilderView({ userId, editId }: Props) {
       <View style={{ minHeight: META_LINE }} accessibilityLiveRegion="polite">
         {missingText ? <Meta tone="text-ink-soft">{t(`builder.missing.${missingText}`)}</Meta> : null}
       </View>
+      {/* Editing a worn outfit: what saving will do, once a garment differs. Laid out from the start (invisible until
+          then) so its lines are already reserved and the bar, and with it the hero's cap, never changes height. */}
+      {editId && wearCount > 0 ? (
+        <View
+          accessibilityElementsHidden={!copyNote}
+          importantForAccessibility={copyNote ? "auto" : "no-hide-descendants"}
+          aria-hidden={!copyNote}
+          style={{ opacity: copyNote ? 1 : 0 }}
+        >
+          <Meta tone="text-ink-soft">{t("builder.wornCopy")}</Meta>
+        </View>
+      ) : null}
       <Button
         variant="primary"
         fullWidth
