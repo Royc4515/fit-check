@@ -25,7 +25,6 @@ import { fitFlatLay } from "../../components/ui/flatLayFit";
 import { useRtl } from "../../components/ui/interaction";
 import { reasonOf } from "../../data/intake";
 import { localDate } from "../../data/localDate";
-import { SavedOutfitError } from "../../data/savedOutfit";
 import { useWardrobe } from "../../data/WardrobeProvider";
 import { colors, layout } from "../../theme/tokens";
 import { failureMessage } from "../intake/failure";
@@ -39,6 +38,8 @@ import {
   draftPieces,
   editKeepsWornCopy,
   emptyDraft,
+  leaveCopy,
+  saveFailureOf,
   isDirty,
   missingKey,
   missingSlots,
@@ -70,8 +71,31 @@ const fill = { position: "absolute", top: 0, bottom: 0, start: 0, end: 0 } as co
 type Props = { userId: string; /** Present = editing that saved outfit; absent = a new one. */ editId?: string };
 
 type Load = "loading" | "missing" | "error" | "done";
-type Failure = { kind: "error"; message: string } | { kind: "same"; otherId: string };
+type Failure = { kind: "error"; message: string } | { kind: "same"; otherId: string } | { kind: "half_done" };
 type Done = { kind: "created" | "existing" | "edited" | "replaced"; id: string };
+
+/**
+ * Web: once no sheet is on screen (at most FOCUS_WAIT_MS), focus the close button if focus was dropped on <body>.
+ * Never takes focus from a control the user is on. Returns a cancel function.
+ */
+function focusCloseWhenSettled(): () => void {
+  const started = Date.now();
+  let frame = 0;
+  const tick = () => {
+    const sheetUp = document.querySelector('[aria-modal="true"]') !== null;
+    if (sheetUp && Date.now() - started < FOCUS_WAIT_MS) {
+      frame = requestAnimationFrame(tick);
+      return;
+    }
+    // One more frame: the sheet's own focus return runs in the frame after it leaves.
+    frame = requestAnimationFrame(() => {
+      const at = document.activeElement;
+      if (at === null || at === document.body) document.getElementById(FOCUS_CLOSE)?.querySelector<HTMLElement>("[role=button], button")?.focus();
+    });
+  };
+  frame = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(frame);
+}
 
 /** Device-local yyyy-mm-dd: the day the outfit was built (`created_for_date`). */
 function today(): string {
@@ -166,6 +190,16 @@ export function BuilderView({ userId, editId }: Props) {
     else void fadeOut();
   }, [leaving, fadeOut]);
 
+  // Web: when the confirm closes without leaving, focus goes back where it was; if the sheet's own return found
+  // nothing to land on (it was opened by Escape from <body>), the close button takes it rather than <body>.
+  const wasLeaveOpen = useRef(false);
+  useEffect(() => {
+    const closed = wasLeaveOpen.current && !leaveOpen;
+    wasLeaveOpen.current = leaveOpen;
+    if (Platform.OS !== "web" || !closed || leaving) return;
+    return focusCloseWhenSettled();
+  }, [leaveOpen, leaving]);
+
   const [pickerSlot, setPickerSlot] = useState<Slot | null>(null);
   useEffect(() => {
     // Hardware back is an Android thing; react-native-web's BackHandler is a stub that logs an error.
@@ -181,9 +215,11 @@ export function BuilderView({ userId, editId }: Props) {
     // Web Escape outside the sheets (they close themselves on it): the same as `close`.
     // don't touch / on keyup, like react-native-web's Modal: on keydown the confirm sheet opened here mounted in time
     // for the same key's keyup, and its own Escape handler closed it again at once (seen in the browser check).
+    // Gated on this screen's own state, not on a modal element in the page: a sheet that is only sliding away (the
+    // picker just after a choice) still has one for about 0.5 s, and Escape then did nothing.
     if (Platform.OS !== "web" || pickerSlot || leaveOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || document.querySelector('[aria-modal="true"]')) return;
+      if (e.key !== "Escape") return;
       close();
     };
     document.addEventListener("keyup", onKey);
@@ -228,8 +264,9 @@ export function BuilderView({ userId, editId }: Props) {
       }
     } catch (error) {
       console.error("Outfit save failed", error);
-      if (error instanceof SavedOutfitError && error.code === "same_garments" && error.otherId) setFailure({ kind: "same", otherId: error.otherId });
-      else setFailure({ kind: "error", message: t("builder.saveFailed", { reason: failureMessage(t, reasonOf(error)) }) });
+      const seen = saveFailureOf(error);
+      if (seen.kind === "failed") setFailure({ kind: "error", message: t("builder.saveFailed", { reason: failureMessage(t, reasonOf(error)) }) });
+      else setFailure(seen);
     } finally {
       setSaving(false);
     }
@@ -302,7 +339,9 @@ export function BuilderView({ userId, editId }: Props) {
   );
 
   const missingText = missingKey(missing);
-  const copyNote = editKeepsWornCopy(Boolean(editId), wearCount, draft, initial);
+  // Hidden while the refusal line says another outfit has these garments: then nothing will be saved as new.
+  const copyNote = editKeepsWornCopy(Boolean(editId), wearCount, draft, initial) && failure?.kind !== "same";
+  const leaveWords = leaveCopy(failure?.kind === "half_done" ? "half_done" : null);
   const failureLine =
     failure?.kind === "same" ? (
       <StatusLine
@@ -310,6 +349,8 @@ export function BuilderView({ userId, editId }: Props) {
         message={t("builder.sameAsOther")}
         action={{ label: t("builder.openOther"), onPress: () => router.push({ pathname: "/outfit/[id]", params: { id: failure.otherId } }) }}
       />
+    ) : failure?.kind === "half_done" ? (
+      <StatusLine variant="error" message={t("builder.halfDone")} action={{ label: t("common.retry"), onPress: () => void save() }} disabled={saving} />
     ) : failure?.kind === "error" ? (
       <StatusLine variant="error" message={failure.message} action={{ label: t("common.retry"), onPress: () => void save() }} disabled={saving} />
     ) : null;
@@ -519,7 +560,7 @@ export function BuilderView({ userId, editId }: Props) {
       <Sheet
         open={leaveOpen}
         onClose={() => setLeaveOpen(false)}
-        title={t("builder.leave.title")}
+        title={t(leaveWords.title)}
         footer={
           <View className="flex-row flex-wrap items-center" style={{ columnGap: 24, rowGap: 8 }}>
             <Button
@@ -534,7 +575,7 @@ export function BuilderView({ userId, editId }: Props) {
           </View>
         }
       >
-        <Text className="font-body text-body-sm text-ink-soft">{t("builder.leave.body")}</Text>
+        <Text className="font-body text-body-sm text-ink-soft">{t(leaveWords.body)}</Text>
       </Sheet>
     </View>
   );

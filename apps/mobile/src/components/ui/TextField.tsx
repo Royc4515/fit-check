@@ -58,9 +58,9 @@ export function TextField({ label, value, onChangeText, maxLength, counterFrom, 
         placeholderTextColor={colors["ink-faint"]}
         accessibilityLabel={label}
         className="rounded bg-ivory p-3 font-body text-body text-ink"
-        // don't touch / explicit align: react-native-web does not derive text-align from `dir` for inputs. outline none:
-        // the ink frame is the focus state.
-        style={{ minHeight: layout.control, borderWidth: 1, borderColor: focused ? colors.ink : colors.hairline, textAlign: rtl ? "right" : "left", outlineStyle: "none" } as object}
+        // don't touch / explicit align: react-native-web does not derive text-align from `dir` for inputs. No browser
+        // outline (width 0, a typed style; `outlineStyle: "none"` is not in RN's types): the ink frame is the focus state.
+        style={{ minHeight: layout.control, borderWidth: 1, borderColor: focused ? colors.ink : colors.hairline, textAlign: rtl ? "right" : "left", outlineWidth: 0 }}
       />
       {counter && maxLength !== undefined ? (
         <View style={{ alignItems: "flex-end" }}>

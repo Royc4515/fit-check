@@ -595,9 +595,23 @@ function EmptySlot({
 }) {
   const reduce = useReducedMotion();
   const o = useSharedValue(shown ? 1 : 0);
+  // Rendered while shown and while fading out, then gone: a filled slot's rectangle must not stay in the page as a
+  // second, invisible "choose" button (on the web, `accessibilityElementsHidden` and `importantForAccessibility` do
+  // not reach the DOM). Derived in render, so it mounts in the same commit the slot is emptied.
+  const [present, setPresent] = useState(shown);
+  if (shown && !present) setPresent(true);
   useEffect(() => {
-    if (reduce) o.set(shown ? 1 : 0);
-    else o.set(withTiming(shown ? 1 : 0, timing(motion.stateMs)));
+    if (reduce) {
+      // Nothing fades: gone at once (the render below drops it while hidden).
+      o.set(shown ? 1 : 0);
+      return;
+    }
+    o.set(
+      withTiming(shown ? 1 : 0, timing(motion.stateMs), (finished) => {
+        "worklet";
+        if (finished && !shown) scheduleOnRN(setPresent, false);
+      })
+    );
   }, [shown, reduce, o]);
   const fade = useAnimatedStyle(() => ({ opacity: o.get() }));
   const box = {
@@ -628,13 +642,16 @@ function EmptySlot({
       </View>
     </View>
   );
+  if (!shown && (reduce || !present)) return null;
   return (
-    <Animated.View style={[box, fade]} pointerEvents={shown ? "auto" : "none"}>
+    // While it fades out: hidden from the tree (aria-hidden reaches the DOM on the web) and not pressable.
+    <Animated.View style={[box, fade]} pointerEvents={shown ? "auto" : "none"} aria-hidden={!shown}>
       {onPress ? (
         <Pressable
           {...focusRingProps}
           focusable={focusable && shown}
           tabIndex={focusable && shown ? undefined : -1}
+          disabled={!shown}
           onPress={() => onPress(empty.slot)}
           accessibilityRole="button"
           accessibilityLabel={empty.accessibilityLabel}

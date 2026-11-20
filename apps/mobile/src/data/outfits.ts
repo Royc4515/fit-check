@@ -281,7 +281,8 @@ export type EditResult = { outfit: SavedOutfit; replacedId: string | null };
  *   `outfit_items` (on failure the new row is deleted again, as in saveOutfit, and nothing changed); 3. unsave the old
  *   row (`saved_at` null, `is_favorite` false): it keeps its garments and wears for history. Returns `replacedId`.
  *   A failure at 3 leaves BOTH rows saved (the old one, and the new one with the same `saved_at`): the collection shows
- *   both, side by side, until the edit is retried, and either can be removed by hand. The build screen keeps the
+ *   both, side by side, until the edit is retried, and either can be removed by hand. It is thrown as SavedOutfitError
+ *   `copy_saved_old_kept` (`otherId` = the new outfit, `cause` = the request's error), as is a failure while resuming. The build screen keeps the
  *   choices and shows the error with "נסה שוב"; that retry is recognised as `resume` (same new garments, same
  *   `saved_at`) and only writes the name and context on the copy and unsaves the old row. It does not answer
  *   "already saved". Only a crash between 1 and 2 can leave an empty saved row (as with saveOutfit).
@@ -321,11 +322,14 @@ export async function updateSavedOutfit(outfitId: string, changes: UpdateOutfitI
   if (plan.kind === "in_place") return { outfit: await editInPlace(outfitId, row.outfit_items, input, name), replacedId: null };
 
   let copyId: string;
+  // From here on a copy exists: every failure says so (`copy_saved_old_kept`), so the screen can tell the user that
+  // the new outfit IS saved and the old one is still in the collection, instead of "nothing was saved".
+  const halfDone = (id: string, error: unknown) => new SavedOutfitError("copy_saved_old_kept", `outfit ${id} is saved but ${outfitId} is still in the collection`, [], id, error);
   if (plan.kind === "resume") {
     copyId = plan.copyId;
     const res = await supabase.from("outfits").update({ context_type: input.contextType, name }).eq("id", copyId).not("saved_at", "is", null).select("id");
-    if (res.error) throw res.error;
-    requireUpdated(res.data, copyId);
+    if (res.error) throw halfDone(copyId, res.error);
+    if (!res.data || res.data.length === 0) throw new SavedOutfitError("not_saved", `outfit ${copyId} is not a saved outfit`);
   } else {
     const created = await supabase
       .from("outfits")
@@ -342,7 +346,7 @@ export async function updateSavedOutfit(outfitId: string, changes: UpdateOutfitI
     }
   }
   const unsave = await supabase.from("outfits").update({ saved_at: null, is_favorite: false }).eq("id", outfitId);
-  if (unsave.error) throw unsave.error;
+  if (unsave.error) throw halfDone(copyId, unsave.error);
   return { outfit: await mustFetch(copyId), replacedId: outfitId };
 }
 
