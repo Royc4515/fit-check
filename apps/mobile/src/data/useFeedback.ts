@@ -123,7 +123,6 @@ export function useFeedback(args: {
   // Shared by every mounted hook (data/feedbackSync.ts): a wear made on the outfit screen is undone on Today with
   // its laundry, and the other way round.
   const { laundered } = useSyncExternalStore(subscribeLaundry, laundryNow);
-  const setLaundered = setLaundry;
   // This hook's token: it hears the other hooks' wear writes, not its own.
   const [token] = useState<symbol>(() => Symbol("feedback"));
   const [reread, setReread] = useState(0);
@@ -220,7 +219,7 @@ export function useFeedback(args: {
       const worn = itemsRef.current.filter((i) => record.itemIds.includes(i.id));
       const due = dueForLaundry(worn, counts).map((i) => i.id);
       await move(due, "laundry");
-      setLaundered(() => (due.length > 0 ? { wearId: record.wearId, itemIds: due, keptHome: [] } : null), record.date);
+      setLaundry(() => (due.length > 0 ? { wearId: record.wearId, itemIds: due, keptHome: [] } : null), record.date);
     },
     [move]
   );
@@ -303,7 +302,7 @@ export function useFeedback(args: {
       const day = laundryNow().laundered;
       if (day?.wearId === record.wearId) {
         await move(day.itemIds, "home");
-        setLaundered(() => null);
+        setLaundry(() => null);
       }
     };
     /**
@@ -331,7 +330,7 @@ export function useFeedback(args: {
       const next = laundryAfterCorrection({ day, earlier: earlier.itemIds, corrected: items, counts });
       await move(next.home, "home");
       await move(next.laundry, "laundry");
-      setLaundered(() => ({ wearId: corrected.wearId, itemIds: next.day.moved, keptHome: next.day.keptHome }), corrected.date);
+      setLaundry(() => ({ wearId: corrected.wearId, itemIds: next.day.moved, keptHome: next.day.keptHome }), corrected.date);
     };
     /** The earlier wear could not be deleted: retried alone, the corrected wear already stands. */
     const retryRetire = async (earlier: TodayRecord) => {
@@ -416,7 +415,7 @@ export function useFeedback(args: {
         run(laundryNow().laundered ? (laundryNow().date ?? date) : date, async () => {
           await move(itemIds, "home");
           // Kept home: out of L for good today (a correction will not send them back), the rest stays in L.
-          setLaundered((cur) => {
+          setLaundry((cur) => {
             if (!cur) return cur;
             const day = keepHomeLaundry({ moved: cur.itemIds, keptHome: cur.keptHome }, itemIds);
             return { wearId: cur.wearId, itemIds: day.moved, keptHome: day.keptHome };
