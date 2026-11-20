@@ -29,7 +29,7 @@ import { israelDate } from "./time.ts";
 const TYPED_ERROR_HINT = "Fix the argument and call again.";
 
 /** A tool error the assistant can read and act on: a stable `code` plus a sentence. */
-function typedFail(code: string, message: string, extra: Record<string, unknown> = {}): ToolResult {
+export function typedFail(code: string, message: string, extra: Record<string, unknown> = {}): ToolResult {
   return { content: [{ type: "text", text: JSON.stringify({ error: { code, message, ...extra } }, null, 2) }], isError: true };
 }
 const ok = (value: unknown): ToolResult => ({ content: [{ type: "text", text: JSON.stringify(value, null, 2) }] });
@@ -55,7 +55,7 @@ const PayloadSchema = z.record(z.unknown());
 
 export type OccasionRow = { type: OccasionType; source: OccasionSource | "hebcal"; label?: string; payload: Record<string, unknown>; set_at: string };
 
-const issues = (e: z.ZodError) => e.issues.map((i) => `${i.path.join(".") || "input"}: ${i.message}`).join("; ");
+export const issues = (e: z.ZodError) => e.issues.map((i) => `${i.path.join(".") || "input"}: ${i.message}`).join("; ");
 
 /**
  * The occasion rows of `date` for this user, newest first. Newest wins everywhere (see context_set for why two rows
@@ -181,7 +181,10 @@ export async function contextSet(args: unknown, ctx: ToolContext): Promise<ToolR
   return ok({
     stored: { date, type: input.type, label: input.label ?? null, source: input.source, set_at: setAt },
     replaced: removed,
-    effect: `Outfit suggestions for ${date} now follow the ${input.type} rules instead of the calendar's day type. ${describeRules(input.type)}.`,
+    effect:
+      `On a weekday, outfit suggestions for ${date} now follow the ${input.type} rules. If ${date} is Shabbat or a holiday and Roy keeps them, ` +
+      `the Shabbat or holiday rules decide until havdalah and the ${input.type} rules apply only after it (never on a date without havdalah). ` +
+      `${describeRules(input.type)}.`,
   });
 }
 
