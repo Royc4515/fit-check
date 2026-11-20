@@ -240,7 +240,9 @@ export function OutfitView({ id, userId, notice }: Props) {
     </View>
   );
 
-  const away = awayGarments(entries);
+  // A garment today's wear has just sent to the laundry is named by the laundry line above; saying it again as "not at
+  // home" would be the same news twice. Any other garment away stays named.
+  const away = awayGarments(entries).filter((i) => !wear.laundered.includes(i.id));
   const missingSlots = entries.filter((e) => e.item === null).map((e) => t(`outfit.slot.${e.slot}`));
   // Today's own lines and wording after a wear (DESIGN.md section 3 "היום" item 8): recorded with undo, the laundry
   // with "keep out of the laundry", and a failure of either. One focusable wrapper (tabIndex -1) so focus has a place
@@ -453,14 +455,20 @@ export function OutfitView({ id, userId, notice }: Props) {
       ) : null}
       {outfit ? (
         // A day has one wear: today's other outfit is replaced only after this one step (DESIGN.md "שלב 5.2" item 4).
-        <Sheet open={wear.confirming} onClose={wear.cancelReplace} title={sheetTitle?.text}>
-          <View style={{ gap: 16 }}>
-            <Text className="font-body text-body text-ink">{t("outfit.replace.body")}</Text>
+        // The answers sit in the footer: the sheet's first focus skips it and lands on the title, so an Enter pressed
+        // out of habit does not delete today's other wear (the builder's leave step does the same).
+        <Sheet
+          open={wear.confirming}
+          onClose={wear.cancelReplace}
+          title={sheetTitle?.text}
+          footer={
             <View className="flex-row flex-wrap items-center" style={{ columnGap: 24, rowGap: 8 }}>
               <Button variant="ink" label={t("outfit.replace.confirm")} disabled={wear.busy} onPress={wear.confirmReplace} />
               <Button variant="text" label={t("ui.cancel")} disabled={wear.busy} onPress={wear.cancelReplace} />
             </View>
-          </View>
+          }
+        >
+          <Text className="font-body text-body text-ink">{t("outfit.replace.body")}</Text>
         </Sheet>
       ) : null}
       {outfit ? (
