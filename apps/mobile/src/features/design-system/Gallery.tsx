@@ -28,6 +28,7 @@ import {
   Stepper,
   Swatch,
   TabBar,
+  TextField,
   TextTabs,
   Tile,
   TILE_CAPTION_HEIGHT,
@@ -163,6 +164,7 @@ export function Gallery() {
   const [twoTab, setTwoTab] = useState("today");
   const [fourTab, setFourTab] = useState("day1");
   const [outfitFav, setOutfitFav] = useState(true);
+  const [fieldText, setFieldText] = useState("");
 
   const toggleChip = (k: string) =>
     setChips((cur) => {
@@ -494,7 +496,35 @@ export function Gallery() {
               </View>
             </View>
           ))}
+          {/* The build screen's hero: every slot offered, one chosen (stage 5.2 item 5). */}
+          {flatLays[0] ? (
+            <View style={{ width: flatLayW }}>
+              <FlatLay
+                pieces={flatLays[0].filter((p) => p.slot === "top")}
+                emptySlots={(["top", "bottom", "shoes", "layer"] as const).map((slot) => ({ slot, label: t(`outfit.slotTitle.${slot}`), accessibilityLabel: t(`builder.chooseSlot.${slot}`) }))}
+                rise={false}
+                onPressPiece={noop}
+                accessibilityLabel={t("ds.flatLay.empty")}
+              />
+              <View className="mt-2">
+                <Text className="font-body text-body-sm text-ink-soft">{t("ds.flatLay.empty")}</Text>
+              </View>
+            </View>
+          ) : null}
         </Wrap>
+      </Block>
+
+      <Block title={t("ds.section.textField")}>
+        <View style={{ maxWidth: 360 }}>
+          <TextField
+            label={t("builder.name")}
+            value={fieldText}
+            onChangeText={setFieldText}
+            maxLength={40}
+            counterFrom={30}
+            counterLabel={(n, max) => t("builder.nameCount", { n, max })}
+          />
+        </View>
       </Block>
 
       <Block title={t("ds.section.outfitTile")}>
