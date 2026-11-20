@@ -108,3 +108,35 @@ export function hardFilter(items: Item[], req: StylingRequest): Record<Slot, Ite
   }
   return out;
 }
+
+/**
+ * Whether an outfit already chosen still passes the engine's own weather rules under a (newer) forecast: every piece
+ * passes the weather filter for its slot exactly as hardFilter judges it, a layer is not worn on a day too warm for
+ * one, and a day cold enough for a layer has one whenever the pool offers a layer the hard filter would accept.
+ * Pure. Used by Today to decide whether a forecast that arrived after the outfit was drawn makes that outfit wrong
+ * (say so) or only differently ranked (keep it quietly): a score change is never a reason to touch an outfit on screen.
+ *
+ * Only temperature is judged, because only temperature is a hard rule in the engine: rain probability changes the
+ * explanation, not which garments are allowed. Status, availability and the context's rules are not weather and are
+ * not re-checked here.
+ *
+ * @param outfit the garments on screen (pieces with no slot, outerwear and accessories, are ignored).
+ * @param pool the garments the day may offer, used only to know whether a layer exists for a cold day.
+ * @param req the request with the new forecast, after the day's nudges (adjustRequest).
+ * @returns true when the engine could still have suggested this outfit on weather; never throws.
+ */
+export function fitsWeather(outfit: readonly Item[], pool: readonly Item[], req: StylingRequest): boolean {
+  const needsLayer = req.weather.temp_min_c < LAYER_THRESHOLD_C;
+  let hasLayer = false;
+  for (const item of outfit) {
+    const slot = slotOf(item);
+    if (!slot) continue;
+    if (slot === "layer") {
+      if (!needsLayer) return false;
+      hasLayer = true;
+    }
+    if (!passesWeather(item, slot, req, needsLayer)) return false;
+  }
+  if (needsLayer && !hasLayer && hardFilter([...pool], req).layer.length > 0) return false;
+  return true;
+}
