@@ -14,13 +14,13 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { AccessibilityInfo, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { AccessibilityInfo, Platform, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import { useReducedMotion } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Reveal } from "../../components/editorial/Reveal";
-import { WardrobeGate } from "../../components/WardrobeGate";
 import {
+  ACTION_BAR_HEIGHT,
   ActionBar,
   Button,
   CrossFade,
@@ -28,6 +28,7 @@ import {
   EmptyState,
   FLAT_LAY_ASPECT,
   FlatLay,
+  FlatLayPlaceholder,
   flatLayTone,
   LegendRow,
   Meta,
@@ -37,12 +38,11 @@ import {
   type StatusVariant,
 } from "../../components/ui";
 import { fitFlatLay, HERO_MIN } from "../../components/ui/flatLayFit";
-import { focusRingProps } from "../../components/ui/interaction";
-import { localDate, localTime, type DayContext } from "../../data/dayContext";
+import { reloadDayContext, type DayContext } from "../../data/dayContext";
 import type { FeedbackHistory } from "../../data/feedback";
 import { chainTabLabels } from "../../data/shabbatTimes";
 import { DayTabs } from "./DayTabs";
-import { dayInForce, plannedKeys, tabKey } from "./dayInForce";
+import { plannedKeys, tabKey } from "./dayInForce";
 import type { OccasionsState } from "../../data/occasions";
 import { correctionFailure } from "../../data/correction";
 import type { FeedbackActions, FeedbackState, FeedbackTarget, Laundered } from "../../data/useFeedback";
@@ -53,17 +53,40 @@ import { tryonItemsOf } from "../tryon/model";
 import { AdjustSheet, type Adjust } from "./AdjustSheet";
 import { explainOutfit } from "./explain";
 import { settingGetNow, settingGet, settingSet } from "../../data/kv";
-import { asCandidate, contextTypeOf, weatherStillFits, type DayInput, type Swaps, type TodayPlan } from "./outfit";
+import { asCandidate, contextTypeOf, rulesStillFit, weatherStillFits, type DayInput, type Swaps, type TodayPlan } from "./outfit";
 import { bookmarkFailureAction, bookmarkIntent, shownSaved, type BookmarkIntent } from "./bookmark";
 import { initialLearn, initialWeatherInForce, learnedFrom, nextLearn, nextWeatherInForce, skipCount, weatherInForceFor, type WeatherInForce } from "./learning";
+import { calendarLine } from "./calendarLine";
 import { PieceSheet } from "./PieceSheet";
+import {
+  DAY_TABS,
+  DESKTOP_GAP,
+  DESKTOP_GUTTER,
+  DESKTOP_HERO_MAX,
+  DESKTOP_HERO_PAD,
+  DESKTOP_TABS_GAP,
+  MOBILE_HERO_GAP,
+  MOBILE_TOP,
+  UNDER_BAR,
+} from "./frameLayout";
+import { ltr, Masthead, PlannedForecastLine } from "./Masthead";
 import type { BookmarkApi } from "./useBookmark";
 import { defaultAdjustment, occasionInEffect, occasionMayApply, planDays } from "./plans";
 import { correctedPieces, outfitIndex, SLOT_ORDER, tapHintFit, type HintFit } from "./pieces";
 import { useSwipeToSkip } from "./useSwipeToSkip";
 
-/** Wraps digits and the degree/percent signs so they stay LTR inside Hebrew text (DESIGN.md: numbers always LTR). */
-const ltr = (s: string) => `⁦${s}⁩`;
+/** What the calendar says a day is, as the engine plans it: the part of DayInput a late calendar can change. */
+type DayRules = Pick<DayInput, "dayType" | "festive" | "yomKippur">;
+
+/**
+ * What a day is planned with: its forecast and the calendar's rules for it. Held in force per tab like the forecast
+ * alone was (learning.ts WeatherInForce), so a forecast or a calendar that arrives after an outfit was shown never
+ * re-ranks it; `rules` is null for a date that is not on screen (never planned).
+ */
+type Conditions = { weather: DayWeather | null; rules: DayRules | null };
+
+const sameRules = (a: DayRules | null, b: DayRules | null) =>
+  a === b || (a !== null && b !== null && a.dayType === b.dayType && !!a.festive === !!b.festive && !!a.yomKippur === !!b.yomKippur);
 
 /** Two forecasts of a day say the same thing on screen and to the engine (null is "no forecast"). */
 const sameWeather = (a: DayWeather | null, b: DayWeather | null) =>
@@ -88,10 +111,18 @@ type Props = {
   /** A correction after wearing that did not complete (useFeedback `correction`). */
   correction?: FeedbackState["correction"];
   /**
-   * The local time `HH:MM` when the screen opened, for the opening tab on the eve of Shabbat or a holiday (three
-   * hours before candle lighting). Data, not a clock read here, so the choice is testable.
+   * The local time `HH:MM` when the screen opened (an occasion after havdalah). Data, not a clock read here, so the
+   * choice is testable.
    */
   clock: string;
+  /**
+   * The tab Today opens on (dayInForce), decided once by the container when the day's records and planned days were
+   * known: wearing today's outfit, or planned days that arrive later, must not pull the screen to another tab.
+   */
+  openingTab: string;
+  /** A tab chosen by hand (in the frame or here), kept by the container while the screen is mounted; null for none. */
+  chosenTab: string | null;
+  onChooseTab: (date: string) => void;
   /** The AI stylist (stage B). Absent or returning null means the engine's order and template text are used. */
   stylist?: (input: StylistInput) => Promise<StylistOutput | null>;
   /** What is on each date on screen, and how to change it (DESIGN.md "שלב 4.5"). */
@@ -121,20 +152,6 @@ const ADJUST: Record<Adjust, DayAdjustment> = {
 /** An outfit needs one of each; layers and outerwear are optional. */
 const REQUIRED_SLOTS = ["top", "bottom", "shoes"] as const;
 
-/** Space kept between the last line of content and the floating bar's top edge. */
-const UNDER_BAR = 32;
-/** Desktop: the flat-lay column is at most this wide (DESIGN.md section 3 "היום" item 9). */
-const DESKTOP_HERO_MAX = 560;
-/** Air above and below the desktop flat-lay, which must fit whole in the viewport under the top nav. */
-const DESKTOP_HERO_PAD = 32;
-const DESKTOP_GAP = 64;
-const DESKTOP_GUTTER = 32;
-/** Desktop: space between the day tabs and the flat-lay under them. */
-const DESKTOP_TABS_GAP = 24;
-/** Mobile layout's scroll padding above the masthead, and the space between masthead and flat-lay (see its comment). */
-const MOBILE_TOP = 24;
-const MOBILE_HERO_GAP = 16;
-
 /** DOM ids of the places focus is sent to after an action (web only; see the focus effect in TodayView). */
 const FOCUS_WORN_STATUS = "today-worn-status";
 const FOCUS_SKIP_STATUS = "today-skip-status";
@@ -154,8 +171,6 @@ const SHEET_SETTLE_MS = 700;
 const FIRST_TABBABLE = '[tabindex="0"]:not([aria-disabled="true"])';
 /** Device flag: the one-time "tap any garment" line has been acted on (DESIGN.md "שלב 5.1" item 2). */
 const TAP_HINT_KEY = "fitcheck:tap-hint-seen";
-/** Ids of the day tabs and their panel (WAI-ARIA tabs pattern). */
-const DAY_TABS = "today-day";
 
 type StatusItem = {
   key: string;
@@ -188,6 +203,9 @@ export function TodayView({
   correction = null,
   stylist,
   clock,
+  openingTab,
+  chosenTab,
+  onChooseTab,
   occasions,
   bookmark,
   savedOutfits = null,
@@ -201,43 +219,27 @@ export function TodayView({
 
   // Today first, then each phone-free day that today's candle lighting opens (DESIGN.md "שלב 4.1"). Without candles
   // the list is just today and the screen is exactly what it was before the tabs.
-  // Whether today's occasion may decide its look now: a weekday, or Shabbat / a holiday after its havdalah (4.5 item 3).
-  const todayOccasion = useMemo(
-    () => ({ tab: "today" as const, dayType: day.dayType, havdalahToday: day.end?.day === "today" ? day.end.time : null, now: clock }),
-    [day, clock]
-  );
-  const days = useMemo<DayInput[]>(
-    () => [
-      {
-        date: day.date,
-        weather: day.weather,
-        dayType: day.dayType,
-        festive: day.festive,
-        yomKippur: day.yomKippur,
-        occasion: occasionInEffect(occasions.byDate[day.date]?.type, todayOccasion),
-      },
-      // A planned day's tab is planned by Shabbat's or the holiday's rules, never by an occasion (4.5 item 3).
-      ...day.chain.map((d) => ({ date: d.date, weather: d.weather, dayType: d.dayType, yomKippur: d.yomKippur })),
-    ],
-    [day, occasions.byDate, todayOccasion]
-  );
+  const dates = useMemo(() => [day.date, ...day.chain.map((d) => d.date)], [day.date, day.chain]);
   const tabLabels = useMemo(() => chainTabLabels(day.chain), [day.chain]);
   const hasTabs = day.chain.length > 0;
-  // The opening tab, decided once from the clock and the answers at hand when the screen opened: wearing today's
-  // outfit must not pull the screen to Shabbat under the user's thumb (item 3 is about where the screen opens).
-  // The same rule decides the day the saved outfit's screen records on (features/today/dayInForce.ts).
-  const [openingTab] = useState(() => dayInForce({ day, now: clock, history }));
-  // A tab chosen by hand lasts while the screen is mounted, no longer (item 3).
-  const [chosenTab, setChosenTab] = useState<string | null>(null);
-  const selectedDate = [chosenTab, openingTab].find((d) => d !== null && days.some((x) => x.date === d)) ?? day.date;
-  const sel = Math.max(0, days.findIndex((d) => d.date === selectedDate));
+  // The opening tab is decided once by the container (dayInForce); a tab chosen by hand lasts while the screen is
+  // mounted, no longer (item 3). A tab that is not (or no longer) on screen falls back to today.
+  const selectedDate = [chosenTab, openingTab].find((d) => d !== null && dates.includes(d)) ?? day.date;
+  const setChosenTab = onChooseTab;
+  const sel = Math.max(0, dates.indexOf(selectedDate));
   const planned = sel > 0 ? day.chain[sel - 1]! : null;
-  // A planned day's answers go on its date; a day with an occasion records the occasion's context (4.5 item 6).
-  const occasion = days[sel]!.occasion ?? null;
-  const target: FeedbackTarget | undefined =
-    planned || occasion ? { date: selectedDate, dayType: contextTypeOf(days[sel]!) } : undefined;
-  const failed = failedOn !== null && failedOn === selectedDate;
 
+  // What each date is as the calendar says now (null: not on screen). The facts on screen (dates, times, the names of
+  // the days) always follow these; the outfits follow the conditions in force below.
+  const liveRulesOf = (date: string): DayRules | null => {
+    if (date === day.date) return { dayType: day.dayType, festive: day.festive, yomKippur: day.yomKippur };
+    const d = day.chain.find((c) => c.date === date);
+    return d ? { dayType: d.dayType, festive: false, yomKippur: d.yomKippur } : null;
+  };
+  const liveOf = (date: string): Conditions => ({
+    weather: date === day.date ? day.weather : (day.chain.find((d) => d.date === date)?.weather ?? null),
+    rules: liveRulesOf(date),
+  });
   // Session-only nudges and swaps (see engine/adjust.ts), per day. Swaps belong to one suggestion: anything that
   // changes the suggestion (a nudge, a skip) clears them, or a swapped shirt would be pasted onto a different outfit.
   const [adjustments, setAdjustments] = useState<Readonly<Record<string, DayAdjustment>>>({});
@@ -249,21 +251,52 @@ export function TodayView({
   const [learn, setLearn] = useState(() => initialLearn(skips, adjustments, savedOutfits));
   const learnNow = nextLearn(learn, skips, adjustments, savedOutfits);
   if (learnNow !== learn) setLearn(learnNow);
-  // The forecast each tab's outfit is planned with, the same way: fixed when that tab's outfit is first generated
-  // (today's when the screen opened; Index waited for it at most WEATHER_GRACE_MS), replaced only by a skip, a nudge, a
-  // different occasion or "update the suggestion" on that day, and brought back by an undo (learning.ts
-  // nextWeatherInForce). Changing tabs is not a trigger. A forecast that answers later updates every printed number at
-  // once (they are facts) and never re-ranks an outfit already shown; if it makes that outfit wrong, a line says so.
+  // The forecast and the calendar's rules each tab's outfit is planned with, the same way: fixed when that tab's outfit
+  // is first generated (today's when the screen opened; Index waited for them at most WEATHER_GRACE_MS and
+  // CALENDAR_GRACE_MS), replaced only by a skip, a nudge, a different occasion or "update the suggestion" on that day,
+  // and brought back by an undo (learning.ts nextWeatherInForce). Changing tabs is not a trigger. A forecast or a
+  // calendar that answers later updates every printed fact at once and never re-ranks an outfit already shown; if it
+  // makes that outfit wrong, a line says so.
   const [refresh, setRefresh] = useState(0);
-  const liveOf = (date: string): DayWeather | null =>
-    date === day.date ? day.weather : (day.chain.find((d) => d.date === date)?.weather ?? null);
-  const weatherTriggers = { skips, adjustments, tab: selectedDate, today: day.date, occasion: days[0]!.occasion ?? null, refresh };
-  const [weatherState, setWeatherState] = useState<WeatherInForce<DayWeather | null>>(() => initialWeatherInForce(weatherTriggers, liveOf));
+  // The stored occasion, not the one in effect: whether it applies depends on the day's rules, which are in force here.
+  const storedOccasion = occasions.byDate[day.date]?.type ?? null;
+  const weatherTriggers = { skips, adjustments, tab: selectedDate, today: day.date, occasion: storedOccasion, refresh };
+  const [weatherState, setWeatherState] = useState<WeatherInForce<Conditions>>(() => initialWeatherInForce(weatherTriggers, liveOf));
   const weatherNow = nextWeatherInForce(weatherState, weatherTriggers, liveOf);
   if (weatherNow !== weatherState) setWeatherState(weatherNow);
-  const inForceOf = (k: number): DayWeather | null => weatherInForceFor(weatherNow, days[k]!.date, liveOf);
-  // The days as they are planned: the calendar's days with the forecast in force for each.
-  const plannedWeather = days.map((_, k) => inForceOf(k));
+  const inForceOf = (date: string): Conditions => weatherInForceFor(weatherNow, date, liveOf);
+  const rulesOf = (date: string): DayRules => inForceOf(date).rules ?? liveRulesOf(date) ?? { dayType: "weekday", festive: false, yomKippur: false };
+  const rulesList = dates.map(rulesOf);
+  const rulesKey = JSON.stringify(rulesList);
+  // Whether today's occasion may decide its look now: a weekday, or Shabbat / a holiday after its havdalah (4.5 item 3),
+  // by the day type the outfit is planned with.
+  const todayRules = rulesOf(day.date);
+  const todayOccasion = useMemo(
+    () => ({ tab: "today" as const, dayType: todayRules.dayType, havdalahToday: day.end?.day === "today" ? day.end.time : null, now: clock }),
+    [todayRules.dayType, day.end, clock]
+  );
+  // The days as they are planned: each date with the calendar's rules in force and the live forecast (the forecast in
+  // force is put in by planningDays below; `days` keeps the live one for the printed numbers).
+  const days = useMemo<DayInput[]>(
+    () =>
+      dates.map((date, k) => {
+        const rules = rulesList[k]!;
+        const weather = date === day.date ? day.weather : (day.chain.find((d) => d.date === date)?.weather ?? null);
+        // A planned day's tab is planned by Shabbat's or the holiday's rules, never by an occasion (4.5 item 3).
+        return k === 0
+          ? { date, weather, ...rules, occasion: occasionInEffect(occasions.byDate[day.date]?.type, todayOccasion) }
+          : { date, weather, dayType: rules.dayType, yomKippur: rules.yomKippur };
+      }),
+    // rulesKey carries rulesList by value, so a new list with the same rules does not re-plan.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dates, rulesKey, day, occasions.byDate, todayOccasion]
+  );
+  // A planned day's answers go on its date; a day with an occasion records the occasion's context (4.5 item 6).
+  const occasion = days[sel]!.occasion ?? null;
+  const target: FeedbackTarget | undefined =
+    planned || occasion ? { date: selectedDate, dayType: contextTypeOf(days[sel]!) } : undefined;
+  const failed = failedOn !== null && failedOn === selectedDate;
+  const plannedWeather = days.map((d) => inForceOf(d.date).weather);
   const plannedKey = JSON.stringify(plannedWeather);
   const planningDays = useMemo<DayInput[]>(
     () => days.map((d, k) => ({ ...d, weather: plannedWeather[k] ?? null })),
@@ -352,14 +385,13 @@ export function TodayView({
   );
   const effective = effectiveByDay[sel]!;
   const locale = i18n.language === "en" ? "en" : "he";
-  const gregorian = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }).format(
-    new Date(`${day.date}T12:00:00`)
-  );
   /** A day's name in the explanation: the holiday's own name on a Yom Tov, else its day type. */
   const dayLabelOf = (k: number, lng: "he" | "en" = locale) => {
     const d = days[k]!;
     // The explanation names the occasion instead of the day type (DESIGN.md "שלב 4.5" item 2).
     if (d.occasion) return t(`today.occasion.type.${d.occasion}`, { lng });
+    // The holiday's name only while the outfit is planned as that holiday: a weekday outfit drawn before the calendar
+    // came is not called "for the holiday".
     const holiday = k === 0 ? day.holiday : (day.chain[k - 1]?.holiday ?? null);
     // A festive weekday (the switch off) is still called by its holiday's name.
     return holiday && (d.dayType === "holiday" || d.festive) ? holiday[lng] : t(`today.dayType.${d.dayType}`, { lng });
@@ -373,7 +405,7 @@ export function TodayView({
   const labelHe = (k: number) => {
     const d = days[k]!;
     if (d.occasion) return `${d.date} ${t(`today.occasion.type.${d.occasion}`, { lng: "he" })}`;
-    const holiday = k === 0 ? day.holiday : (day.chain[k - 1]?.holiday ?? null);
+    const holiday = d.dayType === "holiday" || d.festive ? (k === 0 ? day.holiday : (day.chain[k - 1]?.holiday ?? null)) : null;
     return `${d.date} ${holiday?.he ?? t(`today.dayType.${d.dayType}`, { lng: "he" })}`;
   };
   const keyFor = (k: number, base: TodayPlan) =>
@@ -404,7 +436,7 @@ export function TodayView({
   const plan = selected.plan;
   const dayHistory = selected.history;
   // The forecast the selected day's outfit was planned with: what the stylist is told and the explanation names.
-  const dayWeather = inForceOf(sel);
+  const dayWeather = inForceOf(selectedDate).weather;
   const stylistKey = keyFor(sel, base);
   const stylistInput = useMemo<StylistInput | null>(() => {
     if (base.kind !== "suggestion") return null;
@@ -506,11 +538,9 @@ export function TodayView({
   ].filter((p): p is string => p !== null);
   const lastSkip = plan.kind === "worn" ? null : plan.lastSkip;
 
-  const hebrew = day.hebrewDate?.[locale];
-  const w = day.weather;
   // The selected day's live forecast: every temperature the screen prints is this one (the numbers are facts); only the
   // outfit stays as it was planned (dayWeather).
-  const liveSelWeather = liveOf(selectedDate);
+  const liveSelWeather = liveOf(selectedDate).weather;
   const template = outfit ? explainOutfit(t, { weather: liveSelWeather, dayType: days[sel]!.dayType, occasion: occasion ?? undefined }, outfit, dayLabel) : null;
   // The stylist's sentence replaces the template lead only for the outfit it actually chose (not after a swap), and
   // only while the forecast it was told is still the live one: its words may carry the older numbers.
@@ -518,7 +548,6 @@ export function TodayView({
     template && plan.kind === "suggestion" && plan.styled && styled && sameWeather(dayWeather, liveSelWeather)
       ? { ...template, lead: locale === "en" ? styled.explanation_en : styled.explanation_he }
       : template;
-  const place = day.place ?? (day.usesCurrentLocation ? t("location.currentShort") : t("location.default"));
 
   const ordered = outfit ? SLOT_ORDER.flatMap((slot) => outfit.items.filter((i) => i.slot === slot)) : [];
   const typeOf = (sub: string) => t(`item.subcategory.${sub}`);
@@ -677,30 +706,73 @@ export function TodayView({
   // way to a new outfit. Never swapped silently; a forecast that only changes the ranking is not mentioned (it is
   // taken in at the next change). Rain alone is not a rule in the engine, so it does not raise this line.
   const plannedSelWeather = dayWeather;
-  // Not memoized: the engine is asked only while the two forecasts differ, which is rare and brief.
+  // The same for the calendar: it arrived after the outfit was drawn and gives the day rules the outfit breaks
+  // (today turned out to be a holiday, or Yom Kippur). Judged on the live rules with the live forecast.
+  const liveSelRules = liveRulesOf(selectedDate);
+  const plannedSelRules = inForceOf(selectedDate).rules;
+  const liveSelDay: DayInput | null = liveSelRules ? { ...days[sel]!, ...liveSelRules, weather: liveSelWeather } : null;
+  // Not memoized: the engine is asked only while the two differ, which is rare and brief.
+  const calendarOutdated =
+    plan.kind === "suggestion" &&
+    liveSelDay !== null &&
+    !sameRules(plannedSelRules, liveSelRules) &&
+    !rulesStillFit({ outfit: plan.items, day: liveSelDay, adjustment: effective });
   const forecastOutdated =
+    !calendarOutdated &&
     plan.kind === "suggestion" &&
     liveSelWeather !== null &&
     !sameWeather(plannedSelWeather, liveSelWeather) &&
     !weatherStillFits({ outfit: plan.items, pool: selected.pool, day: { ...days[sel]!, weather: liveSelWeather }, adjustment: effective });
-  // don't touch / no outfit on screen (the older forecast left nothing to suggest): there is nothing to keep still, so
-  // a newer forecast is taken in at once. Found in the browser check: a warm stored forecast emptied the day and the
-  // late cold one was never used. Guarded by the forecasts differing, which the refresh itself ends: no loop.
-  if (plan.kind === "empty" && liveSelWeather !== null && !sameWeather(plannedSelWeather, liveSelWeather)) setRefresh((n) => n + 1);
+  // don't touch / no outfit on screen (the older forecast or the civil calendar left nothing to suggest): there is
+  // nothing to keep still, so a newer forecast or calendar is taken in at once. Found in the browser check: a warm
+  // stored forecast emptied the day and the late cold one was never used. Guarded by the conditions differing, which
+  // the refresh itself ends: no loop.
+  if (
+    plan.kind === "empty" &&
+    ((liveSelWeather !== null && !sameWeather(plannedSelWeather, liveSelWeather)) || (liveSelRules !== null && !sameRules(plannedSelRules, liveSelRules)))
+  )
+    setRefresh((n) => n + 1);
+  const updateAction = {
+    label: t("today.forecastUpdate"),
+    onPress: () => {
+      resetSwaps();
+      setRefresh((n) => n + 1);
+    },
+  };
   const forecastUpdatedLine = forecastOutdated ? (
-    <StatusLine
-      variant="info"
-      message={t("today.forecastUpdated")}
-      action={{
-        label: t("today.forecastUpdate"),
-        onPress: () => {
-          resetSwaps();
-          setRefresh((n) => n + 1);
-        },
-      }}
-      disabled={busy}
-    />
+    <StatusLine variant="info" message={t("today.forecastUpdated")} action={updateAction} disabled={busy} />
   ) : null;
+  // The Hebrew calendar is not known (no stored answer, and none in time): with the observance switch on, the outfit
+  // was drawn by the civil calendar alone and may be wrong for a holiday or its eve; say so, plainly, above the hero
+  // (DESIGN.md "היום" item 1). "Try again" asks Hebcal again. When the calendar arrives the same line says so in place
+  // ("the Hebrew calendar has loaded"), so the hero under it does not move; it offers "update the suggestion" only when
+  // the outfit on screen breaks the rules the calendar gives the day, and stays, quiet, while the screen is mounted.
+  const calendarMissing = day.observes && !day.calendar.known;
+  const [calendarWasMissing, setCalendarWasMissing] = useState(calendarMissing);
+  if (calendarMissing && !calendarWasMissing) setCalendarWasMissing(true);
+  // The line tells the truth about the request: still in flight, no button (a press could not start another one);
+  // failed or timed out, "try again", which starts a new request at once (calendarLine.ts).
+  const calLine = calendarLine({
+    observes: day.observes,
+    known: day.calendar.known,
+    pending: day.calendar.pending,
+    wasMissing: calendarWasMissing,
+    outdated: calendarOutdated,
+  });
+  const shabbat = day.weekday === 6;
+  const calendarMissingLine =
+    calLine.kind === "loading" ? (
+      <StatusLine variant="info" message={t(shabbat ? "today.calendarLoadingShabbat" : "today.calendarLoading")} />
+    ) : calLine.kind === "failed" ? (
+      <StatusLine
+        variant="info"
+        message={t(shabbat ? "today.calendarMissingShabbat" : "today.calendarMissing")}
+        action={{ label: t("common.retry"), onPress: reloadDayContext }}
+        disabled={busy}
+      />
+    ) : calLine.kind === "loaded" ? (
+      <StatusLine variant="info" message={t("today.calendarUpdated")} action={calLine.update ? updateAction : undefined} disabled={busy} />
+    ) : null;
   // One focusable wrapper (tabIndex -1: reachable by script, not by Tab) so focus has a place to land when a line
   // has no action of its own, and screen readers read the whole stack when it arrives.
   const wornStatus = (className: string) =>
@@ -753,83 +825,17 @@ export function TodayView({
       </View>
     ) : null;
 
-  const weatherLine = w ? (
-    <Text className="font-mono text-num text-ink">
-      {ltr(`${w.temp_min_c}–${w.temp_max_c}°`)}
-      {/* Plex Mono has no Hebrew: words switch to the body face inside the same line. */}
-      <Text className="font-body text-ink-soft">{"  ·  "}</Text>
-      <Text className="font-body">{`${t("today.data.rain")} `}</Text>
-      {ltr(`${Math.round(w.rain_probability * 100)}%`)}
-      <Text className="font-body text-ink-soft">{"  ·  "}</Text>
-      <Text className="font-body">{t(`today.sky.${w.sky}`)}</Text>
-    </Text>
-  ) : (
-    <Text className="font-body text-body-sm text-ink-soft">{t("today.noWeather")}</Text>
-  );
-  // The weather line is from an older forecast (the network has not answered, or failed): say from when, in the
-  // location's clock, and "yesterday" when it was fetched on an earlier date (it is kept at most a day).
-  const source = day.forecast.source;
-  const forecastAge =
-    w && source.kind === "cached"
-      ? {
-          key: localDate(day.tz, new Date(source.at)).date === day.date ? "today.forecastFrom" : "today.forecastFromYesterday",
-          time: localTime(day.tz, new Date(source.at)),
-        }
-      : null;
-  const weatherWords = w
-    ? [
-        `${w.temp_min_c}–${w.temp_max_c}°, ${t("today.data.rain")} ${Math.round(w.rain_probability * 100)}%, ${t(`today.sky.${w.sky}`)}`,
-        forecastAge ? `${t(forecastAge.key)}${ltr(forecastAge.time)}` : null,
-      ]
-        .filter(Boolean)
-        .join(", ")
-    : t("today.noWeather");
-
   // The day tabs (DESIGN.md "שלב 4.1" item 2): today, then each planned day. Moving between them with the keyboard
   // keeps focus on the tab (TextTabs stays mounted in one place in every state, see the layouts below).
   const dayTabs = hasTabs ? <DayTabs day={day} value={selectedDate} onChange={setChosenTab} inset={desktop ? 0 : layout.gutter} idPrefix={DAY_TABS} /> : null;
-  // A planned day's own forecast, named by its day (item 8): "Shabbat · 14–22° · rain 0%", or "no forecast yet".
-  const plannedName = planned
-    ? planned.dayType === "shabbat"
-      ? t("today.dayType.shabbat")
-      : new Intl.DateTimeFormat(locale, { weekday: "long" }).format(new Date(`${planned.date}T12:00:00`))
-    : null;
-  const plannedForecast = planned ? (
-    <Meta>
-      {planned.weather
-        ? t("today.plannedForecast", {
-            day: plannedName,
-            range: ltr(`${planned.weather.temp_min_c}–${planned.weather.temp_max_c}°`),
-            rain: ltr(`${Math.round(planned.weather.rain_probability * 100)}%`),
-          })
-        : t("today.plannedNoForecast")}
-    </Meta>
-  ) : null;
-  // Mobile: the planned day's forecast opens the measured block above the hero, inside the day's panel. Its line is
-  // held on the today tab too (empty, hidden from readers), so a tab change does not move the hero by a line's height.
+  // A planned day's own forecast, named by its day (item 8). Mobile: it opens the measured block above the hero,
+  // inside the day's panel, held on the today tab too so a tab change does not move the hero by a line's height.
+  const plannedForecast = planned ? <PlannedForecastLine planned={planned} /> : null;
   const forecastSlot = hasTabs ? (
     <View className="mt-4 px-5">
-      {plannedForecast ?? (
-        <View aria-hidden importantForAccessibility="no-hide-descendants" style={{ opacity: 0 }}>
-          <Meta>{"\u00a0"}</Meta>
-        </View>
-      )}
+      <PlannedForecastLine planned={planned} />
     </View>
   ) : null;
-
-  // Spec DESIGN.md section 3 "היום" item 1: the entry line is named by the day, the end joins it only when it is
-  // today or tomorrow (data/shabbatTimes.ts decides that).
-  const entryLine = day.candles ? t(day.candles.kind === "shabbat" ? "today.candles" : "today.candlesOther", { time: ltr(day.candles.time) }) : null;
-  // "tomorrow" only when the end is tomorrow's and today is not a Friday: on a Friday every calendar prints just
-  // "Shabbat ends 17:17", on any other day a bare time would read as ending before the candles (DESIGN.md "היום").
-  const endTomorrow = day.end?.day === "tomorrow" && day.candles?.kind !== "shabbat";
-  const endKeys = {
-    shabbat: ["today.shabbatEnd", "today.shabbatEndTomorrow"],
-    holiday: ["today.holidayEnd", "today.holidayEndTomorrow"],
-    fast: ["today.fastEnd", "today.fastEndTomorrow"],
-  } as const;
-  const endLine = day.end ? t(endKeys[day.end.kind][endTomorrow ? 1 : 0], { time: ltr(day.end.time) }) : null;
-  const timesLine = entryLine && endLine ? t("today.timesJoin", { first: entryLine, second: endLine }) : (entryLine ?? endLine);
 
   const pressBookmark = () => {
     if (intent.kind === "hidden") return;
@@ -875,53 +881,23 @@ export function TodayView({
     </Text>
   );
 
+  // Drawn once the first generation has happened, so nothing is waited for any more: a line still without its data
+  // says so (Masthead).
   const masthead = (
-    <View>
-      {/* The title row: the bookmark is a secondary action of the screen, so it sits at the end of the title's row
-          (DESIGN.md section 3 "שלד"). The title's line is 46 high and the button 44, so the row keeps the height the
-          title alone had and the flat-lay's measured space is unchanged. */}
-      <View className="flex-row items-center" style={{ gap: 8 }}>
-        <View className="flex-1">
-          <Display size="display-xl" level={1}>
-            {t("today.title")}
-          </Display>
-        </View>
-        {bookmarkButton}
-      </View>
+    <Masthead day={day} titleAction={bookmarkButton} weatherSettled calendarSettled>
       {announceLine}
-      <Text className="mt-2 font-body text-body-sm text-ink-soft">{hebrew ? `${hebrew} · ${gregorian}` : gregorian}</Text>
-      {timesLine ? <Text className="mt-1 font-body text-body-sm text-ink-soft">{timesLine}</Text> : null}
-      <Pressable
-        {...focusRingProps}
-        onPress={() => router.push("/location")}
-        accessibilityRole="button"
-        accessibilityLabel={t("today.weatherLabel", { weather: weatherWords, place })}
-        className="mt-4 self-start"
-        style={{ minHeight: layout.hit }}
-      >
-        {weatherLine}
-        {/* The place is the link's visible half: underlined like every text action, so the line reads as tappable. An
-            older forecast says how old beside it, on the same row, so the masthead keeps its height when the fresh one
-            arrives and the note leaves. */}
-        <View className="mt-1 flex-row flex-wrap items-center self-start" style={{ columnGap: 8 }}>
-          <View className="border-b border-hairline pb-1">
-            <Meta tone="text-ink-soft">{place}</Meta>
-          </View>
-          {forecastAge ? (
-            <Meta tone="text-ink-soft" className="pb-1">
-              {`· ${t(forecastAge.key)}`}
-              <Text className="font-mono text-num-sm">{ltr(forecastAge.time)}</Text>
-            </Meta>
-          ) : null}
-        </View>
-      </Pressable>
-    </View>
+    </Masthead>
   );
 
   // Mobile layout: the whole flat-lay is on screen at scroll top, measured, not tuned (DESIGN.md section 3 "היום"
   // item 2). Paddings tuned to 390 and 360 broke with every extra line (N8, then the laundry, failure and Shabbat
   // times lines). Free space = from the hero's top edge to the floating bar's top, or to the scene's bottom (the tab
   // bar's top) when there is no bar, minus HERO_CLEARANCE.
+  // The older forecast left nothing to suggest while the fresh one is still on its way: the frame stays (dates, weather
+  // with its stored-forecast note, tabs) and only the hero keeps its loading state, saying what it waits for. Bounded by
+  // the request's own timeout; when it answers the day takes it at once (the empty-day rule above), when it fails the
+  // empty state is the true answer.
+  const awaitingForecast = plan.kind === "empty" && day.forecast.pending;
   // The bar is there exactly when there is a suggestion to wear (barContent below).
   const hasBar = !desktop && plan.kind === "suggestion";
   // don't touch / a bar that left (worn) must not keep capping the hero with its old height, and one that comes back
@@ -938,7 +914,7 @@ export function TodayView({
     cardWidth,
     maxHeight: measuredMax,
     space: heroSpace,
-  } = fitFlatLay({ measured, desktop, width, viewportHeight, heroTop, bottomReserved: hasBar ? barHeight : 0 });
+  } = fitFlatLay({ measured, desktop, width, viewportHeight, heroTop, bottomReserved: hasBar ? barHeight : awaitingForecast ? ACTION_BAR_HEIGHT : 0 });
   // The one-time cue that garments can be tapped (5.1 item 2), until the first tap on a garment or "got it". It is
   // shown only when the flat-lay stays above its floor with it (it must never push garments under the bar); when it
   // does not fit it waits for another visit, the flag unset. Decided once from the space measured without it, then
@@ -970,6 +946,9 @@ export function TodayView({
   }, [heldSize]);
   const heroMaxHeight = heldSize ? heldSize.max : measuredMax;
   const heroCardWidth = heldSize ? heldSize.card : cardWidth;
+  const placeholder = awaitingForecast ? (
+    <FlatLayPlaceholder maxHeight={desktop ? undefined : heroMaxHeight} radius={desktop || card ? "md" : "none"} label={t("today.awaitingForecast")} />
+  ) : null;
 
   const hero =
     pieces.length > 0 ? (
@@ -1177,11 +1156,6 @@ export function TodayView({
     </>
   );
 
-  // The older forecast left nothing to suggest while the fresh one is still on its way: the same quiet loading line as
-  // before the first suggestion, not "no suggestion" under an old forecast. Bounded by the request's own timeout; when it
-  // answers the day takes it at once (the empty-day rule above), when it fails the empty state is the true answer.
-  if (plan.kind === "empty" && day.forecast.pending) return <WardrobeGate state={{ status: "loading" }} />;
-
   if (desktop) {
     // The whole surface fits under the top nav: the scene's height minus the 32 above and below, as a 4:5 width.
     // The day tabs above the column (and the 24 under them) come out of that height.
@@ -1202,12 +1176,13 @@ export function TodayView({
                 </View>
               ) : null}
               <TabPanel idPrefix={DAY_TABS} selectedKey={selectedDate} active={hasTabs}>
-                <Reveal index={1}>{hero ?? empty}</Reveal>
+                <Reveal index={1}>{hero ?? placeholder ?? empty}</Reveal>
               </TabPanel>
             </View>
             <View style={{ flex: 1 }}>
-              <Reveal index={0}>{masthead}</Reveal>
+              {masthead}
               {plannedForecast ? <View className="mt-6">{plannedForecast}</View> : null}
+              {calendarMissingLine ? <View className="mt-6">{calendarMissingLine}</View> : null}
               {occasionLine ? <View className="mt-6">{occasionLine}</View> : null}
               {forecastUpdatedLine ? <View className="mt-6">{forecastUpdatedLine}</View> : null}
               {hintLine ? <View className="mt-6">{hintLine}</View> : null}
@@ -1257,18 +1232,16 @@ export function TodayView({
             paddingBottom: (hasBar ? barHeight : 0) + UNDER_BAR,
           }}
         >
-          <Reveal index={0}>
-            <View className="px-5" onLayout={(e) => setMastheadHeight(e.nativeEvent.layout.height)}>
-              {masthead}
-            </View>
-          </Reveal>
+          {/* No entrance for the masthead and the tabs: the frame drew them in this very place before the outfit came
+              (TodayFrame), and they must not fade in a second time. */}
+          <View className="px-5" onLayout={(e) => setMastheadHeight(e.nativeEvent.layout.height)}>
+            {masthead}
+          </View>
           {/* The day tabs stay at one place in the tree whatever the day holds, so focus stays on a tab across changes. */}
           {dayTabs ? (
-            <Reveal index={1}>
-              <View onLayout={(e) => setTabsHeight(e.nativeEvent.layout.height)}>
-                <View className="mt-6">{dayTabs}</View>
-              </View>
-            </Reveal>
+            <View onLayout={(e) => setTabsHeight(e.nativeEvent.layout.height)}>
+              <View className="mt-6">{dayTabs}</View>
+            </View>
           ) : null}
           <TabPanel idPrefix={DAY_TABS} selectedKey={selectedDate} active={hasTabs}>
             {outfit ? (
@@ -1277,6 +1250,7 @@ export function TodayView({
                   {/* Everything between masthead and hero, measured as one block for the hero's cap. */}
                   <View onLayout={(e) => setAboveHeroHeight(e.nativeEvent.layout.height)}>
                     {forecastSlot}
+                    {calendarMissingLine ? <View className="mt-6 px-5">{calendarMissingLine}</View> : null}
                     {occasionLine ? <View className="mt-6 px-5">{occasionLine}</View> : null}
                     {forecastUpdatedLine ? <View className="mt-6 px-5">{forecastUpdatedLine}</View> : null}
                     {hintLine ? <View className="mt-6 px-5">{hintLine}</View> : null}
@@ -1300,10 +1274,21 @@ export function TodayView({
                   <View className="mt-12 px-5">{credits}</View>
                 </Reveal>
               </>
+            ) : placeholder ? (
+              <Reveal index={1}>
+                <View onLayout={(e) => setAboveHeroHeight(e.nativeEvent.layout.height)}>
+                  {forecastSlot}
+                  {calendarMissingLine ? <View className="mt-6 px-5">{calendarMissingLine}</View> : null}
+                </View>
+                <View style={{ marginTop: MOBILE_HERO_GAP, ...(heroCardWidth ? { width: heroCardWidth, alignSelf: "center" as const } : null) }}>
+                  {placeholder}
+                </View>
+              </Reveal>
             ) : (
               <>
                 {forecastSlot}
                 <View className="px-5">
+                  {calendarMissingLine ? <View className="mt-6">{calendarMissingLine}</View> : null}
                   {empty}
                   <View className="mt-12">{credits}</View>
                 </View>
