@@ -33,7 +33,6 @@ import {
   Meta,
   StatusLine,
   TabPanel,
-  TextTabs,
   type FlatLayPiece,
   type StatusVariant,
 } from "../../components/ui";
@@ -41,7 +40,9 @@ import { fitFlatLay, HERO_MIN } from "../../components/ui/flatLayFit";
 import { focusRingProps } from "../../components/ui/interaction";
 import { localDate, localTime, type DayContext } from "../../data/dayContext";
 import type { FeedbackHistory } from "../../data/feedback";
-import { chainTabLabels, defaultTab, type ChainTabLabel } from "../../data/shabbatTimes";
+import { chainTabLabels } from "../../data/shabbatTimes";
+import { DayTabs } from "./DayTabs";
+import { dayInForce, plannedKeys, tabKey } from "./dayInForce";
 import type { OccasionsState } from "../../data/occasions";
 import { correctionFailure } from "../../data/correction";
 import type { FeedbackActions, FeedbackState, FeedbackTarget, Laundered } from "../../data/useFeedback";
@@ -156,24 +157,6 @@ const TAP_HINT_KEY = "fitcheck:tap-hint-seen";
 /** Ids of the day tabs and their panel (WAI-ARIA tabs pattern). */
 const DAY_TABS = "today-day";
 
-/** The i18n key of a planned day's tab ("for Shabbat", "for Yom Kippur", "for the holiday", "holiday, day 1"). */
-const tabKey = (label: ChainTabLabel) =>
-  label.kind === "shabbat"
-    ? "today.tabs.shabbat"
-    : label.kind === "yom_kippur"
-      ? "today.tabs.yomKippur"
-      : label.day === null
-        ? "today.tabs.holiday"
-        : `today.tabs.holidayDay${label.day}`;
-
-/** A planned day's "I'll wear it on ..." and "Logged: ... for ..." keys, by what the day is. */
-const plannedKeys = (kind: "shabbat" | "holiday" | "yom_kippur") =>
-  kind === "shabbat"
-    ? { wear: "today.wearOnShabbat", worn: "today.status.wornShabbat" }
-    : kind === "yom_kippur"
-      ? { wear: "today.wearOnYomKippur", worn: "today.status.wornYomKippur" }
-      : { wear: "today.wearOnHoliday", worn: "today.status.wornHoliday" };
-
 type StatusItem = {
   key: string;
   variant: StatusVariant;
@@ -242,16 +225,8 @@ export function TodayView({
   const hasTabs = day.chain.length > 0;
   // The opening tab, decided once from the clock and the answers at hand when the screen opened: wearing today's
   // outfit must not pull the screen to Shabbat under the user's thumb (item 3 is about where the screen opens).
-  const [openingTab] = useState(() =>
-    day.chain[
-      defaultTab({
-        now: clock,
-        candles: day.candles?.time ?? null,
-        todayRecorded: history.today.some((r) => r.feedback === "worn"),
-        recorded: day.chain.map((d) => history.ahead.some((r) => r.date === d.date && r.feedback === "worn")),
-      }) - 1
-    ]?.date ?? day.date
-  );
+  // The same rule decides the day the saved outfit's screen records on (features/today/dayInForce.ts).
+  const [openingTab] = useState(() => dayInForce({ day, now: clock, history }));
   // A tab chosen by hand lasts while the screen is mounted, no longer (item 3).
   const [chosenTab, setChosenTab] = useState<string | null>(null);
   const selectedDate = [chosenTab, openingTab].find((d) => d !== null && days.some((x) => x.date === d)) ?? day.date;
@@ -812,16 +787,7 @@ export function TodayView({
 
   // The day tabs (DESIGN.md "שלב 4.1" item 2): today, then each planned day. Moving between them with the keyboard
   // keeps focus on the tab (TextTabs stays mounted in one place in every state, see the layouts below).
-  const dayTabs = hasTabs ? (
-    <TextTabs
-      tabs={[{ key: day.date, label: t("today.tabs.today") }, ...day.chain.map((d, i) => ({ key: d.date, label: t(tabKey(tabLabels[i]!)) }))]}
-      value={selectedDate}
-      onChange={setChosenTab}
-      accessibilityLabel={t("today.tabs.label")}
-      inset={desktop ? 0 : layout.gutter}
-      idPrefix={DAY_TABS}
-    />
-  ) : null;
+  const dayTabs = hasTabs ? <DayTabs day={day} value={selectedDate} onChange={setChosenTab} inset={desktop ? 0 : layout.gutter} idPrefix={DAY_TABS} /> : null;
   // A planned day's own forecast, named by its day (item 8): "Shabbat · 14–22° · rain 0%", or "no forecast yet".
   const plannedName = planned
     ? planned.dayType === "shabbat"
