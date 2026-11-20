@@ -88,6 +88,23 @@ function Routes() {
             contentStyle: { backgroundColor: "transparent" },
           }}
         />
+        {/* Building an outfit and editing one (item 5): presented exactly like the outfit screen, the bar hidden. */}
+        <Stack.Screen
+          name="outfit/new"
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="outfit/[id]/edit"
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>
         <Stack.Screen name="sign-in" />

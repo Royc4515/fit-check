@@ -34,7 +34,12 @@ const DESKTOP_HERO_MAX = 560;
 
 const fill = { position: "absolute", top: 0, bottom: 0, start: 0, end: 0 } as const;
 
-type Props = { id: string | undefined; userId: string };
+type Props = {
+  id: string | undefined;
+  userId: string;
+  /** `already`: opened by the build screen because these garments were already saved; says so above the hero. */
+  notice?: "already";
+};
 
 type Load = "loading" | "missing" | "error" | "done";
 
@@ -51,7 +56,7 @@ type Load = "loading" | "missing" | "error" | "done";
  * a failed favourite rolls the heart back with an error line; a failed rename keeps the field open with its text; a
  * failed removal keeps the confirm step with an error line.
  */
-export function OutfitView({ id, userId }: Props) {
+export function OutfitView({ id, userId, notice }: Props) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === "en" ? "en" : "he";
   const router = useRouter();
@@ -212,6 +217,7 @@ export function OutfitView({ id, userId }: Props) {
   const missingSlots = entries.filter((e) => e.item === null).map((e) => t(`outfit.slot.${e.slot}`));
   const statuses = (
     <>
+      {notice === "already" && outfit ? <StatusLine message={t("outfit.alreadySaved")} /> : null}
       {away.length > 0 ? (
         <StatusLine
           message={t("outfit.away", {
@@ -369,6 +375,16 @@ export function OutfitView({ id, userId }: Props) {
             </View>
           ) : (
             <View className="border-t border-hairline">
+              <ListRow
+                label={t("outfit.edit")}
+                onPress={() => {
+                  closeMore();
+                  // "Already saved" was about how this screen was reached; after an edit it would read as news.
+                  if (notice) router.setParams({ notice: undefined });
+                  // The build screen, filled with this outfit (stage 5.2 item 5); its save comes back here.
+                  router.push({ pathname: "/outfit/[id]/edit", params: { id: outfit.id } });
+                }}
+              />
               <ListRow label={t("outfit.remove.row")} onPress={() => setConfirming(true)} />
             </View>
           )}

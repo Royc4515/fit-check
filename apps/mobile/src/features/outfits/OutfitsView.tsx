@@ -46,7 +46,7 @@ function useResolve(): (item: Item) => Item {
  *
  * Reads on every focus (an outfit saved, renamed or removed elsewhere shows when the user comes back); the last list
  * stays on screen meanwhile. Loading: tiles at their final size, pulsing (no spinner). A failed read with nothing to
- * show: an error line with retry. Empty: "no outfits yet" (no action until the build screen exists, stage 5.2 #4).
+ * show: an error line with retry. Empty: "no outfits yet" with "לוק חדש", which opens the build screen.
  */
 export function OutfitsView({ userId }: Props) {
   const { t, i18n } = useTranslation();
@@ -123,7 +123,7 @@ export function OutfitsView({ userId }: Props) {
   } else if (shown.length === 0) {
     body =
       tab === "all" ? (
-        <EmptyState title={t("outfits.empty.title")} body={t("outfits.empty.body")} />
+        <EmptyState title={t("outfits.empty.title")} body={t("outfits.empty.body")} action={{ label: t("outfits.empty.action"), onPress: () => router.push("/outfit/new") }} />
       ) : (
         <EmptyState title={t("outfits.emptyFavorites.title")} body={t("outfits.emptyFavorites.body")} />
       );

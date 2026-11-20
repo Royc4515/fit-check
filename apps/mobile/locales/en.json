@@ -846,7 +846,8 @@
       "stepper": "Stepper",
       "item": "Item screen: writing in place and wears",
       "insights": "Insights",
-      "outfitTile": "Outfit tile"
+      "outfitTile": "Outfit tile",
+      "textField": "Text field"
     },
     "item": {
       "wears": "With wears (7 of 12)",
@@ -1019,7 +1020,8 @@
     },
     "flatLay": {
       "intro": "Combinations from the real wardrobe, 3 and 4 pieces. Same percentages at every width.",
-      "label": "Combination {{n}}"
+      "label": "Combination {{n}}",
+      "empty": "Being built: empty slots, a top chosen"
     },
     "stepper": {
       "label": "Temperature",
@@ -1066,7 +1068,8 @@
     "tileLabel": "{{title}}. {{pieces}}. {{meta}}",
     "empty": {
       "title": "No outfits yet",
-      "body": "An outfit you liked on Today is saved from there, or you build one by hand."
+      "body": "An outfit you liked on Today is saved from there, or you build one by hand.",
+      "action": "New outfit"
     },
     "emptyFavorites": {
       "title": "No favourites yet",
@@ -1129,6 +1132,67 @@
       "bottom": "Trousers",
       "shoes": "Shoes",
       "layer": "Layer"
-    }
+    },
+    "edit": "Edit",
+    "alreadySaved": "This outfit is already saved"
+  },
+  "builder": {
+    "titleNew": "New outfit",
+    "titleEdit": "Edit outfit",
+    "choose": "Choose",
+    "chooseSlot": {
+      "top": "Choose a top",
+      "bottom": "Choose trousers",
+      "shoes": "Choose shoes",
+      "layer": "Choose a layer"
+    },
+    "rowChosen": "{{index}} {{slot}}: {{type}} {{name}}, change",
+    "rowEmpty": "{{index}} {{slot}}, choose",
+    "heroLabel": "The outfit being built: {{pieces}}",
+    "heroEmpty": "The outfit being built, nothing chosen yet",
+    "context": "For when",
+    "name": "Name (optional)",
+    "nameCount": "{{n}} of {{max}} characters",
+    "save": "Save",
+    "saving": "Saving",
+    "missing": {
+      "top": "Missing a top",
+      "bottom": "Missing trousers",
+      "shoes": "Missing shoes",
+      "top_bottom": "Missing a top and trousers",
+      "top_shoes": "Missing a top and shoes",
+      "bottom_shoes": "Missing trousers and shoes",
+      "all": "Missing a top, trousers and shoes"
+    },
+    "saveFailed": "The outfit was not saved. {{reason}}",
+    "sameAsOther": "A saved outfit already has these garments",
+    "openOther": "Open it",
+    "alreadySaved": "This outfit is already saved",
+    "loadFailed": "The wardrobe could not be loaded",
+    "leave": {
+      "title": "Leave without saving?",
+      "body": "What you chose here will not be kept.",
+      "confirm": "Leave",
+      "stay": "Keep editing",
+      "titleHalfDone": "Leave now?"
+    },
+    "picker": {
+      "search": "Search by name or brand",
+      "remove": "Remove",
+      "removeLabel": "Remove {{name}} from the outfit",
+      "noResults": "No results for \"{{query}}\"",
+      "empty": "No garments of this kind in the wardrobe",
+      "more": "Show more ({{n}})",
+      "tileLabel": "{{name}}, {{type}}, {{color}}",
+      "tileLabelWhere": "{{name}}, {{type}}, not at home: {{where}}",
+      "chosen": "{{label}}, chosen"
+    },
+    "wornCopy": "This outfit has been worn. The garments that were worn stay in the history, and the edit is saved as a new outfit in its place.",
+    "halfDone": "The new outfit is saved, but the old one is still in your outfits. \"Retry\" removes it."
+  },
+  "add": {
+    "title": "Add",
+    "garment": "New garment",
+    "outfit": "New outfit"
   }
 }
