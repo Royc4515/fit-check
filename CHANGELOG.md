@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-20 ("לובש היום" from a saved outfit, stage 5.2 pull request 5)
+
+- The outfit screen's one accent: "לובש היום" in a floating bar (in the column on desktop). It records today's wear as one `wears` row on the saved outfit (`recordWearOfSaved`, now exported; no `outfits` row is written or changed, no score invented) through Today's own hook: `useFeedback.wearSaved` learns the pairs and moves due garments to the laundry exactly as "לובש", and Today's lines follow in Today's words ("נרשם: זה מה שלבשת היום." with "ביטול", "הועבר לכביסה" with "אל תעביר לכביסה"). Undo deletes only the wear (the saved outfit stays), unlearns and brings the laundry home.
+- Already worn today in this outfit (same garments, from here or from Today): the recorded line, no bar, on load too. Worn today in another outfit: the button opens one `Sheet` ("היום כבר נרשם לוק אחר. להחליף אותו בלוק הזה?", "להחליף" / "ביטול"); confirming runs the correction after wearing (`useFeedback.correctToSaved`: this wear first, laundry, the earlier wear deleted, unlearned). Undo afterwards does what Today's undo after a correction does: this wear and its laundry go, the earlier one is not restored.
+- A deleted or archived garment: no bar and one meta line saying why (an archived garment would otherwise be counted and laundered). A garment away keeps its info line and the button stays.
+- Today agrees without a reload: each feedback hook re-reads its history when another screen writes a wear, and the day's laundry set is one shared state (`data/feedbackSync.ts`), so Today shows the outfit worn with its laundry line and its undo brings that laundry home. The collection's count and date follow through the outfits store.
+- Failure: the bar stays with an error line and "נסה שוב", recomputed from the state at that moment (`features/outfits/wearToday.ts`, pure, tested). In the design preview every write rejects, which is this path.
+- Look at: `features/outfits/{useWearToday,wearToday}.ts`, `OutfitView.tsx`, `data/useFeedback.ts` (`wearSaved`, `correctToSaved`, the re-read), `data/feedbackSync.ts`; DESIGN.md "שלב 5.2" item 4 "כפי שנבנה"; screenshots `design/screens/2026-11-20-outfit-wear-*`. Unverified: real writes (checked on a stubbed copy of the web build), native.
+
 ## 2026-11-20 (Outfits: building one by hand, editing a saved one, and the "+" choice)
 
 - The bar's centre "+" and the desktop "הוספה" open a sheet with "בגד חדש" (the add-garment screen, as before) and "לוק חדש". Escape closes it and focus returns to the "+".
