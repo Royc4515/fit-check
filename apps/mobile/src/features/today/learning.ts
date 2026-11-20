@@ -92,3 +92,138 @@ export function firstGeneration(args: { othersReady: boolean; saved: "loading" |
   if (args.saved === "error") return "without";
   return args.waitedMs >= SAVED_LIST_GRACE_MS ? "without" : "wait";
 }
+
+/**
+ * How long Today's first suggestion may wait for the weather, counted from when the forecast request started (it runs
+ * in parallel with the other reads, so the bound is not counted from when they arrived). A fresh forecast usually
+ * answers in under a second; ten seconds of an empty screen (measured on the live site, 2026-11-20, when Open-Meteo
+ * did not answer) is worse than a suggestion from a slightly older forecast, or from none, that says so.
+ */
+export const WEATHER_GRACE_MS = 2500;
+
+/** Where the forecast request stands: answered (or a cache young enough to trust), still on its way, or given up. */
+export type ForecastStatus = "fresh" | "loading" | "failed";
+
+/** What Today's first generation uses for weather. */
+export type FirstWeather = "wait" | "fresh" | "cached" | "without";
+
+/**
+ * The first generation's weather decision. Pure: the time since the forecast request started comes in as data.
+ *
+ * - the other inputs are not ready: `wait`;
+ * - the forecast has answered: `fresh`;
+ * - it failed: at once `cached` when an older forecast for the same place covers the day, else `without`;
+ * - still loading: `wait` until `WEATHER_GRACE_MS` has passed since the request started, then `cached` or `without`.
+ *
+ * Never throws. The caller latches the first answer that is not `wait`; a forecast that arrives later updates the
+ * weather line, never the outfit on screen.
+ */
+export function firstWeather(args: { othersReady: boolean; forecast: ForecastStatus; cached: boolean; waitedMs: number }): FirstWeather {
+  if (!args.othersReady) return "wait";
+  if (args.forecast === "fresh") return "fresh";
+  if (args.forecast === "loading" && args.waitedMs < WEATHER_GRACE_MS) return "wait";
+  return args.cached ? "cached" : "without";
+}
+
+/** Both decisions of the first suggestion, or `wait` while either one still waits. */
+export type FirstSuggestion = "wait" | { saved: Exclude<FirstGeneration, "wait">; weather: Exclude<FirstWeather, "wait"> };
+
+/**
+ * Composes the two bounded waits of the first suggestion: the saved list (from when the other inputs were ready) and
+ * the weather (from when the forecast request started). Each is measured from its own start and both run at once, so
+ * the first suggestion is drawn when the later of the two ends: the waits never add up. Worst case, from opening:
+ * max(others ready + SAVED_LIST_GRACE_MS, forecast start + WEATHER_GRACE_MS). Pure; never throws.
+ */
+export function firstSuggestion(args: {
+  othersReady: boolean;
+  saved: "loading" | "ready" | "error";
+  savedWaitedMs: number;
+  forecast: ForecastStatus;
+  cached: boolean;
+  forecastWaitedMs: number;
+}): FirstSuggestion {
+  const saved = firstGeneration({ othersReady: args.othersReady, saved: args.saved, waitedMs: args.savedWaitedMs });
+  const weather = firstWeather({ othersReady: args.othersReady, forecast: args.forecast, cached: args.cached, waitedMs: args.forecastWaitedMs });
+  return saved === "wait" || weather === "wait" ? "wait" : { saved, weather };
+}
+
+/**
+ * The forecast each day's outfit is planned with, per tab (by date), and what has to change before a newer one is
+ * taken in. Like the saved list (LearnState): a day's forecast is fixed when its outfit is first generated and replaced
+ * only when the user asks for a different outfit on that day anyway, so a forecast that answers after the first paint
+ * never re-ranks an outfit that has been shown. Switching tabs is not such a request: a tab keeps its outfit while the
+ * screen is mounted, and a tab never shown takes the freshest forecast when it is first generated.
+ */
+export type WeatherInForce<W> = {
+  skips: number;
+  adjustments: unknown;
+  /** Today's occasion type, or null. */
+  occasion: string | null;
+  /** Presses of "update the suggestion". */
+  refresh: number;
+  /** The forecast in force per date, at each skip count seen; the current one is `byCount.get(skips)`. */
+  byCount: ReadonlyMap<number, ReadonlyMap<string, W>>;
+};
+
+/** What the screen shows now, against which the forecast in force is checked. */
+export type WeatherTriggers = {
+  skips: number;
+  adjustments: unknown;
+  occasion: string | null;
+  refresh: number;
+  /** The selected tab's date: the day a skip, a nudge or "update" acts on. */
+  tab: string;
+  /** Today's date: the day an occasion acts on. */
+  today: string;
+};
+
+/** The state when Today opens: the shown tab's forecast is the live one. */
+export function initialWeatherInForce<W>(now: WeatherTriggers, live: (date: string) => W): WeatherInForce<W> {
+  return {
+    skips: now.skips,
+    adjustments: now.adjustments,
+    occasion: now.occasion,
+    refresh: now.refresh,
+    byCount: new Map([[now.skips, new Map([[now.tab, live(now.tab)]])]]),
+  };
+}
+
+/** The forecast a day is planned with: the one in force for it, else (never generated yet) the live one. */
+export function weatherInForceFor<W>(state: WeatherInForce<W>, date: string, live: (date: string) => W): W {
+  const map = state.byCount.get(state.skips);
+  return map && map.has(date) ? (map.get(date) as W) : live(date);
+}
+
+/**
+ * The forecast in force after a render. Returns `prev` itself when nothing changed, so the caller can compare by
+ * identity. Pure; never throws.
+ *
+ * - a new skip or dislike, a nudge or "update the suggestion": the shown tab takes the live forecast;
+ * - a different occasion: today takes the live forecast (an occasion belongs to today);
+ * - fewer skips (an undo): the forecasts in force at that count come back, so undo shows the outfit it took away as it
+ *   was planned; days first shown since keep theirs;
+ * - a tab shown for the first time: it takes the live forecast; a tab already shown keeps its own.
+ *
+ * Nudges have no undo of their own: "reset" or the opposite tap is a new request and takes the live forecast.
+ */
+export function nextWeatherInForce<W>(prev: WeatherInForce<W>, now: WeatherTriggers, live: (date: string) => W): WeatherInForce<W> {
+  const current = prev.byCount.get(prev.skips) ?? new Map<string, W>();
+  const regenerate = now.skips > prev.skips || now.adjustments !== prev.adjustments || now.refresh !== prev.refresh;
+  const occasionChanged = now.occasion !== prev.occasion;
+  const undo = now.skips < prev.skips && !regenerate;
+  if (!regenerate && !occasionChanged && !undo && current.has(now.tab)) return prev;
+  let map: Map<string, W>;
+  if (undo) {
+    // What was in force at that count, plus any day first generated since (its outfit has been shown as it is).
+    map = new Map(prev.byCount.get(now.skips) ?? current);
+    for (const [date, w] of current) if (!map.has(date)) map.set(date, w);
+  } else {
+    map = new Map(current);
+  }
+  if (regenerate) map.set(now.tab, live(now.tab));
+  if (occasionChanged) map.set(now.today, live(now.today));
+  if (!map.has(now.tab)) map.set(now.tab, live(now.tab));
+  const byCount = new Map(prev.byCount);
+  byCount.set(now.skips, map);
+  return { skips: now.skips, adjustments: now.adjustments, occasion: now.occasion, refresh: now.refresh, byCount };
+}
