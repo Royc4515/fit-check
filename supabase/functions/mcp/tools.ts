@@ -369,11 +369,16 @@ export const TOOLS: Tool[] = [
     name: "outfit_today",
     title: "Today's outfit candidates",
     description:
-      "Builds today's outfit candidates with the app's own engine: weather (Tel Aviv by default), the day's rules, " +
-      "laundry and what Roy wore recently. YOU are the stylist: pick one candidate and explain it to Roy in Hebrew. " +
-      "The rules are, in this order: a day_type you pass; else the date's occasion context (see context_set: date, interview or event); " +
-      "else the calendar (weekday, Shabbat, holiday), where, if Roy's profile says he does not keep Shabbat and holidays, Shabbat is planned as a " +
-      "weekday and a holiday as a weekday one step dressier. The answer says which context was used and why (context_used). " +
+      "Builds up to eight outfit candidates for a date with the app's own engine and the app's own rules: weather (Tel Aviv by default), " +
+      "the day's rules, laundry, what Roy wore recently, and the outfits he saved (a saved or favourite outfit ranks a little higher among " +
+      "near-equal candidates). YOU are the stylist: pick one candidate and explain it to Roy in Hebrew. " +
+      "Which rules: a day_type you pass wins over everything. Otherwise, if Roy keeps Shabbat and holidays (his profile), Shabbat and holidays " +
+      "decide the look until that date's havdalah; an occasion set with context_set (date, interview, event) applies on Shabbat or a holiday " +
+      "only after havdalah, and never on a date without one (the first day of a two-day holiday). On a weekday the occasion applies. " +
+      "Yom Kippur has its own rules: no leather, suede or untagged shoes; if no shoe qualifies the look comes without shoes (shoes_note says so). " +
+      "If he does not keep them, Shabbat is a weekday, a holiday a weekday one step dressier, and an occasion always applies. " +
+      "An outfit worn on one of the last three dates is not offered for a date again. The answer says which rules were used and why " +
+      "(context_used, occasion). If the Hebrew calendar could not be read, the answer has a `warning`: tell Roy what it says before anything else. " +
       "Optional: date (yyyy-mm-dd), day_type, lat/lon for another place, anchor_item_id to build around one garment.",
     inputSchema: {
       type: "object",
@@ -441,7 +446,8 @@ export const TOOLS: Tool[] = [
     title: "Log an outfit",
     description:
       "Records Roy's answer to an outfit, as the app's buttons do: worn (default), skipped or disliked. Updates which garments go well " +
-      "together and sends garments due for washing to the laundry. Use the item ids from outfit_today or wardrobe_search.",
+      "together and sends garments due for washing to the laundry. Use the item ids from outfit_today or wardrobe_search. " +
+      "The wear is recorded in the same context outfit_today used for that date (an occasion in effect, else the day type).",
     inputSchema: {
       type: "object",
       properties: {
