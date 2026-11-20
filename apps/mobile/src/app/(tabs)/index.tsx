@@ -12,7 +12,7 @@ import type { WardrobeData } from "../../data/wardrobe";
 import { useWardrobe } from "../../data/WardrobeProvider";
 import { sessionUserId, useSession } from "../../features/auth/SessionProvider";
 import { withWornChange } from "../../features/outfits/collection";
-import { listNow, patchOutfits, refreshOutfits, whenSettled } from "../../features/outfits/store";
+import { listNow, patchOutfits, refreshOutfits, useSavedOutfits, whenSettled } from "../../features/outfits/store";
 import { resolveWearRow } from "../../features/today/bookmark";
 import { TodayView } from "../../features/today/TodayView";
 import { useBookmark } from "../../features/today/useBookmark";
@@ -80,6 +80,9 @@ function Today(props: {
   // has what it needs to be drawn, so it never delays the first paint; and again whenever Today is focused, as the
   // collection does, so an outfit removed elsewhere is not still "saved" here.
   const outfitReady = feedback.history !== null;
+  // The same list, for the engine to learn from (DESIGN.md "שלב 5.2" item 8). Null until read: Today never waits for
+  // it, and TodayView takes it in only at the next regeneration (features/today/learning.ts).
+  const saved = useSavedOutfits(userId);
   useFocusEffect(
     useCallback(() => {
       if (outfitReady) void refreshOutfits(userId);
@@ -101,6 +104,7 @@ function Today(props: {
       stylist={requestStyle}
       occasions={occasions}
       bookmark={bookmark}
+      savedOutfits={saved.status === "ready" ? saved.outfits : null}
       clock={clock}
     />
   );
