@@ -21,7 +21,7 @@ import { useItemFlight } from "../item/useItemFlight";
 import { useTextWriting } from "../item/useTextWriting";
 import type { TextField } from "../item/writing";
 import { awayGarments, legendEntries, outfitCaption, wornMeta } from "./collection";
-import { loadOutfit, removeFromCollection, renameSavedOutfit, toggleFavorite, useSavedOutfits } from "./store";
+import { loadOutfit, refreshTally, removeFromCollection, renameSavedOutfit, tallyFor, toggleFavorite, useSavedOutfits, useWornTally } from "./store";
 
 /** Space between the block above the hero (header row, status lines) and the hero. */
 const HERO_GAP = 16;
@@ -67,6 +67,11 @@ export function OutfitView({ id, userId, notice }: Props) {
   const desktop = width >= layout.desktopMin;
   const wardrobe = useWardrobe();
   const store = useSavedOutfits(userId);
+  const tally = useWornTally(userId);
+  // Its own read, started when the screen opens and never waited for: the screen draws from the list, the count follows.
+  useEffect(() => {
+    void refreshTally(userId);
+  }, [userId]);
 
   // The collection's copy, so a favourite or rename made here is the same object the collection shows.
   const cached = id ? store.outfits.find((o) => o.id === id) : undefined;
@@ -264,8 +269,10 @@ export function OutfitView({ id, userId, notice }: Props) {
       );
   } else {
     const caption = outfitCaption({ name: outfit.name, pieces: entries.flatMap((e) => (e.item ? [{ item: e.item }] : [])) }, typeOf);
-    const w = wornMeta(outfit);
-    const rest = w.kind === "never" ? t("outfits.neverWorn") : t("outfits.wornWithDate", { worn: t("outfits.worn", { count: w.count, n: ltr(w.count) }), date: shortDate(w.last, locale) });
+    const w = wornMeta(tallyFor(tally, outfit.itemIds));
+    // "unknown": no count yet (or never one): the line says the context only, never a guess like "not worn yet".
+    const rest = w.kind === "unknown" ? null : w.kind === "never" ? t("outfits.neverWorn") : t("outfits.wornWithDate", { worn: t("outfits.worn", { count: w.count, n: ltr(w.count) }), date: shortDate(w.last, locale) });
+    const contextText = t(`outfit.context.${outfit.contextType}`);
     const heroLabel = spoken(t("outfit.heroLabel", { pieces: pieces.map((p) => p.accessibilityLabel).join(", ") }));
     const hero = (
       <View style={fit.cardWidth !== null ? { width: fit.cardWidth, alignSelf: "center" } : desktop ? { width: desktopHero } : undefined}>
@@ -297,7 +304,7 @@ export function OutfitView({ id, userId, notice }: Props) {
           </Display>
         </InlineText>
         <View className="mt-1">
-          <Meta>{t("outfit.meta", { context: t(`outfit.context.${outfit.contextType}`), rest })}</Meta>
+          <Meta>{rest === null ? contextText : t("outfit.meta", { context: contextText, rest })}</Meta>
         </View>
         <View className="mt-8 border-t border-hairline">
           {entries.map((e) =>
