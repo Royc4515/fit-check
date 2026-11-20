@@ -1,5 +1,6 @@
 import { SAVED_OUTFIT_READ_COLUMNS } from "@fit-check/schema";
 import { z } from "zod";
+import { readAllPages } from "../features/insights/pagedRead";
 import { supabase } from "../lib/supabase";
 import { isPreview, PreviewReadOnlyError } from "./preview";
 import {
@@ -15,10 +16,13 @@ import {
   SavedOutfitError,
   SaveOutfitInputSchema,
   savedOutfitFromRow,
-  UpdateOutfitInputSchema,
   savedOutfitsFromRows,
+  UpdateOutfitInputSchema,
+  wornIndex,
   type SavedOutfit,
   type UpdateOutfitInput,
+  type WornIndex,
+  type WornWear,
 } from "./savedOutfit";
 
 /**
@@ -35,8 +39,10 @@ import {
 export type SaveResult = { outfit: SavedOutfit; created: boolean };
 
 /**
- * The collection, newest `saved_at` first, each with its garments and wear count. Malformed rows are skipped and
- * logged. Throws on a network or permission error.
+ * The collection, newest `saved_at` first, each with its garments and its OWN wear counts (the wears pointing at that
+ * row). One request. Malformed rows are skipped and logged. Throws on a network or permission error. The count the
+ * screens show is not here: it is by garment set and comes from `fetchWornTally`, a separate read, so nothing that
+ * waits for the list waits for the wear history.
  */
 export async function fetchSavedOutfits(): Promise<SavedOutfit[]> {
   if (isPreview()) return [];
@@ -60,6 +66,50 @@ export async function fetchSavedOutfit(id: string): Promise<SavedOutfit | null> 
   if (error) throw error;
   const row = data ? parseOutfitRow(data) : null;
   return row ? savedOutfitFromRow(row) : null;
+}
+
+const WornWearRowSchema = z.object({
+  worn_on: z.string().date(),
+  // Null when the wear's outfit row was deleted (`on delete set null`): it has no garments, so it counts for no set.
+  outfits: z.object({ outfit_items: z.array(z.object({ item_id: z.string() })) }).nullable(),
+});
+
+/**
+ * The tally of every worn wear by garment set ("אותם בגדים = אותו לוק", DESIGN.md "שלב 5.2"): the count and newest date
+ * of each set, whichever `outfits` row a wear points at. Paged like Insights (PostgREST cuts one response at 1,000
+ * rows), ordered totally so pages never overlap.
+ *
+ * Failure modes: THROWS on a network or permission error, and when the wears pass the pager's limit (20,000: the
+ * oldest would be missing, so every count could be too small). It never answers a smaller number as if it were whole;
+ * the store keeps the last good tally and the screens show no count when there is none. A malformed wear row is
+ * skipped and logged (the others still count). The design preview answers an empty tally: it has no saved outfits.
+ */
+export async function fetchWornTally(): Promise<WornIndex> {
+  if (isPreview()) return wornIndex([]);
+  const { rows, partial } = await readAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from("wears")
+      .select("id,worn_on,outfits(outfit_items(item_id))")
+      .eq("feedback", "worn")
+      // don't touch / a stable total order: pages are cut by position, and several wears share a date.
+      .order("worn_on", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+    return data ?? [];
+  });
+  if (partial) throw new Error("worn wears exceed the paged read; the tally would be incomplete");
+  const wears: WornWear[] = [];
+  for (const raw of rows) {
+    const parsed = WornWearRowSchema.safeParse(raw);
+    if (!parsed.success) {
+      console.error("Skipping malformed wear row", parsed.error);
+      continue;
+    }
+    const { worn_on, outfits } = parsed.data;
+    if (outfits) wears.push({ date: worn_on, itemIds: outfits.outfit_items.map((i) => i.item_id) });
+  }
+  return wornIndex(wears);
 }
 
 const SavedSetRowSchema = z.object({ id: z.string(), outfit_items: z.array(z.object({ item_id: z.string() })) });

@@ -11,8 +11,7 @@ import { requestStyle } from "../../data/stylist";
 import type { WardrobeData } from "../../data/wardrobe";
 import { useWardrobe } from "../../data/WardrobeProvider";
 import { sessionUserId, useSession } from "../../features/auth/SessionProvider";
-import { withWornChange } from "../../features/outfits/collection";
-import { listNow, patchOutfits, refreshOutfits, useSavedOutfits, whenSettled } from "../../features/outfits/store";
+import { listNow, recordWornChange, refreshOutfits, useSavedOutfits, whenSettled } from "../../features/outfits/store";
 import { resolveWearRow } from "../../features/today/bookmark";
 import { firstSuggestion, SAVED_LIST_GRACE_MS, WEATHER_GRACE_MS } from "../../features/today/learning";
 import { TodayView } from "../../features/today/TodayView";
@@ -73,10 +72,10 @@ function Today(props: {
     },
     [userId, settled]
   );
-  // A worn record stored on, or deleted from, a saved outfit changes its count and date in the shared store at once;
+  // A worn record stored or deleted changes the count of its garment set in the shared store at once (and refreshes it);
   // the next focus read stays the truth.
   const onWornChange = useCallback(
-    (record: { outfitId: string; date: string }, delta: 1 | -1) => patchOutfits(userId, (list) => withWornChange(list, record.outfitId, delta, record.date)),
+    (record: { outfitId: string; itemIds: string[]; date: string }, delta: 1 | -1) => recordWornChange(userId, record, delta),
     [userId]
   );
   const feedback = useFeedback({ userId, date: day.date, dayType: day.dayType, until, items, pairWeights, patch, resolveRow, onWornChange });

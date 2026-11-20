@@ -13,7 +13,7 @@ import { shortDate, ltr } from "../insights/format";
 import { spoken } from "../item/a11y";
 import { useIsDesktop } from "../shell/ShellTabBar";
 import { legendEntries, outfitCaption, outfitGridColumns, outfitTileWidth, visibleOutfits, wornMeta, type OutfitsTab } from "./collection";
-import { refreshOutfits, toggleFavorite, useSavedOutfits } from "./store";
+import { refreshOutfits, refreshTally, tallyFor, toggleFavorite, useSavedOutfits, useWornTally } from "./store";
 
 /**
  * Between rows of the grid. Wider than the wardrobe's 16 on purpose (lead's review of the first build, 2026-11-19):
@@ -55,6 +55,7 @@ export function OutfitsView({ userId }: Props) {
   const desktop = useIsDesktop();
   const { width: windowW } = useWindowDimensions();
   const state = useSavedOutfits(userId);
+  const tally = useWornTally(userId);
   const resolve = useResolve();
   const [tab, setTab] = useState<OutfitsTab>("all");
   const [favoriteError, setFavoriteError] = useState<{ id: string; favorite: boolean; message: string } | null>(null);
@@ -62,6 +63,8 @@ export function OutfitsView({ userId }: Props) {
   useFocusEffect(
     useCallback(() => {
       void refreshOutfits(userId);
+      // Its own read, started with the list's but never waited for: the tiles draw at once and the counts arrive after.
+      void refreshTally(userId);
     }, [userId])
   );
 
@@ -81,9 +84,12 @@ export function OutfitsView({ userId }: Props) {
   };
 
   const metaOf = (o: SavedOutfit) => {
-    const w = wornMeta(o);
-    const wear = w.kind === "never" ? t("outfits.neverWorn") : t("outfits.wornWithDate", { worn: t("outfits.worn", { count: w.count, n: ltr(w.count) }), date: shortDate(w.last, locale) });
-    return o.missing.length > 0 ? t("outfits.missingMeta", { rest: wear }) : wear;
+    const w = wornMeta(tallyFor(tally, o.itemIds));
+    // "unknown": no count yet (or never one): an empty line; the tile's caption box has a fixed height, so nothing
+    // moves when the count arrives.
+    const wear = w.kind === "unknown" ? "" : w.kind === "never" ? t("outfits.neverWorn") : t("outfits.wornWithDate", { worn: t("outfits.worn", { count: w.count, n: ltr(w.count) }), date: shortDate(w.last, locale) });
+    if (o.missing.length === 0) return wear;
+    return wear === "" ? t("outfits.missingOnly") : t("outfits.missingMeta", { rest: wear });
   };
 
   const tile = (o: SavedOutfit) => {
@@ -100,7 +106,7 @@ export function OutfitsView({ userId }: Props) {
           favorite={o.isFavorite}
           onPress={() => router.push({ pathname: "/outfit/[id]", params: { id: o.id } })}
           onToggleFavorite={() => toggle(o, !o.isFavorite)}
-          accessibilityLabel={spoken(t("outfits.tileLabel", { title: caption.text, pieces: pieces.map((p) => p.item.name).join(", "), meta }))}
+          accessibilityLabel={spoken(meta === "" ? t("outfits.tileLabelNoMeta", { title: caption.text, pieces: pieces.map((p) => p.item.name).join(", ") }) : t("outfits.tileLabel", { title: caption.text, pieces: pieces.map((p) => p.item.name).join(", "), meta }))}
           favoriteLabel={t(o.isFavorite ? "outfits.favoriteRemove" : "outfits.favoriteAdd")}
         />
       </View>
