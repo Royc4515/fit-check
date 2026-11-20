@@ -1,5 +1,5 @@
 import type { FeedbackHistory } from "../../data/feedback";
-import { defaultTab } from "../../data/shabbatTimes";
+import { chainTabLabels, defaultTab, type ChainTabLabel, type PhoneFreeDay } from "../../data/shabbatTimes";
 
 /*
  * The day a wear pressed now belongs to (DESIGN.md "שלב 4.1" item 3, "שלב 5.2" item 4). One rule, used by Today for
@@ -39,6 +39,27 @@ export function dayInForce(args: { day: DayInForceInput; now: string; history: P
     recorded: day.chain.map((d) => history.ahead.some((r) => r.date === d.date && r.feedback === "worn")),
   });
   return day.chain[tab - 1]?.date ?? day.date;
+}
+
+/** The i18n key of a planned day's tab ("for Shabbat", "for Yom Kippur", "for the holiday", "holiday, day 1"). */
+export const tabKey = (label: ChainTabLabel) =>
+  label.kind === "shabbat"
+    ? "today.tabs.shabbat"
+    : label.kind === "yom_kippur"
+      ? "today.tabs.yomKippur"
+      : label.day === null
+        ? "today.tabs.holiday"
+        : `today.tabs.holidayDay${label.day}`;
+
+/**
+ * The day tabs of a day (DESIGN.md "שלב 4.1" item 2): today, then each planned day, keyed by date, with the i18n key
+ * of each label. Empty when there is no planned day (no tabs are drawn). Today and the saved outfit's screen both draw
+ * these (DayTabs.tsx), so they show the same tabs on the same days.
+ */
+export function dayTabKeys(day: { date: string; chain: readonly Pick<PhoneFreeDay, "date" | "kind">[] }): { key: string; labelKey: string }[] {
+  if (day.chain.length === 0) return [];
+  const labels = chainTabLabels(day.chain);
+  return [{ key: day.date, labelKey: "today.tabs.today" }, ...day.chain.map((d, i) => ({ key: d.date, labelKey: tabKey(labels[i]!) }))];
 }
 
 /** A planned day's "I'll wear it on ..." and "Logged: ... for ..." keys, by what the day is (Today's own words). */
