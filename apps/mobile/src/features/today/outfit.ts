@@ -11,7 +11,7 @@ import {
   type DayAdjustment,
   type PairWeights,
 } from "@fit-check/engine";
-import { StylingRequestSchema, type CandidateOutfit, type ContextType, type Item, type OccasionType, type Slot, type StylingRequest } from "@fit-check/schema";
+import { ruleSetOf, StylingRequestSchema, type RuleSet, type CandidateOutfit, type ContextType, type Item, type OccasionType, type Slot, type StylingRequest } from "@fit-check/schema";
 import type { FeedbackHistory, RecentWear, TodayRecord } from "../../data/feedback";
 import type { DayType } from "../../data/dayContext";
 import { newestWorn } from "../../data/correction";
@@ -39,6 +39,8 @@ export function contextTypeOf(day: Pick<DayInput, "dayType" | "occasion">): Cont
  */
 export const FALLBACK_WEATHER: Weather = { temp_min_c: 16, temp_max_c: 24, rain_probability: 0.1 };
 
+const rulesOf = (set: RuleSet) => (set === "yom_kippur" ? YOM_KIPPUR_RULES : DEFAULT_CONTEXT_RULES[set]);
+
 function request(
   day: DayInput,
   overrides: { anchor_item_id?: string; max_candidates?: number; weather?: Weather; recent_wears?: RecentWear[] } = {}
@@ -46,13 +48,9 @@ function request(
   return StylingRequestSchema.parse({
     today: day.date,
     // Holidays use the Shabbat rules (PRD section 7: shabbat / holiday share one row); Yom Kippur its own set (no
-    // leather shoes), which is still of type "holiday".
-    // An occasion overrides the calendar for its date, Yom Kippur included (PRD 7.1 "קדימות").
-    context: day.occasion
-      ? DEFAULT_CONTEXT_RULES[day.occasion]
-      : day.yomKippur && day.dayType !== "weekday"
-        ? YOM_KIPPUR_RULES
-        : DEFAULT_CONTEXT_RULES[day.dayType],
+    // leather shoes), which is still of type "holiday". An occasion that reached the day overrides the calendar for
+    // its date, Yom Kippur included (PRD 7.1 "קדימות"). The choice is the shared ruleSetOf, as the MCP server's.
+    context: rulesOf(ruleSetOf(day)),
     weather: day.weather ?? FALLBACK_WEATHER,
     recent_wears: [],
     anchor_item_id: null,

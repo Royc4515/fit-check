@@ -1,12 +1,9 @@
-import type { DayType } from "./dayContext";
 import type { PhoneFreeDay, ShabbatTimes } from "./shabbatTimes";
 
 /**
  * "Keeps Shabbat and holidays" (DESIGN.md "שלב 4.1" item 10): the one input behind everything Shabbat-related. Pure
- * here (the node test runner loads this file); the stored setting and its hook are in useObservance.ts.
- *
- * Known limitation: a device setting. The MCP tools (`outfit_today`) compute the day's context on the server and do
- * not know it, so for a user who switched it off they still plan Shabbat by the Shabbat rules.
+ * here (the node test runner loads this file); the stored setting and its hook are in useObservance.ts. The MCP
+ * server's `outfit_today` reads the same setting from `profile.observes_shabbat` and plans with the same rule.
  */
 
 /** Device storage key, beside the language setting. */
@@ -47,19 +44,12 @@ export function parseObservance(raw: string | null): boolean {
 /** The setting to its stored value. */
 export const storedObservance = (observes: boolean): string => (observes ? "yes" : "no");
 
-/** The engine's day type: Shabbat and Yom Tov only for someone who keeps them; otherwise every day is a weekday. */
-export function dayTypeFor(weekday: number, yomtov: boolean, observes: boolean): DayType {
-  if (!observes) return "weekday";
-  return yomtov ? "holiday" : weekday === 6 ? "shabbat" : "weekday";
-}
-
 /**
- * A Yom Tov for someone who does not keep it: still an ordinary weekday for the engine, but planned a little dressier
- * (DESIGN.md "שלב 4.1" item 10). Never true while the switch is on (then the day is a holiday proper).
+ * The engine's day type from the weekday, Hebcal's Yom Tov flag and the switch, and whether a holiday starts one step
+ * dressier. Shared with the MCP server's `outfit_today` since 2026-11-20 (packages/schema day-context.ts), so the two
+ * plan a day the same way; re-exported here where the app has always read them.
  */
-export function isFestiveWeekday(yomtov: boolean, observes: boolean): boolean {
-  return !observes && yomtov;
-}
+export { dayTypeFor, isFestiveWeekday } from "@fit-check/schema";
 
 /** The calendar fields of a day: times row, holiday, Yom Tov flag and the planned days. */
 export type CalendarFields = Pick<ShabbatTimes, "candles" | "end"> & {
