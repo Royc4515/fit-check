@@ -314,7 +314,7 @@ export function useFeedback(args: {
     const retireEarlier = async (earlier: TodayRecord) => {
       await deleteFeedback(earlier);
       dropRecord(earlier);
-      onWornChange?.(earlier, -1);
+      if (earlier.feedback === "worn") onWornChange?.(earlier, -1);
       await learn(earlier.itemIds, "worn", -1).catch((error: unknown) => console.error("Pair weights update failed", error));
     };
     /**

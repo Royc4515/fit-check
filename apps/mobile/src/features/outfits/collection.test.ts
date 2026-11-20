@@ -110,14 +110,17 @@ describe("outfitCaption", () => {
 });
 
 describe("wornMeta", () => {
-  it("never worn", () => {
-    expect(wornMeta(outfit("a"))).toEqual({ kind: "never" });
+  it("never worn: the tally answered and has no wear of these garments", () => {
+    expect(wornMeta({ wornCount: 0, lastWornOn: null })).toEqual({ kind: "never" });
   });
   it("count and the last date", () => {
-    expect(wornMeta(outfit("a", { wornCount: 3, lastWornOn: "2026-11-12" }))).toEqual({ kind: "worn", count: 3, last: "2026-11-12" });
+    expect(wornMeta({ wornCount: 3, lastWornOn: "2026-11-12" })).toEqual({ kind: "worn", count: 3, last: "2026-11-12" });
   });
   it("a count without a date reads as never worn, not a blank", () => {
-    expect(wornMeta(outfit("a", { wornCount: 2, lastWornOn: null }))).toEqual({ kind: "never" });
+    expect(wornMeta({ wornCount: 2, lastWornOn: null })).toEqual({ kind: "never" });
+  });
+  it("no tally (not answered yet, or never) is unknown, never 'never worn'", () => {
+    expect(wornMeta(null)).toEqual({ kind: "unknown" });
   });
 });
 

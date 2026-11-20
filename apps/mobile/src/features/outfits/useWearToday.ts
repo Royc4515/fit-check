@@ -11,8 +11,7 @@ import { useDayContext } from "../../data/useDayContext";
 import { useFeedback } from "../../data/useFeedback";
 import { useWardrobe } from "../../data/WardrobeProvider";
 import { dayInForce } from "../today/dayInForce";
-import { withWornChange } from "./collection";
-import { patchOutfits } from "./store";
+import { recordWornChange } from "./store";
 import { wearPress, wearTodayState, type WearTodayState } from "./wearToday";
 
 /** Web ids of the two places focus goes after a press: the recorded line (its undo) and the wear button. */
@@ -81,7 +80,7 @@ export function useWearToday(userId: string, outfit: SavedOutfit | null, garment
   // Until the day's context lands (its location's time zone), Israel's date; the bar waits for the real one anyway.
   const date = day?.date ?? israelDate().date;
   const onWornChange = useCallback(
-    (record: { outfitId: string; date: string }, delta: 1 | -1) => patchOutfits(userId, (list) => withWornChange(list, record.outfitId, delta, record.date)),
+    (record: { outfitId: string; itemIds: string[]; date: string }, delta: 1 | -1) => recordWornChange(userId, record, delta),
     [userId]
   );
   const ready = wardrobe.status === "ready";

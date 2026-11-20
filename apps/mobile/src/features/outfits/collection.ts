@@ -1,5 +1,5 @@
 import type { Item, Slot } from "@fit-check/schema";
-import type { SavedOutfit } from "../../data/savedOutfit";
+import type { SavedOutfit, WornTally } from "../../data/savedOutfit";
 
 /*
  * The "לוקים" place's decisions with no I/O and no React (DESIGN.md "שלב 5.2" items 3-4): what the tabs show, how
@@ -43,13 +43,21 @@ export function outfitCaption(
   return { text: outfit.pieces.map((p) => typeOf(p.item.tags.subcategory)).join(TYPE_SEPARATOR), named: false };
 }
 
-/** The wear line's data: never worn, or how many times and the last date (yyyy-mm-dd). */
-export type WornMeta = { kind: "never" } | { kind: "worn"; count: number; last: string };
+/**
+ * The wear line's data: `never` (the tally answered and no worn wear has these garments), how many times and the last
+ * date (yyyy-mm-dd), or `unknown` (no tally yet, or none that ever answered): the screens then show an empty line, not
+ * a guess like "עוד לא נלבש", and a screen reader hears nothing for it.
+ */
+export type WornMeta = { kind: "never" } | { kind: "worn"; count: number; last: string } | { kind: "unknown" };
 
-/** See WornMeta. A count without a date (impossible from the data layer) reads as never worn rather than a blank. */
-export function wornMeta(outfit: Pick<SavedOutfit, "wornCount" | "lastWornOn">): WornMeta {
-  if (outfit.wornCount <= 0 || outfit.lastWornOn === null) return { kind: "never" };
-  return { kind: "worn", count: outfit.wornCount, last: outfit.lastWornOn };
+/**
+ * See WornMeta. `tally` is the outfit's set in the tally (`wornTallyOf`), or null when there is no usable tally. A count
+ * without a date (impossible from the data layer) reads as never worn rather than a blank.
+ */
+export function wornMeta(tally: WornTally | null): WornMeta {
+  if (tally === null) return { kind: "unknown" };
+  if (tally.wornCount <= 0 || tally.lastWornOn === null) return { kind: "never" };
+  return { kind: "worn", count: tally.wornCount, last: tally.lastWornOn };
 }
 
 /** Reading order of the slots; the 01-04 numbers follow it. */
@@ -88,7 +96,9 @@ export function withName(outfits: readonly SavedOutfit[], id: string, name: stri
 }
 
 /**
- * The list with one outfit's wear count changed by +1 (a wear recorded on it: the date becomes the last one if newer)
+ * The list with one outfit's OWN wear count (the wears pointing at that row: `wornCount`, `wearCount`, `lastWornOn`;
+ * what editing and removing decide by, NOT what the wear line shows: that is the tally by garment set, patched with
+ * `withTallyChange`) changed by +1 (a wear recorded on it: the date becomes the last one if newer)
  * or -1 (one undone: never below 0, no count means no date; otherwise the date stays until the next read corrects it).
  * Only `worn` feedback counts, so the caller passes nothing for a skip. Unknown ids leave the list as it is.
  */
