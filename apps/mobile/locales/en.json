@@ -40,6 +40,8 @@
     "calendarMissing": "The Hebrew calendar did not load. If today is a holiday or a holiday eve, this suggestion does not fit.",
     "calendarMissingShabbat": "The Hebrew calendar did not load. This follows the Shabbat rules; if today is Yom Kippur, it does not fit.",
     "calendarUpdated": "The Hebrew calendar has loaded",
+    "calendarLoading": "The Hebrew calendar is still loading. If today is a holiday or a holiday eve, this suggestion does not fit.",
+    "calendarLoadingShabbat": "The Hebrew calendar is still loading. This follows the Shabbat rules; if today is Yom Kippur, it does not fit.",
     "candles": "Shabbat begins {{time}}",
     "candlesOther": "Candle lighting {{time}}",
     "shabbatEnd": "Shabbat ends {{time}}",

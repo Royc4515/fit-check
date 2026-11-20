@@ -1,7 +1,7 @@
 import { HebcalItemsSchema } from "@fit-check/schema";
 import { describe, expect, it } from "vitest";
 import tishrei from "./__fixtures__/window-tishrei-5787.json";
-import { addDays, calendarOn, civilCalendar, hebrewDateOn, windowCovers } from "./calendarWindow";
+import { addDays, calendarAnswerUsable, calendarOn, civilCalendar, hebrewDateOn, hebrewDatesUsable, windowCovers } from "./calendarWindow";
 import { NO_CALENDAR } from "./observance";
 
 // A real 61-day Hebcal window (geonameid 294981 Giv'at Shmuel, i=on, lg=he, 2026-09-01..2026-10-31, saved 2026-11-20).
@@ -64,4 +64,16 @@ describe("hebrewDateOn", () => {
   const w = { start: "2026-11-20", end: "2026-11-21", dates: { "2026-11-20": { he: "י׳ בכסלו תשפ״ז", en: "10 Kislev 5787" } } };
   it("the stored date", () => expect(hebrewDateOn(w, "2026-11-20")).toEqual({ he: "י׳ בכסלו תשפ״ז", en: "10 Kislev 5787" }));
   it("null for a date it does not hold", () => expect(hebrewDateOn(w, "2026-11-22")).toBeNull());
+});
+
+describe("an answer that passes the schema but is not a calendar", () => {
+  it("a real 61-day window has candle lighting: usable", () => expect(calendarAnswerUsable(items, "2026-09-01", "2026-10-31")).toBe(true));
+  it("an empty 60-day answer is a failed request", () => expect(calendarAnswerUsable([], "2026-11-20", "2027-01-19")).toBe(false));
+  it("seven days with only holidays and no candle lighting is a failed request", () =>
+    expect(calendarAnswerUsable([{ category: "holiday" }, { category: "havdalah" }], "2026-11-20", "2026-11-26")).toBe(false));
+  it("a window shorter than a week is left to the schema", () => expect(calendarAnswerUsable([], "2026-11-20", "2026-11-25")).toBe(true));
+  it("the converter's answer must hold the date asked for", () => {
+    expect(hebrewDatesUsable({}, "2026-11-20")).toBe(false);
+    expect(hebrewDatesUsable({ "2026-11-20": { he: "x", en: "y" } }, "2026-11-20")).toBe(true);
+  });
 });

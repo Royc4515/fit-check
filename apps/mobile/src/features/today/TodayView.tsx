@@ -56,6 +56,7 @@ import { settingGetNow, settingGet, settingSet } from "../../data/kv";
 import { asCandidate, contextTypeOf, rulesStillFit, weatherStillFits, type DayInput, type Swaps, type TodayPlan } from "./outfit";
 import { bookmarkFailureAction, bookmarkIntent, shownSaved, type BookmarkIntent } from "./bookmark";
 import { initialLearn, initialWeatherInForce, learnedFrom, nextLearn, nextWeatherInForce, skipCount, weatherInForceFor, type WeatherInForce } from "./learning";
+import { calendarLine } from "./calendarLine";
 import { PieceSheet } from "./PieceSheet";
 import {
   DAY_TABS,
@@ -749,16 +750,29 @@ export function TodayView({
   const calendarMissing = day.observes && !day.calendar.known;
   const [calendarWasMissing, setCalendarWasMissing] = useState(calendarMissing);
   if (calendarMissing && !calendarWasMissing) setCalendarWasMissing(true);
-  const calendarMissingLine = calendarMissing ? (
-    <StatusLine
-      variant="info"
-      message={t(day.weekday === 6 ? "today.calendarMissingShabbat" : "today.calendarMissing")}
-      action={{ label: t("common.retry"), onPress: reloadDayContext }}
-      disabled={busy}
-    />
-  ) : calendarWasMissing || calendarOutdated ? (
-    <StatusLine variant="info" message={t("today.calendarUpdated")} action={calendarOutdated ? updateAction : undefined} disabled={busy} />
-  ) : null;
+  // The line tells the truth about the request: still in flight, no button (a press could not start another one);
+  // failed or timed out, "try again", which starts a new request at once (calendarLine.ts).
+  const calLine = calendarLine({
+    observes: day.observes,
+    known: day.calendar.known,
+    pending: day.calendar.pending,
+    wasMissing: calendarWasMissing,
+    outdated: calendarOutdated,
+  });
+  const shabbat = day.weekday === 6;
+  const calendarMissingLine =
+    calLine.kind === "loading" ? (
+      <StatusLine variant="info" message={t(shabbat ? "today.calendarLoadingShabbat" : "today.calendarLoading")} />
+    ) : calLine.kind === "failed" ? (
+      <StatusLine
+        variant="info"
+        message={t(shabbat ? "today.calendarMissingShabbat" : "today.calendarMissing")}
+        action={{ label: t("common.retry"), onPress: reloadDayContext }}
+        disabled={busy}
+      />
+    ) : calLine.kind === "loaded" ? (
+      <StatusLine variant="info" message={t("today.calendarUpdated")} action={calLine.update ? updateAction : undefined} disabled={busy} />
+    ) : null;
   // One focusable wrapper (tabIndex -1: reachable by script, not by Tab) so focus has a place to land when a line
   // has no action of its own, and screen readers read the whole stack when it arrives.
   const wornStatus = (className: string) =>
