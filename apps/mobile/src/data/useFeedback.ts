@@ -94,8 +94,17 @@ export function useFeedback(args: {
   items: Item[];
   pairWeights: PairWeights;
   patch: (fn: (data: WardrobeData) => WardrobeData) => void;
+  /**
+   * The outfit row an answer to these garments is recorded on, decided at write time from a settled saved list: the
+   * saved outfit's id, or undefined for a new unsaved row (features/today/bookmark.ts resolveWearRow). Every write of
+   * feedback (worn, skipped, the corrected wear) asks it first. It rejects when the saved list cannot be read: the
+   * write then fails like any failed write, rather than recording a copy of a saved outfit.
+   */
+  resolveRow: (itemIds: string[]) => Promise<string | undefined>;
+  /** A worn record was stored (+1) or deleted (-1): lets the shared outfits store follow at once (count and date). */
+  onWornChange?: (record: TodayRecord, delta: 1 | -1) => void;
 }): FeedbackState {
-  const { userId, date, dayType, until = date, items, pairWeights, patch } = args;
+  const { userId, date, dayType, until = date, items, pairWeights, patch, resolveRow, onWornChange } = args;
   const [laundered, setLaundered] = useState<Laundered | null>(null);
   const itemsRef = useRef(items);
   useEffect(() => {
@@ -207,8 +216,10 @@ export function useFeedback(args: {
     };
     /** Records a worn outfit for `target`, then learns from it and moves what is due to the laundry. */
     const wearNow = async (outfit: CandidateOutfit, source: "daily" | "swap", adjustment: DayAdjustment, target: FeedbackTarget) => {
-      const record = await recordFeedback({ ...target, userId, outfit, source, feedback: "worn", adjustment });
+      const savedOutfitId = await resolveRow(outfit.items.map((i) => i.id));
+      const record = await recordFeedback({ ...target, userId, outfit, source, feedback: "worn", adjustment, savedOutfitId });
       addWorn(record, target, adjustment);
+      onWornChange?.(record, 1);
       // The wear is stored even if learning fails; the weights are a derived signal, the wear is the fact. So a
       // failed weights write is logged and swallowed here: letting it reach run() would show "didn't save" for a
       // wear that was saved, and the user would press "wearing it" again and wear the day twice.
@@ -232,6 +243,7 @@ export function useFeedback(args: {
     const undoNow = async (record: TodayRecord) => {
       await deleteFeedback(record);
       dropRecord(record);
+      if (record.feedback === "worn") onWornChange?.(record, -1);
       if (record.feedback !== "skipped") await learn(record.itemIds, record.feedback, -1);
       // Undoing the wear undoes its laundry move too; the wash count is right again because the wear is gone.
       if (laundered?.wearId === record.wearId) {
@@ -247,6 +259,7 @@ export function useFeedback(args: {
     const retireEarlier = async (earlier: TodayRecord) => {
       await deleteFeedback(earlier);
       dropRecord(earlier);
+      onWornChange?.(earlier, -1);
       await learn(earlier.itemIds, "worn", -1).catch((error: unknown) => console.error("Pair weights update failed", error));
     };
     /**
@@ -294,13 +307,17 @@ export function useFeedback(args: {
       try {
         let corrected: TodayRecord;
         try {
-          corrected = await recordFeedback({ ...target, userId, outfit, source, feedback: "worn", adjustment });
+          // The corrected set may itself be a saved outfit: its wear then goes on that row. A saved list that cannot be
+          // read fails this step like a failed write: the earlier wear stands and "try again" repeats it.
+          const savedOutfitId = await resolveRow(outfit.items.map((i) => i.id));
+          corrected = await recordFeedback({ ...target, userId, outfit, source, feedback: "worn", adjustment, savedOutfitId });
         } catch (error) {
           console.error("Recording the corrected wear failed; the earlier one stands", error);
           setCorrection({ date: earlier.date, stage: "record", retry: () => void correctNow(earlier, outfit, source, adjustment, target) });
           return;
         }
         addWorn(corrected, target, adjustment);
+        onWornChange?.(corrected, 1);
         await learn(corrected.itemIds, "worn", 1).catch((error: unknown) => console.error("Pair weights update failed", error));
         // A failed laundry move is logged, not shown, as for any wear: the record is right, garments can be moved by hand.
         await relaunder(earlier, corrected).catch((error: unknown) => console.error("Laundry after the correction failed", error));
@@ -319,7 +336,9 @@ export function useFeedback(args: {
       wear: (outfit, source, adjustment, target = { date, dayType }) => run(target.date, () => wearNow(outfit, source, adjustment, target)),
       skip: (outfit, source, adjustment, target = { date, dayType }) =>
         run(target.date, async () => {
-          const record = await recordFeedback({ ...target, userId, outfit, source, feedback: "skipped", adjustment });
+          // A skip of a saved outfit is recorded on its row too: any answer to a saved set points at the saved row.
+          const savedOutfitId = await resolveRow(outfit.items.map((i) => i.id));
+          const record = await recordFeedback({ ...target, userId, outfit, source, feedback: "skipped", adjustment, savedOutfitId });
           const ahead = record.date !== date;
           setHistory((h) => ({
             recent: h?.recent ?? [],
@@ -349,7 +368,7 @@ export function useFeedback(args: {
         }),
       dismissFailure: () => setFailedOn(null),
     };
-  }, [run, learn, launder, move, laundered, setHistory, userId, date, dayType]);
+  }, [run, learn, launder, move, laundered, setHistory, userId, date, dayType, resolveRow, onWornChange]);
 
   return { history, busy, failedOn, laundered, correction, actions };
 }

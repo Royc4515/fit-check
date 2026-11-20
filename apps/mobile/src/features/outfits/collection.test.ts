@@ -12,6 +12,7 @@ import {
   withFavorite,
   withName,
   withOutfit,
+  withWornChange,
   withoutOutfit,
   wornMeta,
 } from "./collection";
@@ -163,5 +164,17 @@ describe("list updates", () => {
     expect(withOutfit(list, newer).map((o) => o.id)).toEqual(["c", "a", "b"]);
     expect(withOutfit(list, outfit("a", { name: "n" })).find((o) => o.id === "a")?.name).toBe("n");
     expect(withOutfit(list, outfit("a")).length).toBe(2);
+  });
+  it("withWornChange counts a wear and its undo, keeps the newest date, never goes below zero", () => {
+    const one = withWornChange(list, "a", 1, "2026-11-19");
+    const a = one.find((o) => o.id === "a")!;
+    expect(a.wornCount).toBe(list.find((o) => o.id === "a")!.wornCount + 1);
+    expect(a.lastWornOn! >= "2026-11-19").toBe(true);
+    const fresh = [outfit("z", { wornCount: 0, lastWornOn: null })];
+    const worn = withWornChange(fresh, "z", 1, "2026-11-20");
+    expect(worn[0]).toMatchObject({ wornCount: 1, lastWornOn: "2026-11-20" });
+    expect(withWornChange(worn, "z", -1, "2026-11-20")[0]).toMatchObject({ wornCount: 0, lastWornOn: null });
+    expect(withWornChange(fresh, "z", -1, "2026-11-20")[0]).toMatchObject({ wornCount: 0, lastWornOn: null });
+    expect(withWornChange(fresh, "nope", 1, "2026-11-20")).toEqual(fresh);
   });
 });
