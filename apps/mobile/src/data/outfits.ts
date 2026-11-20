@@ -1,5 +1,6 @@
 import { SAVED_OUTFIT_READ_COLUMNS } from "@fit-check/schema";
 import { z } from "zod";
+import { readAllPages } from "../features/insights/pagedRead";
 import { supabase } from "../lib/supabase";
 import { isPreview, PreviewReadOnlyError } from "./preview";
 import {
@@ -15,10 +16,13 @@ import {
   SavedOutfitError,
   SaveOutfitInputSchema,
   savedOutfitFromRow,
-  UpdateOutfitInputSchema,
   savedOutfitsFromRows,
+  UpdateOutfitInputSchema,
+  wornIndex,
   type SavedOutfit,
   type UpdateOutfitInput,
+  type WornIndex,
+  type WornWear,
 } from "./savedOutfit";
 
 /**
@@ -34,32 +38,90 @@ import {
 /** The result of a save: the saved outfit, and whether this call created it (false: the same garments were saved). */
 export type SaveResult = { outfit: SavedOutfit; created: boolean };
 
+const WornWearRowSchema = z.object({
+  worn_on: z.string().date(),
+  // Null when the wear's outfit row was deleted (`on delete set null`): it has no garments, so it counts for no set.
+  outfits: z.object({ outfit_items: z.array(z.object({ item_id: z.string() })) }).nullable(),
+});
+
+/**
+ * Every worn wear with its outfit row's item ids, for counting by garment set: the one extra read behind
+ * `fetchSavedOutfits` / `fetchSavedOutfit`. Paged like Insights (PostgREST cuts one response at 1,000 rows); a typical
+ * wardrobe is one page, so the collection costs two requests, sent together.
+ *
+ * Never throws: a failure (or more rows than the pager's limit, where the oldest wears would be missing) is logged and
+ * answers null, and the callers then count each row's own wears, which is what the app did before counting by set. A
+ * wear count is a line of text; it must not take the collection down.
+ */
+async function fetchWornIndex(): Promise<WornIndex | null> {
+  try {
+    const { rows, partial } = await readAllPages(async (from, to) => {
+      const { data, error } = await supabase
+        .from("wears")
+        .select("id,worn_on,outfits(outfit_items(item_id))")
+        .eq("feedback", "worn")
+        // don't touch / a stable total order: pages are cut by position, and several wears share a date.
+        .order("worn_on", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
+      return data ?? [];
+    });
+    if (partial) {
+      console.error("Worn wears exceed the paged read; counting each outfit's own wears instead");
+      return null;
+    }
+    const wears: WornWear[] = [];
+    for (const raw of rows) {
+      const parsed = WornWearRowSchema.safeParse(raw);
+      if (!parsed.success) {
+        console.error("Skipping malformed wear row", parsed.error);
+        continue;
+      }
+      const { worn_on, outfits } = parsed.data;
+      if (outfits) wears.push({ date: worn_on, itemIds: outfits.outfit_items.map((i) => i.item_id) });
+    }
+    return wornIndex(wears);
+  } catch (error) {
+    console.error("Could not read worn wears; counting each outfit's own wears instead", error);
+    return null;
+  }
+}
+
 /**
  * The collection, newest `saved_at` first, each with its garments and wear count. Malformed rows are skipped and
- * logged. Throws on a network or permission error.
+ * logged. Throws on a network or permission error of the outfits read.
+ *
+ * `wornCount` / `lastWornOn` count every worn wear of the same garments, on whichever `outfits` row it points at
+ * (DESIGN.md "שלב 5.2": the same garments are the same outfit), from a second read sent together with the first. If
+ * that second read fails the collection still loads and each outfit counts only the wears on its own row (logged);
+ * `wearCount`, the row's own wears, is always from the row.
  */
 export async function fetchSavedOutfits(): Promise<SavedOutfit[]> {
   if (isPreview()) return [];
-  const { data, error } = await supabase
-    .from("outfits")
-    .select(SAVED_OUTFIT_READ_COLUMNS)
-    .not("saved_at", "is", null)
-    .order("saved_at", { ascending: false })
-    .order("id", { ascending: true });
-  if (error) throw error;
-  return savedOutfitsFromRows(data ?? []);
+  const [outfits, worn] = await Promise.all([
+    supabase
+      .from("outfits")
+      .select(SAVED_OUTFIT_READ_COLUMNS)
+      .not("saved_at", "is", null)
+      .order("saved_at", { ascending: false })
+      .order("id", { ascending: true }),
+    fetchWornIndex(),
+  ]);
+  if (outfits.error) throw outfits.error;
+  return savedOutfitsFromRows(outfits.data ?? [], worn);
 }
 
 /**
  * One saved outfit; null when the id does not exist, is someone else's (RLS hides it), or is not saved.
- * Throws on a network or permission error.
+ * Throws on a network or permission error of the outfit read; the wear count falls back as in `fetchSavedOutfits`.
  */
 export async function fetchSavedOutfit(id: string): Promise<SavedOutfit | null> {
   if (isPreview()) return null;
-  const { data, error } = await supabase.from("outfits").select(SAVED_OUTFIT_READ_COLUMNS).eq("id", id).maybeSingle();
-  if (error) throw error;
-  const row = data ? parseOutfitRow(data) : null;
-  return row ? savedOutfitFromRow(row) : null;
+  const [outfit, worn] = await Promise.all([supabase.from("outfits").select(SAVED_OUTFIT_READ_COLUMNS).eq("id", id).maybeSingle(), fetchWornIndex()]);
+  if (outfit.error) throw outfit.error;
+  const row = outfit.data ? parseOutfitRow(outfit.data) : null;
+  return row ? savedOutfitFromRow(row, worn) : null;
 }
 
 const SavedSetRowSchema = z.object({ id: z.string(), outfit_items: z.array(z.object({ item_id: z.string() })) });
@@ -180,8 +242,8 @@ export async function markOutfitSaved(outfitId: string, options: { name?: string
   if (error) throw error;
   const row = data ? parseOutfitRow(data) : null;
   if (!row) throw new SavedOutfitError("not_found", `outfit ${outfitId} not found`);
-  const already = savedOutfitFromRow(row);
-  if (already) return { outfit: already, created: false };
+  // Not savedOutfitFromRow(row): that would count this row's own wears only, and the caller patches the store with it.
+  if (row.saved_at !== null) return { outfit: await mustFetch(outfitId), created: false };
   assertSaveable(row.outfit_items.map((oi) => ({ item_id: oi.item_id, slot: oi.slot })));
 
   const itemIds = row.outfit_items.map((oi) => oi.item_id);
