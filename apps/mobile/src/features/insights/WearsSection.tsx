@@ -68,10 +68,14 @@ function WearsContent({ summary, onOpenItem, bookmark }: { summary: WearSummary;
   const [open, setOpen] = useState<Outfit | null>(null);
   const shown = all ? summary.outfits : summary.outfits.slice(0, FIRST_PAGE);
 
-  // A row whose garments the read already shows cannot make a saved outfit says so on a press, without a write.
-  // Keyed by garment set, like a failed write, so the line follows the set and not one row.
+  // A press on a row whose garments the read already shows cannot make a saved outfit says so in the line, with no
+  // write. Keyed by garment set, like a failed write, so the line follows the set and not one row.
   const [blocked, setBlocked] = useState<string | null>(null);
+  // The row last pressed: the failure line sits under it, because with ten rows or more the top of the list can be
+  // scrolled out of sight when a write fails.
+  const [anchor, setAnchor] = useState<string | null>(null);
   const press = (row: Outfit, b: WearBookmark) => {
+    setAnchor(row.wearId);
     if (b.kind === "unsaveable") {
       bookmark.dismissFailure();
       setBlocked(b.key);
@@ -90,6 +94,20 @@ function WearsContent({ summary, onOpenItem, bookmark }: { summary: WearSummary;
     line = wearFailureLine(bookmark.failure, bookmarkOfKey(summary.outfits, bookmark.saved, bookmark.failure.key));
     lineDate = bookmark.failure.date;
   }
+
+  const lineUnderRow = anchor !== null && shown.some((o) => o.wearId === anchor);
+  const lineView =
+    line.kind === "none" ? null : (
+      <StatusLine
+        variant="error"
+        message={
+          line.kind === "cannotSave"
+            ? t("insights.wears.bookmark.cannotSave")
+            : t(line.wantSaved ? "insights.wears.bookmark.saveFailed" : "insights.wears.bookmark.removeFailed")
+        }
+        action={line.kind === "retry" ? { label: t("common.retry"), onPress: () => void bookmark.press(line.intent, lineDate) } : undefined}
+      />
+    );
 
   // The polite announcement of a finished save or removal: the icon changing shape is for the eyes. Web reads this live
   // region; native speaks it through the accessibility service (as Today's does).
@@ -143,37 +161,27 @@ function WearsContent({ summary, onOpenItem, bookmark }: { summary: WearSummary;
         >
           {announceText}
         </Text>
-        {line.kind !== "none" ? (
-          <View className="mt-2">
-            <StatusLine
-              variant="error"
-              message={
-                line.kind === "cannotSave"
-                  ? t("insights.wears.bookmark.cannotSave")
-                  : t(line.wantSaved ? "insights.wears.bookmark.saveFailed" : "insights.wears.bookmark.removeFailed")
-              }
-              action={line.kind === "retry" ? { label: t("common.retry"), onPress: () => void bookmark.press(line.intent, lineDate) } : undefined}
-            />
-          </View>
-        ) : null}
+        {line.kind !== "none" && !lineUnderRow ? <View className="mt-2">{lineView}</View> : null}
         <View className="mt-2 border-t border-hairline">
           {shown.map((o) => {
             const b = wearBookmark(o, bookmark.saved);
             return (
-              <OutfitRow
-                key={o.wearId}
-                outfit={o}
-                locale={locale}
-                onPress={() => setOpen(o)}
-                bookmark={{
-                  filled: wearShownSaved(b, bookmark.pending),
-                  // Drawn "not saved" and inert until the saved outfits have been read: before then a press could not
-                  // tell a saved outfit from one that is not (Today does the same).
-                  disabled: !bookmark.ready,
-                  unavailable: bookmark.unavailable,
-                  onPress: () => press(o, b),
-                }}
-              />
+              <View key={o.wearId}>
+                <OutfitRow
+                  outfit={o}
+                  locale={locale}
+                  onPress={() => setOpen(o)}
+                  bookmark={{
+                    filled: wearShownSaved(b, bookmark.pending),
+                    // Drawn "not saved" and inert until the saved outfits have been read: before then a press could not
+                    // tell a saved outfit from one that is not (Today does the same).
+                    disabled: !bookmark.ready,
+                    unavailable: bookmark.unavailable,
+                    onPress: () => press(o, b),
+                  }}
+                />
+                {line.kind !== "none" && lineUnderRow && o.wearId === anchor ? <View className="border-b border-hairline">{lineView}</View> : null}
+              </View>
             );
           })}
         </View>
