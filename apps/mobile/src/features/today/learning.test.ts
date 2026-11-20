@@ -1,7 +1,20 @@
 import type { SavedOutfitSignal } from "@fit-check/engine";
 import { describe, expect, it } from "vitest";
 import type { TodayRecord } from "../../data/feedback";
-import { firstGeneration, initialLearn, learnedFrom, nextLearn, SAVED_LIST_GRACE_MS, skipCount } from "./learning";
+import {
+  firstGeneration,
+  firstSuggestion,
+  firstWeather,
+  initialLearn,
+  initialWeatherInForce,
+  learnedFrom,
+  nextLearn,
+  nextWeatherInForce,
+  SAVED_LIST_GRACE_MS,
+  skipCount,
+  WEATHER_GRACE_MS,
+  weatherInForceFor,
+} from "./learning";
 
 const A: readonly SavedOutfitSignal[] = [{ itemIds: ["1", "2", "3"], isFavorite: false }];
 const B: readonly SavedOutfitSignal[] = [...A, { itemIds: ["4", "5", "6"], isFavorite: true }];
@@ -77,5 +90,132 @@ describe("the first generation and the saved list", () => {
     expect(firstGeneration({ othersReady: true, saved: "loading", waitedMs: 0 })).toBe("wait");
     expect(firstGeneration({ othersReady: true, saved: "loading", waitedMs: SAVED_LIST_GRACE_MS - 1 })).toBe("wait");
     expect(firstGeneration({ othersReady: true, saved: "loading", waitedMs: SAVED_LIST_GRACE_MS })).toBe("without");
+  });
+});
+
+describe("the first suggestion's weather", () => {
+  const ready = { othersReady: true, cached: false, waitedMs: 0 };
+
+  it("waits for the other inputs whatever the forecast does", () => {
+    expect(firstWeather({ ...ready, othersReady: false, forecast: "fresh" })).toBe("wait");
+  });
+
+  it("an answered forecast is used at once", () => {
+    expect(firstWeather({ ...ready, forecast: "fresh" })).toBe("fresh");
+    expect(firstWeather({ ...ready, forecast: "fresh", cached: true, waitedMs: WEATHER_GRACE_MS * 4 })).toBe("fresh");
+  });
+
+  it("a loading forecast is waited for until the bound, then the cache or nothing", () => {
+    expect(firstWeather({ ...ready, forecast: "loading", waitedMs: WEATHER_GRACE_MS - 1 })).toBe("wait");
+    expect(firstWeather({ ...ready, forecast: "loading", waitedMs: WEATHER_GRACE_MS })).toBe("without");
+    expect(firstWeather({ ...ready, forecast: "loading", cached: true, waitedMs: WEATHER_GRACE_MS })).toBe("cached");
+  });
+
+  it("a failed forecast is not waited for", () => {
+    expect(firstWeather({ ...ready, forecast: "failed" })).toBe("without");
+    expect(firstWeather({ ...ready, forecast: "failed", cached: true })).toBe("cached");
+  });
+
+  it("the bound is short: 2.5 s", () => {
+    expect(WEATHER_GRACE_MS).toBe(2500);
+  });
+});
+
+describe("the two bounded waits together", () => {
+  const base = { othersReady: true, saved: "ready" as const, savedWaitedMs: 0, forecast: "fresh" as const, cached: false, forecastWaitedMs: 0 };
+
+  it("goes when both have answered", () => {
+    expect(firstSuggestion(base)).toEqual({ saved: "with", weather: "fresh" });
+  });
+
+  it("waits while either waits", () => {
+    expect(firstSuggestion({ ...base, saved: "loading" })).toBe("wait");
+    expect(firstSuggestion({ ...base, forecast: "loading" })).toBe("wait");
+    expect(firstSuggestion({ ...base, othersReady: false })).toBe("wait");
+  });
+
+  it("never waits beyond the later of the two bounds, each from its own start", () => {
+    // Timeline in ms from opening: the forecast request starts at 100, the other inputs are ready at 1800, and nothing
+    // answers. The saved wait ends at 1800 + 1500 = 3300, the weather wait at 100 + 2500 = 2600: drawn at 3300, not at
+    // the 5800 that adding the two bounds would give.
+    const forecastStart = 100;
+    const othersAt = 1800;
+    const at = (t: number) =>
+      firstSuggestion({
+        othersReady: t >= othersAt,
+        saved: "loading",
+        savedWaitedMs: Math.max(0, t - othersAt),
+        forecast: "loading",
+        cached: true,
+        forecastWaitedMs: t - forecastStart,
+      });
+    expect(at(2600)).toBe("wait");
+    expect(at(3299)).toBe("wait");
+    expect(at(3300)).toEqual({ saved: "without", weather: "cached" });
+  });
+
+  it("with the other inputs ready early, the weather bound decides", () => {
+    const at = (t: number) =>
+      firstSuggestion({ othersReady: true, saved: "ready", savedWaitedMs: t, forecast: "loading", cached: false, forecastWaitedMs: t });
+    expect(at(2499)).toBe("wait");
+    expect(at(2500)).toEqual({ saved: "with", weather: "without" });
+  });
+});
+
+describe("the forecast in force", () => {
+  const taps = {};
+  const TODAY = "2026-11-20";
+  const SHABBAT = "2026-11-21";
+  const same = { skips: 0, adjustments: taps, tab: TODAY, today: TODAY, occasion: null, refresh: 0 };
+  /** The live forecast per date, as a label: what the network has said by now. */
+  const liveIs = (label: string) => (date: string) => `${label}@${date}`;
+  const opened = initialWeatherInForce(same, liveIs("cached"));
+  const forTab = (s: typeof opened, date: string, label: string) => weatherInForceFor(s, date, liveIs(label));
+
+  it("a forecast that answers later changes nothing: the same state, by identity", () => {
+    expect(nextWeatherInForce(opened, same, liveIs("fresh"))).toBe(opened);
+    expect(forTab(opened, TODAY, "fresh")).toBe(`cached@${TODAY}`);
+  });
+
+  it("a skip, a nudge or 'update' takes the latest forecast in for the shown tab", () => {
+    expect(forTab(nextWeatherInForce(opened, { ...same, skips: 1 }, liveIs("fresh")), TODAY, "x")).toBe(`fresh@${TODAY}`);
+    expect(forTab(nextWeatherInForce(opened, { ...same, adjustments: {} }, liveIs("fresh")), TODAY, "x")).toBe(`fresh@${TODAY}`);
+    expect(forTab(nextWeatherInForce(opened, { ...same, refresh: 1 }, liveIs("fresh")), TODAY, "x")).toBe(`fresh@${TODAY}`);
+  });
+
+  it("an occasion takes the latest forecast in for today, from any tab", () => {
+    const onShabbat = nextWeatherInForce(opened, { ...same, tab: SHABBAT }, liveIs("cached"));
+    const s = nextWeatherInForce(onShabbat, { ...same, tab: SHABBAT, occasion: "date" }, liveIs("fresh"));
+    expect(forTab(s, TODAY, "x")).toBe(`fresh@${TODAY}`);
+    expect(forTab(s, SHABBAT, "x")).toBe(`cached@${SHABBAT}`);
+  });
+
+  it("a tab change is not a trigger: a round trip keeps today's forecast; a tab never shown takes the freshest", () => {
+    const toShabbat = nextWeatherInForce(opened, { ...same, tab: SHABBAT }, liveIs("fresh"));
+    expect(forTab(toShabbat, SHABBAT, "x")).toBe(`fresh@${SHABBAT}`);
+    const back = nextWeatherInForce(toShabbat, same, liveIs("fresher"));
+    expect(forTab(back, TODAY, "x")).toBe(`cached@${TODAY}`);
+    expect(nextWeatherInForce(back, { ...same, tab: SHABBAT }, liveIs("newest"))).toBe(back);
+    expect(forTab(nextWeatherInForce(back, { ...same, tab: SHABBAT }, liveIs("newest")), SHABBAT, "x")).toBe(`fresh@${SHABBAT}`);
+  });
+
+  it("a day not generated yet is planned with the live forecast", () => {
+    expect(forTab(opened, SHABBAT, "fresh")).toBe(`fresh@${SHABBAT}`);
+  });
+
+  it("an undo brings back the forecast in force before the skip; the next skip takes the latest again", () => {
+    const skipped = nextWeatherInForce(opened, { ...same, skips: 1 }, liveIs("A"));
+    expect(forTab(skipped, TODAY, "x")).toBe(`A@${TODAY}`);
+    const undone = nextWeatherInForce(skipped, same, liveIs("B"));
+    expect(forTab(undone, TODAY, "x")).toBe(`cached@${TODAY}`);
+    expect(forTab(nextWeatherInForce(undone, { ...same, skips: 1 }, liveIs("C")), TODAY, "x")).toBe(`C@${TODAY}`);
+  });
+
+  it("an undo keeps a tab first shown after the skip as it was shown", () => {
+    const skipped = nextWeatherInForce(opened, { ...same, skips: 1 }, liveIs("A"));
+    const shabbat = nextWeatherInForce(skipped, { ...same, skips: 1, tab: SHABBAT }, liveIs("A"));
+    const undone = nextWeatherInForce(shabbat, { ...same, tab: SHABBAT }, liveIs("B"));
+    expect(forTab(undone, SHABBAT, "x")).toBe(`A@${SHABBAT}`);
+    expect(forTab(undone, TODAY, "x")).toBe(`cached@${TODAY}`);
   });
 });

@@ -30,6 +30,10 @@
       "storm": "סופת רעמים"
     },
     "noWeather": "אין כרגע נתוני מזג אוויר",
+    "forecastFrom": "לפי תחזית מ-",
+    "forecastFromYesterday": "לפי תחזית מאתמול, ",
+    "forecastUpdated": "התחזית התעדכנה",
+    "forecastUpdate": "עדכן את ההצעה",
     "candles": "כניסת שבת {{time}}",
     "candlesOther": "הדלקת נרות {{time}}",
     "shabbatEnd": "צאת שבת {{time}}",

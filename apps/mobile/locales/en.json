@@ -30,6 +30,10 @@
       "storm": "Thunderstorm"
     },
     "noWeather": "No weather data right now",
+    "forecastFrom": "Forecast from ",
+    "forecastFromYesterday": "Forecast from yesterday, ",
+    "forecastUpdated": "The forecast has changed",
+    "forecastUpdate": "Update the suggestion",
     "candles": "Shabbat begins {{time}}",
     "candlesOther": "Candle lighting {{time}}",
     "shabbatEnd": "Shabbat ends {{time}}",

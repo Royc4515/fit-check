@@ -1,7 +1,7 @@
 import { summarizeDay, type DayWeather } from "@fit-check/engine";
 import { HebcalConverterSchema, HebcalItemsSchema, OpenMeteoHourlySchema, type OpenMeteoHourly } from "@fit-check/schema";
 import { candleLightingMinutes } from "./candleLighting";
-import { cacheGet, cacheSet } from "./kv";
+import { cacheGet, cacheGetEntry, cacheSet } from "./kv";
 import { CHAIN_MAX_DAYS, isYomKippur, phoneFreeChain, shabbatTimes, stripNiqqud, type PhoneFreeDay, type ShabbatTimes } from "./shabbatTimes";
 import { placeNameFor, resolveLocation, type ResolvedLocation } from "./location";
 import type { PlaceLang } from "./placeName";
@@ -60,6 +60,23 @@ export type DayContext = {
   tz: string;
   /** The phone-free days today's candle lighting opens, in order; [] on any day without candles. */
   chain: PlannedDay[];
+  /** Where `weather` (and each planned day's) comes from, and whether a newer forecast is still on its way. */
+  forecast: ForecastState;
+};
+
+/**
+ * What the day's weather is from: a forecast the cache trusts or the network just gave (`fresh`); an older one kept
+ * for the same place because the network has not answered or failed (`cached`, `at` = when it was fetched, epoch ms);
+ * or none that covers today (`none`, `weather` is null).
+ */
+export type ForecastSource = { kind: "fresh" } | { kind: "cached"; at: number } | { kind: "none" };
+
+export type ForecastState = {
+  source: ForecastSource;
+  /** The network request has not settled yet; when it does, useDayContext delivers the day again. */
+  pending: boolean;
+  /** When the forecast request started (epoch ms): Today's bounded wait is counted from here, not from first paint. */
+  startedAt: number;
 };
 
 export { israelDate, localDate, localTime } from "./localDate";
@@ -79,41 +96,102 @@ function addDays(date: string, days: number): { iso: string; weekday: number } {
 // Hebcal or Open-Meteo URL went out twice per load. Dropped on settle, so a later load asks again.
 const inFlight = new Map<string, Promise<unknown>>();
 
-async function getJson(url: string): Promise<unknown> {
+/** `timeoutMs`: the request is aborted after that long and the promise rejects; without it, the browser's own limit. */
+async function getJson(url: string, timeoutMs?: number): Promise<unknown> {
   const shared = inFlight.get(url);
   if (shared) return shared;
   const request = (async () => {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`${res.status} ${url}`);
-    return res.json();
+    const abort = timeoutMs === undefined ? null : new AbortController();
+    const timer = abort ? setTimeout(() => abort.abort(), timeoutMs) : null;
+    try {
+      const res = await fetch(url, abort ? { signal: abort.signal } : undefined);
+      if (!res.ok) throw new Error(`${res.status} ${url}`);
+      return await res.json();
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   })().finally(() => inFlight.delete(url));
   inFlight.set(url, request);
   return request;
 }
 
+/** A cached forecast younger than this is used as is, with no request (Open-Meteo updates its models hourly at most). */
+const FORECAST_TRUSTED_MS = 3 * HOUR;
+/** An older one is kept this long for when the network does not answer (the free tier rate-limits shared IPs). */
+const FORECAST_KEPT_MS = 24 * HOUR;
 /**
- * The hourly forecast for today and the next CHAIN_MAX_DAYS days, or null. Always that many days, whatever today's
- * chain is, so the forecast loads in parallel with the calendar instead of after it (the chain is never longer).
+ * How long the forecast request may take before it is given up. Today no longer waits for it (WEATHER_GRACE_MS), so
+ * this only bounds how long the weather line keeps an older forecast and how long a hung request is shared by later
+ * loads. Open-Meteo answers in well under a second when it answers at all; 8 s leaves room for a cold phone connection
+ * and is below the 10 s after which the browser itself gave up in the live measurement (2026-11-20).
  */
-async function loadForecast(loc: ResolvedLocation): Promise<OpenMeteoHourly | null> {
+const FORECAST_TIMEOUT_MS = 8000;
+
+type ForecastLoad = {
+  startedAt: number;
+  /** The newest stored forecast for the place, up to FORECAST_KEPT_MS old, with when it was fetched. */
+  stored: Promise<{ forecast: OpenMeteoHourly; at: number } | null>;
+  /** The forecast to trust: the stored one if young enough, else the network's; null when the network failed. */
+  fresh: Promise<OpenMeteoHourly | null>;
+};
+
+// One load per place while it is in flight, so a reload (place name, observance switch) before the forecast answered
+// shares the request AND its start time: the bounded wait is never restarted by a reload.
+const forecastLoads = new Map<string, ForecastLoad>();
+
+/**
+ * Starts loading the hourly forecast for today and the next CHAIN_MAX_DAYS days. Always that many days, whatever
+ * today's chain is, so the forecast loads in parallel with the calendar instead of after it (the chain is never
+ * longer). Never rejects: a failure is a null `fresh`.
+ */
+function startForecast(loc: ResolvedLocation): ForecastLoad {
   // v3: four days instead of two (v2 entries would leave the planned days without a forecast).
   const key = `fitcheck:forecast:v3:${placeKey(loc)}`;
+  const running = forecastLoads.get(key);
+  if (running) return running;
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}` +
     "&hourly=apparent_temperature,precipitation_probability,wind_speed_10m,uv_index,weather_code" +
     `&timezone=${encodeURIComponent(loc.tz)}&forecast_days=${1 + CHAIN_MAX_DAYS}`;
-  const fresh = await cacheGet<unknown>(key, 3 * HOUR);
-  try {
-    const forecast = OpenMeteoHourlySchema.parse(fresh ?? (await getJson(url)));
-    if (!fresh) await cacheSet(key, forecast);
-    return forecast;
-  } catch (error) {
-    console.warn("Weather unavailable", error);
-    // A forecast up to a day old is still better than none (the free tier rate-limits shared IPs).
-    const stale = await cacheGet<unknown>(key, 24 * HOUR);
-    const parsed = OpenMeteoHourlySchema.safeParse(stale);
-    return parsed.success ? parsed.data : null;
-  }
+  const startedAt = Date.now();
+  const stored = cacheGetEntry<unknown>(key, FORECAST_KEPT_MS).then((entry) => {
+    const parsed = OpenMeteoHourlySchema.safeParse(entry?.value);
+    return entry && parsed.success ? { forecast: parsed.data, at: entry.at } : null;
+  });
+  const fresh = stored
+    .then(async (entry) => {
+      if (entry && Date.now() - entry.at <= FORECAST_TRUSTED_MS) return entry.forecast;
+      const forecast = OpenMeteoHourlySchema.parse(await getJson(url, FORECAST_TIMEOUT_MS));
+      await cacheSet(key, forecast);
+      return forecast;
+    })
+    .catch((error: unknown) => {
+      console.warn("Weather unavailable", error);
+      return null;
+    })
+    .finally(() => forecastLoads.delete(key));
+  const load = { startedAt, stored, fresh };
+  forecastLoads.set(key, load);
+  return load;
+}
+
+type WeatherPart = Pick<DayContext, "weather" | "chain" | "forecast">;
+
+/**
+ * Today's and each planned day's weather from a forecast, and what to call its source. A forecast that does not cover
+ * today gives no weather and the source `none`, whatever it was.
+ */
+function weatherFrom(
+  forecast: OpenMeteoHourly | null,
+  source: Exclude<ForecastSource, { kind: "none" }>,
+  base: { date: string; chain: PlannedDay[]; startedAt: number; pending: boolean }
+): WeatherPart {
+  const weather = forecast ? summarizeDay(forecast, base.date) : null;
+  return {
+    weather,
+    chain: base.chain.map((d) => ({ ...d, weather: forecast ? summarizeDay(forecast, d.date) : null })),
+    forecast: { source: weather ? source : { kind: "none" }, pending: base.pending, startedAt: base.startedAt },
+  };
 }
 
 async function loadHebrewDate(date: string): Promise<DayContext["hebrewDate"]> {
@@ -179,29 +257,70 @@ async function loadCalendar(date: string, loc: ResolvedLocation): Promise<Calend
  * "שלב 4.1" item 10): off, the Hebcal calendar is still asked, but only its Yom Tov flag and holiday name are used (a
  * holiday is a little dressier, `festive`); there are no times and no planned days, and the engine plans Shabbat and
  * holidays by the weekday rules.
+ *
+ * The day resolves without waiting for the forecast's network request (Open-Meteo has gone ten seconds without
+ * answering): with the forecast if it has already settled, else with the stored one for the place (source `cached`)
+ * or none, `forecast.pending` set; `onForecast` then receives the whole day again once the request settles. Never
+ * rejects; `onForecast` is called at most once, and only when `pending` was true.
  */
-export async function loadDayContext(now: Date = new Date(), lang: PlaceLang = "he", observesShabbat = true): Promise<DayContext> {
+export async function loadDayContext(
+  now: Date = new Date(),
+  lang: PlaceLang = "he",
+  observesShabbat = true,
+  onForecast?: (ctx: DayContext) => void
+): Promise<DayContext> {
   const loc = await resolveLocation();
   const { date, weekday } = localDate(loc.tz, now);
   // Started now, in parallel with the three loads below, never before them.
   const namePromise = loc.kind === "current" ? placeNameFor(loc, lang) : Promise.resolve(null);
-  const [forecast, hebrewDate, loaded] = await Promise.all([loadForecast(loc), loadHebrewDate(date), loadCalendar(date, loc)]);
+  const forecastLoad = startForecast(loc);
+  // Read synchronously after the calendar is in: has the request already settled?
+  let settled: { forecast: OpenMeteoHourly | null } | null = null;
+  void forecastLoad.fresh.then((forecast) => {
+    settled = { forecast };
+  });
+  const [stored, hebrewDate, loaded] = await Promise.all([forecastLoad.stored, loadHebrewDate(date), loadCalendar(date, loc)]);
   // Off: only the holiday itself survives; nothing Shabbat-specific (times, planned days) reaches the screen.
   const cal = observesShabbat ? loaded : { ...NO_CALENDAR, holiday: loaded.holiday, yomtov: loaded.yomtov };
-  const weather = forecast ? summarizeDay(forecast, date) : null;
   // don't touch / the name is NOT in the Promise.all: a slow or blocked geocoder (3 s cap) must not hold back the
   // weather, the date or the Shabbat times. We take it only if it has already settled; otherwise the screen says
   // "current location" now, and useDayContext reloads when the lookup stores its result (onPlaceNameChange).
-  // The already-resolved null is second in the race, so a settled name wins the tie.
+  // The already-resolved null is second in the race, so a settled name wins the tie. Awaited before the forecast's
+  // state is read below, so nothing is awaited between that read and the return.
   const placeName = await Promise.race([namePromise, Promise.resolve(null)]);
+  const chainBase: PlannedDay[] = cal.chain.map((d) => ({
+    ...d,
+    weekday: addDays(d.date, 0).weekday,
+    dayType: d.kind === "shabbat" ? ("shabbat" as const) : ("holiday" as const),
+    yomKippur: d.kind === "yom_kippur",
+    weather: null,
+  }));
+  const at = (pending: boolean) => ({ date, chain: chainBase, startedAt: forecastLoad.startedAt, pending });
+  /** The weather once the request has settled: its answer, else the stored forecast, else none. */
+  const afterSettle = (forecast: OpenMeteoHourly | null): WeatherPart =>
+    forecast
+      ? weatherFrom(forecast, { kind: "fresh" }, at(false))
+      : stored
+        ? weatherFrom(stored.forecast, { kind: "cached", at: stored.at }, at(false))
+        : weatherFrom(null, { kind: "fresh" }, at(false));
+  // don't touch / read through a function: TypeScript narrows the `let` to null at this point and would not see the
+  // assignment made in the callback above.
+  const settledNow = (): { forecast: OpenMeteoHourly | null } | null => settled;
+  // A stored forecast young enough to trust is the answer itself (startForecast makes no request for it); taken here
+  // so that a few microtasks of ordering never present it as an older forecast still waiting for the network.
+  const done = settledNow() ?? (stored && Date.now() - stored.at <= FORECAST_TRUSTED_MS ? { forecast: stored.forecast } : null);
+  const weatherPart: WeatherPart = done
+    ? afterSettle(done.forecast)
+    : stored
+      ? weatherFrom(stored.forecast, { kind: "cached", at: stored.at }, at(true))
+      : weatherFrom(null, { kind: "fresh" }, at(true));
   const dayType: DayType = dayTypeFor(weekday, cal.yomtov, observesShabbat);
-  return {
+  const ctx: DayContext = {
     date,
     weekday,
     place: loc.label ?? placeName,
     usesCurrentLocation: loc.geonameid === null,
     hebrewDate,
-    weather,
     dayType,
     holiday: cal.holiday,
     candles: cal.candles,
@@ -209,12 +328,8 @@ export async function loadDayContext(now: Date = new Date(), lang: PlaceLang = "
     festive: isFestiveWeekday(cal.yomtov, observesShabbat),
     yomKippur: observesShabbat && cal.yomKippur,
     tz: loc.tz,
-    chain: cal.chain.map((d) => ({
-      ...d,
-      weekday: addDays(d.date, 0).weekday,
-      dayType: d.kind === "shabbat" ? ("shabbat" as const) : ("holiday" as const),
-      yomKippur: d.kind === "yom_kippur",
-      weather: forecast ? summarizeDay(forecast, d.date) : null,
-    })),
+    ...weatherPart,
   };
+  if (!done && onForecast) void forecastLoad.fresh.then((forecast) => onForecast({ ...ctx, ...afterSettle(forecast) }));
+  return ctx;
 }
