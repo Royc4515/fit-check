@@ -15,6 +15,21 @@ export async function cacheGet<T>(key: string, maxAgeMs: number): Promise<T | nu
   }
 }
 
+/**
+ * Like cacheGet, but also returns when the value was stored (epoch ms), for a caller that tells the user how old it
+ * is. Null on every failure, as cacheGet.
+ */
+export async function cacheGetEntry<T>(key: string, maxAgeMs: number): Promise<{ value: T; at: number } | null> {
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    if (raw === null) return null;
+    const { at, value } = JSON.parse(raw) as { at: number; value: T };
+    return typeof at === "number" && Date.now() - at <= maxAgeMs ? { value, at } : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function cacheSet<T>(key: string, value: T): Promise<void> {
   try {
     await AsyncStorage.setItem(key, JSON.stringify({ at: Date.now(), value }));

@@ -2,6 +2,7 @@ import {
   adjustRequest,
   DEFAULT_CONTEXT_RULES,
   YOM_KIPPUR_RULES,
+  fitsWeather,
   generateCandidates,
   NO_ADJUSTMENT,
   scoreOutfit,
@@ -62,6 +63,21 @@ function request(
 /** The engine's top outfit for the day, or null when the filters leave nothing (a real state, shown as empty). */
 export function getOutfit(items: Item[], pairWeights: PairWeights, day: DayInput): CandidateOutfit | null {
   return generateCandidates(items, request(day), pairWeights)[0] ?? null;
+}
+
+/**
+ * Whether the outfit on screen still passes the engine's weather rules with the day's newer forecast, after the day's
+ * nudges (engine `fitsWeather`). Today asks this when a forecast arrives after the outfit was drawn: true keeps the
+ * outfit quietly (the new forecast is taken in at the next change), false says the forecast changed and offers to
+ * update. A day with no forecast is judged on FALLBACK_WEATHER, as it is planned. Pure; never throws.
+ *
+ * @param args.outfit the garments on screen, after swaps.
+ * @param args.pool the garments the day may offer (DayPlan `pool`).
+ * @param args.day the day with the newer forecast in `weather`.
+ * @param args.adjustment the day's effective adjustment (learned lean plus taps).
+ */
+export function weatherStillFits(args: { outfit: readonly Item[]; pool: readonly Item[]; day: DayInput; adjustment: DayAdjustment }): boolean {
+  return fitsWeather(args.outfit, args.pool, adjustRequest(request(args.day), args.adjustment));
 }
 
 /** Scores a hand-assembled outfit (worn, or swapped) exactly like the engine scores its own candidates. */
