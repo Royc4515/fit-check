@@ -7,6 +7,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { cutoutUrl, ItemArt } from "../item-art/ItemArt";
 import { tileTone } from "../../theme/tileTone";
 import { colors, motion } from "../../theme/tokens";
+import { Icon } from "./Icon";
 import { focusRingProps, timing, usePressFeedback, useRtl } from "./interaction";
 import { useOriginVisibility } from "./originVisibility";
 import type { TileItem } from "./Tile";
@@ -76,6 +77,18 @@ const NUM_INSET = 8;
 /** Until the surface has been measured: a common phone width, only to place numbers on the first frame. */
 const DEFAULT_WIDTH = 390;
 
+/**
+ * A slot offered but not filled yet (the build screen): drawn as a plain rectangle at that slot's place and size,
+ * with an `add` glyph and the slot's name in `meta`. Pressing it is `onPressPiece(slot)`, like a garment.
+ */
+export type FlatLayEmptySlot = {
+  slot: Slot;
+  /** The slot's name as shown on the rectangle ("חלק עליון"). */
+  label: string;
+  /** Screen-reader name of the rectangle's button ("Choose a top"). */
+  accessibilityLabel: string;
+};
+
 export type FlatLayPiece = {
   slot: Slot;
   item: TileItem;
@@ -128,7 +141,27 @@ type Props = {
    * the composition is the same, slightly smaller. Absent = a plain 4:5 surface, as every other caller has.
    */
   maxHeight?: number;
+  /**
+   * Slots offered with no garment yet (the build screen). Each is a rectangle in the empty tone at its slot's place,
+   * in the same paint order as the garments. An offered layer counts as a fourth piece: the four-piece arrangement is
+   * used from the start, so choosing a garment never moves the others. A slot listed here and also in `pieces` shows
+   * the garment.
+   */
+  emptySlots?: readonly FlatLayEmptySlot[];
+  /**
+   * False: a garment that arrives (or is swapped) only cross-fades, with no 8px rise, and under reduced motion it is
+   * there at once. The build screen uses it: a choice must never look like the table moving. Default true (Today).
+   */
+  rise?: boolean;
 };
+
+/**
+ * The tone of an empty slot's rectangle on a surface: `tile-deep` on the usual `tile` ground; `tile` when the ground
+ * itself is `tile-deep` (a light garment was chosen), where a `tile-deep` rectangle would vanish into it.
+ */
+export function emptySlotTone(surface: "tile" | "tile-deep"): "tile" | "tile-deep" {
+  return surface === "tile" ? "tile-deep" : "tile";
+}
 
 /** The surface's ground: `tile-deep` when any piece is light, so a white shirt stays readable; otherwise `tile`. */
 export function flatLayTone(pieces: readonly Pick<FlatLayPiece, "item">[]): "tile" | "tile-deep" {
@@ -143,9 +176,24 @@ export function flatLayTone(pieces: readonly Pick<FlatLayPiece, "item">[]): "til
  * When one garment changes (a swap) the old one fades out while the new one fades in and rises 8px, 180ms.
  * Reduced motion: opacity only. A garment without a photo shows its drawing (ItemArt).
  */
-export function FlatLay({ pieces, onPressPiece, pieceFocusable = true, instantKey, fadeKey, radius = "none", accessibilityLabel, contentStyle, numbered = true, onPieceNode, maxHeight }: Props) {
-  const four = pieces.some((p) => p.slot === "layer");
+export function FlatLay({
+  pieces,
+  onPressPiece,
+  pieceFocusable = true,
+  instantKey,
+  fadeKey,
+  radius = "none",
+  accessibilityLabel,
+  contentStyle,
+  numbered = true,
+  onPieceNode,
+  maxHeight,
+  emptySlots,
+  rise = true,
+}: Props) {
+  const four = pieces.some((p) => p.slot === "layer") || (emptySlots ?? []).some((e) => e.slot === "layer");
   const tone = flatLayTone(pieces);
+  const filled = new Set(pieces.map((p) => p.slot));
   const ordered = Z_ORDER.flatMap((slot) => pieces.filter((p) => p.slot === slot));
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   // Height / width of each photo, by item id, as it loads; the numbers need the drawn shape, not the box.
@@ -188,6 +236,28 @@ export function FlatLay({ pieces, onPressPiece, pieceFocusable = true, instantKe
           contentStyle,
         ]}
       >
+        {emptySlots
+          ? Z_ORDER.map((slot) => {
+              const empty = emptySlots.find((e) => e.slot === slot);
+              const place = placementOf(four, slot);
+              // Always mounted while offered: it fades out under the garment that takes its place and back in when the
+              // garment is removed, so the rectangle and the garment never swap in one frame.
+              return empty && place ? (
+                <EmptySlot
+                  key={`e-${four ? 4 : 3}-${slot}`}
+                  empty={empty}
+                  place={place}
+                  shown={!filled.has(slot)}
+                  tone={emptySlotTone(tone)}
+                  surface={tone}
+                  onPress={onPressPiece}
+                  focusable={pieceFocusable}
+                  // Under the garments of later slots, over those of earlier ones: the same paint order as the cloth.
+                  zIndex={2 * Z_ORDER.indexOf(slot)}
+                />
+              ) : null;
+            })
+          : null}
         {ordered.map((p) => {
           const place = placementOf(four, p.slot);
           // The arrangement is part of the identity: going from 3 to 4 pieces moves every box, and a garment that
@@ -202,6 +272,8 @@ export function FlatLay({ pieces, onPressPiece, pieceFocusable = true, instantKe
               onPress={onPressPiece}
               focusable={pieceFocusable}
               onAspect={onAspect}
+              rise={rise}
+              zIndex={emptySlots ? 2 * Z_ORDER.indexOf(p.slot) + 1 : undefined}
               // Until the photo's shape is known its box stands in; a flight then starts slightly off the cloth.
               drawn={onPieceNode ? drawnOf(place, p.item.cutout_path ? aspects[p.item.id] : DRAWING_ASPECT, !p.item.cutout_path) : null}
               onNode={onPieceNode ? (node) => onPieceNode(p.item.id, node) : undefined}
@@ -360,6 +432,8 @@ function Piece({
   onAspect,
   drawn,
   onNode,
+  rise: riseOn = true,
+  zIndex,
 }: {
   piece: FlatLayPiece;
   place: FlatLayPlacement;
@@ -371,6 +445,9 @@ function Piece({
   /** Where the garment is drawn inside the box; with `onNode`, an invisible node is laid there for the flight. */
   drawn?: Percents | null;
   onNode?: (node: ComponentRef<typeof View> | null) => void;
+  /** See FlatLay's `rise`. */
+  rise?: boolean;
+  zIndex?: number;
 }) {
   const reduce = useReducedMotion();
   const { onPressIn, onPressOut, pressStyle } = usePressFeedback();
@@ -390,7 +467,8 @@ function Piece({
   // the animation, not a render value read in the style: the browser check showed a closure-captured flag still rising.
   const rise = useSharedValue(reduce ? 0 : RISE);
   const curId = layers.cur.id;
-  const still = layers.still;
+  // Without the rise every arrival is a still cross-fade, exactly like a tab change (instant under reduced motion).
+  const still = layers.still || !riseOn;
   useEffect(() => {
     const clear = () => setLayers((l) => (l.prev ? { ...l, prev: null } : l));
     // Reduced motion: a tab change replaces the outfit at once (DESIGN.md "שלב 4.1" item 3).
@@ -426,6 +504,7 @@ function Piece({
     top: `${place.top}%` as const,
     width: `${place.width}%` as const,
     height: `${place.height}%` as const,
+    ...(zIndex !== undefined ? { zIndex } : null),
   };
   const fill = { position: "absolute" as const, top: 0, bottom: 0, start: 0, end: 0 };
   const content = (
@@ -474,5 +553,119 @@ function Piece({
     >
       {content}
     </Pressable>
+  );
+}
+
+/** Air between an empty rectangle's edge and its glyph and name. */
+const EMPTY_PAD = 8;
+/** The gap drawn around an empty rectangle, in the surface's own tone, so two overlapping rectangles read as two. */
+const EMPTY_GAP = 2;
+
+/**
+ * Where an empty slot's glyph and name sit inside its rectangle: centred, except the layer, which lies under the top
+ * in the four-piece arrangement; its free strip is along its top edge, so its name goes to the top-start corner.
+ */
+function emptyContentAlign(slot: Slot): { justifyContent: "center" | "flex-start"; alignItems: "center" | "flex-start" } {
+  return slot === "layer" ? { justifyContent: "flex-start", alignItems: "flex-start" } : { justifyContent: "center", alignItems: "center" };
+}
+
+/**
+ * One offered, unfilled slot: a rectangle at the slot's box in the empty tone (radius 6, no border, no dashes: the
+ * thin gap around it is the surface's own colour), an `add` glyph and the slot's name. Fades in and out over
+ * motion.state as the slot is emptied or filled; reduced motion: at once. A button while shown, inert while hidden.
+ */
+function EmptySlot({
+  empty,
+  place,
+  shown,
+  tone,
+  surface,
+  onPress,
+  focusable,
+  zIndex,
+}: {
+  empty: FlatLayEmptySlot;
+  place: FlatLayPlacement;
+  shown: boolean;
+  tone: "tile" | "tile-deep";
+  surface: "tile" | "tile-deep";
+  onPress?: (slot: Slot) => void;
+  focusable: boolean;
+  zIndex: number;
+}) {
+  const reduce = useReducedMotion();
+  const o = useSharedValue(shown ? 1 : 0);
+  // Rendered while shown and while fading out, then gone: a filled slot's rectangle must not stay in the page as a
+  // second, invisible "choose" button (on the web, `accessibilityElementsHidden` and `importantForAccessibility` do
+  // not reach the DOM). Derived in render, so it mounts in the same commit the slot is emptied.
+  const [present, setPresent] = useState(shown);
+  if (shown && !present) setPresent(true);
+  useEffect(() => {
+    if (reduce) {
+      // Nothing fades: gone at once (the render below drops it while hidden).
+      o.set(shown ? 1 : 0);
+      return;
+    }
+    o.set(
+      withTiming(shown ? 1 : 0, timing(motion.stateMs), (finished) => {
+        "worklet";
+        if (finished && !shown) scheduleOnRN(setPresent, false);
+      })
+    );
+  }, [shown, reduce, o]);
+  const fade = useAnimatedStyle(() => ({ opacity: o.get() }));
+  const box = {
+    position: "absolute" as const,
+    start: `${place.start}%` as const,
+    top: `${place.top}%` as const,
+    width: `${place.width}%` as const,
+    height: `${place.height}%` as const,
+    zIndex,
+  };
+  const face = (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors[tone],
+        borderRadius: 6,
+        borderWidth: EMPTY_GAP,
+        borderColor: colors[surface],
+        padding: EMPTY_PAD,
+        ...emptyContentAlign(empty.slot),
+      }}
+    >
+      <View style={{ flexDirection: empty.slot === "layer" ? "row" : "column", alignItems: "center", gap: 4 }}>
+        <Icon name="add" size={20} color="ink-soft" />
+        <Text className="font-body text-meta text-ink-soft" numberOfLines={1}>
+          {empty.label}
+        </Text>
+      </View>
+    </View>
+  );
+  if (!shown && (reduce || !present)) return null;
+  return (
+    // While it fades out: hidden from the tree (aria-hidden reaches the DOM on the web) and not pressable.
+    <Animated.View style={[box, fade]} pointerEvents={shown ? "auto" : "none"} aria-hidden={!shown}>
+      {onPress ? (
+        <Pressable
+          {...focusRingProps}
+          focusable={focusable && shown}
+          tabIndex={focusable && shown ? undefined : -1}
+          disabled={!shown}
+          onPress={() => onPress(empty.slot)}
+          accessibilityRole="button"
+          accessibilityLabel={empty.accessibilityLabel}
+          accessibilityElementsHidden={!shown}
+          importantForAccessibility={shown ? "auto" : "no-hide-descendants"}
+          style={{ flex: 1 }}
+        >
+          {face}
+        </Pressable>
+      ) : (
+        <View style={{ flex: 1 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          {face}
+        </View>
+      )}
+    </Animated.View>
   );
 }

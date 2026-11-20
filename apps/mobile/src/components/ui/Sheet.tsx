@@ -19,6 +19,16 @@ type Props = {
   accessibilityLabel?: string;
   /** Pinned below the scrolling content (e.g. "clear" / "show N items"). */
   footer?: ReactNode;
+  /**
+   * Pinned between the title row and the scrolling content (a picker's search field): stays in view while the list
+   * scrolls. Not chrome: its first control is where focus goes when the sheet opens.
+   */
+  subheader?: ReactNode;
+  /**
+   * Always as tall as a sheet may be (85% of the window), whatever the content: a picker whose list shrinks as the
+   * user types must not make the sheet jump under the finger.
+   */
+  tall?: boolean;
   children: ReactNode;
 };
 
@@ -168,7 +178,7 @@ function restoreFocus(record: FocusRecord): void {
  * closes. Width >= 900: a centred 480 dialog that fades in with an 8px rise, no drag. Reduced motion: fade only.
  * All motion is shared values on the UI thread; React state changes only on mount/unmount.
  */
-export function Sheet({ open, onClose, title, accessibilityLabel, footer, children }: Props) {
+export function Sheet({ open, onClose, title, accessibilityLabel, footer, subheader, tall = false, children }: Props) {
   const { t } = useTranslation();
   const titleId = useId();
   const insets = useSafeAreaInsets();
@@ -353,6 +363,7 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
   const content = (
     <>
       {sliding ? <GestureDetector gesture={panHandle}>{header}</GestureDetector> : header}
+      {subheader ? <View style={{ paddingHorizontal: layout.gutter, paddingBottom: 8 }}>{subheader}</View> : null}
       {sliding ? (
         <GestureDetector gesture={panBody}>
           <View style={{ flexShrink: 1 }}>{body}</View>
@@ -406,7 +417,7 @@ export function Sheet({ open, onClose, title, accessibilityLabel, footer, childr
               accessibilityLabel={Platform.OS === "web" ? undefined : name}
               onLayout={(e) => sheetH.set(e.nativeEvent.layout.height)}
               className={`border-hairline bg-ivory ${desktop ? "rounded-lg border" : "rounded-t-lg border-t"}`}
-              style={[{ maxHeight: maxH, overflow: "hidden" }, shadow.sheet]}
+              style={[{ maxHeight: maxH, overflow: "hidden" }, tall ? { height: maxH } : null, shadow.sheet]}
             >
               {content}
             </View>
