@@ -846,7 +846,8 @@
       "stepper": "Stepper",
       "item": "Item screen: writing in place and wears",
       "insights": "Insights",
-      "outfitTile": "Outfit tile"
+      "outfitTile": "Outfit tile",
+      "textField": "Text field"
     },
     "item": {
       "wears": "With wears (7 of 12)",
@@ -1019,7 +1020,8 @@
     },
     "flatLay": {
       "intro": "Combinations from the real wardrobe, 3 and 4 pieces. Same percentages at every width.",
-      "label": "Combination {{n}}"
+      "label": "Combination {{n}}",
+      "empty": "Being built: empty slots, a top chosen"
     },
     "stepper": {
       "label": "Temperature",
