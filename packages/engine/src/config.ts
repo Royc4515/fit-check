@@ -53,6 +53,24 @@ export const FEEDBACK = {
   worn_pair_delta: 0.05,
   disliked_pair_delta: -0.1,
   learning_window_days: 90,
+  /**
+   * A pair of garments inside one saved outfit (DESIGN.md "שלב 5.2" item 8): two wears' worth. Saving says "this
+   * works" once, with no day behind it, so it counts for less than a favourite and is never a habit on its own.
+   */
+  saved_pair_delta: 0.1,
+  /**
+   * The same pair inside a favourite outfit, instead of `saved_pair_delta` (never both): four wears' worth, "a few
+   * wears". A whole favourite outfit adds 0.2 * 0.5 * pair_weight 0.2 = 0.02 to its score, far under one garment worn
+   * yesterday (RECENCY.item_penalty * 0.25 = 0.125), so "worn recently" still wins. Small, but candidate scores are
+   * often bunched, so between near-equal candidates it decides: a valid saved outfit is often the suggestion. It also
+   * cancels two dislikes on a pair (disliked_pair_delta -0.1), a plain save one.
+   */
+  favorite_pair_delta: 0.2,
+  /**
+   * Bound of one learned pair weight, worn and saved together: a pair never goes past it however many wears and
+   * saves it has. The DB column `pair_weights.weight` holds the worn part alone, inside the same bound.
+   */
+  max_pair_weight: 1,
 } as const;
 
 /**
