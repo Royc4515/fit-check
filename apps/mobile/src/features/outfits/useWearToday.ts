@@ -4,11 +4,13 @@ import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform } from "react-native";
 import { correctionFailure } from "../../data/correction";
-import { israelDate } from "../../data/localDate";
+import type { PlannedDay } from "../../data/dayContext";
+import { israelDate, localTime } from "../../data/localDate";
 import type { SavedOutfit } from "../../data/savedOutfit";
 import { useDayContext } from "../../data/useDayContext";
 import { useFeedback } from "../../data/useFeedback";
 import { useWardrobe } from "../../data/WardrobeProvider";
+import { dayInForce } from "../today/dayInForce";
 import { withWornChange } from "./collection";
 import { patchOutfits } from "./store";
 import { wearPress, wearTodayState, type WearTodayState } from "./wearToday";
@@ -44,6 +46,11 @@ export type WearToday = {
   wornFailure: WearFailure | null;
   /** The replace step is open. */
   confirming: boolean;
+  /**
+   * The planned day the wear is for when the day in force is not today (Friday evening for an observant user:
+   * Shabbat), else null: the button and the recorded line then use Today's planned-day words (plannedKeys).
+   */
+  planned: "shabbat" | "holiday" | "yom_kippur" | null;
   press: () => void;
   confirmReplace: () => void;
   cancelReplace: () => void;
@@ -75,6 +82,8 @@ export function useWearToday(userId: string, outfit: SavedOutfit | null, garment
   const feedback = useFeedback({
     userId,
     date,
+    // Read up to the last planned day, as Today does, so a wear recorded there for Shabbat is seen here.
+    until: day?.chain.at(-1)?.date ?? date,
     dayType: day?.dayType ?? "weekday",
     items: ready ? wardrobe.items : NO_ITEMS,
     pairWeights: ready ? wardrobe.pairWeights : NO_WEIGHTS,
@@ -84,10 +93,22 @@ export function useWearToday(userId: string, outfit: SavedOutfit | null, garment
   });
   const { actions, history, busy, failedOn, correction } = feedback;
 
+  // The day a wear pressed here belongs to: Today's own rule (dayInForce), decided once when the day's records are
+  // read, as Today decides its opening tab, so a press here never flips the screen to Shabbat under the thumb. The
+  // rule's clock is the location's local time at that moment.
+  const [inForce, setInForce] = useState<{ date: string; planned: PlannedDay | null } | null>(null);
+  if (inForce === null && day && history) {
+    const forDate = dayInForce({ day, now: localTime(day.tz), history });
+    setInForce({ date: forDate, planned: day.chain.find((d) => d.date === forDate) ?? null });
+  }
+  const forDate = inForce?.date ?? date;
+  const planned = inForce?.planned ?? null;
+
   const state = useMemo<WearTodayState>(() => {
     if (!outfit) return { kind: "loading" };
-    return wearTodayState({ outfit, garments, today: day && ready && history ? history.today : null });
-  }, [outfit, garments, day, ready, history]);
+    const records = inForce && ready && history ? (inForce.planned ? history.ahead.filter((r) => r.date === inForce.date) : history.today) : null;
+    return wearTodayState({ outfit, garments, today: records });
+  }, [outfit, garments, inForce, ready, history]);
 
   // The replacement the user confirmed, by the earlier wear's id: a "try again" of it does not ask a second time.
   const [confirmedEarlier, setConfirmedEarlier] = useState<string | null>(null);
@@ -128,7 +149,7 @@ export function useWearToday(userId: string, outfit: SavedOutfit | null, garment
       return;
     }
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (next.kind === "wear") void actions.wearSaved(saved).then(() => requestFocus("wear"));
+    if (next.kind === "wear") void actions.wearSaved(saved, { date: forDate, dayType: planned?.dayType ?? day?.dayType ?? "weekday" }).then(() => requestFocus("wear"));
     else void actions.correctToSaved(next.earlier, saved).then(() => requestFocus("wear"));
   };
 
@@ -153,10 +174,10 @@ export function useWearToday(userId: string, outfit: SavedOutfit | null, garment
 
   // A failure belongs to the line it is about: beside the button while the outfit is not worn, above the hero with
   // the recorded line once it is.
-  const failed = failedOn !== null && failedOn === date;
+  const failed = failedOn !== null && failedOn === forDate;
   let barFailure: WearFailure | null = null;
   let wornFailure: WearFailure | null = null;
-  if (correction && correction.date === date) {
+  if (correction && correction.date === forDate) {
     const { messageKey } = correctionFailure(correction.stage);
     // "record": nothing changed, the earlier wear stands: try again is a fresh press (the confirmed wear is replaced
     // without asking again; a day that changed meanwhile is decided anew). "delete": the corrected wear stands and
@@ -181,5 +202,6 @@ export function useWearToday(userId: string, outfit: SavedOutfit | null, garment
     cancelReplace: () => setConfirming(false),
     undo,
     keepHome,
+    planned: planned?.kind ?? null,
   };
 }

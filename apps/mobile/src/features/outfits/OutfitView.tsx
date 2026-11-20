@@ -22,6 +22,7 @@ import { useTextWriting } from "../item/useTextWriting";
 import type { TextField } from "../item/writing";
 import { awayGarments, legendEntries, outfitCaption, wornMeta } from "./collection";
 import { loadOutfit, removeFromCollection, renameSavedOutfit, toggleFavorite, useSavedOutfits } from "./store";
+import { plannedKeys } from "../today/dayInForce";
 import { FOCUS_WEAR, FOCUS_WORN, useWearToday } from "./useWearToday";
 
 /** Space between the block above the hero (header row, status lines) and the hero. */
@@ -254,7 +255,7 @@ export function OutfitView({ id, userId, notice }: Props) {
   const wornStack =
     wear.state.kind === "worn" ? (
       <View nativeID={FOCUS_WORN} tabIndex={-1} style={{ gap: 8 }}>
-        <StatusLine variant="ok" message={t("today.status.worn")} action={{ label: t("today.undo"), onPress: wear.undo }} disabled={wear.busy} />
+        <StatusLine variant="ok" message={t(wear.planned ? plannedKeys(wear.planned).worn : "today.status.worn")} action={{ label: t("today.undo"), onPress: wear.undo }} disabled={wear.busy} />
         {wear.laundered.length > 0 ? (
           <StatusLine
             variant="info"
@@ -303,7 +304,7 @@ export function OutfitView({ id, userId, notice }: Props) {
         />
       ) : null}
       <View nativeID={FOCUS_WEAR}>
-        <Button variant="primary" label={t("outfit.wearToday")} onPress={wear.press} disabled={wear.busy} expanded={wear.state.kind === "replace" ? wear.confirming : undefined} fullWidth />
+        <Button variant="primary" label={t(wear.planned ? plannedKeys(wear.planned).wear : "outfit.wearToday")} onPress={wear.press} disabled={wear.busy} expanded={wear.state.kind === "replace" ? wear.confirming : undefined} fullWidth />
       </View>
     </>
   ) : null;
@@ -469,7 +470,7 @@ export function OutfitView({ id, userId, notice }: Props) {
             </View>
           }
         >
-          <Text className="font-body text-body text-ink">{t("outfit.replace.body")}</Text>
+          <Text className="font-body text-body text-ink">{t(wear.planned ? `outfit.replace.body_${wear.planned}` : "outfit.replace.body")}</Text>
         </Sheet>
       ) : null}
       {outfit ? (
