@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OutfitPiece } from "../../data/savedOutfit";
-import { bookmarkOfKey, wearBookmark, wearFailureLine, wearShownSaved, type WornRow } from "./wearBookmark";
+import { bookmarkOfKey, bookmarksDisabled, wearBookmark, wearFailureLine, wearShownSaved, type WornRow } from "./wearBookmark";
 
 const TOP: OutfitPiece = { item_id: "t1", slot: "top" };
 const BOTTOM: OutfitPiece = { item_id: "b1", slot: "bottom" };
@@ -99,5 +99,21 @@ describe("bookmarkOfKey", () => {
     const rows = [row("o1", [TOP, BOTTOM]), row("o2")];
     expect(bookmarkOfKey(rows, [], KEY)).toEqual({ kind: "unsaved", key: KEY, write: { op: "mark", outfitId: "o2" } });
     expect(bookmarkOfKey(rows, [], "nope")).toBeNull();
+  });
+
+  it("prefers the pressed row while it is listed and unsaved, else the first row of the set", () => {
+    const rows = [row("o1"), row("o2"), row("o3")];
+    expect(bookmarkOfKey(rows, [], KEY, "o3")).toEqual({ kind: "unsaved", key: KEY, write: { op: "mark", outfitId: "o3" } });
+    expect(bookmarkOfKey(rows, [], KEY, "gone")).toEqual({ kind: "unsaved", key: KEY, write: { op: "mark", outfitId: "o1" } });
+    // Saved meanwhile: the set's state is saved on every row, so the preferred row no longer applies.
+    expect(bookmarkOfKey(rows, [{ id: "s", itemIds: ["t1", "b1", "s1"] }], KEY, "o3")?.kind).toBe("saved");
+  });
+});
+
+describe("bookmarksDisabled", () => {
+  it("is inert until the saved list is read and while any write is on its way", () => {
+    expect(bookmarksDisabled(false, null)).toBe(true);
+    expect(bookmarksDisabled(true, null)).toBe(false);
+    expect(bookmarksDisabled(true, { key: "other-set", saved: true })).toBe(true);
   });
 });

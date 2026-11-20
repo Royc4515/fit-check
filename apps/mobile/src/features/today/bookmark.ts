@@ -158,6 +158,20 @@ export async function resolveWearRow(itemIds: readonly string[], deps: SavedList
 export type BookmarkFailureInfo = { key: string; date: string; wantSaved: boolean };
 
 /**
+ * What a failed bookmark write means, by the data layer's error code (`undefined` for any other error). Pure.
+ * - `met`: a REMOVE that found the outfit already gone or already not saved (`not_saved`, `not_found`): the user's wish
+ *   is true, so there is no error line; the caller reads the saved list again so the shape follows the truth.
+ * - `unsaveable`: the outfit cannot be saved (`invalid_outfit`, or a SAVE whose worn row is gone, `not_found`): the line
+ *   says so and offers no retry, since no retry could pass.
+ * - `failed`: anything else: the error line with "try again".
+ */
+export function writeFailureKind(wantSaved: boolean, code: string | undefined): "met" | "unsaveable" | "failed" {
+  if (code === "invalid_outfit") return "unsaveable";
+  if (wantSaved) return code === "not_found" ? "unsaveable" : "failed";
+  return code === "not_saved" || code === "not_found" ? "met" : "failed";
+}
+
+/**
  * Whether a failure line still belongs to what is on screen. `show` only while the same garment set on the same day is
  * still not in the state the user asked for; then "try again" is recomputed from the CURRENT intent (the outfit may
  * have been worn since, so the write is `markOutfitSaved` of the worn row, not the save that failed). `drop` when the
