@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FeedbackHistory, TodayRecord } from "../../data/feedback";
 import { localDate } from "../../data/localDate";
-import { dayInForce, plannedKeys, type DayInForceInput } from "./dayInForce";
+import { dayInForce, dayTabKeys, plannedKeys, type DayInForceInput } from "./dayInForce";
 
 // Friday 20.11.2026 in Jerusalem: candles 16:18, Shabbat (21.11) ends 17:17. The day context as loadDayContext gives
 // it with the observance switch on and off (off: no times, no planned days).
@@ -54,6 +54,18 @@ describe("dayInForce", () => {
     expect(dayInForce({ day: EVE_ON, now: "15:30", history: none })).toBe("2026-09-22");
     expect(dayInForce({ day: EVE_ON, now: "23:59", history: none })).toBe("2026-09-22");
     expect(dayInForce({ day: EVE_OFF, now: "23:59", history: none })).toBe("2026-09-21");
+  });
+
+  it("lists the day tabs only when there is a planned day, labelled as Today labels them", () => {
+    expect(dayTabKeys({ date: "2026-11-18", chain: [] })).toEqual([]);
+    expect(dayTabKeys({ date: "2026-11-20", chain: [{ date: "2026-11-21", kind: "shabbat" }] })).toEqual([
+      { key: "2026-11-20", labelKey: "today.tabs.today" },
+      { key: "2026-11-21", labelKey: "today.tabs.shabbat" },
+    ]);
+    expect(
+      dayTabKeys({ date: "2026-09-11", chain: [{ date: "2026-09-12", kind: "holiday" }, { date: "2026-09-13", kind: "holiday" }] }).map((k) => k.labelKey)
+    ).toEqual(["today.tabs.today", "today.tabs.holidayDay1", "today.tabs.holidayDay2"]);
+    expect(dayTabKeys({ date: "2026-09-20", chain: [{ date: "2026-09-21", kind: "yom_kippur" }] })[1]!.labelKey).toBe("today.tabs.yomKippur");
   });
 
   it("words a planned day's wear and its recorded line as Today does", () => {
