@@ -381,7 +381,8 @@ export function OutfitView({ id, userId, notice }: Props) {
             <Meta tone="text-ink-soft" style={{ textTransform: "none" }}>
               {wear.state.reason === "missing"
                 ? t("outfit.cannotWear.missing")
-                : t("outfit.cannotWear.archived", { names: wear.state.items.map((i) => i.name).join(", ") })}
+                : // A first-strong isolate per name: a Latin name inside the Hebrew sentence keeps its own direction.
+                  t("outfit.cannotWear.archived", { names: wear.state.items.map((i) => `⁨${i.name}⁩`).join(", ") })}
             </Meta>
           </View>
         ) : null}

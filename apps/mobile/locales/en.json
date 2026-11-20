@@ -1142,7 +1142,7 @@
     },
     "cannotWear": {
       "missing": "This outfit can't be logged as worn: one of its garments was deleted from the wardrobe. Edit the outfit to complete it.",
-      "archived": "This outfit can't be logged as worn: one of its garments was removed from the wardrobe ({{names}}). Edit the outfit or restore the garment."
+      "archived": "This outfit can't be logged as worn, because one of its garments was removed from the wardrobe: {{names}}. Edit the outfit or restore the garment."
     }
   },
   "builder": {
