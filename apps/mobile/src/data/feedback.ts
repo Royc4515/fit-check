@@ -131,7 +131,10 @@ export async function recordFeedback(args: {
 }): Promise<TodayRecord> {
   // Design preview: nothing is saved. Today's feedback hook reports the failure and changes nothing on screen.
   if (isPreview()) throw new PreviewReadOnlyError("recordFeedback");
-  if (args.savedOutfitId !== undefined) return recordWearOfSaved({ ...args, savedOutfitId: args.savedOutfitId });
+  if (args.savedOutfitId !== undefined) {
+    const { userId, date, feedback, savedOutfitId } = args;
+    return recordWearOfSaved({ userId, date, feedback, savedOutfitId, itemIds: args.outfit.items.map((i) => i.id) });
+  }
   const { userId, date, dayType, outfit, source, feedback, adjustment } = args;
   const created = await supabase
     .from("outfits")
@@ -167,24 +170,31 @@ export async function recordFeedback(args: {
 }
 
 /**
- * A wear of a saved outfit: one `wears` insert on the existing row. On failure the error is thrown and nothing is
- * cleaned up, on purpose: the only row involved is the saved outfit, which must survive a failed wear.
+ * A wear of a saved outfit: one `wears` insert on the existing row (`user_id`, `outfit_id`, `worn_on`, `feedback`;
+ * nothing else). The outfit row, with its own score, breakdown and context, is not touched. Used by `recordFeedback`
+ * for a saved set worn from Today, and directly by the saved outfit's screen ("לובש היום", DESIGN.md "שלב 5.2" item
+ * 4), which has no engine candidate to describe: the wear points at the row, no copy.
+ *
+ * @param args.itemIds - the row's garments (its `outfit_items`): they become the record's itemIds, as a reload reads them.
+ * Failure modes: PreviewReadOnlyError in the design preview; a network, RLS or foreign-key error is thrown as it
+ * comes. Nothing is cleaned up on failure, on purpose: the only row involved is the saved outfit, which must survive.
  */
-async function recordWearOfSaved(args: {
+export async function recordWearOfSaved(args: {
   userId: string;
   date: string;
-  outfit: CandidateOutfit;
+  itemIds: readonly string[];
   feedback: WearFeedback;
   savedOutfitId: string;
 }): Promise<TodayRecord> {
-  const { userId, date, outfit, feedback, savedOutfitId } = args;
+  if (isPreview()) throw new PreviewReadOnlyError("recordWearOfSaved");
+  const { userId, date, itemIds, feedback, savedOutfitId } = args;
   const wear = await supabase
     .from("wears")
     .insert({ user_id: userId, outfit_id: savedOutfitId, worn_on: date, feedback })
     .select("id")
     .single();
   if (wear.error) throw wear.error;
-  return { wearId: String(wear.data.id), outfitId: savedOutfitId, feedback, itemIds: outfit.items.map((i) => i.id), date };
+  return { wearId: String(wear.data.id), outfitId: savedOutfitId, feedback, itemIds: [...itemIds], date };
 }
 
 /** Turns a skip into a dislike (or back). Only the `wears` row changes; the outfit stays as it was. */
