@@ -39,6 +39,13 @@ export const HebcalConverterSchema = z.object({
   hebrew: z.string(),
 });
 
+/** Hebcal /converter?g2h=1 with start= and end=: the Hebrew date of every civil date in the range, keyed `YYYY-MM-DD`. */
+export const HebcalConverterRangeSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+  hdates: z.record(z.string(), HebcalConverterSchema),
+});
+
 /** Hebcal /hebcal and /shabbat event lists; only the fields we use. */
 export const HebcalItemsSchema = z.object({
   items: z.array(
