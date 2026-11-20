@@ -36,6 +36,8 @@ import { correctionFailure } from "../../data/correction";
 import type { FeedbackActions, FeedbackState, FeedbackTarget, Laundered } from "../../data/useFeedback";
 import { layout, motion } from "../../theme/tokens";
 import { flyFrom, registerOrigin } from "../item/transition";
+import { TryOnSheet } from "../tryon/TryOnSheet";
+import { tryonItemsOf } from "../tryon/model";
 import { AdjustSheet, type Adjust } from "./AdjustSheet";
 import { explainOutfit } from "./explain";
 import { settingGetNow, settingGet, settingSet } from "../../data/kv";
@@ -254,6 +256,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
     });
   };
   const [adjustOpen, setAdjustOpen] = useState(false);
+  const [tryOnOpen, setTryOnOpen] = useState(false);
   // The floating bar's measured height; 0 = not rendered or not measured yet (reset when the bar leaves, so a bar that
   // comes back is never capped against its old height).
   const [barHeight, setBarHeight] = useState(0);
@@ -824,7 +827,23 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
 
   // The legend changes with the day's tab: a still fade, like the garments (item 3). Plain on a day without tabs.
   const legend = hasTabs && captions ? <CrossFade swapKey={selectedDate}>{captions}</CrossFade> : captions;
-  const legendBlock = legend ? <View nativeID={FOCUS_LEGEND}>{legend}</View> : null;
+  // "On a figure" (DESIGN.md "שלב 5.3" item 1): a text button under the legend, on the outfit as shown (after swaps),
+  // suggested or worn. Absent when the outfit cannot be drawn (no shoes on Yom Kippur, incomplete): the server needs
+  // a top, bottom and shoes. It sits below the hero and legend, so the flat-lay's measured space is untouched.
+  const tryOnGarments =
+    outfit && plan.kind !== "empty" && tryonItemsOf(ordered.map((p) => ({ id: p.id, slot: p.slot })))
+      ? ordered.map((p) => ({ id: p.id, slot: p.slot, label: `${typeOf(p.subcategory)} ${p.name}`, name: p.name }))
+      : null;
+  const legendBlock = legend ? (
+    <View>
+      <View nativeID={FOCUS_LEGEND}>{legend}</View>
+      {tryOnGarments ? (
+        <View className="items-start">
+          <Button variant="text" label={t("tryon.entry")} onPress={() => setTryOnOpen(true)} />
+        </View>
+      ) : null}
+    </View>
+  ) : null;
 
   const quote = explanation ? (
     <View>
@@ -910,6 +929,7 @@ export function TodayView({ items, pairWeights, day, history, actions, busy, fai
 
   const sheets = (
     <>
+      <TryOnSheet open={tryOnOpen && tryOnGarments !== null} onClose={() => setTryOnOpen(false)} garments={tryOnGarments ?? []} />
       <PieceSheet
         piece={piece?.item ?? null}
         open={pieceOpen}
