@@ -158,11 +158,15 @@ function Today(props: { userId: string; wardrobe: Exclude<WardrobeState, { statu
   // The frame until the first suggestion: the device's data now, every other line in its place as it fills.
   if (!feedback.history || gate === "wait" || openingTab === null) {
     const dates = [day.date, ...day.chain.map((d) => d.date)];
-    const selected = [chosenTab, openingTab].find((d): d is string => d !== null && dates.includes(d)) ?? day.date;
+    // The tabs row is drawn as soon as there is a planned day (a Friday's Shabbat is known from the weekday, from the
+    // first frame), so the hero does not move when the outfit comes; until the records are read, the tab marked is the
+    // rule's answer without them (only an outfit already worn today would change it, and there is no outfit yet).
+    const provisional = openingTab ?? dayInForce({ day, now: clock, history: { today: [], ahead: [] } });
+    const selected = [chosenTab, provisional].find((d): d is string => d !== null && dates.includes(d)) ?? day.date;
     return (
       <TodayFrame
         day={day}
-        tabs={openingTab !== null ? { value: selected, onChange: setChosenTab } : null}
+        tabs={{ value: selected, onChange: setChosenTab }}
         waiting={t("common.loading")}
         weatherSettled={weatherSettled}
         calendarSettled={calendarSettled}
