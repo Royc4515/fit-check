@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
-import { fetchSavedOutfit, fetchSavedOutfits, removeSavedOutfit, renameOutfit, setOutfitFavorite } from "../../data/outfits";
-import type { SavedOutfit } from "../../data/savedOutfit";
+import { fetchSavedOutfit, fetchSavedOutfits, removeSavedOutfit, renameOutfit, saveOutfit, setOutfitFavorite, updateSavedOutfit, type EditResult, type SaveResult } from "../../data/outfits";
+import type { SavedOutfit, UpdateOutfitInput } from "../../data/savedOutfit";
 import { withFavorite, withName, withOutfit, withoutOutfit } from "./collection";
 
 /**
@@ -146,4 +146,32 @@ export async function renameSavedOutfit(userId: string, id: string, name: string
 export async function removeFromCollection(userId: string, id: string): Promise<void> {
   await removeSavedOutfit(id);
   patchOutfits(userId, (list) => withoutOutfit(list, id));
+}
+
+/**
+ * Saves an outfit built by hand and puts it into the collection at once (created or found), so the collection and
+ * the outfit screen opened next already have it. Same inputs and failure modes as `saveOutfit` (data/outfits.ts);
+ * on any failure nothing is put in and the error is thrown.
+ */
+export async function createSavedOutfit(userId: string, args: Parameters<typeof saveOutfit>[0]): Promise<SaveResult> {
+  const result = await saveOutfit(args);
+  patchOutfits(userId, (list) => withOutfit(list, result.outfit));
+  return result;
+}
+
+/**
+ * Edits a saved outfit (`updateSavedOutfit`) and puts the result into the collection: the same row replaced, or, when
+ * the edit became a new row (a worn outfit's garments changed), the old one dropped and the new one added (same
+ * `saved_at`, so the same place). On failure the collection is read again (best effort): a half-written edit (two saved
+ * rows, or a row with extra garments) must not be shown as if nothing happened; the error is thrown either way.
+ */
+export async function editSavedOutfit(userId: string, id: string, changes: UpdateOutfitInput): Promise<EditResult> {
+  try {
+    const result = await updateSavedOutfit(id, changes);
+    patchOutfits(userId, (list) => withOutfit(result.replacedId ? withoutOutfit(list, result.replacedId) : list, result.outfit));
+    return result;
+  } catch (error) {
+    void refreshOutfits(userId);
+    throw error;
+  }
 }

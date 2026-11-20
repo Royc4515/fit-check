@@ -4,16 +4,21 @@ import { supabase } from "../lib/supabase";
 import { isPreview, PreviewReadOnlyError } from "./preview";
 import {
   assertSaveable,
+  editPlan,
   findSameOutfit,
+  garmentChanges,
   itemSetKey,
   normalizeOutfitName,
+  OutfitPieceSchema,
   parseOutfitRow,
   removalAction,
   SavedOutfitError,
   SaveOutfitInputSchema,
   savedOutfitFromRow,
+  UpdateOutfitInputSchema,
   savedOutfitsFromRows,
   type SavedOutfit,
+  type UpdateOutfitInput,
 } from "./savedOutfit";
 
 /**
@@ -246,4 +251,122 @@ export async function renameOutfit(outfitId: string, name: string | null): Promi
   if (error) throw error;
   requireUpdated(data, outfitId);
   return stored;
+}
+
+const EditRowSchema = z.object({
+  saved_at: z.string().nullable(),
+  name: z.string().nullable(),
+  is_favorite: z.boolean(),
+  outfit_items: z.array(OutfitPieceSchema),
+  wears: z.array(z.object({ id: z.string() })),
+});
+const SavedSetsSchema = z.array(z.object({ id: z.string(), saved_at: z.string().nullable(), outfit_items: z.array(z.object({ item_id: z.string() })) }));
+
+/** The result of an edit: the outfit as stored, and the id it replaced when the edit became a new row (else null). */
+export type EditResult = { outfit: SavedOutfit; replacedId: string | null };
+
+/**
+ * Edits a saved outfit (the build screen, DESIGN.md "שלב 5.2" items 4-5): its garments, "למתי" and name together.
+ * What was worn is never rewritten, so the path depends on `editPlan` (data/savedOutfit.ts):
+ *
+ * In place (the garment set unchanged, or no wears): the same row; id, wears, favourite and `saved_at` stay.
+ *   Writes: 1. insert the garments it gains; 2. re-slot kept ones whose slot changed (normally none); 3. delete the
+ *   ones it loses; 4. update `context_type` and `name`. A failure at 1 changes nothing; at 2-3 the row holds the old
+ *   set plus the new garments; at 4 the new set with the old name and context. Never part of a set. A retry re-reads
+ *   and finishes (it inserts nothing twice).
+ *
+ * Copy (the set changes and the row has a wear of any feedback): a NEW saved row with the new garments and the old
+ *   row's name-or-new-name, favourite and exact `saved_at` (its place in the collection does not move), the chosen
+ *   context, `source: manual`, `created_for_date` = `date`. Writes: 1. insert the `outfits` row; 2. insert its
+ *   `outfit_items` (on failure the new row is deleted again, as in saveOutfit, and nothing changed); 3. unsave the old
+ *   row (`saved_at` null, `is_favorite` false): it keeps its garments and wears for history. Returns `replacedId`.
+ *   A failure at 3 leaves BOTH rows saved (the old one, and the new one with the same `saved_at`): the collection shows
+ *   both, side by side, until the edit is retried, and either can be removed by hand. It is thrown as SavedOutfitError
+ *   `copy_saved_old_kept` (`otherId` = the new outfit, `cause` = the request's error), as is a failure while resuming. The build screen keeps the
+ *   choices and shows the error with "נסה שוב"; that retry is recognised as `resume` (same new garments, same
+ *   `saved_at`) and only writes the name and context on the copy and unsaves the old row. It does not answer
+ *   "already saved". Only a crash between 1 and 2 can leave an empty saved row (as with saveOutfit).
+ *
+ * Refused before any write: zod (`invalid_input`), not exactly one top, bottom and shoes or more than one layer
+ * (`invalid_outfit`), a name over 40 (`name_too_long`), the design preview (PreviewReadOnlyError); then `not_found`,
+ * `not_saved`, and `same_garments` with `otherId` when another saved outfit (not a half-done copy) has the new set.
+ * Network and permission errors are thrown as they come. Not one transaction: that needs an RPC, i.e. a migration.
+ */
+export async function updateSavedOutfit(outfitId: string, changes: UpdateOutfitInput): Promise<EditResult> {
+  const parsed = UpdateOutfitInputSchema.safeParse(changes);
+  if (!parsed.success) throw new SavedOutfitError("invalid_input", parsed.error.message);
+  const input = parsed.data;
+  assertSaveable(input.garments);
+  const name = normalizeOutfitName(input.name);
+  if (isPreview()) throw new PreviewReadOnlyError("updateSavedOutfit");
+
+  const read = await supabase.from("outfits").select("saved_at,name,is_favorite,outfit_items(item_id,slot),wears(id)").eq("id", outfitId).maybeSingle();
+  if (read.error) throw read.error;
+  if (!read.data) throw new SavedOutfitError("not_found", `outfit ${outfitId} not found`);
+  const row = EditRowSchema.parse(read.data);
+  if (row.saved_at === null) throw new SavedOutfitError("not_saved", `outfit ${outfitId} is not saved`);
+  const savedAt = row.saved_at;
+
+  const sets = await supabase.from("outfits").select("id,saved_at,outfit_items(item_id)").not("saved_at", "is", null);
+  if (sets.error) throw sets.error;
+  const plan = editPlan({
+    id: outfitId,
+    savedAt,
+    currentItemIds: row.outfit_items.map((g) => g.item_id),
+    wearCount: row.wears.length,
+    nextItemIds: input.garments.map((g) => g.item_id),
+    saved: SavedSetsSchema.parse(sets.data ?? []).map((o) => ({ id: o.id, savedAt: o.saved_at, itemIds: o.outfit_items.map((i) => i.item_id) })),
+  });
+
+  if (plan.kind === "same_garments") throw new SavedOutfitError("same_garments", `saved outfit ${plan.otherId} already has these garments`, [], plan.otherId);
+  if (plan.kind === "in_place") return { outfit: await editInPlace(outfitId, row.outfit_items, input, name), replacedId: null };
+
+  let copyId: string;
+  // From here on a copy exists: every failure says so (`copy_saved_old_kept`), so the screen can tell the user that
+  // the new outfit IS saved and the old one is still in the collection, instead of "nothing was saved".
+  const halfDone = (id: string, error: unknown) => new SavedOutfitError("copy_saved_old_kept", `outfit ${id} is saved but ${outfitId} is still in the collection`, [], id, error);
+  if (plan.kind === "resume") {
+    copyId = plan.copyId;
+    const res = await supabase.from("outfits").update({ context_type: input.contextType, name }).eq("id", copyId).not("saved_at", "is", null).select("id");
+    if (res.error) throw halfDone(copyId, res.error);
+    if (!res.data || res.data.length === 0) throw new SavedOutfitError("not_saved", `outfit ${copyId} is not a saved outfit`);
+  } else {
+    const created = await supabase
+      .from("outfits")
+      .insert({ user_id: input.userId, context_type: input.contextType, created_for_date: input.date, source: "manual", name, is_favorite: row.is_favorite, saved_at: savedAt })
+      .select("id")
+      .single();
+    if (created.error) throw created.error;
+    copyId = String(created.data.id);
+    const items = await supabase.from("outfit_items").insert(input.garments.map((g) => ({ outfit_id: copyId, item_id: g.item_id, slot: g.slot })));
+    if (items.error) {
+      // Just created, nothing points at it yet: deleting it loses nothing and leaves the outfit as it was.
+      await supabase.from("outfits").delete().eq("id", copyId);
+      throw items.error;
+    }
+  }
+  const unsave = await supabase.from("outfits").update({ saved_at: null, is_favorite: false }).eq("id", outfitId);
+  if (unsave.error) throw halfDone(copyId, unsave.error);
+  return { outfit: await mustFetch(copyId), replacedId: outfitId };
+}
+
+/** The in-place path of updateSavedOutfit (write order and failure modes there). */
+async function editInPlace(outfitId: string, current: UpdateOutfitInput["garments"], input: UpdateOutfitInput, name: string | null): Promise<SavedOutfit> {
+  const plan = garmentChanges(current, input.garments);
+  if (plan.add.length > 0) {
+    const res = await supabase.from("outfit_items").insert(plan.add.map((g) => ({ outfit_id: outfitId, item_id: g.item_id, slot: g.slot })));
+    if (res.error) throw res.error;
+  }
+  for (const g of plan.reslot) {
+    const res = await supabase.from("outfit_items").update({ slot: g.slot }).eq("outfit_id", outfitId).eq("item_id", g.item_id);
+    if (res.error) throw res.error;
+  }
+  if (plan.remove.length > 0) {
+    const res = await supabase.from("outfit_items").delete().eq("outfit_id", outfitId).in("item_id", plan.remove);
+    if (res.error) throw res.error;
+  }
+  const updated = await supabase.from("outfits").update({ context_type: input.contextType, name }).eq("id", outfitId).not("saved_at", "is", null).select("id");
+  if (updated.error) throw updated.error;
+  requireUpdated(updated.data, outfitId);
+  return mustFetch(outfitId);
 }

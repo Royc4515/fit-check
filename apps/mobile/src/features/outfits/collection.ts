@@ -97,7 +97,7 @@ export function withWornChange(outfits: readonly SavedOutfit[], id: string, delt
     if (o.id !== id) return o;
     const wornCount = Math.max(0, o.wornCount + delta);
     const lastWornOn = wornCount === 0 ? null : delta === 1 && (o.lastWornOn === null || date > o.lastWornOn) ? date : o.lastWornOn;
-    return { ...o, wornCount, lastWornOn };
+    return { ...o, wornCount, wearCount: Math.max(0, o.wearCount + delta), lastWornOn };
   });
 }
 
