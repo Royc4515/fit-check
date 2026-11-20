@@ -1077,7 +1077,8 @@
     "tileLabel": "{{title}}. {{pieces}}. {{meta}}",
     "empty": {
       "title": "עוד אין לוקים",
-      "body": "לוק שאהבת ב'היום' נשמר מכאן, או בונים אחד ביד."
+      "body": "לוק שאהבת ב'היום' נשמר מכאן, או בונים אחד ביד.",
+      "action": "לוק חדש"
     },
     "emptyFavorites": {
       "title": "עוד אין מועדפים",
@@ -1140,6 +1141,64 @@
       "bottom": "מכנסיים",
       "shoes": "נעליים",
       "layer": "שכבה"
+    },
+    "edit": "עריכה",
+    "alreadySaved": "הלוק הזה כבר שמור"
+  },
+  "builder": {
+    "titleNew": "לוק חדש",
+    "titleEdit": "עריכת לוק",
+    "choose": "בחירה",
+    "chooseSlot": {
+      "top": "בחירת חלק עליון",
+      "bottom": "בחירת מכנסיים",
+      "shoes": "בחירת נעליים",
+      "layer": "בחירת שכבה"
+    },
+    "rowChosen": "{{index}} {{slot}}: {{type}} {{name}}, החלפה",
+    "rowEmpty": "{{index}} {{slot}}, בחירה",
+    "heroLabel": "הלוק שנבנה: {{pieces}}",
+    "heroEmpty": "הלוק שנבנה, עוד אין בו בגדים",
+    "context": "למתי",
+    "name": "שם (לא חובה)",
+    "nameCount": "{{n}} מתוך {{max}} תווים",
+    "save": "שמור",
+    "saving": "שומר",
+    "missing": {
+      "top": "חסר חלק עליון",
+      "bottom": "חסרים מכנסיים",
+      "shoes": "חסרות נעליים",
+      "top_bottom": "חסרים חלק עליון ומכנסיים",
+      "top_shoes": "חסרים חלק עליון ונעליים",
+      "bottom_shoes": "חסרים מכנסיים ונעליים",
+      "all": "חסרים חלק עליון, מכנסיים ונעליים"
+    },
+    "saveFailed": "הלוק לא נשמר. {{reason}}",
+    "sameAsOther": "כבר יש לוק שמור עם הבגדים האלה",
+    "openOther": "לפתוח אותו",
+    "alreadySaved": "הלוק הזה כבר שמור",
+    "loadFailed": "לא הצלחנו לטעון את הארון",
+    "leave": {
+      "title": "לצאת בלי לשמור?",
+      "body": "מה שבחרת כאן לא יישמר.",
+      "confirm": "לצאת",
+      "stay": "להמשיך לערוך"
+    },
+    "picker": {
+      "search": "חיפוש לפי שם או מותג",
+      "remove": "הסר",
+      "removeLabel": "הסרת {{name}} מהלוק",
+      "noResults": "אין תוצאות ל\"{{query}}\"",
+      "empty": "אין בארון בגדים מהסוג הזה",
+      "more": "הצג עוד ({{n}})",
+      "tileLabel": "{{name}}, {{type}}, {{color}}",
+      "tileLabelWhere": "{{name}}, {{type}}, לא בבית: {{where}}",
+      "chosen": "{{label}}, נבחר"
     }
+  },
+  "add": {
+    "title": "הוספה",
+    "garment": "בגד חדש",
+    "outfit": "לוק חדש"
   }
 }

@@ -7,7 +7,7 @@ import { OutfitView } from "../../features/outfits/OutfitView";
  * so a favourite, a rename or a removal here is already true in the collection underneath.
  */
 export default function OutfitScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, notice } = useLocalSearchParams<{ id: string; notice?: string }>();
   const userId = sessionUserId(useSession());
-  return userId ? <OutfitView id={id} userId={userId} /> : null;
+  return userId ? <OutfitView id={id} userId={userId} notice={notice === "already" ? "already" : undefined} /> : null;
 }
