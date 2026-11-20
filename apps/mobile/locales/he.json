@@ -1077,10 +1077,12 @@
     "wornWithDate": "{{worn}} · {{date}}",
     "neverWorn": "עוד לא נלבש",
     "missingMeta": "חסר בגד · {{rest}}",
+    "missingOnly": "חסר בגד",
     "favoriteAdd": "הוסף למועדפים",
     "favoriteRemove": "הסר מהמועדפים",
     "favoriteFailed": "המועדף לא נשמר. {{reason}}",
     "tileLabel": "{{title}}. {{pieces}}. {{meta}}",
+    "tileLabelNoMeta": "{{title}}. {{pieces}}",
     "empty": {
       "title": "עוד אין לוקים",
       "body": "לוק שאהבת ב'היום' נשמר מכאן, או בונים אחד ביד.",

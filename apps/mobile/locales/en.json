@@ -1066,10 +1066,12 @@
     "wornWithDate": "{{worn}} · {{date}}",
     "neverWorn": "Not worn yet",
     "missingMeta": "A garment is missing · {{rest}}",
+    "missingOnly": "A garment is missing",
     "favoriteAdd": "Add to favourites",
     "favoriteRemove": "Remove from favourites",
     "favoriteFailed": "The favourite was not saved. {{reason}}",
     "tileLabel": "{{title}}. {{pieces}}. {{meta}}",
+    "tileLabelNoMeta": "{{title}}. {{pieces}}",
     "empty": {
       "title": "No outfits yet",
       "body": "An outfit you liked on Today is saved from there, or you build one by hand.",
