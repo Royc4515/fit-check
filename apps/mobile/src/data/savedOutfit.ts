@@ -48,17 +48,44 @@ export type OutfitProblem =
  * Every failure the saved-outfit data layer reports on purpose (network and permission errors are thrown as they
  * come). `invalid_outfit` carries the problems; `invalid_input` the zod message.
  */
-export type SavedOutfitErrorCode = "invalid_input" | "invalid_outfit" | "name_too_long" | "not_found" | "not_saved";
+export type SavedOutfitErrorCode = "invalid_input" | "invalid_outfit" | "name_too_long" | "not_found" | "not_saved" | "same_garments";
 
 export class SavedOutfitError extends Error {
   readonly code: SavedOutfitErrorCode;
   readonly problems: readonly OutfitProblem[];
-  constructor(code: SavedOutfitErrorCode, message: string, problems: readonly OutfitProblem[] = []) {
+  /** `same_garments` only: the other saved outfit that already has exactly these garments. */
+  readonly otherId: string | null;
+  constructor(code: SavedOutfitErrorCode, message: string, problems: readonly OutfitProblem[] = [], otherId: string | null = null) {
     super(message);
     this.name = "SavedOutfitError";
     this.code = code;
     this.problems = problems;
+    this.otherId = otherId;
   }
+}
+
+/** What an edit of a saved outfit sets: all its garments, "למתי" and the name (null or empty = no name). */
+export const UpdateOutfitInputSchema = z.object({
+  garments: z.array(OutfitPieceSchema),
+  contextType: z.enum(CONTEXT_TYPES),
+  name: z.string().nullable(),
+});
+export type UpdateOutfitInput = z.infer<typeof UpdateOutfitInputSchema>;
+
+/**
+ * The `outfit_items` writes that turn the garments an outfit has into the ones it should have, keyed by item (the
+ * table's primary key is (outfit_id, item_id)): `add` rows to insert, `reslot` kept garments whose slot changed (an
+ * item's type was re-tagged), `remove` item ids to delete. Empty lists when nothing changes. Order of each list:
+ * as given, so the requests are deterministic.
+ */
+export function garmentChanges(current: readonly OutfitPiece[], next: readonly OutfitPiece[]): { add: OutfitPiece[]; reslot: OutfitPiece[]; remove: string[] } {
+  const now = new Map(current.map((p) => [p.item_id, p.slot] as const));
+  const wanted = new Set(next.map((p) => p.item_id));
+  return {
+    add: next.filter((p) => !now.has(p.item_id)),
+    reslot: next.filter((p) => now.has(p.item_id) && now.get(p.item_id) !== p.slot),
+    remove: [...new Set(current.map((p) => p.item_id))].filter((id) => !wanted.has(id)),
+  };
 }
 
 /**
