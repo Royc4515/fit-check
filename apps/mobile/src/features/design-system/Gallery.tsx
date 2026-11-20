@@ -13,6 +13,7 @@ import {
   Meta,
   EmptyState,
   FlatLay,
+  FlatLayPlaceholder,
   Icon,
   LegendRow,
   ListRow,
@@ -511,6 +512,10 @@ export function Gallery() {
               </View>
             </View>
           ) : null}
+          {/* Today's hero while its outfit is on its way (the frame, "waiting for a fresh forecast"). */}
+          <View style={{ width: flatLayW }}>
+            <FlatLayPlaceholder label={t("today.awaitingForecast")} />
+          </View>
         </Wrap>
       </Block>
 
