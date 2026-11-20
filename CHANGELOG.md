@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-20 (Outfits: building one by hand, editing a saved one, and the "+" choice)
+
+- The bar's centre "+" and the desktop "הוספה" open a sheet with "בגד חדש" (the add-garment screen, as before) and "לוק חדש". Escape closes it and focus returns to the "+".
+- The build screen (`/outfit/new`), presented like the outfit screen: the hero is the flat-lay itself, in the four-piece arrangement from the start, with each empty slot drawn as a rectangle (`add` and the slot's name) that opens the picker; a choice only cross-fades (180 ms, no rise; instant with reduced motion), so no other garment moves. Four legend rows, "למתי" chips (default "יום חול"), an optional name with a visible count from 30 of 40, and a floating "שמור" with the missing slots worded per combination above it. Desktop: two columns, the button in the end column.
+- The picker: a tall sheet with a pinned search (name and brand, like the wardrobe's) and mini tiles of every listed garment of the slot; the wardrobe's order until another slot has a garment, then the engine's new `orderByCompatibility` (colour, formality and learned pairs; no weather or date). Not-at-home garments are dimmed with their place and can be chosen. 30 tiles, then "הצג עוד (N)". "הסר" clears a chosen slot.
+- Saving: `source: "manual"`, the chosen context, today's local date. The same garments already saved open that outfit with "הלוק הזה כבר שמור"; a new one opens over the collection, so back lands there. A failure keeps everything with the reason and "נסה שוב". Leaving with changes (close, Escape, browser or Android back) asks "לצאת בלי לשמור?".
+- Editing: "עריכה" in the outfit screen's "more" opens the builder filled with the outfit (a deleted garment's slot empty). `updateSavedOutfit` changes that same row (wears, favourite and saved date stay): it inserts what the outfit gains, then deletes what it loses, then updates the row, so a failure leaves the old set or the old set plus the new garments, never part of one, and a retry finishes it. The garments of another saved outfit are refused with a line and a button that opens it.
+- The collection's empty state has its "לוק חדש" action. DESIGN.md "שלב 5.2" item 5 records the decisions the spec left open; section 4 lists `TextField` and the new `Sheet` props.
+- Look at: `data/outfits.ts` `updateSavedOutfit` (write order and failure modes in its TSDoc, tested in `outfits.test.ts`), `features/outfits/builder.ts` (pure, tested), `packages/engine/src/compatibility.ts`. Unverified: a real write against the database (checked on a stubbed copy of the web build; the preview rejects writes), native.
+
 ## 2026-11-20 (Saving a worn outfit from Insights, stage 5.2 pull request 6)
 
 - A bookmark at the end of every worn-outfit row in Insights "wears" (DESIGN.md "שלב 5.2" item 7): the same library `Button` `icon` as Today's (no new component was needed), 44, outline = not saved, filled = saved, labels "שמור בלוקים" / "הסר מהלוקים", `aria-pressed`, no accent. It is a sibling of the row's button, not inside it, so a press or Enter/Space never opens the row's sheet and the row still does.
