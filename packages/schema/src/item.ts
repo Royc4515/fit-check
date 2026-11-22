@@ -21,6 +21,7 @@ export const ItemSchema = z.object({
   currency: z.string().length(3).nullable(),
   purchased_at: z.string().date().nullable(),
   cutout_path: z.string().nullable(),
+  thumb_path: z.string().nullable().optional(),
   notes: z.string().nullable(),
 });
 

@@ -13,7 +13,7 @@ import { useOriginVisibility } from "./originVisibility";
 import { Meta } from "./Type";
 
 /** The fields a tile needs; any Item satisfies it. */
-export type TileItem = Pick<Item, "id" | "name" | "tags" | "cutout_path">;
+export type TileItem = Pick<Item, "id" | "name" | "tags" | "cutout_path" | "thumb_path">;
 
 export type TileSize = "grid" | "hero" | "mini";
 
@@ -107,9 +107,10 @@ export function Tile({
     );
   }
 
-  const image = item.cutout_path ? (
+  const imagePath = size === "hero" ? item.cutout_path : (item.thumb_path ?? item.cutout_path);
+  const image = imagePath ? (
     <Image
-      source={{ uri: cutoutUrl(item.cutout_path) }}
+      source={{ uri: cutoutUrl(imagePath) }}
       contentFit="contain"
       cachePolicy="memory-disk"
       // don't touch / recycled cells (windowed grid) would otherwise flash the previous item's image.

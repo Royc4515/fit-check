@@ -145,8 +145,8 @@ async function cutAndStore(ctx: ToolContext, bytes: Uint8Array, stem: string, is
   await ctx.db.from("ai_calls").insert({ user_id: ctx.userId, ...cut.log });
   if (!cut.ok) return null;
   const [a, b] = await Promise.all([
-    ctx.db.storage.from("cutouts").upload(`${stem}-cutout.png`, cut.cutout, { contentType: "image/png", upsert: true }),
-    ctx.db.storage.from("cutouts").upload(`${stem}-thumb.png`, cut.thumb, { contentType: "image/png", upsert: true }),
+    ctx.db.storage.from("cutouts").upload(`${stem}-cutout.png`, cut.cutout, { contentType: "image/png", upsert: true, cacheControl: "31536000" }),
+    ctx.db.storage.from("cutouts").upload(`${stem}-thumb.png`, cut.thumb, { contentType: "image/png", upsert: true, cacheControl: "31536000" }),
   ]);
   return a.error || b.error ? null : { image: `${stem}-cutout.png`, thumb: `${stem}-thumb.png` };
 }
@@ -195,7 +195,7 @@ export async function itemCreate(args: unknown, ctx: ToolContext): Promise<ToolR
   // The item's own copy, in the intake layout (`intake/<id>/1.jpg`) so redraw and re-cut find the original as N.jpg.
   const folder = `${ctx.userId}/intake/${Date.now()}-mcp`;
   const crop = `${folder}/1.jpg`;
-  const up = await ctx.db.storage.from("cutouts").upload(crop, bytes, { contentType: sniffImageType(bytes, "image/jpeg") });
+  const up = await ctx.db.storage.from("cutouts").upload(crop, bytes, { contentType: sniffImageType(bytes, "image/jpeg"), cacheControl: "31536000" });
   if (up.error) return fail(`Could not store the photo: ${up.error.message}`);
   // SAM keeps the garment at the centre of the frame: right for a crop or a one-garment photo.
   const stored = await cutAndStore(ctx, bytes, `${folder}/1`, true);
@@ -260,12 +260,12 @@ export async function itemRecrop(args: unknown, ctx: ToolContext): Promise<ToolR
   if (!original || !bytes) return fail("This garment has no original photo.");
   const ts = Date.now();
   const full = original.replace(/\.jpg$/, `-full-${ts}.jpg`);
-  const backup = await ctx.db.storage.from("cutouts").upload(full, bytes, { contentType: sniffImageType(bytes, "image/jpeg") });
+  const backup = await ctx.db.storage.from("cutouts").upload(full, bytes, { contentType: sniffImageType(bytes, "image/jpeg"), cacheControl: "31536000" });
   if (backup.error) return fail(`Could not keep the full photo: ${backup.error.message}`);
   let requeued: string | null = null;
   if (input.requeue_original) {
     requeued = `${PENDING(ctx.userId)}/${ts}-requeued.jpg`;
-    const q = await ctx.db.storage.from("cutouts").upload(requeued, bytes, { contentType: sniffImageType(bytes, "image/jpeg") });
+    const q = await ctx.db.storage.from("cutouts").upload(requeued, bytes, { contentType: sniffImageType(bytes, "image/jpeg"), cacheControl: "31536000" });
     if (q.error) return fail(`Could not put the photo back in the queue: ${q.error.message}`);
   }
   let cropped: Uint8Array;
@@ -274,7 +274,7 @@ export async function itemRecrop(args: unknown, ctx: ToolContext): Promise<ToolR
   } catch (error) {
     return fail(`Could not crop the photo: ${error instanceof Error ? error.message : String(error)}`);
   }
-  const up = await ctx.db.storage.from("cutouts").upload(original, cropped, { contentType: "image/jpeg", upsert: true });
+  const up = await ctx.db.storage.from("cutouts").upload(original, cropped, { contentType: "image/jpeg", upsert: true, cacheControl: "31536000" });
   if (up.error) return fail(`Could not store the crop: ${up.error.message}`);
   let image: string | null = null;
   if (input.recut) {
@@ -325,14 +325,14 @@ export async function itemRedraw(args: unknown, ctx: ToolContext): Promise<ToolR
   await ctx.db.from("ai_calls").insert({ user_id: ctx.userId, ...drawn.log });
   if (!drawn.png) return fail(`Redraw failed: ${drawn.log.error ?? "unknown"}`);
   const stem = crop.replace(/\.jpg$/, `-enhanced-${Date.now()}`);
-  const up = await ctx.db.storage.from("cutouts").upload(`${stem}.png`, drawn.png, { contentType: sniffImageType(drawn.png, "image/png") });
+  const up = await ctx.db.storage.from("cutouts").upload(`${stem}.png`, drawn.png, { contentType: sniffImageType(drawn.png, "image/png"), cacheControl: "31536000" });
   if (up.error) return fail(`Could not store the redraw: ${up.error.message}`);
   // Roy, 2026-11-18: clear the white background right away, locally and free; the worker is only the fallback for
   // a redraw the check declined (and it was disabled that day, which left redraws on white).
   const clear = await whiteToTransparent(drawn.png).catch(() => null);
   let stored: { image: string; thumb: string | null } | null = null;
   if (clear) {
-    const put = await ctx.db.storage.from("cutouts").upload(`${stem}-cutout.png`, clear, { contentType: "image/png", upsert: true });
+    const put = await ctx.db.storage.from("cutouts").upload(`${stem}-cutout.png`, clear, { contentType: "image/png", upsert: true, cacheControl: "31536000" });
     if (!put.error) stored = { image: `${stem}-cutout.png`, thumb: null };
   }
   // A redraw shows one garment on white: plain cutout, no SAM.

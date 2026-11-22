@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View, useWindowDimensions } from "react-native";
-import { Display, Meta, PhotoTile, Skeleton, StatusLine } from "../../components/ui";
+import { Button, Display, Meta, PhotoTile, Skeleton, StatusLine } from "../../components/ui";
 import type { PendingPhoto } from "../../data/intake";
 import { isRtl } from "../../i18n";
 import { layout } from "../../theme/tokens";
@@ -13,6 +14,8 @@ const PHONE_COLUMNS = 3;
 const DESKTOP_COLUMNS = 6;
 const GAP = 8;
 const SKELETONS = 3;
+/** Cap initial thumbnails so opening Add Clothes does not fetch up to 100 full JPGs at once. */
+const INITIAL_VISIBLE = 12;
 
 /** Meta is uppercase and tracked in English; the explanation is a sentence. */
 const SENTENCE = { textTransform: "none", letterSpacing: 0 } as const;
@@ -46,9 +49,12 @@ function rows<T>(list: readonly T[], n: number): (T | null)[][] {
 export function PendingQueue({ state, onRetry, now, spaced = true }: Props) {
   const { t, i18n } = useTranslation();
   const columns = useWindowDimensions().width >= layout.desktopMin ? DESKTOP_COLUMNS : PHONE_COLUMNS;
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   if (state.status === "ready" && state.photos.length === 0) return null;
   const locale = i18n.language === "en" ? "en" : "he";
   const count = state.status === "ready" ? state.photos.length : undefined;
+  const visiblePhotos = state.status === "ready" ? state.photos.slice(0, visibleCount) : [];
+  const hasMore = state.status === "ready" && state.photos.length > visibleCount;
 
   const cell = (photo: PendingPhoto) => {
     const when = uploadedLabel(photo.uploadedAt, now, locale, t);
@@ -98,7 +104,7 @@ export function PendingQueue({ state, onRetry, now, spaced = true }: Props) {
         </View>
       ) : (
         <View className="mt-4" style={{ rowGap: 16 }}>
-          {(state.status === "loading" ? rows(Array.from({ length: SKELETONS }, (_, i) => i), columns) : rows(state.photos, columns)).map((row, r) => (
+          {(state.status === "loading" ? rows(Array.from({ length: SKELETONS }, (_, i) => i), columns) : rows(visiblePhotos, columns)).map((row, r) => (
             <View key={r} className="flex-row" style={{ gap: GAP }}>
               {row.map((entry, c) => (
                 <View key={c} className="flex-1">
@@ -107,6 +113,11 @@ export function PendingQueue({ state, onRetry, now, spaced = true }: Props) {
               ))}
             </View>
           ))}
+          {hasMore ? (
+            <View className="items-start">
+              <Button variant="text" label={t("intake.queue.showMore")} onPress={() => setVisibleCount((n) => n + INITIAL_VISIBLE)} />
+            </View>
+          ) : null}
         </View>
       )}
     </View>

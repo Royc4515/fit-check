@@ -137,7 +137,7 @@ async function enhance(supabase: SupabaseClient, userId: string, cutoutPath: str
 
   // A new name per redraw: an item can be redrawn again later from the item page, and each result is kept.
   const out = cutoutPath.replace(/\.[^.]+$/, `-enhanced-${Date.now()}.png`);
-  const upload = await supabase.storage.from("cutouts").upload(out, clear ?? result.png, { contentType: "image/png", upsert: false });
+  const upload = await supabase.storage.from("cutouts").upload(out, clear ?? result.png, { contentType: "image/png", upsert: false, cacheControl: "31536000" });
   if (upload.error) return json(200, { ok: false, reason: "ai_failed" });
   return json(200, { ok: true, path: out, url: supabase.storage.from("cutouts").getPublicUrl(out).data.publicUrl, transparent: clear !== null });
 }

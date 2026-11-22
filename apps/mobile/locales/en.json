@@ -669,6 +669,7 @@
       "photo": "Waiting photo, uploaded {{when}}",
       "photoUndated": "Waiting photo",
       "failed": "The waiting photos did not load.",
+      "showMore": "Show more",
       "ago": {
         "minuteOne": "1 minute ago",
         "hourOne": "1 hour ago",

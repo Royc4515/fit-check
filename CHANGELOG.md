@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-22 (Cached Egress fixes and Cloudflare R2 read support)
+
+- Why: the `cutouts` bucket burned through 42.77 GB of Supabase Cached Egress on the Free tier due to missing 1-year `cacheControl` headers on uploads (defaulting to 3600 s), missing `cachePolicy="memory-disk"` on `ItemArt` and `PhotoTile`, full cutouts loaded in wardrobe grid tiles instead of `thumb_path`, unthrottled focus reloads and up-to-100 simultaneous thumbnails in `PendingQueue`, and short 10-minute signed URLs in `tryon`.
+- Client (`ItemArt.tsx`, `PhotoTile.tsx`, `Tile.tsx`, `packages/schema/src/{item,db}.ts`, `app/item/[id].tsx`): `cutoutUrl()` reads `EXPO_PUBLIC_R2_PUBLIC_URL` when set (falling back to Supabase `cutouts`); `ItemArt` and `PhotoTile` add `cachePolicy="memory-disk"` and `recyclingKey`; `ITEM_READ_COLUMNS`, `ItemRowSchema` and `ItemSchema` include optional `thumb_path` so `Tile` prefers `thumb_path ?? cutout_path` for grid and mini tiles while hero tiles and `FlatLay` keep the full `cutout_path`.
+- Pending queue (`usePendingQueue.ts`, `PendingQueue.tsx`, `locales/{en,he}.json`): 30-second focus throttle on `usePendingQueue` (manual `reload()` stays immediate); progressive loading in `PendingQueue` (12 thumbnails initially with "Show more" / "הצג עוד" in batches of 12, keeping `PENDING_LIMIT = 100` in `data/intake.ts`).
+- Storage & Edge Functions (`data/intake.ts`, `supabase/functions/{intake-cutout/index,intake-separate/index,mcp/photos,tryon/store}.ts`, `tryon/handler.ts`): added `cacheControl: "31536000"` to all uploads and raised `SIGNED_URL_TTL_S` from `600` to `86400` (updated `tryon/handler_test.ts`).
+- Worker (`worker/app.py`): added `_webp_b64` (`cutout_webp_b64` at quality 85, `thumb_webp_b64` at quality 80) alongside PNG outputs for backwards compatibility.
+- Look at: `ItemArt.tsx` (`cutoutUrl`), `Tile.tsx` (`imagePath`), `PendingQueue.tsx`, `usePendingQueue.ts`, `worker/app.py`.
+
 ## 2026-11-20 (Today's frame never waits on an outside service)
 
 - Why: the independent check of the weather wait measured two holes. Hebcal had no timeout: answering at 3 s put the first outfit at 3.5 s, never answering kept Today on the loading line forever. And a stored forecast that left nothing to suggest kept the whole screen (no date, weather or tabs) on the loading line until the fresh request settled, up to 8 s.
