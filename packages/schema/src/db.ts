@@ -10,8 +10,8 @@ import { SLOTS } from "./stylist.ts";
  * from it on write, never read back (reading both would let a drifted copy win silently).
  */
 
-/** Columns the app selects. Not `*`: original_path/thumb_path/user_id are not the client's business yet. */
-export const ITEM_READ_COLUMNS = "id,name,brand,tags,status,availability,source,price,currency,purchased_at,cutout_path,notes";
+/** Columns the app selects. Not `*`: original_path/user_id are not the client's business yet. */
+export const ITEM_READ_COLUMNS = "id,name,brand,tags,status,availability,source,price,currency,purchased_at,cutout_path,thumb_path,notes";
 
 // PostgREST returns `numeric` as a JSON number, but a string for values it cannot represent exactly. Accept both
 // and let ItemSchema be the judge, instead of trusting the wire type.
@@ -32,6 +32,7 @@ export const ItemRowSchema = z.object({
   currency: z.string().nullable(),
   purchased_at: z.string().nullable(),
   cutout_path: z.string().nullable(),
+  thumb_path: z.string().nullable().optional(),
   notes: z.string().nullable(),
 });
 

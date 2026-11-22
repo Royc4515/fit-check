@@ -1,7 +1,7 @@
 import type { AiLogEntry } from "../_shared/ai/types.ts";
 import { FIGURE_PRICE_USD, TRYON_MODEL, TRYON_PRICE_USD, type TryonGarment, type TryonImage, type TryonResult } from "../_shared/ai/tryon.ts";
 import { MONTHLY_GOOGLE_BUDGET_USD } from "../_shared/ai/budget.ts";
-import { FIGURE_PATH, handleTryon, tryonImagePath, type TryonDeps } from "./handler.ts";
+import { FIGURE_PATH, handleTryon, SIGNED_URL_TTL_S, tryonImagePath, type TryonDeps } from "./handler.ts";
 import type { TryonItemRow, TryonStore } from "./store.ts";
 
 const A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -168,7 +168,7 @@ Deno.test("render with a stored image never calls the provider", async () => {
   h.files.set(await tryonImagePath(A, [BOTTOM, SHOES, TOP]), PNG);
   const r = await call(h, { mode: "render", items: outfit });
   assert(r.body.ok === true && r.body.cached === true && r.body.cost_usd === 0, JSON.stringify(r));
-  assert(String(r.body.image_url).includes("/object/sign/") && r.body.expires_in_s === 600, JSON.stringify(r));
+  assert(String(r.body.image_url).includes("/object/sign/") && r.body.expires_in_s === SIGNED_URL_TTL_S, JSON.stringify(r));
   assert(h.calls.outfit === 0 && h.logs.length === 0, "free");
 });
 
@@ -251,7 +251,7 @@ Deno.test("quote with a stored image returns its signed URL, and calls neither t
   const path = await tryonImagePath(A, [TOP, BOTTOM, SHOES]);
   h.files.set(path, PNG);
   const r = await call(h, { mode: "quote", items: outfit });
-  assert(r.body.ok === true && r.body.cached === true && String(r.body.image_url).includes(path) && r.body.expires_in_s === 600, JSON.stringify(r));
+  assert(r.body.ok === true && r.body.cached === true && String(r.body.image_url).includes(path) && r.body.expires_in_s === SIGNED_URL_TTL_S, JSON.stringify(r));
   assert(h.calls.outfit === 0 && h.calls.figure === 0 && h.logs.length === 0 && h.uploads.length === 0, "no cost, no row, no write");
 });
 

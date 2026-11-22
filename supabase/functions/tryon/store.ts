@@ -89,7 +89,7 @@ export function supabaseStore(db: SupabaseClient): TryonStore {
     },
     download: (path) => download(TRYON_BUCKET, path),
     async upload(path, bytes, contentType, upsert) {
-      const { error } = await db.storage.from(TRYON_BUCKET).upload(path, bytes, { contentType, upsert });
+      const { error } = await db.storage.from(TRYON_BUCKET).upload(path, bytes, { contentType, upsert, cacheControl: "31536000" });
       if (!error) return "ok";
       console.error("tryon upload failed", error.message);
       return !upsert && /exist|duplicate|409/i.test(error.message) ? "exists" : "error";

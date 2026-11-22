@@ -2,7 +2,7 @@
 Fit Check ML worker on Modal.
 
 Endpoints, called only from Supabase Edge Functions with a bearer token (WORKER_TOKEN):
-  POST cutout?isolate=1  (jpeg/png body) -> {"cutout_png_b64", "thumb_png_b64", "width", "height", "gpu_seconds", "isolated"}
+  POST cutout?isolate=1  (jpeg/png body) -> {"cutout_png_b64", "thumb_png_b64", "cutout_webp_b64", "thumb_webp_b64", "width", "height", "gpu_seconds", "isolated"}
   POST embed   (png body)      -> {"embedding": [512 floats], "model_version": "fashion-clip-2"}   (not wired yet)
 
 Why Modal: Edge Functions cannot run these models; Modal gives a GPU container that scales to zero, billed per
@@ -131,6 +131,12 @@ def _png_b64(img) -> str:  # type: ignore[no-untyped-def]
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
+def _webp_b64(img, quality: int = 85) -> str:  # type: ignore[no-untyped-def]
+    buf = io.BytesIO()
+    img.save(buf, format="WEBP", quality=quality, method=4)
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
 # scaledown_window: a batch of photos arrives a few seconds apart, so one warm container serves the whole batch;
 # two minutes idle then scales to zero (no cost while unused).
 # enable_memory_snapshot: Modal snapshots the container after load() and restores it on the next cold start, so a
@@ -209,6 +215,8 @@ class Cutter:
         return {
             "cutout_png_b64": _png_b64(out),
             "thumb_png_b64": _png_b64(thumb),
+            "cutout_webp_b64": _webp_b64(out, quality=85),
+            "thumb_webp_b64": _webp_b64(thumb, quality=80),
             "width": out.width,
             "height": out.height,
             "gpu_seconds": round(elapsed, 3),

@@ -71,6 +71,8 @@ export function PhotoTile({ uri, tone = "tile", size = "grid", width = "100%", a
             <Image
               source={{ uri }}
               contentFit={fit}
+              cachePolicy="memory-disk"
+              recyclingKey={uri ?? ""}
               transition={{ duration: motion.stateMs, effect: "cross-dissolve" }}
               onLoad={() => setLoadedUri(uri ?? null)}
               onError={() => {

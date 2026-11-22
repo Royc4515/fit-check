@@ -78,8 +78,8 @@ Deno.serve(async (req) => {
   const thumbPath = `${stem}-thumb.png`;
   // upsert: re-running the same crop (a retry after a timeout) replaces its cutout instead of failing.
   const [a, b] = await Promise.all([
-    supabase.storage.from("cutouts").upload(outPath, result.cutout, { contentType: "image/png", upsert: true }),
-    supabase.storage.from("cutouts").upload(thumbPath, result.thumb, { contentType: "image/png", upsert: true }),
+    supabase.storage.from("cutouts").upload(outPath, result.cutout, { contentType: "image/png", upsert: true, cacheControl: "31536000" }),
+    supabase.storage.from("cutouts").upload(thumbPath, result.thumb, { contentType: "image/png", upsert: true, cacheControl: "31536000" }),
   ]);
   if (a.error || b.error) {
     console.error("cutout upload failed", a.error?.message ?? b.error?.message);

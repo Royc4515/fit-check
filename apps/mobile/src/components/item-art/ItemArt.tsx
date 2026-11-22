@@ -24,8 +24,13 @@ type Props = {
   cutoutPath?: string | null;
 };
 
-/** Public URL of a stored garment image (the cutouts bucket is public, served from the CDN). */
+const R2_PUBLIC_URL = process.env.EXPO_PUBLIC_R2_PUBLIC_URL?.trim().replace(/\/+$/, "") || null;
+
+/** Public URL of a stored garment image (Cloudflare R2 when EXPO_PUBLIC_R2_PUBLIC_URL is set, else Supabase cutouts bucket). */
 export function cutoutUrl(path: string): string {
+  if (R2_PUBLIC_URL) {
+    return `${R2_PUBLIC_URL}/${path.replace(/^\/+/, "")}`;
+  }
   return supabase.storage.from("cutouts").getPublicUrl(path).data.publicUrl;
 }
 
@@ -37,7 +42,16 @@ export function ItemArt({ tags, cutoutPath }: Props) {
   if (cutoutPath) {
     // don't touch / Roy, 2026-11-09: items added from photos showed the drawing instead of the photo he saved.
     // The drawing is only for items that have no image (the sheet import).
-    return <Image source={{ uri: cutoutUrl(cutoutPath) }} contentFit="contain" style={{ width: "100%", height: "100%" }} accessibilityIgnoresInvertColors />;
+    return (
+      <Image
+        source={{ uri: cutoutUrl(cutoutPath) }}
+        contentFit="contain"
+        cachePolicy="memory-disk"
+        recyclingKey={cutoutPath}
+        style={{ width: "100%", height: "100%" }}
+        accessibilityIgnoresInvertColors
+      />
+    );
   }
   return <ItemDrawing tags={tags} />;
 }
