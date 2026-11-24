@@ -7,12 +7,12 @@ You photograph a few garments laid out on a flat surface. The app finds each one
 <table>
   <tr>
     <td><img src="design/screens/2026-11-20-today-weather-after-update-390-he.png" width="240" alt="Today screen on a rainy Friday: jeans, a flannel shirt and boots for 4-17°C with rain"></td>
-    <td><img src="design/screens/2026-11-19-today-friday-shabbat-tab-390-he.png" width="240" alt="Today screen, Shabbat tab: tailored trousers, a white shirt, a sweater and loafers"></td>
+    <td><img src="design/screens/2026-11-19-today-place-name-390-he.png" width="240" alt="Today screen on a weekday: a T-shirt, a sweatshirt layer, trousers and sneakers for 13-21°C, no rain"></td>
     <td><img src="design/screens/2026-11-19-wardrobe-shabbat-390-he.png" width="240" alt="Wardrobe screen: garments grouped by category, filtered for Shabbat"></td>
   </tr>
   <tr>
     <td align="center">Today: a rainy 4-17°C Friday, with the Hebrew date and candle-lighting times</td>
-    <td align="center">The same Friday, Shabbat tab: a dressier outfit for that day's forecast</td>
+    <td align="center">An ordinary weekday, 13-21°C and dry, logged as worn</td>
     <td align="center">Wardrobe: cutouts grouped by category, colour and occasion filters</td>
   </tr>
 </table>
