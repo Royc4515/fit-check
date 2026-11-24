@@ -6,6 +6,7 @@
     "@supabase/supabase-js": "npm:@supabase/supabase-js@2.119.0",
     "@anthropic-ai/sdk": "npm:@anthropic-ai/sdk@1.6.0",
     "@fit-check/schema/": "../../packages/schema/src/",
-    "jose": "npm:jose@5.9.6"
+    "jose": "npm:jose@5.9.6",
+    "aws4fetch": "npm:aws4fetch@1.0.20"
   }
 }

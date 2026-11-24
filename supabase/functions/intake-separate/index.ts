@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient, authenticate } from "../_shared/auth.ts";
+import { GARMENT_BUCKET, garmentStore } from "../_shared/objects.ts";
 import { IntakeSeparateInputSchema } from "@fit-check/schema/intake.ts";
 import { buildRedrawPrompt, redrawPrompt, type RedrawSpec } from "@fit-check/schema/redraw-spec.ts";
 import { detectGarments, ENHANCE_PRICE_USD, enhanceGarment } from "../_shared/ai/gemini.ts";
@@ -116,7 +117,9 @@ async function enhance(supabase: SupabaseClient, userId: string, cutoutPath: str
   const spent = await monthlyGoogleSpend();
   if (spent === null || spent >= MONTHLY_GOOGLE_BUDGET_USD) return json(200, { ok: false, reason: "monthly_limit" });
 
-  const bytes = await download(supabase, "cutouts", cutoutPath);
+  // The crop is the app's own upload (Supabase) or an existing garment's image (R2); the store reads either.
+  const store = garmentStore(supabase.storage.from(GARMENT_BUCKET));
+  const bytes = await store.read(cutoutPath);
   if (!bytes) return json(400, { ok: false, reason: "not_found" });
 
   const prompt = typeof garment === "string" ? redrawPrompt(garment) : buildRedrawPrompt(garment);
@@ -137,7 +140,6 @@ async function enhance(supabase: SupabaseClient, userId: string, cutoutPath: str
 
   // A new name per redraw: an item can be redrawn again later from the item page, and each result is kept.
   const out = cutoutPath.replace(/\.[^.]+$/, `-enhanced-${Date.now()}.png`);
-  const upload = await supabase.storage.from("cutouts").upload(out, clear ?? result.png, { contentType: "image/png", upsert: false, cacheControl: "31536000" });
-  if (upload.error) return json(200, { ok: false, reason: "ai_failed" });
-  return json(200, { ok: true, path: out, url: supabase.storage.from("cutouts").getPublicUrl(out).data.publicUrl, transparent: clear !== null });
+  if (!(await store.write(out, clear ?? result.png, "image/png"))) return json(200, { ok: false, reason: "ai_failed" });
+  return json(200, { ok: true, path: out, url: store.publicUrl(out), transparent: clear !== null });
 }
