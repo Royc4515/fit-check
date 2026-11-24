@@ -16,7 +16,7 @@ import {
   type PairWeights,
 } from "../_shared/engine.js";
 import { planDay } from "@fit-check/schema/day-context.ts";
-import type { ToolContext, ToolResult } from "./tools.ts";
+import { publicUrl, type ToolContext, type ToolResult } from "./tools.ts";
 import { loadObservesShabbat, loadOccasionRows } from "./context.ts";
 import { israelDate } from "./time.ts";
 
@@ -124,8 +124,6 @@ async function loadHistory(ctx: ToolContext, date: string) {
   return { recent, answeredToday };
 }
 
-const publicUrl = (ctx: ToolContext, path: string | null) =>
-  path ? `${ctx.supabaseUrl}/storage/v1/object/public/cutouts/${path.split("/").map(encodeURIComponent).join("/")}` : null;
 
 export async function outfitToday(args: unknown, ctx: ToolContext): Promise<ToolResult> {
   const input = TodayInput.parse(args ?? {});

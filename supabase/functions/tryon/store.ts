@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { SLOTS } from "@fit-check/schema/stylist.ts";
+import { GARMENT_BUCKET, garmentStore } from "../_shared/objects.ts";
 
 /**
  * Where try-on images live. The existing private `originals` bucket under a `tryon/` prefix: no new bucket and no
@@ -13,8 +14,8 @@ import { SLOTS } from "@fit-check/schema/stylist.ts";
  * Changing the bucket is this one line.
  */
 export const TRYON_BUCKET = "originals";
-/** Garment images (items.cutout_path) are in the public `cutouts` bucket, read here with the service role. */
-export const GARMENT_BUCKET = "cutouts";
+// Garment images (items.cutout_path) are read through _shared/objects.ts: R2 first, then the `cutouts` bucket.
+export { GARMENT_BUCKET };
 
 /** The `items` columns the function reads; validated, because the untyped client returns rows of unknown shape. */
 export const TryonItemRowSchema = z.object({
@@ -64,6 +65,7 @@ export function supabaseStore(db: SupabaseClient): TryonStore {
     }
     return new Uint8Array(await data.arrayBuffer());
   };
+  const garments = garmentStore(db.storage.from(GARMENT_BUCKET));
   return {
     async readItems(userId, ids) {
       const { data, error } = await db.from("items").select(ITEM_COLUMNS).eq("user_id", userId).in("id", [...ids]);
@@ -74,7 +76,7 @@ export function supabaseStore(db: SupabaseClient): TryonStore {
       const rows = z.array(TryonItemRowSchema).safeParse(data ?? []);
       return rows.success ? rows.data : null;
     },
-    readGarmentImage: (path) => download(GARMENT_BUCKET, path),
+    readGarmentImage: (path) => garments.read(path),
     async exists(path) {
       const slash = path.lastIndexOf("/");
       const dir = path.slice(0, slash);
