@@ -7,6 +7,27 @@
 - `ItemArt.tsx`: `useCutoutSource` (address + `onError`) used by `Tile`, `FlatLay`, `ItemArt` and `ItemView`; `cutoutSources` for non-hook callers. `PhotoTile` takes `fallbackUri` and the duplicate card in `GarmentReview` passes it.
 - Look at: a garment added after the move on the wardrobe grid and the item screen, with `EXPO_PUBLIC_R2_PUBLIC_URL` set.
 
+## 2026-11-24 (AI layer README matches the code)
+
+- Why: `supabase/functions/_shared/ai/README.md` still said "Not written yet" for files that have run in production since 2026-11-08, and named Gemini 2.5 Flash Image, which is no longer used.
+- The README is now a table of every file, its exports, the model id in the code, and the function that calls it, plus what is not built (`extractReceipt`, `/embed`) and the rules. Checked against the code on 2026-11-24.
+- Docs only; no code changed.
+- Look at: `supabase/functions/_shared/ai/README.md`.
+
+## 2026-11-24 (README for a first-time reader)
+
+- Why: the README was 15 lines that pointed at the spec files. A reader (or a code-reviewing agent) could not tell what the app does, how it is built or what state it is in.
+- `README.md`: what it does, three screenshots from `design/screens/` (a rainy Friday, an ordinary weekday, the wardrobe; each outfit matches the forecast printed above it), an architecture diagram (Mermaid) and table, the design decisions with the files that hold them, the cached-egress incident of 2026-11-22, an honest status (built vs stubs: `generate-daily`, `precheck`, embeddings), how to run and test, how the repo is worked on with Claude Code.
+- Every claim was checked against the code on 2026-11-24 (17 MCP tools in `mcp/tools.ts`, model ids in `_shared/ai/`, stubs returning 501).
+- Look at: `README.md` on GitHub (the Mermaid diagram and the screenshot table render only there).
+
+## 2026-11-24 (Docs moved under docs/)
+
+- Why: the repo root held about 350 KB of working documents (CHANGELOG, DESIGN, PRD, TASKS, KICKOFF_PROMPT), so a reader landing on the repo saw notes before code.
+- `PRD.md`, `DESIGN.md`, `TASKS.md`, `CHANGELOG.md` and `KICKOFF_PROMPT.md` moved to `docs/` with `git mv` (history kept). `CLAUDE.md` stays at the root, where Claude Code reads it; its paths and the repo layout now point to `docs/`. `README.md` links updated.
+- Nothing reads these files by path (no script, test or config), so no code changed. Code comments that name "DESIGN.md section N" still name the same document.
+- Look at: `CLAUDE.md` (layout block, Design rules, Workflow 2 and 4).
+
 ## 2026-11-22 (Cached Egress fixes and Cloudflare R2 read support)
 
 - Why: the `cutouts` bucket burned through 42.77 GB of Supabase Cached Egress on the Free tier due to missing 1-year `cacheControl` headers on uploads (defaulting to 3600 s), missing `cachePolicy="memory-disk"` on `ItemArt` and `PhotoTile`, full cutouts loaded in wardrobe grid tiles instead of `thumb_path`, unthrottled focus reloads and up-to-100 simultaneous thumbnails in `PendingQueue`, and short 10-minute signed URLs in `tryon`.
