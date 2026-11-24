@@ -2,13 +2,14 @@ import { IntakeCutoutInputSchema } from "@fit-check/schema/intake.ts";
 import { adminClient, authenticate } from "../_shared/auth.ts";
 import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
 import { cutout } from "../_shared/ai/modal.ts";
+import { GARMENT_BUCKET, garmentStore } from "../_shared/objects.ts";
 
 /**
  * intake-cutout: removes the background of one cropped garment (PRD section 4, step 3).
  *
  * Input (POST JSON, IntakeCutoutInputSchema): `cutout_path` of a crop the app uploaded to `cutouts/{uid}/...`.
  * Sends it to the Modal worker (BiRefNet) and stores `<crop>-cutout.png` (transparent, trimmed) and
- * `<crop>-thumb.png` (400 px) next to it. Cost is Modal GPU seconds against the free monthly credit.
+ * `<crop>-thumb.png` (400 px) next to it, in R2 when it is configured (see _shared/objects.ts). Cost is Modal GPU seconds against the free monthly credit.
  *
  * Responses: 200 { ok: true, path, url, thumb_path } | 200 { ok: false, reason } with reason "not_configured"
  * (worker not deployed yet; the app keeps the crop) or "ai_failed" | 400 bad_input / not_found | 401 | 429.
@@ -57,10 +58,9 @@ Deno.serve(async (req) => {
   if (used === null || used >= DAILY_CUTOUT_LIMIT) return json(429, { ok: false, reason: "daily_limit" });
 
   // Service role (see _shared/auth.ts); ownPath() above keeps reads and writes in this user's folder.
-  const supabase = adminClient();
-  const { data, error } = await supabase.storage.from("cutouts").download(path);
-  if (error || !data) return json(400, { ok: false, reason: "not_found" });
-  const bytes = new Uint8Array(await data.arrayBuffer());
+  const store = garmentStore(adminClient().storage.from(GARMENT_BUCKET));
+  const bytes = await store.read(path);
+  if (!bytes) return json(400, { ok: false, reason: "not_found" });
   if (bytes.length > MAX_BYTES) return json(413, { ok: false, reason: "too_large" });
 
   // A redraw shows one garment on white; SAM would only add time (and a small risk of trimming it).
@@ -76,14 +76,8 @@ Deno.serve(async (req) => {
   const stem = path.replace(/\.[^.]+$/, "");
   const outPath = `${stem}-cutout.png`;
   const thumbPath = `${stem}-thumb.png`;
-  // upsert: re-running the same crop (a retry after a timeout) replaces its cutout instead of failing.
-  const [a, b] = await Promise.all([
-    supabase.storage.from("cutouts").upload(outPath, result.cutout, { contentType: "image/png", upsert: true, cacheControl: "31536000" }),
-    supabase.storage.from("cutouts").upload(thumbPath, result.thumb, { contentType: "image/png", upsert: true, cacheControl: "31536000" }),
-  ]);
-  if (a.error || b.error) {
-    console.error("cutout upload failed", a.error?.message ?? b.error?.message);
-    return json(200, { ok: false, reason: "ai_failed" });
-  }
-  return json(200, { ok: true, path: outPath, thumb_path: thumbPath, url: supabase.storage.from("cutouts").getPublicUrl(outPath).data.publicUrl });
+  // A write replaces an existing key, so re-running the same crop (a retry after a timeout) replaces its cutout.
+  const [a, b] = await Promise.all([store.write(outPath, result.cutout, "image/png"), store.write(thumbPath, result.thumb, "image/png")]);
+  if (!a || !b) return json(200, { ok: false, reason: "ai_failed" });
+  return json(200, { ok: true, path: outPath, thumb_path: thumbPath, url: store.publicUrl(outPath) });
 });

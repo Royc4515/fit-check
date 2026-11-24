@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-24 (Edge Functions store garment images in R2)
+
+- Why: the app reads garment images from R2 since 2026-11-22, but the functions still wrote every new cutout, thumb, redraw and separated garment to Supabase Storage, and read garment images only from there. New images kept costing Supabase egress (and a second overrun restricts the project with no grace period), and try-on, redraw, re-cut and Claude's item images failed for the restored items whose files exist only in R2.
+- `supabase/functions/_shared/objects.ts` (`garmentStore`, `r2ConfigFromEnv`), tested in `objects_test.ts` (7 Deno tests): R2 over its S3 API with `aws4fetch` (added to `deno.json`), immutable one-year cache; reads fall back to the Supabase `cutouts` bucket; a failed R2 write lands in Supabase; without all five `R2_*` function secrets it is Supabase alone.
+- Callers: `intake-cutout`, `intake-separate` (enhance), `intake-tag`, `tryon/store.ts`, `mcp/tools.ts` (`garmentsOf`, `publicUrl`), `mcp/outfit.ts`, `mcp/photos.ts`. The pending queue, `originals` and try-on images stay in Supabase.
+- Spec: `CLAUDE.md` Stack and `docs/PRD.md` (intake step 3, Storage) now say where garment images live.
+- Look at: after the `R2_*` secrets are set, add a garment and check its cutout appears in the R2 bucket, not in Supabase Storage.
+
 ## 2026-11-24 (Signed-out visitors land on sign-in, not the privacy policy)
 
 - Why: after the privacy page shipped, a signed-out visit to `/` or `/wardrobe` on the live site landed on `/privacy`. When a `Stack.Protected` guard fails, Expo Router falls back to the first unguarded screen in its sort order, and `privacy` sorts before `sign-in`.
