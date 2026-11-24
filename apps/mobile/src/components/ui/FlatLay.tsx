@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type ComponentProps, type ComponentRe
 import { Pressable, Text, View, type LayoutChangeEvent } from "react-native";
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
-import { cutoutUrl, ItemArt } from "../item-art/ItemArt";
+import { ItemArt, useCutoutSource } from "../item-art/ItemArt";
 import { tileTone } from "../../theme/tileTone";
 import { colors, motion } from "../../theme/tokens";
 import { Icon } from "./Icon";
@@ -399,11 +399,13 @@ function contentPosition(place: FlatLayPlacement, rtl: boolean): ImageContentPos
 
 function GarmentImage({ item, place, onAspect }: { item: TileItem; place: FlatLayPlacement; onAspect?: (id: string, aspect: number) => void }) {
   const rtl = useRtl();
-  if (!item.cutout_path) return <ItemArt tags={item.tags} />;
+  const source = useCutoutSource(item.cutout_path);
+  if (!source.uri) return <ItemArt tags={item.tags} />;
   return (
     <Image
       // don't touch / the full cutout, not a thumbnail: the hero is up to 560 wide at 2-3x density.
-      source={{ uri: cutoutUrl(item.cutout_path) }}
+      source={{ uri: source.uri }}
+      onError={source.onError}
       contentFit="contain"
       contentPosition={contentPosition(place, rtl)}
       cachePolicy="memory-disk"
