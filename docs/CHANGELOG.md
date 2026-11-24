@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-24 (Signed-out visitors land on sign-in, not the privacy policy)
+
+- Why: after the privacy page shipped, a signed-out visit to `/` or `/wardrobe` on the live site landed on `/privacy`. When a `Stack.Protected` guard fails, Expo Router falls back to the first unguarded screen in its sort order, and `privacy` sorts before `sign-in`.
+- `app/_layout.tsx`: both guards name their target (`redirectTo="/sign-in"` for the signed-in screens, `redirectTo="/"` for sign-in), so adding another public screen can never change where a guard sends people.
+- Look at: signed out, open `/`, `/wardrobe` and `/item/<id>` (all go to sign-in) and `/privacy` (stays).
+
 ## 2026-11-24 (Public privacy policy page)
 
 - Why: Google Auth Platform does not publish an External app without a working privacy policy link in Branding, and an unpublished app lets only listed test users sign in.
