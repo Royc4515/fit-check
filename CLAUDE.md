@@ -1,6 +1,6 @@
 # CLAUDE.md - Fit Check
 
-Personal wardrobe and styling app for Roy. Single user now, multi-user-ready schema. Read `PRD.md` for scope and data model, `DESIGN.md` for everything visual. Both are the spec; this file is how we work.
+Personal wardrobe and styling app for Roy. Single user now, multi-user-ready schema. Read `docs/PRD.md` for scope and data model, `docs/DESIGN.md` for everything visual. Both are the spec; this file is how we work.
 
 ## Stack
 
@@ -26,6 +26,7 @@ supabase/migrations/  SQL, one file per change, never edited after merge
 supabase/functions/   Edge Functions: intake-separate, intake-cutout, intake-tag, generate-daily, precheck, import-sheet
 worker/               Modal app (Python): cutout + embed
 design/screens/       dated screenshots of every screen
+docs/                 the spec (PRD.md, DESIGN.md), live status (TASKS.md), CHANGELOG.md, plans and checklists
 scripts/              one-off tools (sheet import CSV, seed)
 ```
 
@@ -61,9 +62,9 @@ pnpm build:android    # eas build --platform android --profile preview (APK)
 
 ## Design rules
 
-- `DESIGN.md` section 1 ("אסור") is a hard constraint. Before committing a screen, re-read it.
+- `docs/DESIGN.md` section 1 ("אסור") is a hard constraint. Before committing a screen, re-read it.
 - Build and get approval on the "Today" screen before any other screen.
-- The redesign follows `docs/REDESIGN_PLAN.md`; live status is in `TASKS.md`.
+- The redesign follows `docs/REDESIGN_PLAN.md`; live status is in `docs/TASKS.md`.
 - Animations: Reanimated shared values only; no React state on the animation path. Load the `animate-expo` skill before animation work and `hebrew-rtl-best-practices` before layout work.
 - Save a screenshot of every new or changed screen to `design/screens/YYYY-MM-DD-<screen>.png`.
 
@@ -71,12 +72,12 @@ pnpm build:android    # eas build --platform android --profile preview (APK)
 
 1. Before writing code for a feature: read the relevant PRD section, state the plan in 5-10 lines, list the files you will touch. Wait for a go only when the plan changes schema or spends money (AI calls in a loop, new provider).
 2. Small commits with imperative messages. No force-push to main.
-   - One thing per push and per merge (Roy, 2026-11-19: "every push and merge is one specific, isolated thing, not many scattered things"). A pull request holds one feature, one fix or one rule, with its own spec edit, tests, `TASKS.md` row and `CHANGELOG.md` entry, and nothing else. A note about something unrelated goes in its own pull request.
+   - One thing per push and per merge (Roy, 2026-11-19: "every push and merge is one specific, isolated thing, not many scattered things"). A pull request holds one feature, one fix or one rule, with its own spec edit, tests, `docs/TASKS.md` row and `docs/CHANGELOG.md` entry, and nothing else. A note about something unrelated goes in its own pull request.
    - Branches are named `claude/<topic>` (Roy allowed topic branches the same day), one per thing, cut from `main`. When one thing needs another that is not merged yet, its branch is cut from that other branch and its pull request is based on it, so each pull request still shows only its own change; they merge in order.
    - Each pull request is checked on its own before it merges: lint, typecheck and tests on that branch, and the independent check for anything a user can see.
 3. Tests before the Edge Function wiring: engine logic is tested with fixtures in `packages/engine/__fixtures__/wardrobe.json` (an anonymized export of the real wardrobe).
-4. After finishing a task, append a short entry to `CHANGELOG.md`: date, what changed, what to look at.
-5. If something in PRD.md or DESIGN.md turns out wrong while building, say so and propose the edit; do not silently diverge.
+4. After finishing a task, append a short entry to `docs/CHANGELOG.md`: date, what changed, what to look at.
+5. If something in `docs/PRD.md` or `docs/DESIGN.md` turns out wrong while building, say so and propose the edit; do not silently diverge.
 
 ## Do not
 

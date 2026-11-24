@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-24 (Docs moved under docs/)
+
+- Why: the repo root held about 350 KB of working documents (CHANGELOG, DESIGN, PRD, TASKS, KICKOFF_PROMPT), so a reader landing on the repo saw notes before code.
+- `PRD.md`, `DESIGN.md`, `TASKS.md`, `CHANGELOG.md` and `KICKOFF_PROMPT.md` moved to `docs/` with `git mv` (history kept). `CLAUDE.md` stays at the root, where Claude Code reads it; its paths and the repo layout now point to `docs/`. `README.md` links updated.
+- Nothing reads these files by path (no script, test or config), so no code changed. Code comments that name "DESIGN.md section N" still name the same document.
+- Look at: `CLAUDE.md` (layout block, Design rules, Workflow 2 and 4).
+
 ## 2026-11-22 (Cached Egress fixes and Cloudflare R2 read support)
 
 - Why: the `cutouts` bucket burned through 42.77 GB of Supabase Cached Egress on the Free tier due to missing 1-year `cacheControl` headers on uploads (defaulting to 3600 s), missing `cachePolicy="memory-disk"` on `ItemArt` and `PhotoTile`, full cutouts loaded in wardrobe grid tiles instead of `thumb_path`, unthrottled focus reloads and up-to-100 simultaneous thumbnails in `PendingQueue`, and short 10-minute signed URLs in `tryon`.
