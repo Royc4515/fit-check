@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-24 (Garment images fall back to Supabase when R2 does not have them)
+
+- Why: the Supabase project is restricted for cached egress, and Roy chose a new free project to get the app working today. The images that existed on 2026-11-22 are in R2 (`fit-check-cutouts`, same keys), but uploads still go to Supabase Storage, so with `EXPO_PUBLIC_R2_PUBLIC_URL` set a garment added after the move would show nothing.
+- `components/item-art/cutoutSource.ts` (pure, tested): `cutoutUrls` gives R2 as the primary address and Supabase as the fallback; `shownUri` picks the fallback once the primary failed, keyed by address so recycled tiles reset by themselves.
+- `ItemArt.tsx`: `useCutoutSource` (address + `onError`) used by `Tile`, `FlatLay`, `ItemArt` and `ItemView`; `cutoutSources` for non-hook callers. `PhotoTile` takes `fallbackUri` and the duplicate card in `GarmentReview` passes it.
+- Look at: a garment added after the move on the wardrobe grid and the item screen, with `EXPO_PUBLIC_R2_PUBLIC_URL` set.
+
 ## 2026-11-24 (AI layer README matches the code)
 
 - Why: `supabase/functions/_shared/ai/README.md` still said "Not written yet" for files that have run in production since 2026-11-08, and named Gemini 2.5 Flash Image, which is no longer used.

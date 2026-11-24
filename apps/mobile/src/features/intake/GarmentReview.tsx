@@ -13,7 +13,7 @@ import type { TFunction } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TextInput, View } from "react-native";
-import { cutoutUrl } from "../../components/item-art/ItemArt";
+import { cutoutSources } from "../../components/item-art/ItemArt";
 import { Button, Meta, PhotoTile, Skeleton, StatusLine } from "../../components/ui";
 import { tileTone } from "../../theme/tileTone";
 import { RedrawComposer } from "../redraw/RedrawComposer";
@@ -151,16 +151,17 @@ export function GarmentReview({
 
   // Asked before anything else: reviewing tags for a garment that is already in the wardrobe is wasted effort.
   if (g.duplicate && !g.saved) {
+    const existing = cutoutSources(g.duplicate.image_path);
     return (
       <View>
         <StatusLine variant="info" message={t("intake.duplicate.title", { name: g.duplicate.name })} />
         <View className="mt-3 flex-row" style={{ gap: 12 }}>
           {[
-            { uri: g.url, label: t("intake.duplicate.new") },
-            { uri: cutoutUrl(g.duplicate.image_path), label: t("intake.duplicate.existing") },
+            { uri: g.url, fallback: null, label: t("intake.duplicate.new") },
+            { uri: existing.primary, fallback: existing.fallback, label: t("intake.duplicate.existing") },
           ].map((side) => (
             <View key={side.label} style={{ flex: 1, maxWidth: 160 }}>
-              <PhotoTile uri={side.uri} tone={tone} size="grid" aspect={IMAGE_ASPECT} accessibilityLabel={side.label} />
+              <PhotoTile uri={side.uri} fallbackUri={side.fallback} tone={tone} size="grid" aspect={IMAGE_ASPECT} accessibilityLabel={side.label} />
               <Meta className="mt-2">{side.label}</Meta>
             </View>
           ))}
