@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-24 (README for a first-time reader)
+
+- Why: the README was 15 lines that pointed at the spec files. A reader (or a code-reviewing agent) could not tell what the app does, how it is built or what state it is in.
+- `README.md`: what it does, three screenshots from `design/screens/` (a rainy Friday, an ordinary weekday, the wardrobe; each outfit matches the forecast printed above it), an architecture diagram (Mermaid) and table, the design decisions with the files that hold them, the cached-egress incident of 2026-11-22, an honest status (built vs stubs: `generate-daily`, `precheck`, embeddings), how to run and test, how the repo is worked on with Claude Code.
+- Every claim was checked against the code on 2026-11-24 (17 MCP tools in `mcp/tools.ts`, model ids in `_shared/ai/`, stubs returning 501).
+- Look at: `README.md` on GitHub (the Mermaid diagram and the screenshot table render only there).
+
 ## 2026-11-24 (Docs moved under docs/)
 
 - Why: the repo root held about 350 KB of working documents (CHANGELOG, DESIGN, PRD, TASKS, KICKOFF_PROMPT), so a reader landing on the repo saw notes before code.
