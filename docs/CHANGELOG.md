@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-24 (Public privacy policy page)
+
+- Why: Google Auth Platform does not publish an External app without a working privacy policy link in Branding, and an unpublished app lets only listed test users sign in.
+- `app/privacy.tsx`: the policy at `/privacy`, outside both route guards (signed-out visitors and Google's reviewers reach it). Text in `locales/{he,en}.json` under `privacy.*`: what is kept, Google Limited Use, each provider and its job, location stays on the device, deletion within 30 days by email, cutout photos are public by unguessable address. Contact: Roy Carmelli, his Gmail. Every paragraph has an explicit writing direction (a Hebrew paragraph opening with "Fit Check" was laid out left to right).
+- `app/sign-in.tsx`: a "מדיניות פרטיות" link under the Google button (web: `/privacy`; native: the app's own scheme).
+- Look at: `design/screens/2026-11-24-privacy-*.png`, `2026-11-24-sign-in-390-he.png`.
+
 ## 2026-11-24 (Garment images fall back to Supabase when R2 does not have them)
 
 - Why: the Supabase project is restricted for cached egress, and Roy chose a new free project to get the app working today. The images that existed on 2026-11-22 are in R2 (`fit-check-cutouts`, same keys), but uploads still go to Supabase Storage, so with `EXPO_PUBLIC_R2_PUBLIC_URL` set a garment added after the move would show nothing.

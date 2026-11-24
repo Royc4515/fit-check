@@ -1,13 +1,18 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, Text, View } from "react-native";
+import { createURL } from "expo-linking";
+import { Platform, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Monogram } from "../components/brand/Monogram";
 import { StillLife } from "../components/brand/StillLife";
-import { Button, Display, StatusLine } from "../components/ui";
+import { Button, Display, MetaLink, StatusLine } from "../components/ui";
 import { useDayContext } from "../data/useDayContext";
 import { signInWithGoogle } from "../features/auth/signIn";
 import { layout } from "../theme/tokens";
+
+// don't touch / web needs a path (MetaLink renders an anchor); native needs the app's own scheme, because
+// Linking.openURL cannot open a bare path and an https address would leave the app for the browser.
+const PRIVACY_HREF = Platform.OS === "web" ? "/privacy" : createURL("privacy");
 
 /**
  * Sign-in, laid out as a magazine cover (DESIGN.md section 8, Kinfolk): the app name is the one serif moment, the
@@ -73,6 +78,10 @@ export default function SignIn() {
         <Text className="mb-3 font-body text-body-sm text-ink-soft">{t("auth.prompt")}</Text>
         {failed ? <StatusLine variant="error" message={t("auth.failed")} /> : null}
         <Button variant="primary" fullWidth label={t("auth.google")} onPress={() => void onPress()} disabled={busy} />
+        {/* Google asks that the page a user signs in from links to the privacy policy. */}
+        <View className="mt-2">
+          <MetaLink label={t("privacy.link")} href={PRIVACY_HREF} />
+        </View>
       </View>
     </ScrollView>
   );
