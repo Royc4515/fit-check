@@ -140,6 +140,12 @@ Deploy order: the lead first held the `mcp` function back until the app's manual
 
 New open minor from the recheck: when the two tabs have a different number of status lines, the hero's top shifts at once and its bottom edge snaps when the fade ends. Yom Kippur: the only non-leather shoe in the wardrobe is tagged `unknown`; tightening the rule (round A) will leave Yom Kippur without shoes until that shoe's material is tagged.
 
+## Repo housekeeping (2026-11-24)
+
+| # | Task | Model | Status | Result |
+| --- | --- | --- | --- | --- |
+| R1 | Move working docs from the root to `docs/` | lead | review | `git mv` of PRD, DESIGN, TASKS, CHANGELOG, KICKOFF_PROMPT; CLAUDE.md and README paths updated |
+
 ## Money rule (Roy, 2026-11-19)
 
 "I want everything to be free or covered by the credits that come with my subscriptions every month." Written into CLAUDE.md and PRD section 9. Google's monthly credit is 10 USD (Google AI Pro; confirmed on Google's pages 2026-11-19), so `MONTHLY_GOOGLE_BUDGET_USD` = 8 stays. Open: a spend cap on Google's side (none is set; suggested 35 NIS); there is no monthly cap in code for Anthropic, only daily call caps and the 5 USD limit Roy set in the console; five old functions (`env-check`, `tag-compare`, `image-put`, `cutout-backfill`, `redraw-five`) are still listed in the project, but the lead read their deployed source on 2026-11-19 and every one is already a two-line stub that answers 410, retired between 2026-11-09 and 2026-11-18. Nothing runs in them and nothing is exposed; the earlier note here that three of them were "without the gateway's JWT check" was true of the setting and wrong about the risk. Roy approved deleting them (2026-11-19); there is no tool for that from here, so it is a dashboard clean-up whenever he likes. Google's spend cap: Roy sets 30 NIS.
