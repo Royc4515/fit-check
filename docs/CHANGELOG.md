@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-24 (AI layer README matches the code)
+
+- Why: `supabase/functions/_shared/ai/README.md` still said "Not written yet" for files that have run in production since 2026-11-08, and named Gemini 2.5 Flash Image, which is no longer used.
+- The README is now a table of every file, its exports, the model id in the code, and the function that calls it, plus what is not built (`extractReceipt`, `/embed`) and the rules. Checked against the code on 2026-11-24.
+- Docs only; no code changed.
+- Look at: `supabase/functions/_shared/ai/README.md`.
+
 ## 2026-11-24 (README for a first-time reader)
 
 - Why: the README was 15 lines that pointed at the spec files. A reader (or a code-reviewing agent) could not tell what the app does, how it is built or what state it is in.
