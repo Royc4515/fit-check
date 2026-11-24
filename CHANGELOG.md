@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-24 (Garment images fall back to Supabase when R2 does not have them)
+
+- Why: the Supabase project is restricted for cached egress, and Roy chose a new free project to get the app working today. The images that existed on 2026-11-22 are in R2 (`fit-check-cutouts`, same keys), but uploads still go to Supabase Storage, so with `EXPO_PUBLIC_R2_PUBLIC_URL` set a garment added after the move would show nothing.
+- `components/item-art/cutoutSource.ts` (pure, tested): `cutoutUrls` gives R2 as the primary address and Supabase as the fallback; `shownUri` picks the fallback once the primary failed, keyed by address so recycled tiles reset by themselves.
+- `ItemArt.tsx`: `useCutoutSource` (address + `onError`) used by `Tile`, `FlatLay`, `ItemArt` and `ItemView`; `cutoutSources` for non-hook callers. `PhotoTile` takes `fallbackUri` and the duplicate card in `GarmentReview` passes it.
+- Look at: a garment added after the move on the wardrobe grid and the item screen, with `EXPO_PUBLIC_R2_PUBLIC_URL` set.
+
 ## 2026-11-22 (Cached Egress fixes and Cloudflare R2 read support)
 
 - Why: the `cutouts` bucket burned through 42.77 GB of Supabase Cached Egress on the Free tier due to missing 1-year `cacheControl` headers on uploads (defaulting to 3600 s), missing `cachePolicy="memory-disk"` on `ItemArt` and `PhotoTile`, full cutouts loaded in wardrobe grid tiles instead of `thumb_path`, unthrottled focus reloads and up-to-100 simultaneous thumbnails in `PendingQueue`, and short 10-minute signed URLs in `tryon`.
