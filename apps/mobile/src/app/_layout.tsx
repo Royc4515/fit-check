@@ -111,6 +111,8 @@ function Routes() {
       </Stack.Protected>
       {/* Outside both guards: Supabase's OAuth server sends signed-in and signed-out browsers here alike. */}
       <Stack.Screen name="oauth/consent" />
+      {/* Outside both guards: Google's consent screen links here, for signed-out visitors and Google's reviewers. */}
+      <Stack.Screen name="privacy" />
     </Stack>
   );
 
