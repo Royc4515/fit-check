@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { MAX_REFERRALS, REFERRAL_BONUS } from "@fit-check/schema/referral.ts";
 import { monthStart } from "./ai/cloudflare.ts";
 
 /**
@@ -34,12 +35,14 @@ export function ownerIdFromEnv(get: (name: string) => string | undefined = (n) =
  * @param userId the caller
  * @param ownerId OWNER_USER_ID, or null when unset (then nobody is limited)
  * @param grant Roy's grant for this user, or null for the defaults
+ * @param referrals users this one brought in (the `referrals` table); only the first MAX_REFERRALS add a bonus
  */
-export function allowanceFor(userId: string, ownerId: string | null, grant: Grant | null): Allowance {
+export function allowanceFor(userId: string, ownerId: string | null, grant: Grant | null, referrals = 0): Allowance {
   if (ownerId === null || userId === ownerId) return null;
+  const counted = Math.min(MAX_REFERRALS, Math.max(0, Math.floor(referrals)));
   return {
-    usd: round(DEFAULT_MONTHLY_USD + Math.max(0, grant?.extra_usd ?? 0)),
-    cutouts: DEFAULT_MONTHLY_CUTOUTS + Math.max(0, Math.floor(grant?.extra_cutouts ?? 0)),
+    usd: round(DEFAULT_MONTHLY_USD + Math.max(0, grant?.extra_usd ?? 0) + counted * REFERRAL_BONUS.usd),
+    cutouts: DEFAULT_MONTHLY_CUTOUTS + Math.max(0, Math.floor(grant?.extra_cutouts ?? 0)) + counted * REFERRAL_BONUS.cutouts,
   };
 }
 
@@ -72,6 +75,8 @@ export type QuotaDeps = {
   grant: (userId: string) => Promise<Grant | null>;
   /** This user's spend and successful background removals since `since`; null when they cannot be read. */
   usage: (userId: string, since: Date) => Promise<Usage | null>;
+  /** How many users this one referred; 0 when it cannot be read (a bonus is never assumed). */
+  referrals: (userId: string) => Promise<number>;
 };
 
 function serviceClient() {
@@ -106,6 +111,13 @@ const liveDeps: QuotaDeps = {
     }
     return { usd, cutouts };
   },
+  async referrals(userId) {
+    const db = serviceClient();
+    if (!db) return 0;
+    const { count, error } = await db.from("referrals").select("user_id", { count: "exact", head: true }).eq("referrer_id", userId);
+    if (error) console.error("referrals read failed", error.message);
+    return error ? 0 : count ?? 0;
+  },
 };
 
 /** A user's allowance and this month's usage, as the checks and the usage screen read them. */
@@ -126,7 +138,8 @@ export async function quotaState(userId: string, now: Date = new Date(), deps: Q
   } catch (error) {
     console.error("grant read failed", error instanceof Error ? error.message : String(error));
   }
-  return { owner, allowance: allowanceFor(userId, ownerId, grant), usage: await deps.usage(userId, monthStart(now)) };
+  const [usage, referrals] = await Promise.all([deps.usage(userId, monthStart(now)), deps.referrals(userId)]);
+  return { owner, allowance: allowanceFor(userId, ownerId, grant, referrals), usage };
 }
 
 /**
