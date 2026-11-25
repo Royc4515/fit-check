@@ -24,7 +24,7 @@ apps/mobile/          Expo app (also builds web)
 packages/schema/      zod schemas shared by app and Edge Functions (item tags, stylist I/O, context rules)
 packages/engine/      pure TypeScript: filters, scoring, candidate generation. No I/O. 100% unit-tested.
 supabase/migrations/  SQL, one file per change, never edited after merge
-supabase/functions/   Edge Functions: intake-separate, intake-cutout, intake-tag, generate-daily, precheck, import-sheet
+supabase/functions/   Edge Functions: intake-separate, intake-cutout, intake-tag, style-outfit, tryon, mcp, design-preview, import-sheet; generate-daily and precheck are stubs
 worker/               Modal app (Python): cutout + embed
 design/screens/       dated screenshots of every screen
 docs/                 the spec (PRD.md, DESIGN.md), live status (TASKS.md), CHANGELOG.md, plans and checklists
@@ -35,7 +35,8 @@ scripts/              one-off tools (sheet import CSV, seed)
 
 ```
 pnpm dev              # expo start (mobile + web)
-pnpm test             # vitest for packages/*, deno test for functions
+pnpm test             # vitest for packages/*, apps/mobile and scripts
+pnpm test:functions   # deno test for supabase/functions (needs Deno 2)
 pnpm lint             # eslint + tsc --noEmit
 pnpm db:push          # supabase db push (migrations)
 pnpm db:types         # regenerate Supabase types into packages/schema
