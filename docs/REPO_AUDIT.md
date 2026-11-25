@@ -25,7 +25,7 @@ flowchart LR
   R2[("Cloudflare R2<br/>garment cutouts")]
   Gemini["Gemini<br/>garment detection"]
   Anthropic["Claude Haiku / Sonnet<br/>tagging, stylist"]
-  Worker["Modal worker (Python)<br/>BiRefNet + SAM 2.1, FashionCLIP"]
+  Worker["Modal worker (Python)<br/>BiRefNet + SAM 2.1"]
 
   App --> Engine
   App --> Schema
@@ -57,7 +57,7 @@ flowchart LR
 | Tests | vitest 2 (packages, app), Deno 2 test (Edge Functions) |
 | Backend | Supabase (Postgres 17, Auth with Google, Storage, Edge Functions in Deno), 7 forward-only migrations |
 | Images | Cloudflare R2 bucket `fit-check-cutouts` |
-| Worker | Python on Modal (`worker/app.py`), rembg BiRefNet, SAM 2.1 small, FashionCLIP |
+| Worker | Python on Modal (`worker/app.py`), rembg BiRefNet, SAM 2.1 small (the FashionCLIP `/embed` endpoint was removed in PR #60) |
 | Web hosting | Vercel, `apps/mobile/vercel.json`, live at <https://fit-check-app-xi.vercel.app> (HTTP 200 on `/` and `/privacy`, 2026-11-25) |
 | GitHub | Private repo, homepage set, no description, no topics, no license, no CI workflows |
 
