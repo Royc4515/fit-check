@@ -1,3 +1,9 @@
+/**
+ * @fit-check/schema: zod schemas shared by the app, the engine and the Edge Functions, so both sides validate the
+ * same shapes (item tags, stylist input and output, day context, intake, try-on).
+ */
+// don't touch / the explicit .ts extensions: Deno imports this file directly through supabase/functions/deno.json,
+// and Deno requires extensions. The app's bundler accepts them too (allowImportingTsExtensions in tsconfig.base.json).
 export * from "./item-tags.ts";
 export * from "./item.ts";
 export * from "./context.ts";
