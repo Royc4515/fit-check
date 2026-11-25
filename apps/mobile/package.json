@@ -10,7 +10,7 @@
     "lint": "expo lint && tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "export:web": "expo export --platform web"
+    "export:web": "expo export --platform web && node scripts/site-head.mjs dist"
   },
   "dependencies": {
     "@expo-google-fonts/frank-ruhl-libre": "^0.4.1",

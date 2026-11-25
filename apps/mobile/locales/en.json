@@ -2,6 +2,9 @@
   "app": {
     "name": "Fit Check"
   },
+  "site": {
+    "description": "Fit Check is a wardrobe app: your clothes in one place, and one outfit suggested for each morning by the weather and the day."
+  },
   "today": {
     "title": "Today",
     "empty": "No outfit for today yet",
