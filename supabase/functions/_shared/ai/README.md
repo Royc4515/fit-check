@@ -10,9 +10,11 @@ Every call to a model provider goes through this folder. Edge Functions never ca
 | `duplicates.ts` | `findDuplicate`: is this the same physical garment as one of up to 4 look-alikes? A separate call, so a failure never costs the tags | `claude-haiku-5-5` | `intake-tag` |
 | `anthropic.ts` | `styleOutfit`: picks one of at most 8 engine candidates and explains it in Hebrew and English | `claude-sonnet-5-5` | `style-outfit` |
 | `stylist-persona.ts` | `STYLIST_SYSTEM`: the stylist's Hebrew system prompt, kept apart so tone can change without touching the call | - | `anthropic.ts` |
-| `modal.ts` | `cutout`: background removal on the Modal worker (BiRefNet, SAM 2 to keep the front garment) | worker in `/worker` | `intake-cutout`, `mcp` (`item_recut`) |
+| `background.ts` | `removeBackground`: Cloudflare first, Modal as fallback; logs each provider it called; reasons `not_configured`, `cutout_monthly_limit`, `ai_failed` | - | `intake-cutout`, `mcp` (intake, `item_recut`, redraw) |
+| `cloudflare.ts` | `cutoutCloudflare`: background removal on the `fit-check-cutout` Worker (Cloudflare Images segment, trim, 400 px thumbnail); `MONTHLY_CLOUDFLARE_CUTOUTS` (2,400), `cloudflareAllows` | `cf-images-segment-foreground`, Worker in `/worker/cloudflare` | `background.ts` |
+| `modal.ts` | `cutout`: background removal on the Modal worker (BiRefNet, SAM 2 to keep the front garment) | worker in `/worker` | `background.ts` |
 | `tryon.ts` | `renderOutfit`, `renderFigure`: one generated image of the whole outfit (stage 5.3; never called against Google yet) | `gemini-nano-banana-2.1` | `tryon` |
-| `log.ts` | `logAiCall`, `countAiCalls`, `sumAiCost`: the `ai_calls` table (service role) | - | every caller |
+| `log.ts` | `logAiCall`, `countAiCalls`, `sumAiCost`, `countModelCalls`: the `ai_calls` table (service role) | - | every caller |
 | `budget.ts` | `MONTHLY_GOOGLE_BUDGET_USD` (8), `monthlyGoogleSpend`, `googleBudgetAllows` | - | paid Google calls |
 | `types.ts` | `AiLogEntry` and shared result types | - | - |
 

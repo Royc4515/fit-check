@@ -39,7 +39,7 @@
 ### 4.2 הזנה (Intake)
 1. המשתמש פורס 2-5 בגדים על משטח אחיד ומצלם תמונה אחת.
 2. `intake-separate`: Gemini 2.5 Flash Image מחזיר תמונה לכל פריט (flat-lay). אם חזר פריט אחד בלבד, ממשיכים איתו.
-3. `intake-cutout`: worker ב-Modal (BiRefNet) מסיר רקע, מייצר PNG שקוף + thumbnail 400px. נשמרים ב-R2 (ובלי הגדרות R2, ב-Storage).
+3. `intake-cutout`: Worker ב-Cloudflare (Cloudflare Images, `segment: "foreground"`, BiRefNet) מסיר רקע, מייצר PNG שקוף + thumbnail 400px; כשהוא לא זמין, worker ב-Modal (BiRefNet + SAM, שמוריד גם בגדים שתלויים מאחור). בגדים שמאחור נשארים בגזירה של Cloudflare, והדרך לבגד אחד נקי היא שיפור התמונה לפי בקשה. נשמרים ב-R2 (ובלי הגדרות R2, ב-Storage).
 4. `intake-tag`: Claude Haiku מקבל את ה-cutout ומחזיר JSON לפי סכמת התגיות (סעיף 6.2). בנוסף: embedding של FashionCLIP (512-d) מה-worker.
 5. כרטיס אישור: תמונה + תגיות. החלקה ימינה = שמירה. הקשה על תגית = תיקון מרשימה סגורה. שדות ידניים אופציונליים: מותג, מחיר, תאריך רכישה.
 6. פריט נשמר עם `status = active`, `availability = home`.
