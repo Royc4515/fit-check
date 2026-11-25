@@ -51,7 +51,7 @@ import { israelDate, israelTime } from "./time.ts";
  * user-token client does not work inside the Edge runtime), so the filter is what keeps each user to their own rows.
  */
 
-/** Tel Aviv area, the app's DEFAULT_LOCATION (apps/mobile/src/data/location.ts); 293397 is its GeoNames id. */
+/** Tel Aviv, the app's DEFAULT_LOCATION (apps/mobile/src/data/location.ts); 293397 is its GeoNames id. */
 const DEFAULT_PLACE = { lat: 32.0809, lon: 34.7806, tz: "Asia/Jerusalem", geonameid: 293397 };
 /** Same as the app's FALLBACK_WEATHER: used only when the forecast is unavailable, and said so in the answer. */
 const FALLBACK_WEATHER = { temp_min_c: 16, temp_max_c: 24, rain_probability: 0.1 };
@@ -128,7 +128,7 @@ const DayTypeInput = z.enum(["weekday", "shabbat", "holiday"]);
  */
 const ISRAEL = { latMin: 29.45, latMax: 33.35, lonMin: 34.2, lonMax: 35.95 };
 export const OUTSIDE_ISRAEL_MESSAGE =
-  "lat/lon must be in Israel: the server plans days in Israel time with Israel's holiday schedule. Leave them out for Tel Aviv.";
+  "lat/lon must be in Israel: the server plans days in Israel time with Israel's holiday schedule. Leave them out for the default city (Tel Aviv).";
 
 /** lat/lon, optional and together, inside Israel; shared by both tools so they always plan the same place. */
 const withPlace = <T extends z.ZodRawShape>(shape: T) =>

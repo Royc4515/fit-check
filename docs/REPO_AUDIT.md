@@ -98,12 +98,12 @@ Making the repo public publishes every file and the whole git history. No secret
 
 | # | Severity | What becomes public | Where | Note |
 | --- | --- | --- | --- | --- |
-| P1 | medium | Home city (Tel Aviv) and its coordinates | `.env.example` (`HOME_LAT`, `HOME_LON`), `apps/mobile/src/data/__fixtures__/chain-*.json`, `locales/he.json`, Profile screenshots | City level only, no street address. The `.env.example` lines are unused and can go; fixtures and history keep it. |
+| P1 | medium | Home city and its coordinates (removed from the files on 2026-11-25: the default city is Tel Aviv and the fixtures were re-recorded; still in git history) | `.env.example` (`HOME_LAT`, `HOME_LON`), `apps/mobile/src/data/__fixtures__/chain-*.json`, `locales/he.json`, Profile screenshots | City level only, no street address. The `.env.example` lines are unused and can go; fixtures and history keep it. |
 | P2 | medium | Religious practice and IDF reserve duty | about 40 lines in `docs/CHANGELOG.md`, `docs/TASKS.md`, `docs/REDESIGN_PLAN.md`, engine rules | It is what the app does (Shabbat and reserve-duty rules); scrubbing it would gut the spec. |
 | P3 | low | The full wardrobe list (109 items with notes) | `scripts/data/wardrobe.csv`, `packages/engine/__fixtures__/wardrobe.json` | The engine tests depend on the fixture. |
 | P4 | low | Contact email | `apps/mobile/src/app/privacy.tsx`, commit author metadata | Already public on the live privacy page; normal for a public repo. |
 | P5 | medium | Supabase project ref and publishable key, next to the known open listing of the `cutouts` bucket (`docs/TASKS.md` "Public listing of the `cutouts` bucket") | `supabase/config.toml`, docs; the key only in git history | The key already ships in the web bundle, so this adds little, but a public repo makes the bucket easier to find. Closing the listing is a migration, outside this PR. |
-| P6 | low | Subscription details ("the subscription"), session-1 setup | `docs/KICKOFF_PROMPT.md` | Another reason to archive or delete it. |
+| P6 | low | Subscription details, session-1 setup (the file was deleted on 2026-11-25; still in git history) | `docs/KICKOFF_PROMPT.md` | Another reason to archive or delete it. |
 
 Removing any of this from history needs a history rewrite and a force-push to `main`, which this task will not do. If any item must not be public, the options are: rewrite history before flipping visibility, or publish a fresh repo from a squashed snapshot.
 

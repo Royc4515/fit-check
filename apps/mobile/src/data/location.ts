@@ -29,7 +29,9 @@ export type ResolvedLocation = {
   geonameid: number | null;
 };
 
-// don't touch / PRD section 8 had 293397, which is Tel Aviv; 293397 is Tel Aviv itself.
+// don't touch / Tel Aviv (GeoNames 293397, the coordinates Hebcal gives for it): a neutral default for a public app,
+// used until a user picks a city or allows their current location. supabase/functions/mcp/outfit.ts DEFAULT_PLACE
+// must match.
 export const DEFAULT_LOCATION: ResolvedLocation = { kind: "default", label: null, lat: 32.0809, lon: 34.7806, tz: "Asia/Jerusalem", geonameid: 293397 };
 
 const KEY = "fitcheck:location:v1";

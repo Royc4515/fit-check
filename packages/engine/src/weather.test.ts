@@ -3,7 +3,8 @@ import { OpenMeteoHourlySchema } from "@fit-check/schema";
 import sample from "../__fixtures__/open-meteo-2026-11-08.json";
 import { skyGroup, summarizeDay } from "./weather";
 
-// A real response for Tel Aviv on 2026-11-08 (a showery autumn day), recorded so the test never hits the network.
+// A real response for the Tel Aviv area on 2026-11-08 (a showery autumn day), recorded so the test never hits the network;
+// its coordinates are left out, the hourly values are all the tests read.
 const forecast = OpenMeteoHourlySchema.parse(sample);
 
 describe("summarizeDay", () => {

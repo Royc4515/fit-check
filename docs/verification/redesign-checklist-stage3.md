@@ -16,7 +16,7 @@ Method: web export served locally, Playwright chromium, preview mode (read-only)
 - Success path of "לובש" and focus after it: NOT VERIFIABLE (write blocked in the data layer before the network, PreviewReadOnlyError).
 
 ### B. Shabbat row: PASS on the four rules and on times; one misleading case
-Hebcal curl for geonameid 293397 equals the app to the minute in all cases.
+Hebcal curl for the default city's geonameid equals the app to the minute in all cases.
 - Fri 2026-11-20: "כניסת שבת 16:18 · צאת שבת 17:17" / "Shabbat begins 16:18 · Shabbat ends 17:17" (Hebcal 16:18, 17:17).
 - Sat 11-21: "צאת שבת 17:17". Wed 11-18: nothing. Chanukah Tue 2026-12-08: nothing (correct, Hebcal gives only holiday events).
 - Erev Pesach Wed 2027-04-21: "הדלקת נרות 18:53 · צאת החג 19:53" (end is tomorrow Thu, Hebcal 18:53 / 19:53).
@@ -36,7 +36,7 @@ Fixed Fri 2026-11-20, device tz Asia/Jerusalem. App request `b=` and displayed t
 - Today weather label "מזג האוויר בירושלים", place line "ירושלים"; profile "מיקום נוכחי · ירושלים"; location screen shows name under the row; credit "שמות מקומות: © OpenStreetMap" at the bottom.
 - Stub hits: 1 for first position (URL `...reverse?format=jsonv2&lat=31.777&lon=35.235&zoom=10&addressdetails=1&accept-language=he`), still 1 after reload, still 1 after +0.001 lat, 2 after +~1 km, 2 on repeat, 3 after switching to English (accept-language=en). Coordinates rounded to 3 decimals.
 - Stub 500 / abort / delayed 6 s: Today shows "מיקום נוכחי", weather arrived at 0.7-0.9 s in all three (not delayed); profile and location screen fall back too; slow lookup aborts at 3 s.
-- Permission denied: location screen says "אין הרשאת מיקום. אפשר לבחור עיר."; Today silently uses the default city Tel Aviv, zero Nominatim hits.
+- Permission denied: location screen says "אין הרשאת מיקום. אפשר לבחור עיר."; Today silently uses the default city, zero Nominatim hits.
 - Regression: default city and searched city (חיפה) work: hebcal geonameid=294801, 16:06/17:15, no Nominatim call.
 - Credit link: DIV role=link (no href), 44 px high, reachable by Tab (5th stop), 2 px ink outline. DEFECT: Enter and Space do nothing; only a pointer click opens openstreetmap.org/copyright.
 
@@ -90,7 +90,7 @@ Item, brand text typed, preview (save fails). Write requests on /rest/v1/: 0 (bl
 - Escape does nothing at screen level (no exit). Tab bar and dim area are not reachable on the item screen (item covers the tabs; no dim area). Overflow "remove from wardrobe" opens a confirm sheet; confirming ("הסר") attempts archive only (it does not save the typed text first; archive failed in preview and the screen stayed with the text). Typing a URL is a full page load, not testable.
 
 ### 3 FIXED for the misleading row; one MINOR left
-Hebcal 293397 equals the app to the minute everywhere. Rows (he / en), all one line at 360 unless noted:
+Hebcal for the default city equals the app to the minute everywhere. Rows (he / en), all one line at 360 unless noted:
 - Fri 11-20: כניסת שבת 16:18 · צאת שבת 17:17 / Shabbat begins 16:18 · Shabbat ends 17:17. Right (no "tomorrow" on Friday).
 - Sat 11-21: צאת שבת 17:17. Right.
 - Erev Pesach Wed 04-21: הדלקת נרות 18:53 · צאת החג מחר 19:53 / Candle lighting 18:53 · Holiday ends tomorrow 19:53 (en wraps to 2 lines at 360, exactly at " · "). Right.
@@ -120,7 +120,7 @@ Opened already worn: 700x900 hero w434 h543, bottom 792 (banner 808, tabs 843); 
 /design-system section "מסך פריט: כתיבה במקום ולבישות" / "Item screen: writing in place and wears" renders rest, writing-changed (Save/Cancel), after saving ("נשמר"), save failed (notes text, Save/Cancel, "לא נשמר. בדוק את החיבור ונסה שוב." + "נסה שוב"), plus wears states. No console errors, no horizontal overflow at 390 he and 1280 en.
 
 ### 9 FIXED (Hebcal); PARTLY (permission)
-Cold load of Today: 1 Hebcal request for the default city; 1 for current location (plus 1 Nominatim). Context without geolocation permission (Chromium answers denied): right after choosing "המיקום הנוכחי שלי" the location screen shows "אין הרשאת מיקום. אפשר לבחור עיר."; after reopening the screen the line is gone while Today silently still shows Tel Aviv (MINOR).
+Cold load of Today: 1 Hebcal request for the default city; 1 for current location (plus 1 Nominatim). Context without geolocation permission (Chromium answers denied): right after choosing "המיקום הנוכחי שלי" the location screen shows "אין הרשאת מיקום. אפשר לבחור עיר."; after reopening the screen the line is gone while Today silently still shows the default city (MINOR).
 
 ### Regression
 Today default Fri (times row + capped hero) 390/360 he/en measured above; "worn on a Friday" cannot be reached in the preview (wear only exists for 11-19), done by emulating the extra line. Console and page errors on Today, wardrobe, insights, archive, profile, location, design-system at 390 he and 360 en: none. Wardrobe -> item -> edit name -> cancel -> back: back at /wardrobe, 13 tiles, no errors. Language round trip x2: dir/lang switch correctly. `pnpm turbo run lint test --force`: exit 0, 8/8, 0 cached; schema 27, engine 82, mobile 101 tests passed.
