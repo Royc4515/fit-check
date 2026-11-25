@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { CALENDAR_UNAVAILABLE_MESSAGE, CALENDAR_UNAVAILABLE_SHABBAT_MESSAGE } from "@fit-check/schema/day-context.ts";
 import type { HebcalItem } from "@fit-check/schema/shabbat-times.ts";
 import { DEFAULT_CONTEXT_RULES, type DayWeather } from "../_shared/engine.js";
-import { outfitToday, type OutfitDeps } from "./outfit.ts";
+import { OUTSIDE_ISRAEL_MESSAGE, outfitLog, outfitToday, type OutfitDeps, type Place } from "./outfit.ts";
 import type { ToolContext, ToolResult } from "./tools.ts";
 
 /*
@@ -330,4 +330,31 @@ Deno.test("day in force: planning Shabbat from Friday asks Hebcal once", async (
   s.at("2026-10-09T12:00:00Z");
   assert(dated(await outfitToday({}, s.ctx, deps)).date === "2026-10-10", "Shabbat");
   assert(calls === 1, `Hebcal asked ${calls} times`);
+});
+
+/* The place: both tools take the same lat/lon, and a point outside Israel is refused rather than planned wrongly. */
+const errorOf = (r: ToolResult) => JSON.parse((r.content[0] as { text: string }).text).error as { code: string; message: string };
+
+Deno.test("a place outside Israel is a typed error in both tools, and nothing is read or written", async () => {
+  const s = setup();
+  const paris = { lat: 48.86, lon: 2.35 };
+  const today = await outfitToday(paris, s.ctx, s.deps);
+  assert(today.isError === true && errorOf(today).code === "invalid_input" && errorOf(today).message.includes(OUTSIDE_ISRAEL_MESSAGE), "outfit_today refuses Paris");
+  const log = await outfitLog({ item_ids: ["00000000-0000-4000-8000-0000000000a1", "00000000-0000-4000-8000-0000000000a2"], ...paris }, s.ctx, s.deps);
+  assert(log.isError === true && errorOf(log).code === "invalid_input", "outfit_log refuses Paris");
+  assert(s.fake.requests.length === 0, `no database request: ${s.fake.requests.join(", ")}`);
+});
+
+Deno.test("outfit_log plans the day at the place it is given, as outfit_today does", async () => {
+  const s = setup();
+  const asked: Place[] = [];
+  const inner = s.deps.hebcal;
+  const deps: OutfitDeps = { ...s.deps, hebcal: (d, p) => (asked.push(p), inner(d, p)) };
+  const jerusalem = { lat: 31.77, lon: 35.21 };
+  s.at("2026-10-09T12:00:00Z");
+  // The fake database refuses writes, so the call fails at the insert; the calendar was asked before that.
+  const ids = ["00000000-0000-4000-8000-0000000000a1", "00000000-0000-4000-8000-0000000000a2"];
+  const r = await outfitLog({ item_ids: ids, ...jerusalem }, s.ctx, deps).catch(() => undefined);
+  assert(r === undefined || r.isError !== true || errorOf(r).code !== "invalid_input", "lat/lon in Israel are accepted by outfit_log");
+  assert(asked.length > 0 && asked.every((p) => p.lat === jerusalem.lat && p.lon === jerusalem.lon && !p.isDefault), JSON.stringify(asked));
 });

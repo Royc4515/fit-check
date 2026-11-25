@@ -121,25 +121,41 @@ export const LIVE_DEPS: OutfitDeps = { now: () => new Date(), hebcal: hebcalLive
 
 const DayTypeInput = z.enum(["weekday", "shabbat", "holiday"]);
 
-const TodayInput = z
-  .object({
-    date: z.string().date().optional(),
-    day_type: DayTypeInput.optional(),
-    lat: z.number().min(-90).max(90).optional(),
-    lon: z.number().min(-180).max(180).optional(),
-    anchor_item_id: z.string().uuid().optional(),
-  })
-  .strict()
-  .refine((v) => (v.lat === undefined) === (v.lon === undefined), "lat and lon go together");
+/**
+ * Israel, roughly (Eilat to the Golan, the coast to the Jordan). The server plans every place in Israel time with
+ * Israel's holiday schedule (Hebcal tzid=Asia/Jerusalem, i=on), so a point abroad would get wrong candle times and
+ * holiday days; it is refused with a typed error instead of answered wrongly.
+ */
+const ISRAEL = { latMin: 29.45, latMax: 33.35, lonMin: 34.2, lonMax: 35.95 };
+export const OUTSIDE_ISRAEL_MESSAGE =
+  "lat/lon must be in Israel: the server plans days in Israel time with Israel's holiday schedule. Leave them out for Tel Aviv.";
 
-const LogInput = z
-  .object({
-    item_ids: z.array(z.string().uuid()).min(2).max(5),
-    feedback: z.enum(["worn", "skipped", "disliked"]).default("worn"),
-    date: z.string().date().optional(),
-    day_type: DayTypeInput.optional(),
-  })
-  .strict();
+/** lat/lon, optional and together, inside Israel; shared by both tools so they always plan the same place. */
+const withPlace = <T extends z.ZodRawShape>(shape: T) =>
+  z
+    .object({ ...shape, lat: z.number().min(-90).max(90).optional(), lon: z.number().min(-180).max(180).optional() })
+    .strict()
+    .refine((v) => (v.lat === undefined) === (v.lon === undefined), "lat and lon go together")
+    .refine(
+      (v) =>
+        v.lat === undefined ||
+        v.lon === undefined ||
+        (v.lat >= ISRAEL.latMin && v.lat <= ISRAEL.latMax && v.lon >= ISRAEL.lonMin && v.lon <= ISRAEL.lonMax),
+      OUTSIDE_ISRAEL_MESSAGE,
+    );
+
+const TodayInput = withPlace({
+  date: z.string().date().optional(),
+  day_type: DayTypeInput.optional(),
+  anchor_item_id: z.string().uuid().optional(),
+});
+
+const LogInput = withPlace({
+  item_ids: z.array(z.string().uuid()).min(2).max(5),
+  feedback: z.enum(["worn", "skipped", "disliked"]).default("worn"),
+  date: z.string().date().optional(),
+  day_type: DayTypeInput.optional(),
+});
 
 /** The day as both tools plan it: the shared rule over the calendar, the stored occasion and the profile. */
 type ResolvedDay = { plan: DayPlan; facts: HebrewDayFacts | null; calendarError: string | null };
@@ -411,7 +427,8 @@ export async function outfitLog(args: unknown, ctx: ToolContext, deps: OutfitDep
   const parsed = LogInput.safeParse(args);
   if (!parsed.success) return typedFail("invalid_input", `${issues(parsed.error)}. Fix the argument and call again.`);
   const input = parsed.data;
-  const place = placeOf(undefined, undefined);
+  // The caller's place, as outfit_today: both tools must decide the day in force from the same candle lighting.
+  const place = placeOf(input.lat, input.lon);
   const cal = sharedCalendar(deps);
   // don't touch / the same day in force as outfit_today and the app's wear button: "I'm wearing it" at 16:00 on a
   // Friday is Shabbat's outfit, so it must be recorded on Shabbat's date, not Friday's.
