@@ -58,7 +58,7 @@ flowchart LR
 | Backend | Supabase (Postgres 17, Auth with Google, Storage, Edge Functions in Deno), 7 forward-only migrations |
 | Images | Cloudflare R2 bucket `fit-check-cutouts` |
 | Worker | Python on Modal (`worker/app.py`), rembg BiRefNet, SAM 2.1 small, FashionCLIP |
-| Web hosting | Vercel, `apps/mobile/vercel.json`, live at https://fit-check-app-xi.vercel.app (HTTP 200 on `/` and `/privacy`, 2026-11-25) |
+| Web hosting | Vercel, `apps/mobile/vercel.json`, live at <https://fit-check-app-xi.vercel.app> (HTTP 200 on `/` and `/privacy`, 2026-11-25) |
 | GitHub | Private repo, homepage set, no description, no topics, no license, no CI workflows |
 
 ## 4. Baseline (run on 2026-11-25, branch at `98b7b6c`)
@@ -115,7 +115,7 @@ The layout already fits the stack (pnpm workspace, Expo Router `src/app`, Supaba
 
 Before:
 
-```
+```text
 .
 ├── .env.example
 ├── CLAUDE.md
@@ -134,7 +134,7 @@ Before:
 
 After:
 
-```
+```text
 .
 ├── .editorconfig                  new
 ├── .env.example                   rewritten to match the code

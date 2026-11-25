@@ -26,7 +26,7 @@
 
 Every screenshot shows the real wardrobe of the app's one user. The band at the bottom marks the read-only design preview the screenshots were taken in.
 
-**Live demo:** https://fit-check-app-xi.vercel.app (sign-in with Google; the public page is [/privacy](https://fit-check-app-xi.vercel.app/privacy)).
+**Live demo:** <https://fit-check-app-xi.vercel.app> (sign-in with Google; the public page is [/privacy](https://fit-check-app-xi.vercel.app/privacy)).
 
 ## Contents
 
@@ -127,7 +127,7 @@ flowchart LR
 
 ## Project structure
 
-```
+```text
 .
 ├── apps/mobile/                 Expo app, also builds the web app
 │   ├── src/app/                 routes (Expo Router): tabs, item, outfit, sign-in, oauth consent, privacy
@@ -240,7 +240,7 @@ TODO(owner): no license chosen yet. Until a `LICENSE` file is added, all rights 
 
 ## Author
 
-**Roy Carmelli**
+Roy Carmelli
 
 - GitHub: [@Royc4515](https://github.com/Royc4515)
 - LinkedIn: TODO(owner)
