@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-25 (Credit to Roy: portfolio, LinkedIn and GitHub)
+
+- Why: Roy wants a recruiter who opens the live app or the README to reach his portfolio, LinkedIn and GitHub.
+- Sign-in screen: "Built by Roy Carmelli" now links all three (it had the portfolio only); the profile screen already did. Both read one list, `features/profile/authorLinks.ts`, with the exact addresses.
+- `MetaLink` is underlined, so links read as links (privacy and OpenStreetMap credits too).
+- README "Author": portfolio, LinkedIn, GitHub.
+- Look at: `design/screens/2026-11-25-sign-in-credits-*`.
+
 ## 2026-11-25 (Sign-in cover: a generated photo)
 
 - Why: Roy wanted something "fake but good-looking" on the screen before signing in, instead of the drawn garments.
