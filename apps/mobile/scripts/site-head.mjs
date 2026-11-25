@@ -16,10 +16,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 /**
- * Google Search Console's proof that the owner controls https://fit-check-il.vercel.app/ (the "HTML tag" method).
- * Public by design: it only proves ownership. Google re-checks it, so it stays as long as the property does.
+ * Google Search Console's proof that the owner controls https://fit-check-il.vercel.app/ (the "HTML tag" method,
+ * property added by Roy 2026-11-25). Public by design: it only proves ownership.
+ * don't touch / Google re-checks the tag after verifying: removing or changing it un-verifies the property, and with
+ * it the domain Google's brand verification (the app's name and logo on the sign-in screen) depends on.
  */
-export const GOOGLE_SITE_VERIFICATION = "__GOOGLE_SITE_VERIFICATION__";
+export const GOOGLE_SITE_VERIFICATION = "YzDkhTkRgboS7qGzVpaMq6ft7lxDWGqyvOzNzucqbmA";
 
 /** @param {string} text */
 const escapeHtml = (text) =>
