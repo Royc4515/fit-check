@@ -9,7 +9,7 @@ Branch `chore/repo-polish`. No app, engine, function or database behaviour chang
 | `docs/REPO_AUDIT.md` | Phase 1 audit: architecture, baseline, findings, what becomes public |
 | `docs/redesign-checklist-*.md` moved to `docs/verification/` | Reports were mixed with the spec; references in `TASKS.md` and `REDESIGN_PLAN.md` updated |
 | `docs/KICKOFF_PROMPT.md` moved to `docs/archive/` with a note | Its setup steps are out of date and it mentions subscription details |
-| `.env.example` rewritten | It named `MODAL_WORKER_URL` (code reads `MODAL_CUTOUT_URL`), listed unused home coordinates and missed `GEMINI_IMAGE_API_KEY`, `R2_*`, `DESIGN_PREVIEW_CODE` |
+| `.env.example` rewritten | It named `MODAL_WORKER_URL` (code reads `MODAL_CUTOUT_URL`), listed unused home coordinates and missed `GEMINI_IMAGE_API_KEY`, `R2_*`, `DESIGN_PREVIEW_CODE`; it also held the real Supabase URL and key, now placeholders only |
 | `pnpm test:functions` and a `CLAUDE.md` fix | `pnpm test` never ran the 50 Deno tests although `CLAUDE.md` said it did; the function list was incomplete |
 | `.github/workflows/ci.yml` | Typecheck, lint, vitest and Deno tests on every pull request and on `main` |
 | README rewritten | Wrong setup step (env file location), outdated diagram (no R2); now has badges, contents, real-wardrobe screenshots in `docs/assets/`, MCP tool list, links |
@@ -20,7 +20,7 @@ Branch `chore/repo-polish`. No app, engine, function or database behaviour chang
 ## Verification
 
 - `pnpm typecheck`, `pnpm lint`: pass. `pnpm test`: 834 pass (same as baseline). Deno: 50 pass.
-- Web export (`expo export --platform web`) builds with the public env values.
+- Web export (`expo export --platform web`) builds once the two `EXPO_PUBLIC_*` values are set in the shell.
 - Relative links in every markdown file resolve. External links: all reachable except GitHub pages of this repo, which return 404 to anonymous requests while it is private; checked through the API instead.
 - markdownlint: 0 issues in the new files. The Mermaid diagram validates.
 

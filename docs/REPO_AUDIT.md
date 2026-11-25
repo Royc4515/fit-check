@@ -89,7 +89,7 @@ flowchart LR
 | F11 | low | Root `.gitignore` misses `*.tsbuildinfo`, `coverage/`, `.vercel/`, `web-build/` (the app's own `.gitignore` covers some of them only under `apps/mobile`). No committed artifacts found. | Add the entries. |
 | F12 | low | No `.editorconfig`, no PR template, no `CONTRIBUTING.md`, no `LICENSE`. GitHub description and topics are empty. | Add `.editorconfig`, a PR template that mirrors the `CLAUDE.md` checklist, a short `CONTRIBUTING.md` that points to `CLAUDE.md`. License: your call. |
 | F13 | low | The design-preview code path (`design-preview` function, `DESIGN_PREVIEW_CODE`) was due for removal after 2026-11-25 (`docs/TASKS.md`). | Not here: removing it changes behaviour. Listed as a follow-up. |
-| F14 | info | Secret scan of the tree and full history (Anthropic, Google, Supabase secret and service-role JWT, GitHub, AWS, private-key patterns): nothing found. The only key in the repo is the Supabase publishable key in `.env.example`, which is public by design (protected by RLS, shipped in the app bundle). | None. |
+| F14 | info | Secret scan of the tree and full history (Anthropic, Google, Supabase secret and service-role JWT, GitHub, AWS, private-key patterns): nothing found. The Supabase publishable key was committed in `.env.example` (public by design, but Roy's rule is no real values in env files). | Replaced with placeholders; the key stays in git history. |
 | F15 | info | Relative links in all markdown files resolve. No em dashes in docs. | None. |
 
 ### Before the repo goes public (Roy, 2026-11-25: "we will open the repo to public")
@@ -102,7 +102,7 @@ Making the repo public publishes every file and the whole git history. No secret
 | P2 | medium | Religious practice and IDF reserve duty | about 40 lines in `docs/CHANGELOG.md`, `docs/TASKS.md`, `docs/REDESIGN_PLAN.md`, engine rules | It is what the app does (Shabbat and reserve-duty rules); scrubbing it would gut the spec. |
 | P3 | low | The full wardrobe list (109 items with notes) | `scripts/data/wardrobe.csv`, `packages/engine/__fixtures__/wardrobe.json` | The engine tests depend on the fixture. |
 | P4 | low | Contact email | `apps/mobile/src/app/privacy.tsx`, commit author metadata | Already public on the live privacy page; normal for a public repo. |
-| P5 | medium | Supabase project ref and publishable key, next to the known open listing of the `cutouts` bucket (`docs/TASKS.md` "Public listing of the `cutouts` bucket") | `.env.example`, `supabase/config.toml`, docs | The key already ships in the web bundle, so this adds little, but a public repo makes the bucket easier to find. Closing the listing is a migration, outside this PR. |
+| P5 | medium | Supabase project ref and publishable key, next to the known open listing of the `cutouts` bucket (`docs/TASKS.md` "Public listing of the `cutouts` bucket") | `supabase/config.toml`, docs; the key only in git history | The key already ships in the web bundle, so this adds little, but a public repo makes the bucket easier to find. Closing the listing is a migration, outside this PR. |
 | P6 | low | Subscription details ("Max 5x"), session-1 setup | `docs/KICKOFF_PROMPT.md` | Another reason to archive or delete it. |
 
 Removing any of this from history needs a history rewrite and a force-push to `main`, which this task will not do. If any item must not be public, the options are: rewrite history before flipping visibility, or publish a fresh repo from a squashed snapshot.
