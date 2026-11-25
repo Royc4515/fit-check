@@ -1,6 +1,6 @@
 /**
  * Google sign-in on the app's own domain (web only), so Google's account chooser says "to continue to
- * fit-check-app-xi.vercel.app" instead of the Supabase project's address (Roy, 2026-11-25).
+ * fit-check-il.vercel.app" instead of the Supabase project's address (Roy, 2026-11-25).
  *
  * How: an OpenID Connect redirect straight to Google (response_type=id_token) that comes back to /auth/google on
  * this site; that page hands the ID token to Supabase (`signInWithIdToken`), which checks its signature, its audience
@@ -25,6 +25,9 @@ export const CALLBACK_PATH = "/auth/google";
  * don't touch / each entry here needs its redirect URI added to the "Fit Check web" OAuth client first.
  */
 export const DIRECT_ORIGINS: readonly string[] = [
+  "https://fit-check-il.vercel.app",
+  // The first production address. vercel.json sends it to the one above; it stays here until its redirect URI is
+  // removed from Google, so the site still signs in there if that redirect is ever taken out.
   "https://fit-check-app-xi.vercel.app",
   "https://fit-check-app-git-claude-google-direct-royc4515s-projects.vercel.app",
   "http://localhost:8081",

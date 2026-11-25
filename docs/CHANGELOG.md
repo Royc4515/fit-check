@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-25 (Web app at fit-check-il.vercel.app)
+
+- Why: Roy chose a nicer address before Google's brand verification, which binds to the domain.
+- Google sign-in on the web, invite links and the README use `https://fit-check-il.vercel.app`. The old address, `fit-check-app-xi.vercel.app`, redirects every path there (`apps/mobile/vercel.json`, temporary 307 so it can be undone), so old links, invites and bookmarks keep working; a tab open on the old address signs in again once.
+- Supabase allows the new address; its site URL moves after the merge.
+- Look at: after the merge, `fit-check-app-xi.vercel.app/join/<code>` lands on the same path on the new address; Google sign-in there names `fit-check-il.vercel.app`; a Claude connector connection opens its consent page on the new address.
+
 ## 2026-11-25 (Web Google sign-in on the app's own domain)
 
 - Why: Google's chooser showed the Supabase project's address; signing in straight with Google on the app's domain makes it show fit-check-app-xi.vercel.app, and is the first step to the app's name (brand verification).

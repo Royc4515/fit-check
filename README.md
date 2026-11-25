@@ -3,7 +3,7 @@
 **A Hebrew-first wardrobe app that turns a photo of your clothes into a tagged digital closet and picks a fitting outfit every day, with an MCP server so Claude can manage the wardrobe too.**
 
 [![CI](https://github.com/Royc4515/fit-check/actions/workflows/ci.yml/badge.svg)](https://github.com/Royc4515/fit-check/actions/workflows/ci.yml)
-[![Live demo](https://img.shields.io/badge/demo-fit--check--app--xi.vercel.app-000?logo=vercel)](https://fit-check-app-xi.vercel.app)
+[![Live demo](https://img.shields.io/badge/demo-fit--check--il.vercel.app-000?logo=vercel)](https://fit-check-il.vercel.app)
 [![Expo SDK 58](https://img.shields.io/badge/Expo-SDK%2058-000020?logo=expo)](https://docs.expo.dev/)
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.base.json)
 [![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Edge%20Functions-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/)
@@ -27,7 +27,7 @@
 
 Every screenshot shows the real wardrobe of the app's one user. The band at the bottom marks the read-only design preview the screenshots were taken in.
 
-**Live demo:** <https://fit-check-app-xi.vercel.app> (sign-in with Google; the public page is [/privacy](https://fit-check-app-xi.vercel.app/privacy)).
+**Live demo:** <https://fit-check-il.vercel.app> (sign-in with Google; the public page is [/privacy](https://fit-check-il.vercel.app/privacy)).
 
 ## Contents
 
