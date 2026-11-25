@@ -14,8 +14,8 @@ Every call to a model provider goes through this folder. Edge Functions never ca
 | `cloudflare.ts` | `cutoutCloudflare`: background removal on the `fit-check-cutout` Worker (Cloudflare Images segment, trim, 400 px thumbnail); `MONTHLY_CLOUDFLARE_CUTOUTS` (2,400), `cloudflareAllows` | `cf-images-segment-foreground`, Worker in `/worker/cloudflare` | `background.ts` |
 | `modal.ts` | `cutout`: background removal on the Modal worker (BiRefNet, SAM 2 to keep the front garment) | worker in `/worker` | `background.ts` |
 | `tryon.ts` | `renderOutfit`, `renderFigure`: one generated image of the whole outfit (stage 5.3; never called against Google yet) | `gemini-nano-banana-2.1` | `tryon` |
-| `log.ts` | `logAiCall`, `countAiCalls`, `sumAiCost`, `countModelCalls`: the `ai_calls` table (service role) | - | every caller |
-| `budget.ts` | `MONTHLY_GOOGLE_BUDGET_USD` (8), `monthlyGoogleSpend`, `googleBudgetAllows` | - | paid Google calls |
+| `log.ts` | `logAiCall`, `countAiCalls`, `sumAiCost`, `sumProviderCost`, `countModelCalls`: the `ai_calls` table (service role) | - | every caller |
+| `budget.ts` | `MONTHLY_GOOGLE_BUDGET_USD` (8), `monthlyGoogleSpend`, `googleBudgetAllows`; `MONTHLY_ANTHROPIC_BUDGET_USD` (80), `monthlyAnthropicSpend`, `anthropicBudgetAllows` | - | paid Google calls; `intake-tag`, `style-outfit` |
 | `types.ts` | `AiLogEntry` and shared result types | - | - |
 
 Not built: `extractReceipt` (v2) and image embeddings (planned on `gemini-embedding-2`, `docs/TASKS.md` 5.5; the worker's unused `/embed` endpoint was removed 2026-11-25).
@@ -24,4 +24,4 @@ Rules that are not negotiable (CLAUDE.md):
 - Validate every model response with zod before returning. A parse failure is logged and surfaced as a typed error; callers fall back.
 - `styleOutfit` receives at most 8 candidates. The schema enforces it; do not widen it.
 - Every call returns an `AiLogEntry` with an estimated cost from the provider's published prices, and the caller writes it to `ai_calls`.
-- Paid Google calls check `googleBudgetAllows` first. When the cap is reached the feature says so and stops; it never falls back to another paid path.
+- Paid Google calls check `googleBudgetAllows` first, Anthropic calls `anthropicBudgetAllows`. When the cap is reached the feature says so and stops; it never falls back to another paid path.
