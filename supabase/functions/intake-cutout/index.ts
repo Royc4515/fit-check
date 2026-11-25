@@ -1,24 +1,26 @@
 import { IntakeCutoutInputSchema } from "@fit-check/schema/intake.ts";
 import { adminClient, authenticate } from "../_shared/auth.ts";
+import { removeBackground } from "../_shared/ai/background.ts";
 import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
-import { cutout } from "../_shared/ai/modal.ts";
 import { GARMENT_BUCKET, garmentStore } from "../_shared/objects.ts";
 
 /**
  * intake-cutout: removes the background of one cropped garment (PRD section 4, step 3).
  *
  * Input (POST JSON, IntakeCutoutInputSchema): `cutout_path` of a crop the app uploaded to `cutouts/{uid}/...`.
- * Sends it to the Modal worker (BiRefNet) and stores `<crop>-cutout.png` (transparent, trimmed) and
- * `<crop>-thumb.png` (400 px) next to it, in R2 when it is configured (see _shared/objects.ts). Cost is Modal CPU time against the $1 monthly credit.
+ * Removes its background (removeBackground: Cloudflare Images, the Modal worker as fallback) and stores
+ * `<crop>-cutout.png` (transparent, trimmed) and `<crop>-thumb.png` (400 px) next to it, in R2 when it is configured
+ * (see _shared/objects.ts). Free: Cloudflare's monthly free transformations, then Modal's $1 monthly credit.
  *
  * Responses: 200 { ok: true, path, url, thumb_path } | 200 { ok: false, reason } with reason "not_configured"
- * (worker not deployed yet; the app keeps the crop) or "ai_failed" | 400 bad_input / not_found | 401 | 429 (40 a day).
+ * (no provider set up; the app keeps the crop), "cutout_monthly_limit" or "ai_failed" | 400 bad_input / not_found |
+ * 401 | 429 daily_limit (80 a day).
  */
 
-// don't touch / sized to Modal's $1 monthly credit without a card (2026-11): one cutout costs about $0.007 in a batch
-// and up to $0.02 alone, so 40 a day leaves a day of adding clothes possible while one runaway day cannot spend the
-// whole month. The wardrobe's first import (124 cutouts on 2026-11-10) would now take four days.
-const DAILY_CUTOUT_LIMIT = 40;
+// don't touch / a thirtieth of the month: Cloudflare's free plan covers 2,400 cutouts a month (cloudflare.ts), so 80 a
+// day lets a day of adding clothes through while one runaway day cannot use up the month. Was 40 while Modal's $1
+// credit was the only provider.
+const DAILY_CUTOUT_LIMIT = 80;
 const MAX_BYTES = 8 * 1024 * 1024;
 
 const cors = {
@@ -65,14 +67,11 @@ Deno.serve(async (req) => {
   if (!bytes) return json(400, { ok: false, reason: "not_found" });
   if (bytes.length > MAX_BYTES) return json(413, { ok: false, reason: "too_large" });
 
-  // A redraw shows one garment on white; SAM would only add time (and a small risk of trimming it).
-  const result = await cutout(bytes, mediaType, !/-enhanced/.test(path));
-  // Not configured is not an AI call; logging it would count against the daily cap for nothing.
-  if (!result.ok && result.notConfigured) return json(200, { ok: false, reason: "not_configured" });
-  await logAiCall(userId, result.log);
+  // A redraw shows one garment on white; SAM (Modal only) would just add time and a small risk of trimming it.
+  const result = await removeBackground(bytes, mediaType, !/-enhanced/.test(path), (entry) => logAiCall(userId, entry));
   if (!result.ok) {
-    console.error("cutout failed", result.log.error);
-    return json(200, { ok: false, reason: "ai_failed" });
+    if (result.reason !== "not_configured") console.error("cutout failed", result.error);
+    return json(200, { ok: false, reason: result.reason });
   }
 
   const stem = path.replace(/\.[^.]+$/, "");
