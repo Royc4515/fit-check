@@ -53,7 +53,7 @@ Started 2026-11-19 on Roy's go ("merge and continue with your plan"), after stag
 `TASKS.md` "Stage 3": explicit save for name, brand and notes; the worn lines above the flat-lay and a flat-lay
 that always fits; the place name for the current location; candle lighting by the local custom at the current
 location; the end of Shabbat on Today. Verified twice by an agent that did not write the code
-(`docs/redesign-checklist-stage3.md`). What nobody could check is in `TASKS.md` "Open after stage 3".
+(`docs/verification/redesign-checklist-stage3.md`). What nobody could check is in `TASKS.md` "Open after stage 3".
 
 ## Stage 4 - from a finished redesign to a daily habit (approved by Roy 2026-11-19)
 

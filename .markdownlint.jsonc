@@ -1,0 +1,6 @@
+{
+  // Docs here use one line per paragraph; GitHub wraps them.
+  "MD013": false,
+  // The README lays screenshots out in an HTML table.
+  "MD033": false
+}

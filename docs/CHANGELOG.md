@@ -8,6 +8,18 @@
 - Docs: `worker/README.md` (cost), `CLAUDE.md` Stack (ML worker), `_shared/ai/modal.ts` and `_shared/ai/README.md`.
 - Look at: after `modal deploy worker/app.py` (Roy's computer; the workspace accepts it from 2026-12-01), Modal's Usage page for a few days of normal use: the cost per cutout should drop well below November's.
 
+## 2026-11-25 (Repository polish before the repo goes public)
+
+- Why: Roy is making the repo public. The README told readers to put `.env.local` at the root (Expo reads it from `apps/mobile`), `.env.example` named variables the code does not read, `pnpm test` did not run the Deno tests that `CLAUDE.md` said it ran, and nothing ran checks on a pull request.
+- `docs/REPO_AUDIT.md`: what the project is, architecture, baseline (834 vitest + 50 Deno tests pass, web export builds), findings, and what becomes public with the history.
+- Moves (`git mv`): `docs/redesign-checklist-*.md` to `docs/verification/`, `docs/KICKOFF_PROMPT.md` to `docs/archive/`. Older entries below keep the paths of their time.
+- `.env.example` lists every variable the code reads (`MODAL_CUTOUT_URL`, `GEMINI_IMAGE_API_KEY`, `R2_*`), grouped by where it is set, with placeholders only (Roy: no real values in env files in the repo); the unused home coordinates are gone.
+- `pnpm test:functions` runs the Deno tests; `.github/workflows/ci.yml` runs typecheck, lint, vitest and Deno tests on pull requests and `main`.
+- README rewritten with real-wardrobe screenshots (`docs/assets/`), `CONTRIBUTING.md`, `.github/pull_request_template.md`, `.editorconfig`, root `.gitignore` entries, module headers on the engine and schema entry points.
+- `LICENSE`: MIT (Roy, 2026-11-25). GitHub description and topics are approved but set by hand (values in `what-changed.md`).
+- Not changed: `supabase/functions/_shared/engine.js` is stale (PR #51 rebuilds it), the design-preview path is still in place.
+- Look at: the README on GitHub (badges, Mermaid diagram, screenshots), the first CI run on the pull request.
+
 ## 2026-11-24 (Edge Functions store garment images in R2)
 
 - Why: the app reads garment images from R2 since 2026-11-22, but the functions still wrote every new cutout, thumb, redraw and separated garment to Supabase Storage, and read garment images only from there. New images kept costing Supabase egress (and a second overrun restricts the project with no grace period), and try-on, redraw, re-cut and Claude's item images failed for the restored items whose files exist only in R2.
