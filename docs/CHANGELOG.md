@@ -11,6 +11,21 @@
 - Docs: `CLAUDE.md` (Stack, layout, Do not), `docs/PRD.md` intake step 3, `worker/README.md`, `_shared/ai/README.md`.
 - Look at: after the deploy, add a garment from a closet photo and the re-cut on an item; `ai_calls` rows with provider `cloudflare`.
 
+## 2026-11-25 (supabase/config.toml no longer names the old project)
+
+- Why: `project_id` still held the first project's ref (`ftjerbwrzjprfikxkukj`) after the move to a new Supabase project on 2026-11-24, so the file read as pointing at a project that is no longer live. The field only names the local stack; the remote project comes from `supabase link`.
+- `supabase/config.toml`: `project_id = "fit-check"`, with a comment saying where the remote project is chosen. Older entries below keep the ref they had.
+- Look at: `supabase link --project-ref <live ref>` before `pnpm db:push`.
+
+## 2026-11-25 (The MCP server records on the day in force, as the app)
+
+- Why: from three hours before candle lighting the app records a wear on Shabbat's or the holiday's date, but `outfit_today` and `outfit_log` without a date used the civil date. "I'm wearing it" told to Claude at 16:00 on a Friday was logged as Friday's weekday wear, so the Shabbat look stayed unworn. Found by the independent review of PR #51.
+- `apps/mobile/src/data/shabbatTimes.ts` moved (`git mv`) to `packages/schema/src/shabbat-times.ts`; the app file re-exports it, so no app import changed.
+- `supabase/functions/mcp/outfit.ts`: `dayInForce` (the app's rule over `phoneFreeChain` and `defaultTab`) for calls with neither `date` nor `day_type`; the answer carries `date_note` and `today` when the day moved. `sharedCalendar` reuses the first Hebcal answer, so planning Shabbat from Friday is still one request. Tool descriptions say so.
+- Tests: 5 Deno tests (Friday before and after the three hours, Friday already worn, a two-day holiday, staying on today with observance off, a failed calendar or an explicit date or day type, one Hebcal request).
+- Spec: PRD 7.1.
+- Look at: on a Friday afternoon, ask Claude for today's outfit; it should say the look is for Shabbat.
+
 ## 2026-11-25 (The mcp deploy bundle builds again)
 
 - Why: `scripts/bundle-mcp.sh` failed with `Could not resolve "aws4fetch"` since the R2 change (PR #58) made `_shared/objects.ts` import it; the script aliases each npm import and had no alias for it, so the documented deploy path for the `mcp` function could not build. Found by the independent review of PR #51.
