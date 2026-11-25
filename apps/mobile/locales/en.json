@@ -594,6 +594,7 @@
       "billing_required": "Improving needs billing in Google AI Studio. The free cutout is kept.",
       "rate_limited": "Google is busy (free quota). Try again in a minute.",
       "monthly_limit": "Monthly limit for improving photos reached. The crop is kept; you can improve again next month.",
+      "cutout_monthly_limit": "Monthly limit for background removal reached. The photo stays as it is; you can remove the background again next month.",
       "preview": "This is a design preview: nothing is sent or saved."
     },
     "enhance": "Improve with AI",

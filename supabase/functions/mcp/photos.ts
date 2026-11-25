@@ -23,7 +23,7 @@ import {
   RedrawSpecSchema,
   type RedrawSpec,
 } from "@fit-check/schema/redraw-spec.ts";
-import { cutout } from "../_shared/ai/modal.ts";
+import { removeBackground } from "../_shared/ai/background.ts";
 import { ENHANCE_MODEL, enhanceGarment } from "../_shared/ai/gemini.ts";
 import { whiteToTransparent } from "../_shared/whitebg.ts";
 import { MONTHLY_GOOGLE_BUDGET_USD, monthlyGoogleSpend } from "../_shared/ai/budget.ts";
@@ -138,11 +138,11 @@ async function download(ctx: ToolContext, path: string): Promise<Uint8Array | nu
   return await garmentsOf(ctx).read(path);
 }
 
-/** Cuts out `bytes` on the worker and stores `<stem>-cutout.png` / `<stem>-thumb.png`; null when the worker failed. */
+/** Removes the background of `bytes` and stores `<stem>-cutout.png` / `<stem>-thumb.png`; null when that failed. */
 async function cutAndStore(ctx: ToolContext, bytes: Uint8Array, stem: string, isolate: boolean) {
-  const cut = await cutout(bytes, sniffImageType(bytes, "image/jpeg"), isolate);
-  if (!cut.ok && cut.notConfigured) return null;
-  await ctx.db.from("ai_calls").insert({ user_id: ctx.userId, ...cut.log });
+  const cut = await removeBackground(bytes, sniffImageType(bytes, "image/jpeg"), isolate, async (entry) => {
+    await ctx.db.from("ai_calls").insert({ user_id: ctx.userId, ...entry });
+  });
   if (!cut.ok) return null;
   const store = garmentsOf(ctx);
   const [a, b] = await Promise.all([store.write(`${stem}-cutout.png`, cut.cutout, "image/png"), store.write(`${stem}-thumb.png`, cut.thumb, "image/png")]);
