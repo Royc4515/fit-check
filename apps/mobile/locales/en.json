@@ -596,6 +596,7 @@
       "monthly_limit": "Monthly limit for improving photos reached. The crop is kept; you can improve again next month.",
       "cutout_monthly_limit": "Monthly limit for background removal reached. The photo stays as it is; you can remove the background again next month.",
       "ai_monthly_limit": "Monthly AI limit reached. Fill in the garment's details by hand; automatic tagging returns next month.",
+      "user_monthly_limit": "You've used this month's allowance. Ask Roy to raise it, or wait for next month.",
       "preview": "This is a design preview: nothing is sent or saved."
     },
     "enhance": "Improve with AI",

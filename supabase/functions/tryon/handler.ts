@@ -39,6 +39,8 @@ export interface TryonDeps {
   /** Created only after authentication. Throws only when the server env is missing. */
   store(): TryonStore;
   monthlySpend(): Promise<number | null>;
+  /** Whether this user's own monthly allowance (_shared/quota.ts) has room for a paid call. */
+  userAllows(userId: string): Promise<boolean>;
   logAiCall(userId: string | null, entry: AiLogEntry): Promise<void>;
   renderOutfit: typeof renderOutfit;
   renderFigure: typeof renderFigure;
@@ -175,6 +177,10 @@ export async function handleTryon(req: Request, deps: TryonDeps): Promise<Respon
   };
 
   if (mode === "render" && cached) return answer(true, 0);
+
+  // A stored image costs nothing, so the user's own allowance is checked only here, before anything is paid. Over
+  // it, the sheet shows its "budget reached" line; the numbers stay out because they are the user's, not the cap's.
+  if (!(await deps.userAllows(userId))) return error("budget_reached", { month_spend_usd: null });
 
   // Garment images before any money is spent: a missing file must not cost a figure.
   const garments: TryonGarment[] = [];
