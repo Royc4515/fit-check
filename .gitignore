@@ -17,3 +17,8 @@ scripts/data/photos/
 .DS_Store
 # Claude Code agent worktrees (local tool state)
 .claude/worktrees/
+# Build and tool output
+web-build/
+coverage/
+*.tsbuildinfo
+.vercel/
