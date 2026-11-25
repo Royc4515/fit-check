@@ -18,3 +18,4 @@ export * from "./design-preview.ts";
 export * from "./tryon.ts";
 export * from "./usage.ts";
 export * from "./referral.ts";
+export * from "./contact.ts";
