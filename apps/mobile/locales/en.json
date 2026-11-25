@@ -565,7 +565,13 @@
     "prompt": "Sign in to see your wardrobe",
     "google": "Continue with Google",
     "failed": "Sign-in failed. Try again.",
-    "tagline": "Your wardrobe, and one outfit for every morning."
+    "tagline": "Your wardrobe, and one outfit for every morning.",
+    "direct": {
+      "working": "Signing in…",
+      "failed": "Signing in with Google didn't finish.",
+      "classic": "Sign in the usual way",
+      "back": "Back to sign-in"
+    }
   },
   "location": {
     "title": "Location",
