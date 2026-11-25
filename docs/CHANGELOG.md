@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-25 (Monthly cap in code for Anthropic)
+
+- Why: the money rule asks for a cap in code below each paid provider's monthly credit; Anthropic had only daily limits. Roy: $100 of Anthropic credit a month.
+- `_shared/ai/budget.ts`: `MONTHLY_ANTHROPIC_BUDGET_USD` = 80 across all users, `monthlyAnthropicSpend` (from `ai_calls`, every Anthropic model), `anthropicBudgetAllows`. `log.ts`: `sumProviderCost`.
+- `intake-tag` and `style-outfit` check the cap before any work and answer `ai_monthly_limit`. Tagging shows "monthly AI limit reached" (he/en) and leaves the fields to fill by hand; the stylist falls back to the engine's top candidate, as on any stylist failure.
+- Spec: PRD money rule (Anthropic line), `CLAUDE.md` money rule, `_shared/ai/README.md`.
+- Look at: the Anthropic console's own spend limit (it was $5 on 2026-11-19). Set it between $80 and $100, so the code cap stops first and says why.
+
 ## 2026-11-25 (mcp function deployed with one place for both tools)
 
 - What: `mcp` version 11 on the live project, built from `main` at the merge of PR #66 (it also carries PR #65, merged before it). Same command as the earlier deploy (`--use-api --no-verify-jwt --import-map supabase/functions/deno.json`). Versions 9 and 10 were deployed from another session in between.

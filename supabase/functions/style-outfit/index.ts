@@ -2,6 +2,7 @@ import { authenticate } from "../_shared/auth.ts";
 import { StylistInputSchema } from "@fit-check/schema/stylist.ts";
 import { styleOutfit } from "../_shared/ai/anthropic.ts";
 import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
+import { anthropicBudgetAllows, monthlyAnthropicSpend } from "../_shared/ai/budget.ts";
 
 /**
  * style-outfit: the AI stylist for the Today screen (docs/PLAN.md stage B).
@@ -17,6 +18,8 @@ import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
  * - 400 { ok: false, reason: "bad_input", detail }    input did not match StylistInputSchema
  * - 401 { ok: false, reason: "unauthorized" }
  * - 429 { ok: false, reason: "daily_limit" }          more than DAILY_LIMIT calls today (spend guard)
+ * - 200 { ok: false, reason: "ai_monthly_limit" }     the month's Anthropic cap is reached (budget.ts); the app shows
+ *   the top-scored candidate without an explanation, as for ai_failed. Not logged: no call was made.
  */
 
 /** Spend guard: about $0.01 per call, so 30 calls cap a bad loop at roughly $0.30 a day. */
@@ -51,6 +54,7 @@ Deno.serve(async (req) => {
   // Rolling 24 hours rather than "today": no timezone to get wrong, same protection.
   const used = await countAiCalls(userId, "style", new Date(Date.now() - 24 * 3600 * 1000));
   if (used === null || used >= DAILY_LIMIT) return json(429, { ok: false, reason: "daily_limit" });
+  if (!anthropicBudgetAllows(await monthlyAnthropicSpend())) return json(200, { ok: false, reason: "ai_monthly_limit" });
 
   const result = await styleOutfit(parsed.data);
   await logAiCall(userId, result.log);
