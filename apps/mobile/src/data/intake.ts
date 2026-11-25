@@ -180,15 +180,18 @@ function reasonFromBody(body: unknown): string | null {
   return typeof body.reason === "string" && body.reason.length > 0 ? body.reason : null;
 }
 
+/** The Edge Functions the app calls through `invoke` (try-on and the stylist have their own callers). */
+export type AppFunction = "intake-separate" | "intake-tag" | "intake-cutout" | "referral";
+
 /**
- * Calls an intake Edge Function and parses the answer, turning HTTP errors (cap, bad input) into typed results too.
+ * Calls an app Edge Function and parses the answer, turning HTTP errors (cap, bad input) into typed results too.
  * Reasons: the server's own when the body has one, `http_<status>` for an HTTP error without one, "network" when the
  * request never got an answer, "bad_response" for an answer that does not parse.
  */
-async function invoke<T extends { ok: boolean }>(
+export async function invoke<T extends { ok: boolean }>(
   body: object,
   schema: z.ZodType<T>,
-  fn: "intake-separate" | "intake-tag" | "intake-cutout" = "intake-separate"
+  fn: AppFunction = "intake-separate"
 ): Promise<T | { ok: false; reason: string }> {
   // Design preview: no Edge Function call, paid or not. "preview" has its own line in intake.reason.
   if (isPreview()) return { ok: false, reason: "preview" };
