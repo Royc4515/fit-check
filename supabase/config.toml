@@ -1,5 +1,8 @@
-# Supabase CLI config. Project ref is set with `supabase link --project-ref <ref>`.
-project_id = "ftjerbwrzjprfikxkukj"
+# Supabase CLI config. The remote project is chosen by `supabase link --project-ref <ref>` (kept in the gitignored
+# supabase/.temp), never by this file.
+# don't touch / project_id only names the local stack (its Docker containers); it held the first project's ref, which
+# read as "the live project" after the move to a new project on 2026-11-24. A neutral name keeps refs out of the repo.
+project_id = "fit-check"
 
 [api]
 enabled = true

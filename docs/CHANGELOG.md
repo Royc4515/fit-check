@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-25 (supabase/config.toml no longer names the old project)
+
+- Why: `project_id` still held the first project's ref (`ftjerbwrzjprfikxkukj`) after the move to a new Supabase project on 2026-11-24, so the file read as pointing at a project that is no longer live. The field only names the local stack; the remote project comes from `supabase link`.
+- `supabase/config.toml`: `project_id = "fit-check"`, with a comment saying where the remote project is chosen. Older entries below keep the ref they had.
+- Look at: `supabase link --project-ref <live ref>` before `pnpm db:push`.
+
 ## 2026-11-25 (The MCP server records on the day in force, as the app)
 
 - Why: from three hours before candle lighting the app records a wear on Shabbat's or the holiday's date, but `outfit_today` and `outfit_log` without a date used the civil date. "I'm wearing it" told to Claude at 16:00 on a Friday was logged as Friday's weekday wear, so the Shabbat look stayed unworn. Found by the independent review of PR #51.
