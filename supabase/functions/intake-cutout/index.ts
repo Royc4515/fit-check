@@ -9,14 +9,16 @@ import { GARMENT_BUCKET, garmentStore } from "../_shared/objects.ts";
  *
  * Input (POST JSON, IntakeCutoutInputSchema): `cutout_path` of a crop the app uploaded to `cutouts/{uid}/...`.
  * Sends it to the Modal worker (BiRefNet) and stores `<crop>-cutout.png` (transparent, trimmed) and
- * `<crop>-thumb.png` (400 px) next to it, in R2 when it is configured (see _shared/objects.ts). Cost is Modal GPU seconds against the free monthly credit.
+ * `<crop>-thumb.png` (400 px) next to it, in R2 when it is configured (see _shared/objects.ts). Cost is Modal CPU time against the $1 monthly credit.
  *
  * Responses: 200 { ok: true, path, url, thumb_path } | 200 { ok: false, reason } with reason "not_configured"
- * (worker not deployed yet; the app keeps the crop) or "ai_failed" | 400 bad_input / not_found | 401 | 429.
+ * (worker not deployed yet; the app keeps the crop) or "ai_failed" | 400 bad_input / not_found | 401 | 429 (40 a day).
  */
 
-/** A generous day of adding clothes; each call is 10-25 s of CPU time against the free Modal credit. */
-const DAILY_CUTOUT_LIMIT = 400;
+// don't touch / sized to Modal's $1 monthly credit without a card (2026-11): one cutout costs about $0.007 in a batch
+// and up to $0.02 alone, so 40 a day leaves a day of adding clothes possible while one runaway day cannot spend the
+// whole month. The wardrobe's first import (124 cutouts on 2026-11-10) would now take four days.
+const DAILY_CUTOUT_LIMIT = 40;
 const MAX_BYTES = 8 * 1024 * 1024;
 
 const cors = {

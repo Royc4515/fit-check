@@ -16,7 +16,7 @@ Every call to a model provider goes through this folder. Edge Functions never ca
 | `budget.ts` | `MONTHLY_GOOGLE_BUDGET_USD` (8), `monthlyGoogleSpend`, `googleBudgetAllows` | - | paid Google calls |
 | `types.ts` | `AiLogEntry` and shared result types | - | - |
 
-Not built: `extractReceipt` (v2) and the worker's `/embed` (FashionCLIP; the endpoint exists, nothing calls it).
+Not built: `extractReceipt` (v2) and image embeddings (planned on `gemini-embedding-2`, `docs/TASKS.md` 5.5; the worker's unused `/embed` endpoint was removed 2026-11-25).
 
 Rules that are not negotiable (CLAUDE.md):
 - Validate every model response with zod before returning. A parse failure is logged and surfaced as a typed error; callers fall back.
