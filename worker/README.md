@@ -2,11 +2,16 @@
 
 Modal app (worker/app.py):
 - `Cutter.cutout`: background removal (BiRefNet `birefnet-general` via rembg, on 8 CPU cores). With `?isolate=1` (the default) SAM 2.1 small also keeps only the garment at the centre of the crop, so clothes hanging behind it drop out; `intake-cutout` sends `isolate=0` for AI redraws. Used by `intake-cutout`.
-- `Embedder.embed`: FashionCLIP, 512-d, L2-normalised. Not wired yet.
 
-Cost: per second against Modal's free $30/month Starter credit; about 10-20 s of 8 CPU cores per photo, a fraction
-of a cent. No GPU on purpose: Modal requires a payment method for GPU functions. Containers scale to zero two
-minutes after the last call.
+Cost: Modal bills every second a container is alive (start, work, and the idle tail before it stops), against a
+credit of $1 a month without a card ($30 with one; Roy keeps no card on file). In November 2026 one cutout cost about
+$0.007 inside a batch and up to $0.02 alone, and the first import of the wardrobe (124 cutouts in a day) plus two idle
+minutes after every burst used the whole $1 by 2026-11-18. So: no GPU (it needs a card), the container scales to zero
+20 s after the last call, and `intake-cutout` allows 40 cutouts a day. When the credit runs out Modal refuses the
+calls and the app keeps the plain crop until the next month.
+
+The FashionCLIP `/embed` endpoint was removed on 2026-11-25: nothing called it, and embeddings are planned on
+`gemini-embedding-2` instead (`docs/TASKS.md` 5.5).
 
 ## Deploy (from your own computer: Modal's CLI uses gRPC, which the cloud dev sandbox cannot reach)
 
