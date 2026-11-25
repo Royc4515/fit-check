@@ -8,7 +8,7 @@ Personal wardrobe and styling app for Roy. Single user now, multi-user-ready sch
 - Web target: same code via react-native-web, deployed to Vercel. Animations use Reanimated + Gesture Handler on every platform, one code path (the `motion` split was never built; DESIGN.md section 5).
 - Backend: Supabase (Postgres + pgvector, Auth with Google, Storage, Edge Functions in Deno, pg_cron).
 - Garment images: Cloudflare R2 (bucket `fit-check-cutouts`, public read), because serving them from Supabase Storage got the project restricted for egress (42.77 GB of a 5 GB quota, 2026-11; Roy moved them on 2026-11-22). Edge Functions read and write them only through `supabase/functions/_shared/objects.ts` (R2 first, the Supabase `cutouts` bucket as fallback); the app reads `EXPO_PUBLIC_R2_PUBLIC_URL` first. Supabase Storage still holds what the app uploads itself (pending photos, crops, originals) and try-on images.
-- ML worker: Python service on Modal exposing `/cutout` (BiRefNet via rembg, SAM 2.1 to keep the front garment). Called only from Edge Functions. It runs on Modal's $1 monthly credit without a card (Roy: no card on file), so it scales to zero 20 s after the last call and `intake-cutout` allows 40 a day. Embeddings will come from `gemini-embedding-2`, not the worker (`docs/TASKS.md` 5.5); the unused `/embed` endpoint was removed 2026-11-25.
+- Background removal (`_shared/ai/background.ts`, called only from Edge Functions): first the Cloudflare Worker `fit-check-cutout` (`worker/cloudflare`, Cloudflare Images `segment: "foreground"`, BiRefNet run by Cloudflare), free up to 5,000 transformations a month (2 per cutout; capped in code at 2,400 cutouts); it does not drop clothes hanging behind the garment. Fallback: the Python service on Modal exposing `/cutout` (BiRefNet via rembg, SAM 2.1 to keep the front garment), on Modal's $1 monthly credit without a card (Roy: no card on file), so it scales to zero 20 s after the last call. `intake-cutout` allows 80 a day. Embeddings will come from `gemini-embedding-2`, not the worker (`docs/TASKS.md` 5.5); the unused `/embed` endpoint was removed 2026-11-25.
 - AI providers, called only from Edge Functions, each behind one function in `supabase/functions/_shared/ai/`:
   - `separateGarments(image)` → Gemini 2.5 Flash Image
   - `tagItem(cutout)` → Claude Haiku, structured output, schema in `packages/schema/item-tags.ts`
@@ -25,7 +25,7 @@ packages/schema/      zod schemas shared by app and Edge Functions (item tags, s
 packages/engine/      pure TypeScript: filters, scoring, candidate generation. No I/O. 100% unit-tested.
 supabase/migrations/  SQL, one file per change, never edited after merge
 supabase/functions/   Edge Functions: intake-separate, intake-cutout, intake-tag, style-outfit, tryon, mcp, design-preview, import-sheet; generate-daily and precheck are stubs
-worker/               Modal app (Python): cutout + embed
+worker/               background removal: the Modal app (Python) and the Cloudflare Worker (worker/cloudflare)
 design/screens/       dated screenshots of every screen
 docs/                 the spec (PRD.md, DESIGN.md), live status (TASKS.md), CHANGELOG.md, plans and checklists
 scripts/              one-off tools (sheet import CSV, seed)
@@ -85,6 +85,6 @@ pnpm build:android    # eas build --platform android --profile preview (APK)
 
 - Do not add a UI library (shadcn, Tamagui, Paper). Components are ours, in `apps/mobile/src/components/ui/`, styled from the tokens. A screen never styles a one-off view; a missing component is added to the library (DESIGN.md section 4).
 - Do not add a vector DB, queue, or second backend. Supabase does all of it at this scale.
-- Do not call remove.bg (API shuts down 2026-12-01). Cutouts come from the Modal worker.
+- Do not call remove.bg (API shuts down 2026-12-01). Cutouts come from the Cloudflare Worker, with the Modal worker as fallback.
 - Do not implement Gmail import or price tracking in the MVP, even if tempting. Tables for them exist and stay empty. Virtual try-on: Roy lifted the ban on 2026-11-19; it proceeds only as `docs/REDESIGN_PLAN.md` stage 5.3 says (one generated image of the whole outfit, on demand; the first slice is the test and is removed if Roy rejects it), under the money rule above.
 - Do not store the wardrobe in the app bundle or in local-only storage; Supabase is the source of truth, local is cache.

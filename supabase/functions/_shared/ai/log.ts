@@ -51,3 +51,22 @@ export async function sumAiCost(model: string, since: Date): Promise<number | nu
   if (error) return null;
   return (data ?? []).reduce((sum, row) => sum + Number(row.cost_usd ?? 0), 0);
 }
+
+/**
+ * How many calls of one model all users made since `since`, failed ones included (a failed call may still have used
+ * the provider's quota), for monthly caps on a quota that belongs to the project, not to a user. Service role, like
+ * countAiCalls. Fails closed: null when the count cannot be read, and the caller then treats the cap as reached.
+ */
+export async function countModelCalls(model: string, since: Date): Promise<number | null> {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return null;
+  const admin = createClient(url, key, { auth: { persistSession: false } });
+  const { count, error } = await admin
+    .from("ai_calls")
+    .select("id", { count: "exact", head: true })
+    .eq("model", model)
+    .gte("created_at", since.toISOString());
+  if (error) console.error("countModelCalls failed", error.message);
+  return error ? null : count ?? 0;
+}
