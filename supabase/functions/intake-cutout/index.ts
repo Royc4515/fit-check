@@ -3,6 +3,7 @@ import { adminClient, authenticate } from "../_shared/auth.ts";
 import { removeBackground } from "../_shared/ai/background.ts";
 import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
 import { GARMENT_BUCKET, garmentStore } from "../_shared/objects.ts";
+import { userAllows } from "../_shared/quota.ts";
 
 /**
  * intake-cutout: removes the background of one cropped garment (PRD section 4, step 3).
@@ -13,7 +14,8 @@ import { GARMENT_BUCKET, garmentStore } from "../_shared/objects.ts";
  * (see _shared/objects.ts). Free: Cloudflare's monthly free transformations, then Modal's $1 monthly credit.
  *
  * Responses: 200 { ok: true, path, url, thumb_path } | 200 { ok: false, reason } with reason "not_configured"
- * (no provider set up; the app keeps the crop), "cutout_monthly_limit" or "ai_failed" | 400 bad_input / not_found |
+ * (no provider set up; the app keeps the crop), "cutout_monthly_limit", "user_monthly_limit" (this user's own
+ * allowance in _shared/quota.ts) or "ai_failed" | 400 bad_input / not_found |
  * 401 | 429 daily_limit (80 a day).
  */
 
@@ -60,6 +62,7 @@ Deno.serve(async (req) => {
 
   const used = await countAiCalls(userId, "cutout", new Date(Date.now() - 24 * 3600 * 1000));
   if (used === null || used >= DAILY_CUTOUT_LIMIT) return json(429, { ok: false, reason: "daily_limit" });
+  if (!(await userAllows(userId, "cutout"))) return json(200, { ok: false, reason: "user_monthly_limit" });
 
   // Service role (see _shared/auth.ts); ownPath() above keeps reads and writes in this user's folder.
   const store = garmentStore(adminClient().storage.from(GARMENT_BUCKET));
