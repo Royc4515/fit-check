@@ -374,7 +374,7 @@ export const TOOLS: Tool[] = [
     name: "outfit_today",
     title: "Today's outfit candidates",
     description:
-      "Builds up to eight outfit candidates for a date with the app's own engine and the app's own rules: weather (Givat Shmuel by default), " +
+      "Builds up to eight outfit candidates for a date with the app's own engine and the app's own rules: weather (Tel Aviv by default), " +
       "the day's rules, laundry, what Roy wore recently, and the outfits he saved (a saved or favourite outfit ranks a little higher among " +
       "near-equal candidates). YOU are the stylist: pick one candidate and explain it to Roy in Hebrew. " +
       "Which rules: a day_type you pass wins over everything. Otherwise, if Roy keeps Shabbat and holidays (his profile), Shabbat and holidays " +

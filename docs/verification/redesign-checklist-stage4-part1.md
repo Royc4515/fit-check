@@ -3,7 +3,7 @@
 Shabbat planning (4.1), the observance switch (4.1b) and the hardening items (4.7a), checked at f1a490d by a verifier that did not write the code. Chromium on the web build, read-only design preview, Nominatim stubbed; the success path of a planned wear was produced in a patched copy of the build output outside the repo. Screenshot file names in the text are the verifier's scratch files; they are not in the repo.
 
 ### Stage 4.1 check, head f1a490d (verify4). Partial findings written per section.
-### Expected chains (Hebcal 294981, i=on; independent curl)
+### Expected chains (Hebcal for the default city, i=on; independent curl)
 - Thu 2026-11-19: no candles -> no tabs.
 - Fri 2026-11-20: candles 16:18, havdalah Sat 17:17 -> "היום", "לשבת".
 - Sat 2026-11-21: no candles -> no tabs.

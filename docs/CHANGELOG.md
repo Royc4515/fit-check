@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-25 (Personal details out of the public repo's files)
+
+- Why: the repo went public; Roy asked to remove his personal details from the spec and the repo.
+- Default place is Tel Aviv (app and mcp), with the eight city-bound Hebcal fixtures re-recorded for it; the weather sample has no coordinates; the campus geocoding sample is renamed. The city is gone from every doc.
+- The stylist persona and the mcp instructions describe the users, not one person.
+- Deleted the real wardrobe CSV (now git-ignored) and the archived kickoff prompt.
+- Not changed: git history, which still holds the old text; removing it needs a history rewrite and a force-push to main, only with Roy's explicit go.
+- Look at: a device with no saved place now shows Tel Aviv on Today; Profile > Location picks another city.
+
 ## 2026-11-25 ("Contact Roy": requests stored and emailed)
 
 - Why: Roy wants a form that emails him in a set format, with a choice of what the request is about. Resend (free) approved by Roy.
@@ -46,7 +55,7 @@
 
 - Why: the reviews of PR #51 and #62 found that `outfit_today` took `lat`/`lon` but `outfit_log` did not, so the two could decide the day in force from different candle lighting; and that a point abroad was planned in Israel time with Israel's holiday schedule, giving wrong times without saying so.
 - `supabase/functions/mcp/outfit.ts`: both inputs are built by `withPlace` (optional `lat`/`lon`, together, inside a box around Israel); `outfit_log` plans its day at that place. A point outside Israel is `invalid_input` with `OUTSIDE_ISRAEL_MESSAGE`. Tool descriptions say to pass the same place to both.
-- Spec: PRD 7.1 names the two gaps left on purpose (the server has no stored calendar when Hebcal fails; without a place it uses Givat Shmuel's candle lighting).
+- Spec: PRD 7.1 names the two gaps left on purpose (the server has no stored calendar when Hebcal fails; without a place it uses the default city's candle lighting).
 - Tests: 2 Deno tests (Paris refused by both tools with no database request; `outfit_log` asks the calendar for the place it is given).
 - Look at: the next `mcp` deploy.
 
@@ -487,7 +496,7 @@
 
 ## 2026-11-08 (plan + engine v2 part 1 + item drawings)
 
-- `docs/PLAN.md`: the full plan (design, engine v2, AI stylist and modes, intake, calendar, shopping, phone), built from four research passes. Includes proposed PRD/DESIGN corrections (Hebcal geonameid 294981 for Giv'at Shmuel, current Claude/Gemini models, no `temperature` param) and the decisions still open.
+- `docs/PLAN.md`: the full plan (design, engine v2, AI stylist and modes, intake, calendar, shopping, phone), built from four research passes. Includes proposed PRD/DESIGN corrections (the default city's Hebcal geonameid, current Claude/Gemini models, no `temperature` param) and the decisions still open.
 - Items are drawn as technical flats in their real colour and pattern (`components/item-art/`, react-native-svg) on all three screens. Set: `design/screens/2026-11-08-item-art-set.png`.
 - Engine fixes, each reproduced with a failing test against the real wardrobe first (`candidates.v2.test.ts`, 11 tests):
   - **Cold start offered only T-shirts.** Pre-ranking sorted by recency then id and kept 6, so the 24 button-downs never appeared. Now ranked by fit to the context and interleaved across subcategories.
@@ -498,7 +507,7 @@
 
 ## 2026-11-08 (real weather and dates)
 
-- Today now uses the real day: Israel-local date, Hebrew date and holidays from Hebcal (geonameid 294981, Giv'at Shmuel), candle lighting on Fridays and holiday eves, and the Open-Meteo hourly forecast summarized over 07:00-19:00 (feels-like min/max, rain, wind, UV, sky). Saturdays and Yom Tov switch the engine to the Shabbat rules. `features/today/mock.ts` is gone.
+- Today now uses the real day: Israel-local date, Hebrew date and holidays from Hebcal (the default city's geonameid), candle lighting on Fridays and holiday eves, and the Open-Meteo hourly forecast summarized over 07:00-19:00 (feels-like min/max, rain, wind, UV, sky). Saturdays and Yom Tov switch the engine to the Shabbat rules. `features/today/mock.ts` is gone.
 - Pure summarizer in the engine (`weather.ts`) with 6 tests on a recorded real response (`__fixtures__/open-meteo-2026-11-08.json`, a showery day: 16-21C, 63% rain). API responses are validated with zod (`packages/schema/src/external.ts`).
 - Each source fails alone: weather falls back to a 3h cache, then a day-old one, then "no weather data" with a mild default the screen never presents as a forecast. Attribution for both APIs (CC BY 4.0) is shown under the weather line.
 - The explanation is now a true sentence built from the engine's facts (day, feels-like range, layer, rain, Shabbat), in place of the static mock text. It stays as the fallback when the AI stylist (phase B) fails validation.
@@ -506,7 +515,7 @@
 
 ## 2026-11-08 (choose a location)
 
-- New Location screen (tap "מיקום: ..." under the weather line on Today): the default (Giv'at Shmuel), the phone's current location (expo-location, works on Android and in the browser), or any city via Open-Meteo's free geocoder. Stored on the device, not in Supabase: "current location" only means something on the device you hold.
+- New Location screen (tap "מיקום: ..." under the weather line on Today): the default city, the phone's current location (expo-location, works on Android and in the browser), or any city via Open-Meteo's free geocoder. Stored on the device, not in Supabase: "current location" only means something on the device you hold.
 - Weather, the local date and Shabbat times follow the chosen place. A chosen city is sent to Hebcal by its GeoNames id, so local customs apply (Jerusalem lights candles 40 minutes before sunset; coordinates alone get the generic 18, which the screen says when "current location" is used). The Israel holiday schedule (`i=on`) is applied only when the place is in Israel's time zone; abroad Yom Tov is two days.
 - Caches are keyed by place, so switching cities never shows the old city's weather.
 - Verified: geocoder and Hebcal (by id and by coordinates) against live responses. Not verified: the screen itself and the GPS permission flow, which need a signed-in session and a real device/browser.

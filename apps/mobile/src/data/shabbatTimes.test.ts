@@ -110,7 +110,7 @@ describe("shabbatTimes: Chanukah (its candles are 'holiday' events with a time, 
   it("and tomorrow's end is Shabbat's", () => expect(run(chanukahFriday, "2026-12-04").end).toEqual({ time: "17:16", kind: "shabbat", day: "tomorrow" }));
 });
 
-// The chain fixtures are real Hebcal responses for the app's default location (geonameid 294981, i=on, lg=he,
+// The chain fixtures are real Hebcal responses for the app's default location (geonameid 293397, i=on, lg=he,
 // start=date, end=date+3: the range the calendar load asks for; saved 2026-11-19). Expected chains read by hand.
 const chain = (raw: unknown, date: string) => phoneFreeChain(items(raw), date);
 const RH1 = { he: "ראש השנה 5788", en: "Rosh Hashana 5788" };

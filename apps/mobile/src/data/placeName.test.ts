@@ -62,8 +62,8 @@ describe("nameFromNominatim", () => {
   it("reads the real Tel Aviv answer", () => {
     expect(nameFromNominatim(fixture("telaviv"))).toBe("תל־אביב–יפו");
   });
-  it("reads a campus point as the town", () => {
-    expect(nameFromNominatim(fixture("campus"))).toBe("רמת גן");
+  it("reads a point inside a town as the town", () => {
+    expect(nameFromNominatim(fixture("town"))).toBe("רמת גן");
   });
   it("prefers city over town over village over municipality over hamlet", () => {
     expect(nameFromNominatim({ address: { hamlet: "h", municipality: "m", village: "v", town: "t", city: "c" } })).toBe("c");
