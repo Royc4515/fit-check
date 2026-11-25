@@ -70,3 +70,22 @@ export async function countModelCalls(model: string, since: Date): Promise<numbe
   if (error) console.error("countModelCalls failed", error.message);
   return error ? null : count ?? 0;
 }
+
+/**
+ * Estimated USD spent with one provider since `since`, all users and all of its models (a model can be chosen per
+ * call, as intake-tag's `model` does, so a per-model sum would miss some). For caps on a provider's monthly credit.
+ * Service role, like countAiCalls. Fails closed: null when the sum cannot be read, and the caller treats the cap as
+ * reached.
+ */
+export async function sumProviderCost(provider: AiLogEntry["provider"], since: Date): Promise<number | null> {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return null;
+  const admin = createClient(url, key, { auth: { persistSession: false } });
+  const { data, error } = await admin.from("ai_calls").select("cost_usd").eq("provider", provider).gte("created_at", since.toISOString());
+  if (error) {
+    console.error("sumProviderCost failed", error.message);
+    return null;
+  }
+  return (data ?? []).reduce((sum, row) => sum + Number(row.cost_usd ?? 0), 0);
+}

@@ -1,5 +1,6 @@
 import { DETECT_MODEL, ENHANCE_MODEL } from "./gemini.ts";
-import { sumAiCost } from "./log.ts";
+import { monthStart } from "./cloudflare.ts";
+import { sumAiCost, sumProviderCost } from "./log.ts";
 import { TRYON_MODEL } from "./tryon.ts";
 
 /**
@@ -35,4 +36,26 @@ export async function monthlyGoogleSpend(): Promise<number | null> {
  */
 export function googleBudgetAllows(spent: number | null, priceUsd: number, capUsd = MONTHLY_GOOGLE_BUDGET_USD): boolean {
   return spent !== null && spent + priceUsd <= capUsd;
+}
+
+/**
+ * The money guard for Anthropic calls (tagging, the duplicate check, the stylist): Roy's account has $100 of API
+ * credit a month (Roy, 2026-11-25). $80 leaves room for the gap between the estimates logged in ai_calls and the real
+ * bill, and for other use of the same credit. Counted across all users, like Google's.
+ * Past it, intake-tag answers `ai_monthly_limit` (the garment is filled in by hand) and style-outfit answers the
+ * same, so the app shows the engine's top candidate without the stylist's words.
+ */
+export const MONTHLY_ANTHROPIC_BUDGET_USD = 80;
+
+/** Anthropic spend since the 1st of this month (UTC); null when it cannot be read, which callers treat as spent. */
+export function monthlyAnthropicSpend(now: Date = new Date()): Promise<number | null> {
+  return sumProviderCost("anthropic", monthStart(now));
+}
+
+/**
+ * Whether an Anthropic call may start. One call costs about a cent at most, so the check is spend below the cap,
+ * not spend plus a price: the most a month can pass the cap by is one call. Unknown spend (null) never allows a call.
+ */
+export function anthropicBudgetAllows(spent: number | null, capUsd = MONTHLY_ANTHROPIC_BUDGET_USD): boolean {
+  return spent !== null && spent < capUsd;
 }
