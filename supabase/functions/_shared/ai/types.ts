@@ -23,7 +23,8 @@ export interface EmbedResult {
 }
 
 export interface AiLogEntry {
-  provider: "anthropic" | "google" | "modal";
+  // ai_calls.provider is plain text as well (no check constraint), so a new provider needs no migration either.
+  provider: "anthropic" | "google" | "modal" | "cloudflare";
   model: string;
   // ai_calls.task is plain text (no check constraint), so a new task needs no migration.
   task: "separate" | "cutout" | "embed" | "tag" | "style" | "receipt" | "tryon";
