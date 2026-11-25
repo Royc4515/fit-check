@@ -17,6 +17,7 @@ export { ListRow } from "./ListRow";
 export { setOriginHidden, useOriginVisibility } from "./originVisibility";
 export { computeMasonry, MasonryGrid, type MasonryCellInfo, type MasonryLayout, type MasonrySection } from "./MasonryGrid";
 export { MetaLink } from "./MetaLink";
+export { Meter } from "./Meter";
 export { OUTFIT_TILE_CAPTION_HEIGHT, OutfitTile, OutfitTileSkeleton } from "./OutfitTile";
 export { ScreenColumn } from "./ScreenColumn";
 export { ScreenHeader } from "./ScreenHeader";

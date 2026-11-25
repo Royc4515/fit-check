@@ -18,9 +18,11 @@ type Props = {
   counterFrom?: number;
   /** Spoken counter, e.g. "32 of 40 characters". */
   counterLabel?: (n: number, max: number) => string;
-  /** Enter / the keyboard's return key. */
+  /** Enter / the keyboard's return key. Ignored when `multiline`: there Enter starts a new line. */
   onSubmit?: () => void;
   placeholder?: string;
+  /** A message box rather than one line: grows from about five lines, Enter adds a line (the contact form). */
+  multiline?: boolean;
 };
 
 /** Numbers stay LTR inside Hebrew text (DESIGN.md section 2). */
@@ -30,12 +32,12 @@ const ltr = (s: string) => `⁦${s}⁩`;
 const lengthOf = (s: string) => [...s].length;
 
 /**
- * A plain one-line form field (a name in a form that has its own save button, unlike "כתיבה במקום", which saves
+ * A plain form field, one line or a message box (`multiline`) (a name in a form that has its own save button, unlike "כתיבה במקום", which saves
  * itself): label in `meta` above, a framed box (ivory, 1px hairline, ink while focused, radius 6, 12 in) with body
  * text, and, near the limit, a mono `n/max` counter at the end under it. The ink frame is the focus indicator, as a
  * ring around a framed box would double it.
  */
-export function TextField({ label, value, onChangeText, maxLength, counterFrom, counterLabel, onSubmit, placeholder }: Props) {
+export function TextField({ label, value, onChangeText, maxLength, counterFrom, counterLabel, onSubmit, placeholder, multiline = false }: Props) {
   const rtl = useRtl();
   const [focused, setFocused] = useState(false);
   const n = lengthOf(value);
@@ -52,15 +54,18 @@ export function TextField({ label, value, onChangeText, maxLength, counterFrom, 
         onChangeText={change}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        onSubmitEditing={onSubmit}
-        returnKeyType="done"
+        onSubmitEditing={multiline ? undefined : onSubmit}
+        returnKeyType={multiline ? "default" : "done"}
+        multiline={multiline}
+        // Top-aligned text in a tall box (Android centres it vertically by default).
+        textAlignVertical={multiline ? "top" : "auto"}
         placeholder={placeholder}
         placeholderTextColor={colors["ink-faint"]}
         accessibilityLabel={label}
         className="rounded bg-ivory p-3 font-body text-body text-ink"
         // don't touch / explicit align: react-native-web does not derive text-align from `dir` for inputs. No browser
         // outline (width 0, a typed style; `outlineStyle: "none"` is not in RN's types): the ink frame is the focus state.
-        style={{ minHeight: layout.control, borderWidth: 1, borderColor: focused ? colors.ink : colors.hairline, textAlign: rtl ? "right" : "left", outlineWidth: 0 }}
+        style={{ minHeight: multiline ? layout.control * 3 : layout.control, borderWidth: 1, borderColor: focused ? colors.ink : colors.hairline, textAlign: rtl ? "right" : "left", outlineWidth: 0 }}
       />
       {counter && maxLength !== undefined ? (
         <View style={{ alignItems: "flex-end" }}>
