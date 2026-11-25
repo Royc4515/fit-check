@@ -3,6 +3,7 @@ import { adminClient, authenticate } from "../_shared/auth.ts";
 import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
 import { DEFAULT_TAG_MODEL, tagItem, type TagCorrection, type WardrobeLine } from "../_shared/ai/tagger.ts";
 import { findDuplicate, MAX_CANDIDATES, type Candidate } from "../_shared/ai/duplicates.ts";
+import { anthropicBudgetAllows, monthlyAnthropicSpend } from "../_shared/ai/budget.ts";
 import { sniffImageType } from "../_shared/media.ts";
 import { GARMENT_BUCKET, garmentStore } from "../_shared/objects.ts";
 
@@ -16,7 +17,8 @@ import { GARMENT_BUCKET, garmentStore } from "../_shared/objects.ts";
  * wardrobe (same type and colour) and returns `duplicate` when one is the same garment. Writes nothing but the
  * ai_calls rows; saving is the app's job.
  *
- * Responses: 200 { ok: true, proposal, model } | 200 { ok: false, reason } | 400 bad_input / not_found | 401 | 429.
+ * Responses: 200 { ok: true, proposal, model } | 200 { ok: false, reason } ("ai_failed", "rate_limited", or
+ * "ai_monthly_limit" when the month's Anthropic cap in budget.ts is reached) | 400 bad_input / not_found | 401 | 429.
  */
 
 /** A generous day of adding clothes: two calls per garment (tags, duplicate check), a fraction of a cent each. */
@@ -60,6 +62,8 @@ Deno.serve(async (req) => {
 
   const used = await countAiCalls(userId, "tag", new Date(Date.now() - 24 * 3600 * 1000));
   if (used === null || used >= DAILY_TAG_LIMIT) return json(429, { ok: false, reason: "daily_limit" });
+  // The money guard (budget.ts), before any image is read: a capped month costs nothing.
+  if (!anthropicBudgetAllows(await monthlyAnthropicSpend())) return json(200, { ok: false, reason: "ai_monthly_limit" });
 
   // Service role (see _shared/auth.ts); every query below is filtered to this user explicitly.
   const supabase = adminClient();
