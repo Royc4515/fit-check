@@ -1,3 +1,4 @@
+<!-- markdownlint-disable-file MD041 -->
 ## What and why
 
 <!-- One feature, one fix or one rule. What changes for the user, and why now. -->
