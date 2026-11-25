@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-25 (mcp function deployed with one place for both tools)
+
+- What: `mcp` version 11 on the live project, built from `main` at the merge of PR #66 (it also carries PR #65, merged before it). Same command as the earlier deploy (`--use-api --no-verify-jwt --import-map supabase/functions/deno.json`). Versions 9 and 10 were deployed from another session in between.
+- Checked: the deployed source contains `withPlace`, `OUTSIDE_ISRAEL_MESSAGE` and `dayInForce`; an unauthenticated request answers 401 with the OAuth discovery header, which answers 200. Not checked: a signed-in call from Claude.
+- `docs/TASKS.md` R8 marked done.
+
 ## 2026-11-25 (MCP tools: one place for both, Israel only)
 
 - Why: the reviews of PR #51 and #62 found that `outfit_today` took `lat`/`lon` but `outfit_log` did not, so the two could decide the day in force from different candle lighting; and that a point abroad was planned in Israel time with Israel's holiday schedule, giving wrong times without saying so.
