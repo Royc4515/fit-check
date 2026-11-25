@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-25 (A personal monthly allowance for every user but Roy)
+
+- Why: Roy wants a usage bar per user, a lean limit for others, and to raise it for whoever asks; for himself, only the whole account's percentages.
+- `supabase/functions/_shared/quota.ts`: defaults $0.50 of AI and 30 background removals a month, plus Roy's grant (`user_quotas`, migration `0008_user_quotas.sql`). Roy (OWNER_USER_ID) has no personal limit; until that secret is set, nobody does. Unknown usage counts as used up.
+- Checked before every AI call and background removal: `intake-separate`, `intake-tag`, `style-outfit`, `intake-cutout`, `tryon` (render; a stored image stays free) and the `mcp` redraw and cutouts. Over the allowance the answer is `user_monthly_limit` ("you've used this month's allowance", he/en); try-on shows its budget line.
+- New `usage` function (`UsageResponseSchema` in packages/schema): the caller's meters; for the owner, the Google, Anthropic and background-removal caps of the whole account.
+- New `mcp` tool `quota_set`, owner only: read a user's allowance by email, or set the extra on top of the defaults.
+- To apply: `supabase db push` (0008), set the `OWNER_USER_ID` secret to Roy's user id, deploy `usage`, `intake-separate`, `intake-tag`, `style-outfit`, `intake-cutout`, `tryon`, `mcp`.
+- Look at: `_shared/quota_test.ts`; the try-on test for a limited user.
+
 ## 2026-11-25 (Monthly cap in code for Anthropic)
 
 - Why: the money rule asks for a cap in code below each paid provider's monthly credit; Anthropic had only daily limits. Roy: $100 of Anthropic credit a month.

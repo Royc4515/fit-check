@@ -1,5 +1,6 @@
 import { adminClient, authenticate } from "../_shared/auth.ts";
 import { monthlyGoogleSpend } from "../_shared/ai/budget.ts";
+import { userAllows } from "../_shared/quota.ts";
 import { logAiCall } from "../_shared/ai/log.ts";
 import { renderFigure, renderOutfit } from "../_shared/ai/tryon.ts";
 import { handleTryon } from "./handler.ts";
@@ -16,6 +17,7 @@ Deno.serve((req) =>
     authenticate,
     store: () => supabaseStore(adminClient()),
     monthlySpend: monthlyGoogleSpend,
+    userAllows: (userId) => userAllows(userId, "ai"),
     logAiCall,
     renderOutfit,
     renderFigure,

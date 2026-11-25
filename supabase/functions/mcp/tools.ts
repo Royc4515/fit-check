@@ -19,6 +19,7 @@ import { GARMENT_BUCKET, garmentStore } from "../_shared/objects.ts";
 import { contextClear, contextGet, contextSet } from "./context.ts";
 import { outfitLog, outfitToday } from "./outfit.ts";
 import { intakeDismiss, intakePending, itemCreate, itemRecrop, itemRecut, itemRedraw } from "./photos.ts";
+import { quotaSet } from "./quota.ts";
 import { REDRAW_DETAIL_IDS, REDRAW_FIX_IDS } from "@fit-check/schema/redraw-spec.ts";
 
 /**
@@ -600,6 +601,27 @@ export const TOOLS: Tool[] = [
     inputSchema: { type: "object", properties: { id: { type: "string", format: "uuid" } }, required: ["id"], additionalProperties: false },
     annotations: { idempotentHint: true },
     run: itemRecut,
+  },
+  {
+    name: "quota_set",
+    title: "Read or raise a user's monthly allowance (owner only)",
+    description:
+      "Every user but Roy has a monthly allowance: $0.50 of AI calls and 30 background removals, plus whatever Roy granted. With only " +
+      "an email this reads the user's allowance and this month's use. With extra_usd and/or extra_cutouts it sets the extra on top of " +
+      "the defaults (absolute values that replace the previous extra, so read first when Roy says 'two dollars more'). Only Roy can call it.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        email: { type: "string", format: "email" },
+        extra_usd: { type: "number", minimum: 0, maximum: 50 },
+        extra_cutouts: { type: "integer", minimum: 0, maximum: 2000 },
+        note: { type: "string", maxLength: 200, description: "Why, for Roy's own record (e.g. 'asked on 2026-11-30, adding a new wardrobe')." },
+      },
+      required: ["email"],
+      additionalProperties: false,
+    },
+    annotations: { idempotentHint: true },
+    run: quotaSet,
   },
 ];
 
