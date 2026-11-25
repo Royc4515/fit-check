@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-25 (mcp function deployed: day rules, R2 images, day in force)
+
+- What: the `mcp` Edge Function on the live project (the one created 2026-11-24) went from version 7 to version 8, built from `main` at the merge of PR #62. It carries PR #51 (the app's day rules), the R2 garment images from PR #58, and PR #62 (the day in force). Roy approved the deploy.
+- How: `supabase functions deploy mcp --use-api --no-verify-jwt --import-map supabase/functions/deno.json`. Without `--import-map` the upload is refused (`jose` does not resolve), and nothing changes. JWT verification stays off, as before: the function does its own OAuth.
+- Checked: the bundle from `scripts/bundle-mcp.sh` booted locally first; after the deploy an unauthenticated request answers 401 with `WWW-Authenticate` pointing to `/.well-known/oauth-protected-resource`, which answers 200.
+- Not checked: a signed-in call from Claude.
+- Look at: ask Claude for today's outfit; on a Friday afternoon it should be for Shabbat.
+
 ## 2026-11-25 (Background removal on Cloudflare Images, Modal as fallback)
 
 - Why: the Modal worker stopped on 2026-11-18 (its $1 credit ran out; it resets 2026-12-01), so new garments kept the plain crop. Roy wanted it working the same day, without a card.
