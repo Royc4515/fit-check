@@ -1,7 +1,8 @@
 import type { ItemTags } from "@fit-check/schema";
 import { Image } from "expo-image";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { cutoutUrls, shownUri, type CutoutUrls } from "./cutoutSource";
 import Svg, { Circle, ClipPath, Defs, G, Line, Path, Pattern, Rect } from "react-native-svg";
 import { SHAPES } from "./shapes";
 
@@ -24,9 +25,42 @@ type Props = {
   cutoutPath?: string | null;
 };
 
-/** Public URL of a stored garment image (the cutouts bucket is public, served from the CDN). */
+const R2_PUBLIC_URL = process.env.EXPO_PUBLIC_R2_PUBLIC_URL?.trim().replace(/\/+$/, "") || null;
+
+const supabaseCutoutUrl = (path: string) => supabase.storage.from("cutouts").getPublicUrl(path).data.publicUrl;
+
+/** Both addresses of a stored garment image under this build's configuration (see `cutoutUrls`). */
+export function cutoutSources(path: string): CutoutUrls {
+  return cutoutUrls(path, R2_PUBLIC_URL, supabaseCutoutUrl);
+}
+
+/**
+ * First address of a stored garment image (R2 when EXPO_PUBLIC_R2_PUBLIC_URL is set, else the Supabase bucket).
+ * For an `<Image>` of a garment, use `useCutoutSource` instead so a key missing from R2 still shows.
+ */
 export function cutoutUrl(path: string): string {
-  return supabase.storage.from("cutouts").getPublicUrl(path).data.publicUrl;
+  return cutoutSources(path).primary;
+}
+
+const noop = () => {};
+
+/**
+ * The address to give an `<Image>` for a stored garment, and the `onError` that moves it to the Supabase copy when the
+ * R2 copy cannot be read. Call it unconditionally (it is a hook); a null path gives a null uri.
+ *
+ * Failure modes: both copies missing leaves the image on the fallback address, where expo-image shows nothing; the
+ * caller's own placeholder decides what the user sees.
+ */
+export function useCutoutSource(path: string | null | undefined): { uri: string | null; onError: () => void } {
+  const [failedPrimary, setFailedPrimary] = useState<string | null>(null);
+  if (!path) return { uri: null, onError: noop };
+  const urls = cutoutSources(path);
+  return {
+    uri: shownUri(urls, failedPrimary),
+    onError: () => {
+      if (urls.fallback !== null && failedPrimary !== urls.primary) setFailedPrimary(urls.primary);
+    },
+  };
 }
 
 /**
@@ -34,10 +68,21 @@ export function cutoutUrl(path: string): string {
  * (ivory-deep ground, aspect ratio), exactly where a photo cutout will go later.
  */
 export function ItemArt({ tags, cutoutPath }: Props) {
-  if (cutoutPath) {
+  const source = useCutoutSource(cutoutPath);
+  if (cutoutPath && source.uri) {
     // don't touch / Roy, 2026-11-09: items added from photos showed the drawing instead of the photo he saved.
     // The drawing is only for items that have no image (the sheet import).
-    return <Image source={{ uri: cutoutUrl(cutoutPath) }} contentFit="contain" style={{ width: "100%", height: "100%" }} accessibilityIgnoresInvertColors />;
+    return (
+      <Image
+        source={{ uri: source.uri }}
+        onError={source.onError}
+        contentFit="contain"
+        cachePolicy="memory-disk"
+        recyclingKey={cutoutPath}
+        style={{ width: "100%", height: "100%" }}
+        accessibilityIgnoresInvertColors
+      />
+    );
   }
   return <ItemDrawing tags={tags} />;
 }

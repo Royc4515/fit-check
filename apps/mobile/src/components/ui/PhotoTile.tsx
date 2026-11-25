@@ -12,6 +12,8 @@ import { FRAME, type TileSize } from "./Tile";
 type Props = {
   /** The photo. Missing = still loading: the reserved box pulses in the tile tone. */
   uri?: string | null;
+  /** A second address for the same picture, tried once if `uri` cannot be read (a garment missing from R2). */
+  fallbackUri?: string | null;
   tone?: TileTone;
   size?: TileSize;
   /** Box width: a number in px or a percentage. Defaults to the parent's width. */
@@ -38,9 +40,12 @@ type Props = {
  * image loads, no frame. Not pressable; `Tile` stays the one component for items. If the image cannot be read it
  * shows an error glyph on the ground, never an endless pulse.
  */
-export function PhotoTile({ uri, tone = "tile", size = "grid", width = "100%", aspect, fit = "contain", loading = false, onError, emptyLabel, accessibilityLabel }: Props) {
+export function PhotoTile({ uri: primaryUri, fallbackUri, tone = "tile", size = "grid", width = "100%", aspect, fit = "contain", loading = false, onError, emptyLabel, accessibilityLabel }: Props) {
   const { t } = useTranslation();
   const frame = FRAME[size];
+  // Keyed by the primary address, like the two below, so a new photo in the box starts from its own primary.
+  const [fellBackFrom, setFellBackFrom] = useState<string | null>(null);
+  const uri = fallbackUri && fellBackFrom === primaryUri ? fallbackUri : primaryUri;
   // Keyed by uri, so a new photo in the same box starts from loading again without an effect to reset it.
   const [loadedUri, setLoadedUri] = useState<string | null>(null);
   const [failedUri, setFailedUri] = useState<string | null>(null);
@@ -71,9 +76,15 @@ export function PhotoTile({ uri, tone = "tile", size = "grid", width = "100%", a
             <Image
               source={{ uri }}
               contentFit={fit}
+              cachePolicy="memory-disk"
+              recyclingKey={uri ?? ""}
               transition={{ duration: motion.stateMs, effect: "cross-dissolve" }}
               onLoad={() => setLoadedUri(uri ?? null)}
               onError={() => {
+                if (fallbackUri && primaryUri && uri === primaryUri) {
+                  setFellBackFrom(primaryUri);
+                  return;
+                }
                 setFailedUri(uri ?? null);
                 onError?.();
               }}

@@ -39,7 +39,7 @@
 ### 4.2 הזנה (Intake)
 1. המשתמש פורס 2-5 בגדים על משטח אחיד ומצלם תמונה אחת.
 2. `intake-separate`: Gemini 2.5 Flash Image מחזיר תמונה לכל פריט (flat-lay). אם חזר פריט אחד בלבד, ממשיכים איתו.
-3. `intake-cutout`: worker ב-Modal (BiRefNet) מסיר רקע, מייצר PNG שקוף + thumbnail 400px. נשמרים ב-Storage.
+3. `intake-cutout`: worker ב-Modal (BiRefNet) מסיר רקע, מייצר PNG שקוף + thumbnail 400px. נשמרים ב-R2 (ובלי הגדרות R2, ב-Storage).
 4. `intake-tag`: Claude Haiku מקבל את ה-cutout ומחזיר JSON לפי סכמת התגיות (סעיף 6.2). בנוסף: embedding של FashionCLIP (512-d) מה-worker.
 5. כרטיס אישור: תמונה + תגיות. החלקה ימינה = שמירה. הקשה על תגית = תיקון מרשימה סגורה. שדות ידניים אופציונליים: מותג, מחיר, תאריך רכישה.
 6. פריט נשמר עם `status = active`, `availability = home`.
@@ -93,7 +93,7 @@
 - `context_rules`: user_id, type, rules jsonb (סעיף 7).
 - `wishlist`, `price_history`, `receipts`: גרסה 2, נוצרות עכשיו ריקות כדי לא לשנות מיגרציות אחר כך.
 
-Storage: bucket `originals` (פרטי), bucket `cutouts` (ציבורי דרך CDN; thumbnails נוצרים בזמן החיתוך, לא ב-transformations).
+Storage: bucket `originals` (פרטי), bucket `cutouts` (ציבורי דרך CDN; thumbnails נוצרים בזמן החיתוך, לא ב-transformations). מאז 2026-11-24 תמונות הבגדים שהפונקציות יוצרות (cutout, thumbnail, ציור מחדש, הפרדה) נשמרות ב-Cloudflare R2 (`fit-check-cutouts`) באותם מפתחות, ו-`cutouts` ב-Supabase נשאר לתמונות שהאפליקציה מעלה בעצמה ולגיבוי בקריאה (ראו CLAUDE.md, Stack).
 
 ### 6.2 סכמת התגיות (קבועה; שינוי = תיוג מחדש של הכל)
 

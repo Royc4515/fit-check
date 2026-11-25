@@ -3,7 +3,7 @@ import { Image } from "expo-image";
 import type { ComponentRef } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
-import { cutoutUrl, ItemArt } from "../item-art/ItemArt";
+import { ItemArt, useCutoutSource } from "../item-art/ItemArt";
 import { tileAspect, tileTone } from "../../theme/tileTone";
 import { colors, motion, shadow } from "../../theme/tokens";
 import { Icon } from "./Icon";
@@ -13,7 +13,7 @@ import { useOriginVisibility } from "./originVisibility";
 import { Meta } from "./Type";
 
 /** The fields a tile needs; any Item satisfies it. */
-export type TileItem = Pick<Item, "id" | "name" | "tags" | "cutout_path">;
+export type TileItem = Pick<Item, "id" | "name" | "tags" | "cutout_path" | "thumb_path">;
 
 export type TileSize = "grid" | "hero" | "mini";
 
@@ -93,6 +93,9 @@ export function Tile({
   const { attach: attachOrigin, style: originStyle } = useOriginVisibility(imageRef);
   const frame = FRAME[size];
   const tone = tileTone(item?.tags.color_hex);
+  const imagePath = item ? (size === "hero" ? item.cutout_path : (item.thumb_path ?? item.cutout_path)) : null;
+  // Called before the loading return below: it is a hook.
+  const source = useCutoutSource(imagePath);
   const ratio = aspect ?? (size === "mini" ? 1 : item ? tileAspect(item.tags.subcategory) : 1.25);
   const box = width !== undefined ? { width, height: width * ratio } : { width: "100%" as const, aspectRatio: 1 / ratio };
 
@@ -107,9 +110,10 @@ export function Tile({
     );
   }
 
-  const image = item.cutout_path ? (
+  const image = source.uri ? (
     <Image
-      source={{ uri: cutoutUrl(item.cutout_path) }}
+      source={{ uri: source.uri }}
+      onError={source.onError}
       contentFit="contain"
       cachePolicy="memory-disk"
       // don't touch / recycled cells (windowed grid) would otherwise flash the previous item's image.

@@ -15,6 +15,7 @@ import {
   type ItemTags,
 } from "@fit-check/schema/item-tags.ts";
 import { sniffImageType } from "../_shared/media.ts";
+import { GARMENT_BUCKET, garmentStore } from "../_shared/objects.ts";
 import { contextClear, contextGet, contextSet } from "./context.ts";
 import { outfitLog, outfitToday } from "./outfit.ts";
 import { intakeDismiss, intakePending, itemCreate, itemRecrop, itemRecut, itemRedraw } from "./photos.ts";
@@ -74,8 +75,11 @@ type ItemRow = {
   created_at: string;
 };
 
-const publicUrl = (ctx: ToolContext, path: string | null) =>
-  path ? `${ctx.supabaseUrl}/storage/v1/object/public/cutouts/${path.split("/").map(encodeURIComponent).join("/")}` : null;
+/** Garment images for this request: R2 first, then the Supabase `cutouts` bucket (see _shared/objects.ts). */
+export const garmentsOf = (ctx: ToolContext) => garmentStore(ctx.db.storage.from(GARMENT_BUCKET));
+
+/** Where Claude can load a garment image from; R2 when it is configured, so showing images costs no egress. */
+export const publicUrl = (ctx: ToolContext, path: string | null) => (path ? garmentsOf(ctx).publicUrl(path) : null);
 
 function summary(row: ItemRow, ctx: ToolContext) {
   const t = row.tags;
@@ -229,9 +233,8 @@ export const TOOLS: Tool[] = [
       ];
       const path = row.thumb_path ?? row.cutout_path;
       if (input.include_image && path && path.startsWith(`${ctx.userId}/`)) {
-        const { data } = await ctx.db.storage.from("cutouts").download(path);
-        if (data && data.size < 3_000_000) {
-          const bytes = new Uint8Array(await data.arrayBuffer());
+        const bytes = await garmentsOf(ctx).read(path);
+        if (bytes && bytes.length < 3_000_000) {
           let s = "";
           for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
           content.push({ type: "image", data: btoa(s), mimeType: sniffImageType(bytes, path.endsWith(".png") ? "image/png" : "image/jpeg") });

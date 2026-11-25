@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { BackHandler, Platform, View, useWindowDimensions } from "react-native";
 import Animated, { useAnimatedRef } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { cutoutUrl, ItemArt } from "../../components/item-art/ItemArt";
+import { ItemArt, useCutoutSource } from "../../components/item-art/ItemArt";
 import { Button, Display, StatusLine } from "../../components/ui";
 import { useRtl } from "../../components/ui/interaction";
 import { tileTone } from "../../theme/tileTone";
@@ -56,6 +56,7 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
   const rtl = useRtl();
   const { width: windowW, height: windowH } = useWindowDimensions();
   const item = useMemo(() => items.find((i) => i.id === id), [items, id]);
+  const heroSource = useCutoutSource(item?.cutout_path);
   const geo = heroGeometry(windowW, windowH, rtl);
   const heroTone = tileTone(item?.tags.color_hex);
   // A deep link has nothing beneath it: back alone faded the page out and left a blank screen (seen 2026-11-18),
@@ -116,10 +117,11 @@ export function ItemView({ id, items, pairWeights, onAvailability, edits }: Prop
         {originTone && originTone !== heroTone ? <Animated.View style={[fill, { backgroundColor: colors[originTone] }, flight.originToneStyle]} /> : null}
       </Animated.View>
       <Animated.View style={[{ position: "absolute", top: pad, bottom: pad, start: pad, end: pad }, flight.imageStyle]}>
-        {item.cutout_path ? (
+        {heroSource.uri ? (
           <Image
             // don't touch / the full cutout, never the thumbnail: the hero is the largest the picture is ever shown.
-            source={{ uri: cutoutUrl(item.cutout_path) }}
+            source={{ uri: heroSource.uri }}
+            onError={heroSource.onError}
             contentFit="contain"
             cachePolicy="memory-disk"
             onLoad={(e: ImageLoadEventData) => {

@@ -60,7 +60,10 @@ function Routes() {
         contentStyle: { backgroundColor: colors["ivory"] },
       }}
     >
-      <Stack.Protected guard={signedIn}>
+      {/* don't touch / explicit redirectTo on both guards. Without it a failed guard falls back to the first unguarded
+          screen in Expo Router's sort order; once `privacy` existed that was /privacy, so a signed-out visit to / or
+          /wardrobe landed on the privacy policy instead of sign-in (2026-11-24). */}
+      <Stack.Protected guard={signedIn} redirectTo="/sign-in">
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="location" />
         <Stack.Screen name="archive" />
@@ -106,11 +109,13 @@ function Routes() {
           }}
         />
       </Stack.Protected>
-      <Stack.Protected guard={!signedIn}>
+      <Stack.Protected guard={!signedIn} redirectTo="/">
         <Stack.Screen name="sign-in" />
       </Stack.Protected>
       {/* Outside both guards: Supabase's OAuth server sends signed-in and signed-out browsers here alike. */}
       <Stack.Screen name="oauth/consent" />
+      {/* Outside both guards: Google's consent screen links here, for signed-out visitors and Google's reviewers. */}
+      <Stack.Screen name="privacy" />
     </Stack>
   );
 
