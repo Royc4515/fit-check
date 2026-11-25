@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-25 (Sign-in cover: a generated photo)
+
+- Why: Roy wanted something "fake but good-looking" on the screen before signing in, instead of the drawn garments.
+- A flat-lay photo made in Google Flow (burgundy quarter-zip, white Oxford, navy chinos, brown loafers), bundled with the app: no network, nothing to fail. Shown at 3:4 uncropped, at most 37% of the window high, so the Google button stays on screen on a laptop.
+- The drawing (`StillLife`) is gone. Prompt and settings: `design/cover/2026-11-25-sign-in-cover.md`.
+- Look at: `design/screens/2026-11-25-sign-in-cover-*`.
+
 ## 2026-11-25 (Ready for Google brand verification)
 
 - Why: Google shows an app's name and logo on its account chooser only after brand verification, and the reviewers read the site's HTML, which was empty.
