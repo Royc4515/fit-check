@@ -3,7 +3,9 @@ import type { AiLogEntry } from "./types.ts";
 
 /**
  * USD per second of the cutout container: 8 CPU cores at Modal's ~$0.0000131 per core-second (2026-11), billed
- * against the $30/month Starter credit. An estimate for cost visibility; memory is not included.
+ * against the monthly credit ($1 without a card). An estimate for cost visibility, and a low one: it counts only the
+ * request, while Modal bills the container's whole life (start, the idle tail before it stops) and its memory. In
+ * November the real bill was about 3.6x the sum logged here.
  */
 const WORKER_PER_SECOND = 8 * 0.0000131;
 
