@@ -669,6 +669,7 @@
       "photo": "Waiting photo, uploaded {{when}}",
       "photoUndated": "Waiting photo",
       "failed": "The waiting photos did not load.",
+      "showMore": "Show more",
       "ago": {
         "minuteOne": "1 minute ago",
         "hourOne": "1 hour ago",
@@ -1220,5 +1221,31 @@
     "title": "Add",
     "garment": "New garment",
     "outfit": "New outfit"
+  },
+  "privacy": {
+    "title": "Privacy policy",
+    "updated": "Last updated: {{date}}",
+    "intro": "Fit Check is an app for managing a wardrobe and suggesting a daily outfit. It is a personal, non-commercial project by Roy Carmelli. This page explains what data the app keeps, why, and where.",
+    "collectTitle": "What data is kept",
+    "collectBody": "• From your Google account: your name, email address and profile picture, only to identify you when you sign in.\n• What you add: photos of clothes and item details (type, colour, material, brand, price and notes).\n• How you use the app: the suggestions you got, what you wore or skipped, outfits you saved, and settings such as sizes and Shabbat observance.",
+    "googleTitle": "Data from your Google account",
+    "googleBody": "The app asks Google only for the basic permissions: openid, email and profile. This data is used only to sign you in and identify your account. It is not sold, not shared with others, not used for advertising and not used to train AI models. The app's use of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements.",
+    "useTitle": "How the data is used",
+    "useBody": "Only to make the app work: to show your wardrobe, suggest outfits for the weather and the calendar, and learn what you like. The app has no ads, sells no data and uses no tracking or analytics tools.",
+    "providersTitle": "Service providers",
+    "providersBody": "The app relies on these providers. Each receives only what its job needs:\n• Supabase: database, sign-in and file storage (servers in Europe).\n• Cloudflare R2: storage of clothing photos.\n• Vercel: website hosting.\n• Anthropic (Claude): reading garment details from a photo and writing the explanation of an outfit suggestion.\n• Google Gemini: separating garments in a photo and generating an image when you ask for one.\n• Modal: removing the background from clothing photos.\n• Open-Meteo and Hebcal: weather forecast and Hebrew calendar.",
+    "locationTitle": "Location",
+    "locationBody": "If you allow location access, your location is stored only on your device. The coordinates are sent to Open-Meteo and Hebcal to get the forecast and Shabbat times, and are not stored on the app's servers.",
+    "retentionTitle": "Retention and deletion",
+    "retentionBody": "Your data is kept for as long as your account exists. To delete your account and all of its data, including photos, send a request to the email address at the bottom of this page. Deletion is completed within 30 days.",
+    "securityTitle": "Security",
+    "securityBody": "All communication is encrypted (HTTPS), and each user can access only their own data. This is enforced in the database itself. Clothing photos are stored at addresses that cannot be guessed, but anyone who holds a direct link to a photo can open it.",
+    "childrenTitle": "Children",
+    "childrenBody": "The app is not intended for children under 13.",
+    "changesTitle": "Changes",
+    "changesBody": "If this policy changes, this page will be updated along with the date at the top.",
+    "contactTitle": "Contact",
+    "contactBody": "For questions and deletion requests, contact Roy Carmelli:",
+    "link": "Privacy policy"
   }
 }

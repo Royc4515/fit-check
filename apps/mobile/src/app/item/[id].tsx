@@ -67,7 +67,7 @@ export default function ItemScreen() {
         },
         setImage: async (itemId, cutoutPath, thumbPath) => {
           await setItemImage(itemId, cutoutPath, thumbPath);
-          update(itemId, (i) => ({ ...i, cutout_path: cutoutPath }));
+          update(itemId, (i) => ({ ...i, cutout_path: cutoutPath, thumb_path: thumbPath }));
         },
         archive: async (itemId) => {
           await archiveItem(itemId);

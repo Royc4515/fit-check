@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-20 (The server's outfit_today follows the app's rules; NOT deployed)
+## 2026-11-20, merged 2026-11-25 (The server's outfit_today follows the app's rules; NOT deployed)
 
 - Why: the `mcp` function's engine bundle predated the date no-repeat rule, the Yom Kippur `unknown` shoe rule and the saved-outfit bonus, and `outfit_today` still let a calendar occasion beat Shabbat or a holiday.
 - One rule for both: `planDay`, `occasionMayApply`, `occasionInEffect`, `dayTypeFor`, `ruleSetOf`, `hebcalDayFacts` and `calendarAnswerUsable` in `packages/schema/src/day-context.ts`. The app re-exports the moved functions where it read them; its tests are unchanged and pass. Table-driven test `day-rule.test.ts`; `apps/mobile/src/data/hebcalParity.test.ts` checks the server's Hebcal reading against the app's on every real fixture.
@@ -8,6 +8,84 @@
 - `outfit_today` (`supabase/functions/mcp/outfit.ts`): Shabbat and holidays until havdalah, the occasion after it; wears read with their context; Yom Kippur rules with a `shoes_note` when no shoe qualifies; saved outfits through `withSavedPairs`; at most 8 candidates. Hebcal is asked with a 5 s timeout; without it the civil calendar is used and the answer carries `warning: {code: "hebrew_calendar_unavailable", message}`. Strict zod inputs with typed errors. `outfit_log` records the context the same rule gives the date. No AI call in either tool.
 - Look at: `mcp/outfit_test.ts` (real supabase-js over a fake PostgREST that refuses reads without the caller's `user_id`), the tool descriptions in `mcp/tools.ts`, `context_set`'s `effect` text.
 - Deploy bundle built (guard passed), sha256 `52590e0b0e2c5a4c41512fba595d32723d00cd796184bdee5f1089c5cde61678`; NOT deployed: the deploy waits for Roy's approval.
+
+## 2026-11-25 (Background-removal worker sized to Modal's $1 credit)
+
+- Why: Modal stopped the worker on 2026-11-18 when the month's credit ran out. The credit without a card is $1, not the $30 the docs said. The code had no idle cost (no `min_containers`, no GPU, no schedule); the $1.01 was 145 cutouts, billed for each container's whole life: about 3.6x the $0.28 logged, because every burst of photos paid a 120 s idle tail on 8 cores and 8 GiB.
+- `worker/app.py`: `Cutter` scales down 20 s after the last call instead of 120 s; the unused `Embedder` (FashionCLIP; embeddings are planned on `gemini-embedding-2`, TASKS 5.5), its image and the `fit-check-models` volume reference are gone. Memory stays at 8 GiB (not testable from here).
+- `intake-cutout`: 40 cutouts a day instead of 400, so one heavy day cannot spend the month.
+- Docs: `worker/README.md` (cost), `CLAUDE.md` Stack (ML worker), `_shared/ai/modal.ts` and `_shared/ai/README.md`.
+- Look at: after `modal deploy worker/app.py` (Roy's computer; the workspace accepts it from 2026-12-01), Modal's Usage page for a few days of normal use: the cost per cutout should drop well below November's.
+
+## 2026-11-25 (Repository polish before the repo goes public)
+
+- Why: Roy is making the repo public. The README told readers to put `.env.local` at the root (Expo reads it from `apps/mobile`), `.env.example` named variables the code does not read, `pnpm test` did not run the Deno tests that `CLAUDE.md` said it ran, and nothing ran checks on a pull request.
+- `docs/REPO_AUDIT.md`: what the project is, architecture, baseline (834 vitest + 50 Deno tests pass, web export builds), findings, and what becomes public with the history.
+- Moves (`git mv`): `docs/redesign-checklist-*.md` to `docs/verification/`, `docs/KICKOFF_PROMPT.md` to `docs/archive/`. Older entries below keep the paths of their time.
+- `.env.example` lists every variable the code reads (`MODAL_CUTOUT_URL`, `GEMINI_IMAGE_API_KEY`, `R2_*`), grouped by where it is set, with placeholders only (Roy: no real values in env files in the repo); the unused home coordinates are gone.
+- `pnpm test:functions` runs the Deno tests; `.github/workflows/ci.yml` runs typecheck, lint, vitest and Deno tests on pull requests and `main`.
+- README rewritten with real-wardrobe screenshots (`docs/assets/`), `CONTRIBUTING.md`, `.github/pull_request_template.md`, `.editorconfig`, root `.gitignore` entries, module headers on the engine and schema entry points.
+- `LICENSE`: MIT (Roy, 2026-11-25). GitHub description and topics are approved but set by hand (values in `what-changed.md`).
+- Not changed: `supabase/functions/_shared/engine.js` is stale (PR #51 rebuilds it), the design-preview path is still in place.
+- Look at: the README on GitHub (badges, Mermaid diagram, screenshots), the first CI run on the pull request.
+
+## 2026-11-24 (Edge Functions store garment images in R2)
+
+- Why: the app reads garment images from R2 since 2026-11-22, but the functions still wrote every new cutout, thumb, redraw and separated garment to Supabase Storage, and read garment images only from there. New images kept costing Supabase egress (and a second overrun restricts the project with no grace period), and try-on, redraw, re-cut and Claude's item images failed for the restored items whose files exist only in R2.
+- `supabase/functions/_shared/objects.ts` (`garmentStore`, `r2ConfigFromEnv`), tested in `objects_test.ts` (7 Deno tests): R2 over its S3 API with `aws4fetch` (added to `deno.json`), immutable one-year cache; reads fall back to the Supabase `cutouts` bucket; a failed R2 write lands in Supabase; without all five `R2_*` function secrets it is Supabase alone.
+- Callers: `intake-cutout`, `intake-separate` (enhance), `intake-tag`, `tryon/store.ts`, `mcp/tools.ts` (`garmentsOf`, `publicUrl`), `mcp/outfit.ts`, `mcp/photos.ts`. The pending queue, `originals` and try-on images stay in Supabase.
+- Spec: `CLAUDE.md` Stack and `docs/PRD.md` (intake step 3, Storage) now say where garment images live.
+- Look at: after the `R2_*` secrets are set, add a garment and check its cutout appears in the R2 bucket, not in Supabase Storage.
+
+## 2026-11-24 (Signed-out visitors land on sign-in, not the privacy policy)
+
+- Why: after the privacy page shipped, a signed-out visit to `/` or `/wardrobe` on the live site landed on `/privacy`. When a `Stack.Protected` guard fails, Expo Router falls back to the first unguarded screen in its sort order, and `privacy` sorts before `sign-in`.
+- `app/_layout.tsx`: both guards name their target (`redirectTo="/sign-in"` for the signed-in screens, `redirectTo="/"` for sign-in), so adding another public screen can never change where a guard sends people.
+- Look at: signed out, open `/`, `/wardrobe` and `/item/<id>` (all go to sign-in) and `/privacy` (stays).
+
+## 2026-11-24 (Public privacy policy page)
+
+- Why: Google Auth Platform does not publish an External app without a working privacy policy link in Branding, and an unpublished app lets only listed test users sign in.
+- `app/privacy.tsx`: the policy at `/privacy`, outside both route guards (signed-out visitors and Google's reviewers reach it). Text in `locales/{he,en}.json` under `privacy.*`: what is kept, Google Limited Use, each provider and its job, location stays on the device, deletion within 30 days by email, cutout photos are public by unguessable address. Contact: Roy Carmelli, his Gmail. Every paragraph has an explicit writing direction (a Hebrew paragraph opening with "Fit Check" was laid out left to right).
+- `app/sign-in.tsx`: a "מדיניות פרטיות" link under the Google button (web: `/privacy`; native: the app's own scheme).
+- Look at: `design/screens/2026-11-24-privacy-*.png`, `2026-11-24-sign-in-390-he.png`.
+
+## 2026-11-24 (Garment images fall back to Supabase when R2 does not have them)
+
+- Why: the Supabase project is restricted for cached egress, and Roy chose a new free project to get the app working today. The images that existed on 2026-11-22 are in R2 (`fit-check-cutouts`, same keys), but uploads still go to Supabase Storage, so with `EXPO_PUBLIC_R2_PUBLIC_URL` set a garment added after the move would show nothing.
+- `components/item-art/cutoutSource.ts` (pure, tested): `cutoutUrls` gives R2 as the primary address and Supabase as the fallback; `shownUri` picks the fallback once the primary failed, keyed by address so recycled tiles reset by themselves.
+- `ItemArt.tsx`: `useCutoutSource` (address + `onError`) used by `Tile`, `FlatLay`, `ItemArt` and `ItemView`; `cutoutSources` for non-hook callers. `PhotoTile` takes `fallbackUri` and the duplicate card in `GarmentReview` passes it.
+- Look at: a garment added after the move on the wardrobe grid and the item screen, with `EXPO_PUBLIC_R2_PUBLIC_URL` set.
+
+## 2026-11-24 (AI layer README matches the code)
+
+- Why: `supabase/functions/_shared/ai/README.md` still said "Not written yet" for files that have run in production since 2026-11-08, and named Gemini 2.5 Flash Image, which is no longer used.
+- The README is now a table of every file, its exports, the model id in the code, and the function that calls it, plus what is not built (`extractReceipt`, `/embed`) and the rules. Checked against the code on 2026-11-24.
+- Docs only; no code changed.
+- Look at: `supabase/functions/_shared/ai/README.md`.
+
+## 2026-11-24 (README for a first-time reader)
+
+- Why: the README was 15 lines that pointed at the spec files. A reader (or a code-reviewing agent) could not tell what the app does, how it is built or what state it is in.
+- `README.md`: what it does, three screenshots from `design/screens/` (a rainy Friday, an ordinary weekday, the wardrobe; each outfit matches the forecast printed above it), an architecture diagram (Mermaid) and table, the design decisions with the files that hold them, the cached-egress incident of 2026-11-22, an honest status (built vs stubs: `generate-daily`, `precheck`, embeddings), how to run and test, how the repo is worked on with Claude Code.
+- Every claim was checked against the code on 2026-11-24 (17 MCP tools in `mcp/tools.ts`, model ids in `_shared/ai/`, stubs returning 501).
+- Look at: `README.md` on GitHub (the Mermaid diagram and the screenshot table render only there).
+
+## 2026-11-24 (Docs moved under docs/)
+
+- Why: the repo root held about 350 KB of working documents (CHANGELOG, DESIGN, PRD, TASKS, KICKOFF_PROMPT), so a reader landing on the repo saw notes before code.
+- `PRD.md`, `DESIGN.md`, `TASKS.md`, `CHANGELOG.md` and `KICKOFF_PROMPT.md` moved to `docs/` with `git mv` (history kept). `CLAUDE.md` stays at the root, where Claude Code reads it; its paths and the repo layout now point to `docs/`. `README.md` links updated.
+- Nothing reads these files by path (no script, test or config), so no code changed. Code comments that name "DESIGN.md section N" still name the same document.
+- Look at: `CLAUDE.md` (layout block, Design rules, Workflow 2 and 4).
+
+## 2026-11-22 (Cached Egress fixes and Cloudflare R2 read support)
+
+- Why: the `cutouts` bucket burned through 42.77 GB of Supabase Cached Egress on the Free tier due to missing 1-year `cacheControl` headers on uploads (defaulting to 3600 s), missing `cachePolicy="memory-disk"` on `ItemArt` and `PhotoTile`, full cutouts loaded in wardrobe grid tiles instead of `thumb_path`, unthrottled focus reloads and up-to-100 simultaneous thumbnails in `PendingQueue`, and short 10-minute signed URLs in `tryon`.
+- Client (`ItemArt.tsx`, `PhotoTile.tsx`, `Tile.tsx`, `packages/schema/src/{item,db}.ts`, `app/item/[id].tsx`): `cutoutUrl()` reads `EXPO_PUBLIC_R2_PUBLIC_URL` when set (falling back to Supabase `cutouts`); `ItemArt` and `PhotoTile` add `cachePolicy="memory-disk"` and `recyclingKey`; `ITEM_READ_COLUMNS`, `ItemRowSchema` and `ItemSchema` include optional `thumb_path` so `Tile` prefers `thumb_path ?? cutout_path` for grid and mini tiles while hero tiles and `FlatLay` keep the full `cutout_path`.
+- Pending queue (`usePendingQueue.ts`, `PendingQueue.tsx`, `locales/{en,he}.json`): 30-second focus throttle on `usePendingQueue` (manual `reload()` stays immediate); progressive loading in `PendingQueue` (12 thumbnails initially with "Show more" / "הצג עוד" in batches of 12, keeping `PENDING_LIMIT = 100` in `data/intake.ts`).
+- Storage & Edge Functions (`data/intake.ts`, `supabase/functions/{intake-cutout/index,intake-separate/index,mcp/photos,tryon/store}.ts`, `tryon/handler.ts`): added `cacheControl: "31536000"` to all uploads and raised `SIGNED_URL_TTL_S` from `600` to `86400` (updated `tryon/handler_test.ts`).
+- Worker (`worker/app.py`): added `_webp_b64` (`cutout_webp_b64` at quality 85, `thumb_webp_b64` at quality 80) alongside PNG outputs for backwards compatibility.
+- Look at: `ItemArt.tsx` (`cutoutUrl`), `Tile.tsx` (`imagePath`), `PendingQueue.tsx`, `usePendingQueue.ts`, `worker/app.py`.
 
 ## 2026-11-20 (Today's frame never waits on an outside service)
 

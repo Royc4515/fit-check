@@ -1,5 +1,7 @@
 # פרומפט פתיחה לסשן הראשון ב-Claude Code
 
+> Archived 2026-11-25. This is the prompt that opened session 1 on 2026-11-06. It is kept for history; its setup steps are out of date. Current setup: [README](../../README.md#getting-started).
+
 השלד כבר בריפו (ראה CHANGELOG.md): סכמות, מנוע עם 11 בדיקות על הארון האמיתי, מיגרציה, stubs לפונקציות, worker, ואפליקציית Expo שמתקמפלת. הסשן הראשון לא מתחיל מאפס; הוא בונה את המסך הראשון על השלד הזה.
 
 לפני הסשן, פעם אחת:

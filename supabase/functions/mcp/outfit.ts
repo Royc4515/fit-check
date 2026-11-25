@@ -31,7 +31,7 @@ import {
   type HebrewDayFacts,
   type RuleSet,
 } from "@fit-check/schema/day-context.ts";
-import type { ToolContext, ToolResult } from "./tools.ts";
+import { publicUrl, type ToolContext, type ToolResult } from "./tools.ts";
 import { issues, loadObservesShabbat, loadOccasionRows, typedFail } from "./context.ts";
 import { israelDate, israelTime } from "./time.ts";
 
@@ -243,8 +243,6 @@ async function loadHistory(ctx: ToolContext, date: string) {
   return { recent, answeredToday };
 }
 
-const publicUrl = (ctx: ToolContext, path: string | null) =>
-  path ? `${ctx.supabaseUrl}/storage/v1/object/public/cutouts/${path.split("/").map(encodeURIComponent).join("/")}` : null;
 
 const placeOf = (lat: number | undefined, lon: number | undefined): Place =>
   lat !== undefined && lon !== undefined ? { lat, lon, isDefault: false } : { lat: DEFAULT_PLACE.lat, lon: DEFAULT_PLACE.lon, isDefault: true };

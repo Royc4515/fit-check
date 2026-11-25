@@ -49,7 +49,7 @@ async function upload(bucket: string, path: string, uri: string): Promise<void> 
   // Design preview (web only, temporary): no upload. Every intake step starts here or in invoke(), so this blocks them all.
   if (isPreview()) throw new PreviewReadOnlyError(`upload to ${bucket}`);
   const bytes = await (await fetch(uri)).arrayBuffer();
-  const { error } = await supabase.storage.from(bucket).upload(path, bytes, { contentType: "image/jpeg" });
+  const { error } = await supabase.storage.from(bucket).upload(path, bytes, { contentType: "image/jpeg", cacheControl: "31536000" });
   if (error) throw error;
 }
 

@@ -24,8 +24,8 @@ import { fillsSlot, type TryonStore } from "./store.ts";
 
 /** Shared by every user: one fixed figure (DESIGN.md "שלב 5.3" item 3). Versioned, so a new figure misses every cache. */
 export const FIGURE_PATH = `tryon/figure/${FIGURE_VERSION}.png`;
-/** Long enough to load a 1K image on a slow phone, short enough that a leaked link soon stops working. */
-export const SIGNED_URL_TTL_S = 600;
+/** 24 hours: keeps the signed URL stable across revisits so browser/app image caches hit instead of re-downloading. */
+export const SIGNED_URL_TTL_S = 86400;
 
 export const cors = {
   "access-control-allow-origin": "*",

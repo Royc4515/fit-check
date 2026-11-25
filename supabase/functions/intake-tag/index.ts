@@ -4,6 +4,7 @@ import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
 import { DEFAULT_TAG_MODEL, tagItem, type TagCorrection, type WardrobeLine } from "../_shared/ai/tagger.ts";
 import { findDuplicate, MAX_CANDIDATES, type Candidate } from "../_shared/ai/duplicates.ts";
 import { sniffImageType } from "../_shared/media.ts";
+import { GARMENT_BUCKET, garmentStore } from "../_shared/objects.ts";
 
 /**
  * intake-tag: proposes the full tag set for one cropped garment, for the user to confirm (PRD section 4, step 3).
@@ -62,13 +63,14 @@ Deno.serve(async (req) => {
 
   // Service role (see _shared/auth.ts); every query below is filtered to this user explicitly.
   const supabase = adminClient();
+  // R2 for cutouts the functions wrote, Supabase for the app's own label photos and crops.
+  const store = garmentStore(supabase.storage.from(GARMENT_BUCKET));
   const download = async (path: string) => {
-    const { data, error } = await supabase.storage.from("cutouts").download(path);
-    if (error || !data) {
-      console.error("download failed", path, error?.message);
+    const bytes = await store.read(path);
+    if (!bytes) {
+      console.error("download failed", path);
       return null;
     }
-    const bytes = new Uint8Array(await data.arrayBuffer());
     return bytes.length > MAX_BYTES ? null : { bytes, mediaType: sniffImageType(bytes, mediaOf(path)!) };
   };
 
