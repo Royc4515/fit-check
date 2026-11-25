@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-25 (Referral bonus on the monthly allowance)
+
+- Why: Roy wants extra allowance for users who bring someone in, with a cap on referrals.
+- Migration `0009_referrals.sql`: `referral_codes` and `referrals` (a user is referred once; never by their own code), RLS read-own.
+- `referral` function: `code` (the caller's code, made on first ask, with how many they referred and the cap of 4) and `claim` (counts only an account at most 7 days old). Rule in `judgeClaim`, tested without a database.
+- `_shared/quota.ts`: each counted referral adds $0.25 and 10 background removals a month.
+- App: `/join/<code>` keeps the code and goes to sign-in; once signed in, the root layout claims it once. Checked in a local web build.
+- To apply: `supabase db push` (0009), deploy `referral`, then the functions that read the allowance (`usage`, `intake-*`, `style-outfit`, `tryon`, `mcp`).
+- Look at: `referral/handler_test.ts`, `features/referral/pendingReferral.test.ts`.
+
 ## 2026-11-25 (A personal monthly allowance for every user but Roy)
 
 - Why: Roy wants a usage bar per user, a lean limit for others, and to raise it for whoever asks; for himself, only the whole account's percentages.
