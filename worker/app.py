@@ -1,13 +1,13 @@
 """
 Fit Check ML worker on Modal.
 
-Endpoints, called only from Supabase Edge Functions with a bearer token (WORKER_TOKEN):
+Endpoint, called only from Supabase Edge Functions with a bearer token (WORKER_TOKEN):
   POST cutout?isolate=1  (jpeg/png body) -> {"cutout_png_b64", "thumb_png_b64", "cutout_webp_b64", "thumb_webp_b64", "width", "height", "gpu_seconds", "isolated"}
-  POST embed   (png body)      -> {"embedding": [512 floats], "model_version": "fashion-clip-2"}   (not wired yet)
 
-Why Modal: Edge Functions cannot run these models; Modal gives a GPU container that scales to zero, billed per
-second against the free $30/month Starter credit. Runs on 8 CPU cores (no GPU: that needs a card on file), about
-10-20 s a photo, a fraction of a cent.
+Why Modal: Edge Functions cannot run these models; Modal gives a container that scales to zero, billed per second of
+its whole life (start, work and the idle tail before it stops), not only the work. Runs on 8 CPU cores (no GPU: that
+needs a card on file), about 10-20 s a photo. The credit without a card is $1 a month (2026-11; a card raises it to
+$30), so the idle tail matters as much as the work: see `scaledown_window` on Cutter.
 
 Deploy:  modal deploy worker/app.py
 Secrets: modal secret create fit-check-worker WORKER_TOKEN=<random>   (the same value goes to Supabase as
@@ -22,15 +22,13 @@ import time
 
 import modal
 
-MODEL_CACHE = "/models"
 # Inside the cutout image, not the volume: volumes are not mounted during image builds.
 BAKED_MODELS = "/opt/u2net"
 # Longest edge the worker accepts; the app already sends 1600 px or less. Bigger only costs time, not quality.
 MAX_EDGE = 2048
 
 # CPU, not GPU (Roy, 2026-11-10): Modal asks for a payment method before any GPU function runs, and Roy wants no
-# card on file. BiRefNet on 8 CPU cores takes roughly 10-20 s a photo, which hides behind tagging in the app and stays
-# well inside the free $30/month credit. To move to a T4 later: base image nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+# card on file. BiRefNet on 8 CPU cores takes roughly 10-20 s a photo, which hides behind tagging in the app. To move to a T4 later: base image nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 # (add_python="3.11"), onnxruntime-gpu instead of onnxruntime, gpu="T4" on the class, CUDAExecutionProvider first.
 # SAM 2 (Roy, 2026-11-10): BiRefNet keeps every garment it sees, so a shirt hanging behind the photographed one stayed
 # in the cutout. SAM 2.1 small, prompted with points on the centre of the crop, picks out the front garment; BiRefNet
@@ -50,11 +48,6 @@ cutout_image = (
     .env({"HF_HOME": "/opt/hf"})
     .run_commands(f"python -c \"from transformers import Sam2Model, Sam2Processor; Sam2Model.from_pretrained('{SAM_MODEL}'); Sam2Processor.from_pretrained('{SAM_MODEL}')\"")
 )
-# Separate image so the cutout container does not pay torch's size on every cold start.
-embed_image = modal.Image.debian_slim(python_version="3.11").pip_install(
-    "pillow==11.0.0", "transformers==4.44.2", "torch==2.4.1", "fastapi[standard]==0.115.6"
-)
-
 # don't touch / FastAPI injects the request only when the parameter is annotated with Request, and resolves the
 # annotation from this module's globals inside the container. Both images have fastapi; the fallback only lets
 # `modal deploy` import this file on a machine without it.
@@ -65,11 +58,7 @@ except ImportError:  # pragma: no cover - local deploy machine only
     Request = object  # type: ignore[assignment,misc]
 
 app = modal.App("fit-check-worker")
-volume = modal.Volume.from_name("fit-check-models", create_if_missing=True)
 secret = modal.Secret.from_name("fit-check-worker")
-
-FASHION_CLIP = "patrickjohncyh/fashion-clip"
-MODEL_VERSION = "fashion-clip-2"
 
 
 def _check_token(authorization: str | None) -> None:
@@ -137,11 +126,13 @@ def _webp_b64(img, quality: int = 85) -> str:  # type: ignore[no-untyped-def]
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
-# scaledown_window: a batch of photos arrives a few seconds apart, so one warm container serves the whole batch;
-# two minutes idle then scales to zero (no cost while unused).
+# don't touch / scaledown_window is most of the bill. Modal charges for every second a container is alive, and the
+# 8 cores and 8 GiB cost the same idle as busy. At 120 s, each burst of photos paid two idle minutes, which made the
+# November bill about 3.6x the logged work time and used the whole $1 monthly credit by 2026-11-18 (145 cutouts).
+# 20 s still keeps one warm container across a batch, whose photos arrive a few seconds apart.
 # enable_memory_snapshot: Modal snapshots the container after load() and restores it on the next cold start, so a
 # sleeping worker answers in seconds instead of re-reading 1 GB of weights (the first real call took 112 s).
-@app.cls(image=cutout_image, cpu=8.0, memory=8192, secrets=[secret], scaledown_window=120, timeout=180, enable_memory_snapshot=True)
+@app.cls(image=cutout_image, cpu=8.0, memory=8192, secrets=[secret], scaledown_window=20, timeout=180, enable_memory_snapshot=True)
 class Cutter:
     @modal.enter(snap=True)
     def load(self) -> None:
@@ -223,28 +214,3 @@ class Cutter:
             "isolated": isolated,
         }
 
-
-# CPU for the same reason as Cutter; not called yet, so speed does not matter.
-@app.cls(image=embed_image, cpu=2.0, volumes={MODEL_CACHE: volume}, secrets=[secret], scaledown_window=120)
-class Embedder:
-    @modal.enter()
-    def load(self) -> None:
-        from transformers import CLIPModel, CLIPProcessor
-
-        self.clip = CLIPModel.from_pretrained(FASHION_CLIP, cache_dir=MODEL_CACHE).eval()
-        self.processor = CLIPProcessor.from_pretrained(FASHION_CLIP, cache_dir=MODEL_CACHE)
-        volume.commit()
-
-    @modal.fastapi_endpoint(method="POST")
-    async def embed(self, request: Request) -> dict:
-        """FashionCLIP image embedding, L2-normalised. Not called by any Edge Function yet."""
-        import torch
-        from PIL import Image
-
-        _check_token(request.headers.get("authorization"))
-        img = Image.open(io.BytesIO(await request.body())).convert("RGB")
-        with torch.no_grad():
-            inputs = self.processor(images=img, return_tensors="pt")
-            feats = self.clip.get_image_features(**inputs)
-            feats = feats / feats.norm(dim=-1, keepdim=True)
-        return {"embedding": feats[0].tolist(), "model_version": MODEL_VERSION}
