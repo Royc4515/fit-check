@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-25 (Ready for Google brand verification)
+
+- Why: Google shows an app's name and logo on its account chooser only after brand verification, and the reviewers read the site's HTML, which was empty.
+- Every web page now has the title "Fit Check", a description and the Search Console tag, written by `apps/mobile/scripts/site-head.mjs` after `expo export`. The browser tab says "Fit Check" too (it had no title).
+- `/brand/logo-120.png`: the app icon at the size Google asks for.
+- Look at: view-source on the site shows the tags; then Search Console's Verify, the logo upload and the brand verification request (Roy).
+
 ## 2026-11-25 (Web app at fit-check-il.vercel.app)
 
 - Why: Roy chose a nicer address before Google's brand verification, which binds to the domain.
