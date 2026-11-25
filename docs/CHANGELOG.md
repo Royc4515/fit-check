@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-25 (The mcp deploy bundle builds again)
+
+- Why: `scripts/bundle-mcp.sh` failed with `Could not resolve "aws4fetch"` since the R2 change (PR #58) made `_shared/objects.ts` import it; the script aliases each npm import and had no alias for it, so the documented deploy path for the `mcp` function could not build. Found by the independent review of PR #51.
+- `scripts/bundle-mcp.sh`: `--alias:aws4fetch=npm:aws4fetch@1.0.20` (the version in `supabase/functions/deno.json`), and a comment that every npm import needs its alias.
+- Checked: the script builds (91.8 KB) and its escape guard passes. Nothing deployed.
+- Look at: the next `mcp` deploy.
+
 ## 2026-11-20, merged 2026-11-25 (The server's outfit_today follows the app's rules; NOT deployed)
 
 - Why: the `mcp` function's engine bundle predated the date no-repeat rule, the Yom Kippur `unknown` shoe rule and the saved-outfit bonus, and `outfit_today` still let a calendar occasion beat Shabbat or a holiday.
