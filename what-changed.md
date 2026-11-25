@@ -26,9 +26,9 @@ Branch `chore/repo-polish`. No app, engine, function or database behaviour chang
 
 ## Left for you
 
-1. **License.** None chosen; the README says all rights reserved until you add one (MIT is the usual choice for a public portfolio repo).
+1. **License.** Done: MIT (Roy, 2026-11-25), `LICENSE` added.
 2. **Before flipping to public**, decide on the personal details in the files and the history (audit section "Before the repo goes public"): home city, Shabbat and reserve-duty rules, the wardrobe list, the Supabase project ref. Removing them from history needs a rewrite or a fresh repo.
-3. **GitHub metadata** (not applied, waiting for your go):
+3. **GitHub metadata.** Applied on 2026-11-25 (Roy's go):
    - Description: `Hebrew-first personal wardrobe and AI styling app: photo intake, a deterministic outfit engine with Shabbat and weather rules, and an MCP server for Claude.`
    - Topics: `expo`, `react-native`, `typescript`, `supabase`, `edge-functions`, `mcp`, `wardrobe`, `ai-stylist`, `rtl`, `hebrew`
 4. **LinkedIn link** for the Author section (`TODO(owner)` in the README).
