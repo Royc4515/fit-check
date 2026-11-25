@@ -8,6 +8,28 @@
 - Spec: PRD money rule (Anthropic line), `CLAUDE.md` money rule, `_shared/ai/README.md`.
 - Look at: the Anthropic console's own spend limit (it was $5 on 2026-11-19). Set it between $80 and $100, so the code cap stops first and says why.
 
+## 2026-11-25 (mcp function deployed with one place for both tools)
+
+- What: `mcp` version 11 on the live project, built from `main` at the merge of PR #66 (it also carries PR #65, merged before it). Same command as the earlier deploy (`--use-api --no-verify-jwt --import-map supabase/functions/deno.json`). Versions 9 and 10 were deployed from another session in between.
+- Checked: the deployed source contains `withPlace`, `OUTSIDE_ISRAEL_MESSAGE` and `dayInForce`; an unauthenticated request answers 401 with the OAuth discovery header, which answers 200. Not checked: a signed-in call from Claude.
+- `docs/TASKS.md` R8 marked done.
+
+## 2026-11-25 (MCP tools: one place for both, Israel only)
+
+- Why: the reviews of PR #51 and #62 found that `outfit_today` took `lat`/`lon` but `outfit_log` did not, so the two could decide the day in force from different candle lighting; and that a point abroad was planned in Israel time with Israel's holiday schedule, giving wrong times without saying so.
+- `supabase/functions/mcp/outfit.ts`: both inputs are built by `withPlace` (optional `lat`/`lon`, together, inside a box around Israel); `outfit_log` plans its day at that place. A point outside Israel is `invalid_input` with `OUTSIDE_ISRAEL_MESSAGE`. Tool descriptions say to pass the same place to both.
+- Spec: PRD 7.1 names the two gaps left on purpose (the server has no stored calendar when Hebcal fails; without a place it uses Tel Aviv's candle lighting).
+- Tests: 2 Deno tests (Paris refused by both tools with no database request; `outfit_log` asks the calendar for the place it is given).
+- Look at: the next `mcp` deploy.
+
+## 2026-11-25 (mcp function deployed: day rules, R2 images, day in force)
+
+- What: the `mcp` Edge Function on the live project (the one created 2026-11-24) went from version 7 to version 8, built from `main` at the merge of PR #62. It carries PR #51 (the app's day rules), the R2 garment images from PR #58, and PR #62 (the day in force). Roy approved the deploy.
+- How: `supabase functions deploy mcp --use-api --no-verify-jwt --import-map supabase/functions/deno.json`. Without `--import-map` the upload is refused (`jose` does not resolve), and nothing changes. JWT verification stays off, as before: the function does its own OAuth.
+- Checked: the bundle from `scripts/bundle-mcp.sh` booted locally first; after the deploy an unauthenticated request answers 401 with `WWW-Authenticate` pointing to `/.well-known/oauth-protected-resource`, which answers 200.
+- Not checked: a signed-in call from Claude.
+- Look at: ask Claude for today's outfit; on a Friday afternoon it should be for Shabbat.
+
 ## 2026-11-25 (Background removal on Cloudflare Images, Modal as fallback)
 
 - Why: the Modal worker stopped on 2026-11-18 (its $1 credit ran out; it resets 2026-12-01), so new garments kept the plain crop. Roy wanted it working the same day, without a card.
