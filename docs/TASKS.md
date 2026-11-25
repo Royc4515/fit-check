@@ -154,6 +154,7 @@ New open minor from the recheck: when the two tabs have a different number of st
 | R3 | AI layer README matches the code | lead | review | Table of files, exports, models and callers; stale "Not written yet" lines removed |
 | R4 | Repo polish before going public: audit, docs/verification and docs/archive, .env.example from the code, CI, README with real screenshots, CONTRIBUTING, PR template, .editorconfig | lead | review | `docs/REPO_AUDIT.md`. No code behaviour changed. MIT license done (Roy, 2026-11-25). Open: GitHub description and topics (approved; set by hand in the About panel, values in what-changed.md), LinkedIn link, flipping the repo to public (Roy) |
 | R5 | mcp deploy bundle resolves aws4fetch | lead | review | `scripts/bundle-mcp.sh` alias added; the bundle builds. Not deployed |
+| R6 | Server records on the day in force, as the app (Friday afternoon is Shabbat) | lead | review | Found by the independent review of PR #51. `shabbatTimes.ts` moved to `packages/schema`; `outfit_today` and `outfit_log` without a date use `phoneFreeChain` + `defaultTab`; 5 Deno tests. Hebcal asked once per call. Deploy after merge (Roy approved) |
 
 ## Money rule (Roy, 2026-11-19)
 
