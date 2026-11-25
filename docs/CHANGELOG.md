@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-25 (Background-removal worker sized to Modal's $1 credit)
+
+- Why: Modal stopped the worker on 2026-11-18 when the month's credit ran out. The credit without a card is $1, not the $30 the docs said. The code had no idle cost (no `min_containers`, no GPU, no schedule); the $1.01 was 145 cutouts, billed for each container's whole life: about 3.6x the $0.28 logged, because every burst of photos paid a 120 s idle tail on 8 cores and 8 GiB.
+- `worker/app.py`: `Cutter` scales down 20 s after the last call instead of 120 s; the unused `Embedder` (FashionCLIP; embeddings are planned on `gemini-embedding-2`, TASKS 5.5), its image and the `fit-check-models` volume reference are gone. Memory stays at 8 GiB (not testable from here).
+- `intake-cutout`: 40 cutouts a day instead of 400, so one heavy day cannot spend the month.
+- Docs: `worker/README.md` (cost), `CLAUDE.md` Stack (ML worker), `_shared/ai/modal.ts` and `_shared/ai/README.md`.
+- Look at: after `modal deploy worker/app.py` (Roy's computer; the workspace accepts it from 2026-12-01), Modal's Usage page for a few days of normal use: the cost per cutout should drop well below November's.
+
 ## 2026-11-25 (Repository polish before the repo goes public)
 
 - Why: Roy is making the repo public. The README told readers to put `.env.local` at the root (Expo reads it from `apps/mobile`), `.env.example` named variables the code does not read, `pnpm test` did not run the Deno tests that `CLAUDE.md` said it ran, and nothing ran checks on a pull request.

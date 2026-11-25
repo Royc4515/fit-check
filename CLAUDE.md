@@ -8,7 +8,7 @@ Personal wardrobe and styling app for Roy. Single user now, multi-user-ready sch
 - Web target: same code via react-native-web, deployed to Vercel. Animations use Reanimated + Gesture Handler on every platform, one code path (the `motion` split was never built; DESIGN.md section 5).
 - Backend: Supabase (Postgres + pgvector, Auth with Google, Storage, Edge Functions in Deno, pg_cron).
 - Garment images: Cloudflare R2 (bucket `fit-check-cutouts`, public read), because serving them from Supabase Storage got the project restricted for egress (42.77 GB of a 5 GB quota, 2026-11; Roy moved them on 2026-11-22). Edge Functions read and write them only through `supabase/functions/_shared/objects.ts` (R2 first, the Supabase `cutouts` bucket as fallback); the app reads `EXPO_PUBLIC_R2_PUBLIC_URL` first. Supabase Storage still holds what the app uploads itself (pending photos, crops, originals) and try-on images.
-- ML worker: Python service on Modal exposing `/cutout` (BiRefNet via rembg) and `/embed` (FashionCLIP, 512-d). Called only from Edge Functions.
+- ML worker: Python service on Modal exposing `/cutout` (BiRefNet via rembg, SAM 2.1 to keep the front garment). Called only from Edge Functions. It runs on Modal's $1 monthly credit without a card (Roy: no card on file), so it scales to zero 20 s after the last call and `intake-cutout` allows 40 a day. Embeddings will come from `gemini-embedding-2`, not the worker (`docs/TASKS.md` 5.5); the unused `/embed` endpoint was removed 2026-11-25.
 - AI providers, called only from Edge Functions, each behind one function in `supabase/functions/_shared/ai/`:
   - `separateGarments(image)` → Gemini 2.5 Flash Image
   - `tagItem(cutout)` → Claude Haiku, structured output, schema in `packages/schema/item-tags.ts`
