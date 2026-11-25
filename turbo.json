@@ -5,6 +5,11 @@
       "dependsOn": ["^build"],
       "outputs": []
     },
+    "scripts#test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/scripts/bundle-engine.sh", "$TURBO_ROOT$/packages/engine/src/**", "$TURBO_ROOT$/supabase/functions/_shared/engine.js"]
+    },
     "lint": {
       "outputs": []
     },

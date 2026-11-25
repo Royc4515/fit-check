@@ -88,18 +88,10 @@ export function civilCalendar(date: string, weekday: number, observes: boolean):
 }
 
 /**
- * Whether a Hebcal events answer for `start..end` can be the calendar. Every week has a Friday, and Hebcal (asked with
- * `c=on`) gives a candle lighting for it, so a window of seven days or more with no candle-lighting item is not a real
- * calendar: an empty or truncated answer that still passes the schema. Stored as known it would hide every Shabbat and
- * holiday for two months with no warning line, so the caller treats it as a failed request. Pure; never throws. A
- * window shorter than seven days, or with unreadable dates, is judged by the schema alone (true).
+ * Whether a Hebcal events answer can be the calendar (no candle lighting in seven days or more: not a calendar).
+ * Shared with the MCP server's calendar request since 2026-11-20 (packages/schema day-context.ts).
  */
-export function calendarAnswerUsable(items: readonly Pick<HebcalItem, "category">[], start: string, end: string): boolean {
-  const a = Date.parse(`${start}T00:00:00Z`);
-  const b = Date.parse(`${end}T00:00:00Z`);
-  if (Number.isNaN(a) || Number.isNaN(b) || (b - a) / 86_400_000 + 1 < 7) return true;
-  return items.some((i) => i.category === "candles");
-}
+export { calendarAnswerUsable } from "@fit-check/schema";
 
 /**
  * Whether a Hebcal converter answer can be the Hebrew-date window: it holds the date asked for. An empty `hdates`
