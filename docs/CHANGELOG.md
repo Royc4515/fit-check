@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-25 (mcp function deployed: day rules, R2 images, day in force)
+
+- What: the `mcp` Edge Function on the live project (the one created 2026-11-24) went from version 7 to version 8, built from `main` at the merge of PR #62. It carries PR #51 (the app's day rules), the R2 garment images from PR #58, and PR #62 (the day in force). Roy approved the deploy.
+- How: `supabase functions deploy mcp --use-api --no-verify-jwt --import-map supabase/functions/deno.json`. Without `--import-map` the upload is refused (`jose` does not resolve), and nothing changes. JWT verification stays off, as before: the function does its own OAuth.
+- Checked: the bundle from `scripts/bundle-mcp.sh` booted locally first; after the deploy an unauthenticated request answers 401 with `WWW-Authenticate` pointing to `/.well-known/oauth-protected-resource`, which answers 200.
+- Not checked: a signed-in call from Claude.
+- Look at: ask Claude for today's outfit; on a Friday afternoon it should be for Shabbat.
+
 ## 2026-11-25 (supabase/config.toml no longer names the old project)
 
 - Why: `project_id` still held the first project's ref (`ftjerbwrzjprfikxkukj`) after the move to a new Supabase project on 2026-11-24, so the file read as pointing at a project that is no longer live. The field only names the local stack; the remote project comes from `supabase link`.
