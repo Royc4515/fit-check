@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-25 (MCP tools: one place for both, Israel only)
+
+- Why: the reviews of PR #51 and #62 found that `outfit_today` took `lat`/`lon` but `outfit_log` did not, so the two could decide the day in force from different candle lighting; and that a point abroad was planned in Israel time with Israel's holiday schedule, giving wrong times without saying so.
+- `supabase/functions/mcp/outfit.ts`: both inputs are built by `withPlace` (optional `lat`/`lon`, together, inside a box around Israel); `outfit_log` plans its day at that place. A point outside Israel is `invalid_input` with `OUTSIDE_ISRAEL_MESSAGE`. Tool descriptions say to pass the same place to both.
+- Spec: PRD 7.1 names the two gaps left on purpose (the server has no stored calendar when Hebcal fails; without a place it uses Givat Shmuel's candle lighting).
+- Tests: 2 Deno tests (Paris refused by both tools with no database request; `outfit_log` asks the calendar for the place it is given).
+- Look at: the next `mcp` deploy.
+
 ## 2026-11-25 (mcp function deployed: day rules, R2 images, day in force)
 
 - What: the `mcp` Edge Function on the live project (the one created 2026-11-24) went from version 7 to version 8, built from `main` at the merge of PR #62. It carries PR #51 (the app's day rules), the R2 garment images from PR #58, and PR #62 (the day in force). Roy approved the deploy.
