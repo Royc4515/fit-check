@@ -11,6 +11,8 @@ import { setObservesShabbat, useObservanceFailed, useObservesShabbat } from "../
 import { needsRestartForDirection, setLanguage, type Locale } from "../../i18n";
 import { signOut } from "../auth/signOut";
 import { useIsDesktop } from "../shell/ShellTabBar";
+import { BuiltBy } from "./BuiltBy";
+import { UsageSection } from "./UsageSection";
 
 /**
  * Profile tab: Insights (its first row, since stage 5.2), where weather comes from, the app language (switched here,
@@ -90,6 +92,8 @@ export function ProfileView() {
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 32 }}>
         <ScreenColumn>
           <ScreenHeader title={t("profile.title")} safeArea={!desktop} />
+          {/* This month's usage (Roy, 2026-11-25): the user's own bar, or the whole account's for Roy. */}
+          <UsageSection />
           <View className="mt-8 border-t border-hairline">
             {/* First row (DESIGN.md "שלב 5.2" item 1): Insights left the bar for the outfits and lives here now. */}
             <ListRow label={t("profile.insights")} onPress={() => router.push("/insights")} />
@@ -128,11 +132,16 @@ export function ProfileView() {
               ) : null}
             </View>
             <ListRow label={t("profile.archive")} value={archived === null ? undefined : String(archived)} onPress={() => router.push("/archive")} />
+            <ListRow label={t("profile.invite")} onPress={() => router.push("/invite")} />
+            <ListRow label={t("profile.contact")} onPress={() => router.push("/contact")} />
           </View>
           {/* flex-1 spacer: credits and sign-out sit at the bottom of the screen, not right after the rows. */}
           <View className="flex-1" style={{ minHeight: 48 }} />
           {/* Sentence with proper names, so no English uppercase from the Meta default. */}
           <Meta style={{ textTransform: "none" }}>{t("today.credits")}</Meta>
+          <View className="mt-2">
+            <BuiltBy />
+          </View>
           <View className="mt-4 items-start">
             <Button variant="text" label={t("profile.signOut.button")} onPress={() => setSignOutOpen(true)} expanded={signOutOpen} />
           </View>

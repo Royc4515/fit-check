@@ -8,6 +8,7 @@ import { StillLife } from "../components/brand/StillLife";
 import { Button, Display, MetaLink, StatusLine } from "../components/ui";
 import { useDayContext } from "../data/useDayContext";
 import { signInWithGoogle } from "../features/auth/signIn";
+import { BuiltBy } from "../features/profile/BuiltBy";
 import { layout } from "../theme/tokens";
 
 // don't touch / web needs a path (MetaLink renders an anchor); native needs the app's own scheme, because
@@ -81,6 +82,9 @@ export default function SignIn() {
         {/* Google asks that the page a user signs in from links to the privacy policy. */}
         <View className="mt-2">
           <MetaLink label={t("privacy.link")} href={PRIVACY_HREF} />
+        </View>
+        <View className="mt-1">
+          <BuiltBy compact />
         </View>
       </View>
     </ScrollView>
