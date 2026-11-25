@@ -122,6 +122,8 @@ function Routes() {
       </Stack.Protected>
       {/* Outside both guards: Supabase's OAuth server sends signed-in and signed-out browsers here alike. */}
       <Stack.Screen name="oauth/consent" />
+      {/* Outside both guards: Google sends a signed-out visitor back here with the ID token (features/auth/googleDirect.ts). */}
+      <Stack.Screen name="auth/google" />
       {/* Outside both guards: Google's consent screen links here, for signed-out visitors and Google's reviewers. */}
       <Stack.Screen name="privacy" />
       {/* Outside both guards: a shared invitation link, opened signed out (a new friend) or signed in. */}

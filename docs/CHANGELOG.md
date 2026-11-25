@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-25 (Web Google sign-in on the app's own domain)
+
+- Why: Google's chooser showed the Supabase project's address; signing in straight with Google on the app's domain makes it show fit-check-app-xi.vercel.app, and is the first step to the app's name (brand verification).
+- `features/auth/googleDirect.ts` and `app/auth/google.tsx`: ID token from Google to `/auth/google`, then `supabase.auth.signInWithIdToken` with the raw nonce; state checked; one finish per page load; token cleared from the address bar. Only on registered origins; the classic Supabase redirect stays everywhere else and as the fallback button.
+- Look at: after the redirect URIs are added, sign in on this branch's preview, then in production; a Claude connector connection still resumes after sign-in.
+
 ## 2026-11-25 (Usage bar, contact and invite screens, credit to Roy)
 
 - Why: the screens for the allowance, referral and contact work merged earlier today; Roy asked for contact and invite as screens of their own, and for credit to him with his links.
