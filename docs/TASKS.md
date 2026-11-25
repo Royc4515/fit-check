@@ -151,6 +151,7 @@ New open minor from the recheck: when the two tabs have a different number of st
 | R1 | Move working docs from the root to `docs/` | lead | review | `git mv` of PRD, DESIGN, TASKS, CHANGELOG, KICKOFF_PROMPT; CLAUDE.md and README paths updated |
 | R2 | README for a first-time reader | lead | review | What it does, screenshots, architecture, decisions, the egress incident, built vs stub, how to run |
 | R3 | AI layer README matches the code | lead | review | Table of files, exports, models and callers; stale "Not written yet" lines removed |
+| R4 | Repo polish before going public: audit, docs/verification and docs/archive, .env.example from the code, CI, README with real screenshots, CONTRIBUTING, PR template, .editorconfig | lead | review | `docs/REPO_AUDIT.md`. No code behaviour changed. Open: license, GitHub description and topics, LinkedIn link, flipping the repo to public (Roy) |
 
 ## Money rule (Roy, 2026-11-19)
 
