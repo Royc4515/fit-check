@@ -4,9 +4,9 @@ import { createURL } from "expo-linking";
 import { Platform, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Monogram } from "../components/brand/Monogram";
-import { StillLife } from "../components/brand/StillLife";
 import { Button, Display, MetaLink, StatusLine } from "../components/ui";
 import { useDayContext } from "../data/useDayContext";
+import { CoverLook } from "../features/auth/CoverLook";
 import { signInWithGoogle } from "../features/auth/signIn";
 import { BuiltBy } from "../features/profile/BuiltBy";
 import { layout } from "../theme/tokens";
@@ -16,8 +16,8 @@ import { layout } from "../theme/tokens";
 const PRIVACY_HREF = Platform.OS === "web" ? "/privacy" : createURL("privacy");
 
 /**
- * Sign-in, laid out as a magazine cover (DESIGN.md section 8, Kinfolk): the app name is the one serif moment, the
- * still life is the one object, and the Google button is the screen's single primary action in the thumb zone.
+ * Sign-in, laid out as a magazine cover (DESIGN.md section 8, Kinfolk): the app name is the one serif moment, a real
+ * look (CoverLook) is the one object, and the Google button is the screen's single primary action in the thumb zone.
  * Google is the only provider (PRD section 2). Shown only while signed out; the root layout's route guard keeps
  * signed-in users away from it. A cancelled sign-in shows nothing; only a real failure gets a message.
  */
@@ -73,7 +73,7 @@ export default function SignIn() {
             button. Capped width: one object in a lot of air, not a poster. */}
         <View style={{ flexGrow: 1, justifyContent: "center", paddingVertical: 48 }}>
           <View style={{ width: "72%", alignSelf: "center" }}>
-            <StillLife />
+            <CoverLook />
           </View>
         </View>
         <Text className="mb-3 font-body text-body-sm text-ink-soft">{t("auth.prompt")}</Text>

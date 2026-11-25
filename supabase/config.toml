@@ -52,3 +52,5 @@ verify_jwt = true
 verify_jwt = false   # an MCP client sends an OAuth access token; the function verifies it itself and answers 401 + WWW-Authenticate
 [functions.design-preview]
 verify_jwt = false   # compares a one-time code in constant time; temporary, to be retired
+[functions.showcase]
+verify_jwt = false   # public: the signed-out sign-in cover reads one saved look of the owner (slots, tags, photo paths)

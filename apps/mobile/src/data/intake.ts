@@ -181,7 +181,7 @@ function reasonFromBody(body: unknown): string | null {
 }
 
 /** The Edge Functions the app calls through `invoke` (try-on and the stylist have their own callers). */
-export type AppFunction = "intake-separate" | "intake-tag" | "intake-cutout" | "referral" | "contact" | "usage";
+export type AppFunction = "intake-separate" | "intake-tag" | "intake-cutout" | "referral" | "contact" | "usage" | "showcase";
 
 /**
  * Calls an app Edge Function and parses the answer, turning HTTP errors (cap, bad input) into typed results too.

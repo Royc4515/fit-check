@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-25 (Sign-in cover: a real look)
+
+- Why: Roy asked for a real look of his on the screen before signing in, not the drawn one.
+- New public `showcase` function: Roy's newest favourite saved look that is still whole (top, bottom and shoes, every garment in the wardrobe with a photo). Only slots, tags and photo paths go out.
+- Sign-in lays it out like Today, without numbers, at most 37% of the window high so the Google button stays on screen on a laptop. Offline or with no look, the drawing comes back.
+- To change the cover: mark another look as a favourite.
+- Look at: `design/screens/2026-11-25-sign-in-look-*`; after the deploy, the live sign-in screen.
+
 ## 2026-11-25 (Web Google sign-in on the app's own domain)
 
 - Why: Google's chooser showed the Supabase project's address; signing in straight with Google on the app's domain makes it show fit-check-app-xi.vercel.app, and is the first step to the app's name (brand verification).

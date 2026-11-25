@@ -4,7 +4,7 @@ import { ItemArt } from "../item-art/ItemArt";
 import { colors, type ColorToken } from "../../theme/tokens";
 
 /**
- * A fixed, generic outfit for the cover: not the user's wardrobe (the sign-in screen has none to show yet).
+ * A fixed, generic outfit, drawn: the sign-in cover's fallback when the owner's real look (CoverLook) cannot load.
  * Hex values live here and only here: they are illustration data (the drawn garments' fabric colours, the same kind
  * of value a user's item tags carry), not UI colour, so they are not design tokens.
  */
