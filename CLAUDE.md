@@ -24,7 +24,7 @@ apps/mobile/          Expo app (also builds web)
 packages/schema/      zod schemas shared by app and Edge Functions (item tags, stylist I/O, context rules)
 packages/engine/      pure TypeScript: filters, scoring, candidate generation. No I/O. 100% unit-tested.
 supabase/migrations/  SQL, one file per change, never edited after merge
-supabase/functions/   Edge Functions: intake-separate, intake-cutout, intake-tag, style-outfit, tryon, usage, mcp, design-preview, import-sheet; generate-daily and precheck are stubs
+supabase/functions/   Edge Functions: intake-separate, intake-cutout, intake-tag, style-outfit, tryon, usage, referral, mcp, design-preview, import-sheet; generate-daily and precheck are stubs
 worker/               background removal: the Modal app (Python) and the Cloudflare Worker (worker/cloudflare)
 design/screens/       dated screenshots of every screen
 docs/                 the spec (PRD.md, DESIGN.md), live status (TASKS.md), CHANGELOG.md, plans and checklists

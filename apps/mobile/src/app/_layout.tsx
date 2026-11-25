@@ -14,6 +14,8 @@ import { WardrobeProvider } from "../data/WardrobeProvider";
 import { isPreview } from "../data/preview";
 import { PreviewBanner } from "../components/PreviewBanner";
 import { takePendingConsent } from "../features/auth/oauthPending";
+import { claimPendingReferral } from "../features/referral/pendingReferral";
+import { claimReferral } from "../data/referral";
 import { SessionProvider, sessionUserId, useSession } from "../features/auth/SessionProvider";
 
 // ViewProps has no `dir` in RN's types, but react-native-web reads it. Spreading a typed object keeps this
@@ -41,6 +43,10 @@ function Routes() {
     const pending = takePendingConsent();
     if (pending) router.replace({ pathname: "/oauth/consent", params: { authorization_id: pending } });
   }, [signedInNow, router]);
+  // A friend's referral code (/join/<code>) waits for sign-in and is claimed once a session exists.
+  useEffect(() => {
+    if (signedInNow) void claimPendingReferral(claimReferral);
+  }, [signedInNow]);
   // don't touch / the design-preview code must leave the address bar (screenshots, copied links). preview.ts strips it
   // from history, but the router parsed the URL before that and wrote `?preview=` back on its next sync.
   const previewMode = session.status === "preview";
@@ -116,6 +122,8 @@ function Routes() {
       <Stack.Screen name="oauth/consent" />
       {/* Outside both guards: Google's consent screen links here, for signed-out visitors and Google's reviewers. */}
       <Stack.Screen name="privacy" />
+      {/* Outside both guards: a shared invitation link, opened signed out (a new friend) or signed in. */}
+      <Stack.Screen name="join/[code]" />
     </Stack>
   );
 

@@ -35,6 +35,14 @@ Deno.test("other users get the defaults plus Roy's grant, never less than the de
   assertEquals(allowanceFor(DANA, OWNER, { extra_usd: -5, extra_cutouts: -10 }), { usd: DEFAULT_MONTHLY_USD, cutouts: DEFAULT_MONTHLY_CUTOUTS });
 });
 
+Deno.test("each referral adds its bonus, up to the cap, and never below zero", () => {
+  assertEquals(allowanceFor(DANA, OWNER, null, 1), { usd: 0.75, cutouts: 40 });
+  assertEquals(allowanceFor(DANA, OWNER, null, 4), { usd: 1.5, cutouts: 70 });
+  assertEquals(allowanceFor(DANA, OWNER, null, 9), { usd: 1.5, cutouts: 70 });
+  assertEquals(allowanceFor(DANA, OWNER, null, -3), { usd: DEFAULT_MONTHLY_USD, cutouts: DEFAULT_MONTHLY_CUTOUTS });
+  assertEquals(allowanceFor(OWNER, OWNER, null, 4), null);
+});
+
 Deno.test("quotaAllows: each kind against its own limit, unknown usage is used up, no limit always allows", () => {
   const limit = { usd: 0.5, cutouts: 30 };
   const used = (usd: number, cutouts: number): Usage => ({ usd, cutouts });
@@ -55,12 +63,13 @@ Deno.test("percentUsed is the fuller of the two shares, capped at 100", () => {
 });
 
 /** Deps answering fixed values, recording which reads ran. */
-function deps(ownerId: string | null, grant: QuotaDeps["grant"], usage: Usage | null) {
+function deps(ownerId: string | null, grant: QuotaDeps["grant"], usage: Usage | null, referrals = 0) {
   const reads: string[] = [];
   const d: QuotaDeps = {
     ownerId: () => ownerId,
     grant: (id) => (reads.push(`grant:${id}`), grant(id)),
     usage: (id, since) => (reads.push(`usage:${id}:${since.toISOString()}`), Promise.resolve(usage)),
+    referrals: (id) => (reads.push(`referrals:${id}`), Promise.resolve(referrals)),
   };
   return { d, reads };
 }
@@ -72,7 +81,9 @@ Deno.test("quotaState: the owner is never read; others are read from the 1st of 
 
   const dana = deps(OWNER, () => Promise.resolve({ extra_usd: 1, extra_cutouts: 0 }), { usd: 0.2, cutouts: 4 });
   assertEquals(await quotaState(DANA, NOW, dana.d), { owner: false, allowance: { usd: 1.5, cutouts: 30 }, usage: { usd: 0.2, cutouts: 4 } });
-  assertEquals(dana.reads, [`grant:${DANA}`, `usage:${DANA}:2026-11-01T00:00:00.000Z`]);
+  assertEquals(dana.reads, [`grant:${DANA}`, `usage:${DANA}:2026-11-01T00:00:00.000Z`, `referrals:${DANA}`]);
+  const referrer = deps(OWNER, () => Promise.resolve(null), { usd: 0, cutouts: 0 }, 2);
+  assertEquals((await quotaState(DANA, NOW, referrer.d)).allowance, { usd: 1, cutouts: 50 });
 });
 
 Deno.test("userAllows fails safe: an unreadable grant means the defaults, unreadable usage means no call", async () => {

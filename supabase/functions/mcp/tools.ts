@@ -606,7 +606,8 @@ export const TOOLS: Tool[] = [
     name: "quota_set",
     title: "Read or raise a user's monthly allowance (owner only)",
     description:
-      "Every user but Roy has a monthly allowance: $0.50 of AI calls and 30 background removals, plus whatever Roy granted. With only " +
+      "Every user but Roy has a monthly allowance: $0.50 of AI calls and 30 background removals, plus $0.25 and 10 removals for each of " +
+      "up to 4 users they referred, plus whatever Roy granted. With only " +
       "an email this reads the user's allowance and this month's use. With extra_usd and/or extra_cutouts it sets the extra on top of " +
       "the defaults (absolute values that replace the previous extra, so read first when Roy says 'two dollars more'). Only Roy can call it.",
     inputSchema: {
