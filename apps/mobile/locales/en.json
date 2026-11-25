@@ -315,7 +315,31 @@
       "cancelLabel": "Cancel the occasion: {{type}}",
       "failed": "Sign-out failed. Try again."
     },
-    "insights": "Insights"
+    "insights": "Insights",
+    "invite": "Invite a friend",
+    "contact": "Contact Roy",
+    "usage": {
+      "title": "Your usage this month",
+      "accountTitle": "Whole account usage",
+      "allowance": "of this month's allowance",
+      "allowanceSpoken": "{{percent}} percent of this month's allowance used",
+      "ai": "AI: {{used}} of {{limit}}",
+      "cutouts": "Background removals: {{used}} of {{limit}}",
+      "ofLimit": "{{used}} of {{limit}}",
+      "near": "Your monthly allowance is nearly used.",
+      "over": "Your monthly allowance is used up.",
+      "ask": "Ask for more",
+      "renews": "Renews on the 1st of every month.",
+      "failed": "Couldn't load your usage.",
+      "account": {
+        "google": "Gemini: detection, redraws, try-on",
+        "anthropic": "Claude: tagging and the stylist",
+        "cutouts": "Background removals"
+      },
+      "accountSpoken": "{{label}}: {{percent}} percent of the monthly cap",
+      "accountNear": "Close to the monthly cap.",
+      "accountOver": "Monthly cap reached. The feature is paused until next month."
+    }
   },
   "insights": {
     "title": "Insights",
@@ -1250,5 +1274,45 @@
     "contactTitle": "Contact",
     "contactBody": "For questions and deletion requests, contact Roy Carmelli:",
     "link": "Privacy policy"
+  },
+  "credits": {
+    "builtBy": "Built by Roy Carmelli",
+    "portfolio": "Portfolio",
+    "github": "GitHub",
+    "linkedin": "LinkedIn"
+  },
+  "contact": {
+    "title": "Contact Roy",
+    "intro": "Roy gets it by email and replies to your address.",
+    "kindLabel": "What is it about",
+    "kind": {
+      "more_quota": "More allowance",
+      "problem": "Something's broken",
+      "idea": "An idea",
+      "other": "Other"
+    },
+    "messageLabel": "Message",
+    "placeholder": "A few words on what you need",
+    "counter": "{{n}} of {{max}} characters",
+    "send": "Send",
+    "sending": "Sending",
+    "sent": "Sent. Roy will reply by email.",
+    "saved": "Received. Roy will see it soon.",
+    "failed": {
+      "daily_limit": "You've sent today's maximum. You can send again tomorrow.",
+      "generic": "Sending failed. Your message is still here."
+    }
+  },
+  "invite": {
+    "title": "Invite a friend",
+    "intro": "Each friend who signs up through your link adds {{usd}} dollars and {{cutouts}} background removals a month to your allowance, up to {{max}} friends.",
+    "introOwner": "The link brings friends into the app. You have no personal allowance, so the bonus changes nothing for you.",
+    "linkLabel": "Your link",
+    "count": "Joined through you: {{n}} of {{max}}",
+    "share": "Share the link",
+    "shareMessage": "I'm sorting my wardrobe with Fit Check. Join me?",
+    "copied": "Link copied.",
+    "shareFailed": "Couldn't share. You can copy the link above.",
+    "failed": "Couldn't prepare your link."
   }
 }

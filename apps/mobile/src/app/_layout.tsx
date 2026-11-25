@@ -75,6 +75,8 @@ function Routes() {
         <Stack.Screen name="archive" />
         {/* Out of the bar since stage 5.2; opened from the profile. Same URL as when it was a tab. */}
         <Stack.Screen name="insights" />
+        <Stack.Screen name="contact" />
+        <Stack.Screen name="invite" />
         {/* Internal component gallery; not linked from any screen. */}
         <Stack.Screen name="design-system" />
         {/* don't touch / transparent + no native animation: the item screen runs its own shared-element

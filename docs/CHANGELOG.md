@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-25 (Usage bar, contact and invite screens, credit to Roy)
+
+- Why: the screens for the allowance, referral and contact work merged earlier today; Roy asked for contact and invite as screens of their own, and for credit to him with his links.
+- Profile: this month's usage under the title (the user's own bar; for Roy, the whole account per cap), rows "Invite a friend" and "Contact Roy", and "Built by Roy Carmelli" with portfolio, GitHub and LinkedIn. Sign-in: one credit line.
+- `/contact` (choice of kind, message, send) and `/invite` (personal link, count, share or copy).
+- Components: `Meter` (new), `TextField` `multiline`. DESIGN.md "פרופיל ותובנות" and section 4 updated.
+- Look at: `design/screens/2026-11-25-profile-*`, `-contact-*`, `-invite-*`, `-sign-in-390-he.png`; on a phone, the share sheet on /invite.
+
 ## 2026-11-25 (Personal details out of the public repo's files)
 
 - Why: the repo went public; Roy asked to remove his personal details from the spec and the repo.
