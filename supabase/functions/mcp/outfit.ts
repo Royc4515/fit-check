@@ -27,10 +27,10 @@ import {
   planDay,
   type CalendarDayType,
   type DayPlan,
-  type HebcalDayItem,
   type HebrewDayFacts,
   type RuleSet,
 } from "@fit-check/schema/day-context.ts";
+import { CHAIN_MAX_DAYS, defaultTab, phoneFreeChain, shabbatTimes, type HebcalItem } from "@fit-check/schema/shabbat-times.ts";
 import { publicUrl, type ToolContext, type ToolResult } from "./tools.ts";
 import { issues, loadObservesShabbat, loadOccasionRows, typedFail } from "./context.ts";
 import { israelDate, israelTime } from "./time.ts";
@@ -73,7 +73,7 @@ export type Place = { lat: number; lon: number; isDefault: boolean };
 export type OutfitDeps = {
   now: () => Date;
   /** Hebcal events for `date` and the six days after it; rejects on any failure, timeout or unusable answer. */
-  hebcal: (date: string, place: Place) => Promise<HebcalDayItem[]>;
+  hebcal: (date: string, place: Place) => Promise<HebcalItem[]>;
   /** The day's weather summary, or null when the forecast is unavailable. Never rejects. */
   weather: (date: string, place: Place) => Promise<DayWeather | null>;
 };
@@ -88,7 +88,7 @@ function weekdayOf(date: string): number {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
-async function hebcalLive(date: string, place: Place): Promise<HebcalDayItem[]> {
+async function hebcalLive(date: string, place: Place): Promise<HebcalItem[]> {
   const end = addDays(date, CALENDAR_DAYS - 1);
   // The same request as the app's (data/dayContext.ts startCalendar), Israel schedule (i=on): the server plans in Israel.
   const where = place.isDefault
@@ -244,11 +244,76 @@ async function loadHistory(ctx: ToolContext, date: string) {
 }
 
 
+/**
+ * Reuses the first Hebcal answer of a call for any later date it covers, so planning the day in force and then that
+ * day costs one request, not two (the review of PR #51 measured up to 5 s per request).
+ */
+function sharedCalendar(deps: OutfitDeps): OutfitDeps {
+  let first: { date: string; items: Promise<HebcalItem[]> } | null = null;
+  return {
+    ...deps,
+    hebcal: (date, place) => {
+      if (first && date >= first.date && date <= addDays(first.date, CHAIN_MAX_DAYS)) return first.items;
+      const items = deps.hebcal(date, place);
+      first ??= { date, items };
+      return items;
+    },
+  };
+}
+
+/** The day a call without a date is about: Israel's civil date, or the planned day the app has moved to. */
+type DayInForce = { date: string; movedFrom: string | null };
+
+/**
+ * The day in force, by the app's rule (apps/mobile/src/features/today/dayInForce.ts over the same shared functions):
+ * today until three hours before today's candle lighting, or until today's outfit is recorded as worn; from then on the
+ * first planned day (Shabbat, the holiday) not recorded as worn yet, or the first one when every one is. Without
+ * candles, with the observance switch off, or when the calendar cannot be read, it is today.
+ *
+ * Failure modes: a failed calendar or wears read gives today (the civil date is never wrong, only early); never throws.
+ */
+async function dayInForce(ctx: ToolContext, deps: OutfitDeps, place: Place): Promise<DayInForce> {
+  const now = deps.now();
+  const today = israelDate(now);
+  const stay: DayInForce = { date: today, movedFrom: null };
+  try {
+    if (!(await loadObservesShabbat(ctx))) return stay;
+    const items = await deps.hebcal(today, place);
+    const chain = phoneFreeChain(items, today);
+    if (chain.length === 0) return stay;
+    const { data, error } = await ctx.db
+      .from("wears")
+      .select("worn_on")
+      .eq("user_id", ctx.userId)
+      .eq("feedback", "worn")
+      .gte("worn_on", today)
+      .lte("worn_on", chain[chain.length - 1]!.date);
+    if (error) throw new Error(error.message);
+    const worn = new Set((data ?? []).map((r: { worn_on: unknown }) => String(r.worn_on)));
+    const tab = defaultTab({
+      now: israelTime(now),
+      candles: shabbatTimes(items, today).candles?.time ?? null,
+      todayRecorded: worn.has(today),
+      recorded: chain.map((d) => worn.has(d.date)),
+    });
+    const date = chain[tab - 1]?.date ?? today;
+    return { date, movedFrom: date === today ? null : today };
+  } catch (error) {
+    console.error("day in force failed", String(error));
+    return stay;
+  }
+}
+
+/** Said to Claude when a call without a date was answered for the planned day, so it can tell Roy which day it is. */
+const MOVED_NOTE =
+  "No date was passed and candle lighting is less than three hours away (or today's outfit is already worn), so, as in " +
+  "the app, this is for the planned day (Shabbat or the holiday) in `date`. Pass `date` explicitly for today.";
+
 const placeOf = (lat: number | undefined, lon: number | undefined): Place =>
   lat !== undefined && lon !== undefined ? { lat, lon, isDefault: false } : { lat: DEFAULT_PLACE.lat, lon: DEFAULT_PLACE.lon, isDefault: true };
 
 /**
- * outfit_today: up to eight outfit candidates for a date (default today in Israel), built by the app's engine under the
+ * outfit_today: up to eight outfit candidates for a date (default: the day in force, see dayInForce), built by the app's engine under the
  * app's rules, for Claude to choose from and explain.
  *
  * Inputs (all optional): date, day_type (overrides the calendar and any occasion), lat/lon (together), anchor_item_id.
@@ -262,10 +327,15 @@ export async function outfitToday(args: unknown, ctx: ToolContext, deps: OutfitD
   const parsed = TodayInput.safeParse(args ?? {});
   if (!parsed.success) return typedFail("invalid_input", `${issues(parsed.error)}. Fix the argument and call again.`);
   const input = parsed.data;
-  const date = input.date ?? israelDate(deps.now());
   const place = placeOf(input.lat, input.lon);
+  const cal = sharedCalendar(deps);
+  // don't touch / only a call with neither date nor day_type follows the app's day in force: a forced day type speaks
+  // about today, and an explicit date is taken as given.
+  const inForce: DayInForce =
+    input.date || input.day_type ? { date: input.date ?? israelDate(deps.now()), movedFrom: null } : await dayInForce(ctx, cal, place);
+  const date = inForce.date;
   const [day, weather, wardrobe, history, saved] = await Promise.all([
-    resolveDay(ctx, deps, date, input.day_type ?? null, place),
+    resolveDay(ctx, cal, date, input.day_type ?? null, place),
     deps.weather(date, place),
     loadWardrobe(ctx),
     loadHistory(ctx, date),
@@ -308,6 +378,7 @@ export async function outfitToday(args: unknown, ctx: ToolContext, deps: OutfitD
   const noShoes = plan.rules === "yom_kippur" && candidates.length > 0 && candidates.every((c) => !c.items.some((i) => i.slot === "shoes"));
   const answer = {
     date,
+    ...(inForce.movedFrom ? { date_note: MOVED_NOTE, today: inForce.movedFrom } : {}),
     rules: plan.rules,
     day_type: plan.dayType,
     context_used: plan.reason,
@@ -340,9 +411,15 @@ export async function outfitLog(args: unknown, ctx: ToolContext, deps: OutfitDep
   const parsed = LogInput.safeParse(args);
   if (!parsed.success) return typedFail("invalid_input", `${issues(parsed.error)}. Fix the argument and call again.`);
   const input = parsed.data;
-  const date = input.date ?? israelDate(deps.now());
+  const place = placeOf(undefined, undefined);
+  const cal = sharedCalendar(deps);
+  // don't touch / the same day in force as outfit_today and the app's wear button: "I'm wearing it" at 16:00 on a
+  // Friday is Shabbat's outfit, so it must be recorded on Shabbat's date, not Friday's.
+  const inForce: DayInForce =
+    input.date || input.day_type ? { date: input.date ?? israelDate(deps.now()), movedFrom: null } : await dayInForce(ctx, cal, place);
+  const date = inForce.date;
   const [{ plan }, { items, weights }, saved] = await Promise.all([
-    resolveDay(ctx, deps, date, input.day_type ?? null, placeOf(undefined, undefined)),
+    resolveDay(ctx, cal, date, input.day_type ?? null, place),
     loadWardrobe(ctx),
     loadSaved(ctx),
   ]);
@@ -400,7 +477,7 @@ export async function outfitLog(args: unknown, ctx: ToolContext, deps: OutfitDep
     content: [
       {
         type: "text",
-        text: JSON.stringify({ logged: input.feedback, date, context: plan.contextType, items: outfitItems.map((i) => i.name), moved_to_laundry: laundry }, null, 2),
+        text: JSON.stringify({ logged: input.feedback, date, ...(inForce.movedFrom ? { date_note: MOVED_NOTE, today: inForce.movedFrom } : {}), context: plan.contextType, items: outfitItems.map((i) => i.name), moved_to_laundry: laundry }, null, 2),
       },
     ],
   };
