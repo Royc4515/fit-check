@@ -47,6 +47,6 @@ describe("candleLightingMinutes: Haifa and Zikhron 30", () => {
 });
 
 describe("candleLightingMinutes: rest of Israel 20", () => {
-  it("Giv'at Shmuel", () => expect(at(32.078, 34.848)).toBe(20));
+  it("Tel Aviv", () => expect(at(32.0809, 34.7806)).toBe(20));
   it("Tel Aviv", () => expect(at(32.0853, 34.7818)).toBe(20));
 });

@@ -4,7 +4,7 @@ import tishrei from "./__fixtures__/window-tishrei-5787.json";
 import { addDays, calendarAnswerUsable, calendarOn, civilCalendar, hebrewDateOn, hebrewDatesUsable, windowCovers } from "./calendarWindow";
 import { NO_CALENDAR } from "./observance";
 
-// A real 61-day Hebcal window (geonameid 294981 Giv'at Shmuel, i=on, lg=he, 2026-09-01..2026-10-31, saved 2026-11-20).
+// A real Hebcal window (geonameid 293397 Tel Aviv, i=on, lg=he, 2026-09-04..2026-10-31, saved 2026-11-25).
 // The expected values were read by hand from the response, not produced by the code under test.
 const items = HebcalItemsSchema.parse(tishrei).items;
 

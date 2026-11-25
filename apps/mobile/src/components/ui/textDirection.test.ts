@@ -4,7 +4,7 @@ import { textDirection } from "./textDirection";
 describe("textDirection", () => {
   it("follows the script of a plain string", () => {
     expect(textDirection("Carhartt WIP", "rtl")).toBe("ltr");
-    expect(textDirection("גבעת שמואל", "ltr")).toBe("rtl");
+    expect(textDirection("תל אביב", "ltr")).toBe("rtl");
   });
   it("lets a long Latin name win over a short Hebrew type word, so its start survives truncation", () => {
     expect(textDirection("חולצה · Carhartt WIP Detroit Jacket", "rtl")).toBe("ltr");

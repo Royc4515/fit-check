@@ -22,3 +22,5 @@ web-build/
 coverage/
 *.tsbuildinfo
 .vercel/
+# The real wardrobe export for scripts/import-sheet.ts stays on the owner's machine, never in the public repo.
+scripts/data/*.csv

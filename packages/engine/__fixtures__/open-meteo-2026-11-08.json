@@ -1,14 +1,11 @@
 {
- "latitude": 32.06273,
- "longitude": 34.85472,
  "generationtime_ms": 0.20492076873779297,
  "utc_offset_seconds": 7200,
  "timezone": "Asia/Jerusalem",
  "timezone_abbreviation": "GMT+2",
- "elevation": 50.0,
  "hourly_units": {
   "time": "iso8601",
-  "apparent_temperature": "\u00b0C",
+  "apparent_temperature": "°C",
   "precipitation_probability": "%",
   "wind_speed_10m": "km/h",
   "uv_index": "",

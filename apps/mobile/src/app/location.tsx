@@ -12,7 +12,7 @@ import { layout } from "../theme/tokens";
 type City = Extract<SavedLocation, { kind: "city" }>;
 
 /**
- * Where weather and Shabbat times come from: the default (Giv'at Shmuel), the phone's current location, or any
+ * Where weather and Shabbat times come from: the default (Tel Aviv), the phone's current location, or any
  * city. A device setting stored locally (see data/location.ts).
  */
 export default function LocationScreen() {
