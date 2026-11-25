@@ -7,6 +7,7 @@
 [![Expo SDK 58](https://img.shields.io/badge/Expo-SDK%2058-000020?logo=expo)](https://docs.expo.dev/)
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.base.json)
 [![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Edge%20Functions-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/Royc4515/fit-check)](https://github.com/Royc4515/fit-check/commits/main)
 
 ![Wardrobe on desktop, filtered for Shabbat: real garment cutouts grouped by category with colour swatches](docs/assets/wardrobe-desktop-he.png)
@@ -236,7 +237,7 @@ This is a personal project built with [Claude Code](https://docs.anthropic.com/e
 
 ## License
 
-TODO(owner): no license chosen yet. Until a `LICENSE` file is added, all rights are reserved.
+[MIT](LICENSE). The garment photos and screenshots show the author's own wardrobe; the license covers the code and docs.
 
 ## Author
 

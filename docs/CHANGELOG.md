@@ -8,6 +8,7 @@
 - `.env.example` lists every variable the code reads (`MODAL_CUTOUT_URL`, `GEMINI_IMAGE_API_KEY`, `R2_*`), grouped by where it is set; the unused home coordinates are gone.
 - `pnpm test:functions` runs the Deno tests; `.github/workflows/ci.yml` runs typecheck, lint, vitest and Deno tests on pull requests and `main`.
 - README rewritten with real-wardrobe screenshots (`docs/assets/`), `CONTRIBUTING.md`, `.github/pull_request_template.md`, `.editorconfig`, root `.gitignore` entries, module headers on the engine and schema entry points.
+- `LICENSE`: MIT (Roy, 2026-11-25). GitHub description and topics set.
 - Not changed: `supabase/functions/_shared/engine.js` is stale (PR #51 rebuilds it), the design-preview path is still in place.
 - Look at: the README on GitHub (badges, Mermaid diagram, screenshots), the first CI run on the pull request.
 
