@@ -168,7 +168,7 @@ pnpm install
 cp .env.example apps/mobile/.env.local
 ```
 
-Expo reads env files from `apps/mobile`, so the app values go there. Only the three `EXPO_PUBLIC_*` values belong in the app; [`.env.example`](.env.example) lists every other variable, and those are Edge Function secrets set with `supabase secrets set`, never committed.
+Expo reads env files from `apps/mobile`, so the app values go there. The example holds placeholders only; fill in the Supabase URL and publishable key from the Supabase dashboard (Project Settings > API). Real values never go in the repo. Only the three `EXPO_PUBLIC_*` values belong in the app; [`.env.example`](.env.example) lists every other variable, and those are Edge Function secrets set with `supabase secrets set`, never committed.
 
 ### Run
 

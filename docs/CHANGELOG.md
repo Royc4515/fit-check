@@ -5,7 +5,7 @@
 - Why: Roy is making the repo public. The README told readers to put `.env.local` at the root (Expo reads it from `apps/mobile`), `.env.example` named variables the code does not read, `pnpm test` did not run the Deno tests that `CLAUDE.md` said it ran, and nothing ran checks on a pull request.
 - `docs/REPO_AUDIT.md`: what the project is, architecture, baseline (834 vitest + 50 Deno tests pass, web export builds), findings, and what becomes public with the history.
 - Moves (`git mv`): `docs/redesign-checklist-*.md` to `docs/verification/`, `docs/KICKOFF_PROMPT.md` to `docs/archive/`. Older entries below keep the paths of their time.
-- `.env.example` lists every variable the code reads (`MODAL_CUTOUT_URL`, `GEMINI_IMAGE_API_KEY`, `R2_*`), grouped by where it is set; the unused home coordinates are gone.
+- `.env.example` lists every variable the code reads (`MODAL_CUTOUT_URL`, `GEMINI_IMAGE_API_KEY`, `R2_*`), grouped by where it is set, with placeholders only (Roy: no real values in env files in the repo); the unused home coordinates are gone.
 - `pnpm test:functions` runs the Deno tests; `.github/workflows/ci.yml` runs typecheck, lint, vitest and Deno tests on pull requests and `main`.
 - README rewritten with real-wardrobe screenshots (`docs/assets/`), `CONTRIBUTING.md`, `.github/pull_request_template.md`, `.editorconfig`, root `.gitignore` entries, module headers on the engine and schema entry points.
 - `LICENSE`: MIT (Roy, 2026-11-25). GitHub description and topics are approved but set by hand (values in `what-changed.md`).
