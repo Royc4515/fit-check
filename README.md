@@ -241,7 +241,8 @@ This is a personal project built with [Claude Code](https://docs.anthropic.com/e
 
 ## Author
 
-Roy Carmelli
+Built by Roy Carmelli.
 
+- Portfolio: [roy-carmelli-portfolio.vercel.app](https://roy-carmelli-portfolio.vercel.app/)
+- LinkedIn: [in/roy-carmelli](https://www.linkedin.com/in/roy-carmelli)
 - GitHub: [@Royc4515](https://github.com/Royc4515)
-- LinkedIn: TODO(owner)

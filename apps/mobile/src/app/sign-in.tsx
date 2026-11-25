@@ -84,7 +84,7 @@ export default function SignIn() {
           <MetaLink label={t("privacy.link")} href={PRIVACY_HREF} />
         </View>
         <View className="mt-1">
-          <BuiltBy compact />
+          <BuiltBy />
         </View>
       </View>
     </ScrollView>

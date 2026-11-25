@@ -5,7 +5,7 @@ import { Meta } from "./Type";
 
 /**
  * A `Meta` line that opens an address: attribution and credits (the OpenStreetMap line on the location screen).
- * Ink-faint like any meta, a 44 hit area, link semantics, and the keyboard focus ring on web.
+ * Ink-faint like any meta, underlined so it reads as a link without colour, a 44 hit area, link semantics, and the keyboard focus ring on web.
  * On web it is a real anchor (new tab, noopener), so Enter, middle-click and "copy link" work; on native it opens
  * through Linking.
  * Failure modes: if the address cannot be opened the press does nothing (a credit is not worth an error state).
@@ -25,8 +25,9 @@ export function MetaLink({ label, href }: { label: string; href: string }) {
       className="justify-center self-start"
       style={{ minHeight: layout.hit }}
     >
-      {/* Sentence with a proper name, so no English uppercase from the Meta default. */}
-      <Meta style={{ textTransform: "none" }}>{label}</Meta>
+      {/* Sentence with a proper name, so no English uppercase from the Meta default. Underlined because a link in the
+          same ink as the text beside it ("Built by Roy Carmelli") is otherwise told apart by nothing (DESIGN.md 1). */}
+      <Meta style={{ textTransform: "none", textDecorationLine: "underline" }}>{label}</Meta>
     </Pressable>
   );
 }
