@@ -1,5 +1,5 @@
 import { FESTIVE_FORMALITY_STEPS, NO_ADJUSTMENT, type DayAdjustment, type PairWeights } from "@fit-check/engine";
-import type { Item, OccasionType } from "@fit-check/schema";
+import type { Item } from "@fit-check/schema";
 import type { FeedbackHistory, RecentWear, TodayRecord } from "../../data/feedback";
 import { newestWorn } from "../../data/correction";
 import { contextTypeOf, planToday, type DayInput, type Swaps, type TodayPlan } from "./outfit";
@@ -29,32 +29,11 @@ export function defaultAdjustment(day: Pick<DayInput, "festive" | "occasion">): 
 }
 
 /**
- * Whether a day's occasion (date, interview, event) may decide its look (DESIGN.md "שלב 4.5" item 3, corrected
- * 19.11): on a weekday, yes; on Shabbat or a holiday for someone who keeps them, only after that date's havdalah
- * (a date on Saturday night gets a date look; the Shabbat look itself stays Shabbat's), and never on a date without
- * a havdalah (the first day of a two-day holiday). A planned day's tab ("for Shabbat", "for the holiday") never.
- * With the observance switch off, Shabbat and holidays already reach here as weekdays, so the occasion always wins.
- * Pure: the time comes in as data.
- *
- * @param args.tab "today", or "planned" for a tab after it.
- * @param args.dayType The calendar's day type for that date, after the observance switch (dayTypeFor).
- * @param args.havdalahToday That date's havdalah `HH:MM` when it falls on that date (shabbatTimes `end`), else null.
- * @param args.now The local time `HH:MM`.
+ * Whether a day's occasion may decide its look (DESIGN.md "שלב 4.5" item 3, corrected 19.11), and which one does.
+ * The rule lives in packages/schema (day-context.ts) since 2026-11-20 so the MCP server's `outfit_today` uses the very
+ * same function and the two cannot drift again; re-exported here so the screen and its tests read it where they did.
  */
-export function occasionMayApply(args: { tab: "today" | "planned"; dayType: DayInput["dayType"]; havdalahToday: string | null; now: string }): boolean {
-  if (args.tab === "planned") return false;
-  if (args.dayType === "weekday") return true;
-  // Zero-padded `HH:MM` strings compare in time order.
-  return args.havdalahToday !== null && args.now >= args.havdalahToday;
-}
-
-/** The occasion that decides a day's look: the stored one when it may apply (occasionMayApply), else none. */
-export function occasionInEffect(
-  occasion: OccasionType | null | undefined,
-  args: Parameters<typeof occasionMayApply>[0]
-): OccasionType | undefined {
-  return occasion && occasionMayApply(args) ? occasion : undefined;
-}
+export { occasionInEffect, occasionMayApply } from "@fit-check/schema";
 
 /** The look a day stands for in the planning of the days after it: recorded if worn, else the one shown. */
 function lookOf(plan: TodayPlan): string[] | null {

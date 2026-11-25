@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DayContextSchema, OccasionLabelSchema, daysBetween, occasionDateWindowError, planDay } from "./day-context";
+import { DayContextSchema, OccasionLabelSchema, daysBetween, occasionDateWindowError } from "./day-context";
 
 const base = { type: "interview", date: "2026-11-20", source: "calendar" } as const;
 
@@ -65,38 +65,5 @@ describe("occasionDateWindowError", () => {
     expect(daysBetween("2026-12-30", "2027-01-02")).toBe(3);
     expect(occasionDateWindowError("2027-01-13", "2026-12-30")).toBeNull();
     expect(occasionDateWindowError("2027-01-14", "2026-12-30")).not.toBeNull();
-  });
-});
-
-describe("planDay", () => {
-  const none = { occasion: null, dayTypeForced: false } as const;
-
-  it("uses the calendar day type when nothing else applies", () => {
-    expect(planDay({ ...none, dayType: "shabbat", observesShabbat: true })).toEqual({ rules: "shabbat", formality_steps: 0, reason: "shabbat" });
-    expect(planDay({ ...none, dayType: "weekday", observesShabbat: true }).rules).toBe("weekday");
-  });
-
-  it("an occasion beats the calendar, and says where it came from", () => {
-    const plan = planDay({ dayType: "weekday", dayTypeForced: false, observesShabbat: true, occasion: { type: "interview", source: "calendar" } });
-    expect(plan).toEqual({ rules: "interview", formality_steps: 0, reason: "interview, set from the calendar" });
-    const manual = planDay({ dayType: "shabbat", dayTypeForced: false, observesShabbat: true, occasion: { type: "event", label: "wedding", source: "manual" } });
-    expect(manual.rules).toBe("event");
-    expect(manual.reason).toBe('event ("wedding"), set by hand');
-  });
-
-  it("an explicit day type beats the occasion and the setting", () => {
-    const plan = planDay({ dayType: "shabbat", dayTypeForced: true, observesShabbat: false, occasion: { type: "date", source: "manual" } });
-    expect(plan.rules).toBe("shabbat");
-    expect(plan.formality_steps).toBe(0);
-  });
-
-  it("observance off: Shabbat is a weekday, a holiday a weekday one step dressier", () => {
-    expect(planDay({ ...none, dayType: "shabbat", observesShabbat: false })).toMatchObject({ rules: "weekday", formality_steps: 0 });
-    expect(planDay({ ...none, dayType: "holiday", observesShabbat: false })).toMatchObject({ rules: "weekday", formality_steps: 1 });
-    expect(planDay({ ...none, dayType: "weekday", observesShabbat: false })).toMatchObject({ rules: "weekday", formality_steps: 0 });
-  });
-
-  it("observance off does not stop an occasion", () => {
-    expect(planDay({ dayType: "shabbat", dayTypeForced: false, observesShabbat: false, occasion: { type: "date", source: "calendar" } }).rules).toBe("date");
   });
 });

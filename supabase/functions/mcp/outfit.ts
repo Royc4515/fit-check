@@ -1,79 +1,112 @@
 import { z } from "zod";
 import { ITEM_READ_COLUMNS, WEAR_READ_COLUMNS, WearRowSchema, itemFromRow } from "@fit-check/schema/db.ts";
 import type { Item } from "@fit-check/schema/item.ts";
-import { StylingRequestSchema, type StylingRequest } from "@fit-check/schema/context.ts";
-import { OpenMeteoHourlySchema } from "@fit-check/schema/external.ts";
+import { CONTEXT_TYPES, StylingRequestSchema, type ContextRules, type StylingRequest } from "@fit-check/schema/context.ts";
+import { HebcalItemsSchema, OpenMeteoHourlySchema } from "@fit-check/schema/external.ts";
 import {
   adjustRequest,
   DEFAULT_CONTEXT_RULES,
   dueForLaundry,
   feedbackUpdates,
+  FESTIVE_FORMALITY_STEPS,
   generateCandidates,
   pairKey,
   RECENT_WEARS_DAYS,
   scoreOutfit,
   summarizeDay,
+  withSavedPairs,
+  YOM_KIPPUR_RULES,
+  type DayWeather,
   type PairWeights,
+  type SavedOutfitSignal,
 } from "../_shared/engine.js";
-import { planDay } from "@fit-check/schema/day-context.ts";
+import {
+  calendarAnswerUsable,
+  clockOnDate,
+  hebcalDayFacts,
+  planDay,
+  type CalendarDayType,
+  type DayPlan,
+  type HebcalDayItem,
+  type HebrewDayFacts,
+  type RuleSet,
+} from "@fit-check/schema/day-context.ts";
 import { publicUrl, type ToolContext, type ToolResult } from "./tools.ts";
-import { loadObservesShabbat, loadOccasionRows } from "./context.ts";
-import { israelDate } from "./time.ts";
+import { issues, loadObservesShabbat, loadOccasionRows, typedFail } from "./context.ts";
+import { israelDate, israelTime } from "./time.ts";
 
 /**
- * Today's outfit and wear logging over MCP (Roy, 2026-11-17, phase 2).
+ * Today's outfit and wear logging over MCP (Roy, 2026-11-17, phase 2; brought level with the app 2026-11-20).
  *
  * The engine (packages/engine, bundled into _shared/engine.js) builds the candidates exactly as the app does; the
- * paid Sonnet stylist is NOT called. Claude in the chat is already a stylist, so it picks and explains from the
- * candidates itself (Roy: "cut paid AI steps where you can do them yourself").
+ * paid Sonnet stylist is NOT called and no AI call is made here at all (nothing to log to `ai_calls`): Claude in the
+ * chat is already a stylist, so it picks and explains from the candidates itself.
  *
- * Every query filters on ctx.userId (service-role client, see tools.ts).
+ * The day's context follows the SAME rule as the app's Today screen (`planDay` in packages/schema day-context.ts):
+ * Shabbat and holidays decide until that date's havdalah for someone who keeps them, an occasion only after it. The
+ * engine gets what the app gives it: recent wears with their context (the date no-repeat rule), Yom Kippur's own
+ * rules (no leather, suede or `unknown` shoes) and the saved outfits (`withSavedPairs`).
+ *
+ * Every query filters on ctx.userId: the client is the service role (see tools.ts and _shared/auth.ts for why a
+ * user-token client does not work inside the Edge runtime), so the filter is what keeps each user to their own rows.
  */
 
-/** Tel Aviv area, the app's DEFAULT_LOCATION (apps/mobile/src/data/location.ts). */
-const DEFAULT_PLACE = { lat: 32.0809, lon: 34.7806, tz: "Asia/Jerusalem" };
+/** Tel Aviv area, the app's DEFAULT_LOCATION (apps/mobile/src/data/location.ts); 293397 is its GeoNames id. */
+const DEFAULT_PLACE = { lat: 32.0809, lon: 34.7806, tz: "Asia/Jerusalem", geonameid: 293397 };
 /** Same as the app's FALLBACK_WEATHER: used only when the forecast is unavailable, and said so in the answer. */
 const FALLBACK_WEATHER = { temp_min_c: 16, temp_max_c: 24, rain_probability: 0.1 };
+/**
+ * How long the Hebcal request may take. Claude is waiting on the answer; Hebcal answers in well under a second when it
+ * answers at all (measured 0.4 s for 60 days, 2026-11-20), and past this the day is planned from the civil calendar
+ * with the typed warning, never as if it were an ordinary day.
+ */
+export const CALENDAR_TIMEOUT_MS = 5000;
+/** Days asked of Hebcal: a week, so an answer with no candle lighting is recognisably broken (calendarAnswerUsable). */
+const CALENDAR_DAYS = 7;
+/** CLAUDE.md: the model never sees the whole wardrobe. */
+const MAX_CANDIDATES = 8;
 
-type DayType = "weekday" | "shabbat" | "holiday";
+/** Where a day is planned: the default place (GeoNames id) or a point the caller passed. */
+export type Place = { lat: number; lon: number; isDefault: boolean };
 
-const TodayInput = z.object({
-  date: z.string().date().optional(),
-  day_type: z.enum(["weekday", "shabbat", "holiday"]).optional(),
-  lat: z.number().min(-90).max(90).optional(),
-  lon: z.number().min(-180).max(180).optional(),
-  anchor_item_id: z.string().uuid().optional(),
-});
+/** What the handlers reach outside the database: injected so tests run with a fixed clock and fake services. */
+export type OutfitDeps = {
+  now: () => Date;
+  /** Hebcal events for `date` and the six days after it; rejects on any failure, timeout or unusable answer. */
+  hebcal: (date: string, place: Place) => Promise<HebcalDayItem[]>;
+  /** The day's weather summary, or null when the forecast is unavailable. Never rejects. */
+  weather: (date: string, place: Place) => Promise<DayWeather | null>;
+};
 
-const LogInput = z.object({
-  item_ids: z.array(z.string().uuid()).min(2).max(5),
-  feedback: z.enum(["worn", "skipped", "disliked"]).default("worn"),
-  date: z.string().date().optional(),
-  day_type: z.enum(["weekday", "shabbat", "holiday"]).optional(),
-});
-
-function daysBefore(date: string, days: number): string {
+function addDays(date: string, days: number): string {
   const [y, m, d] = date.split("-").map(Number) as [number, number, number];
-  return new Date(Date.UTC(y, m - 1, d - days)).toISOString().slice(0, 10);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
 
-/** Shabbat on Saturday, holiday when Hebcal marks a yom tov, else weekday. A Hebcal failure falls back to the weekday rule. */
-async function dayTypeOf(date: string): Promise<DayType> {
-  try {
-    const res = await fetch(`https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&i=on&start=${date}&end=${date}`, { signal: AbortSignal.timeout(5000) });
-    const body = (await res.json()) as { items?: Array<{ yomtov?: boolean }> };
-    if (body.items?.some((i) => i.yomtov === true)) return "holiday";
-  } catch {
-    // fall through
-  }
+function weekdayOf(date: string): number {
   const [y, m, d] = date.split("-").map(Number) as [number, number, number];
-  return new Date(Date.UTC(y, m - 1, d)).getUTCDay() === 6 ? "shabbat" : "weekday";
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
-async function weatherFor(date: string, lat: number, lon: number) {
+async function hebcalLive(date: string, place: Place): Promise<HebcalDayItem[]> {
+  const end = addDays(date, CALENDAR_DAYS - 1);
+  // The same request as the app's (data/dayContext.ts startCalendar), Israel schedule (i=on): the server plans in Israel.
+  const where = place.isDefault
+    ? `geonameid=${DEFAULT_PLACE.geonameid}`
+    : `latitude=${place.lat}&longitude=${place.lon}&tzid=${encodeURIComponent(DEFAULT_PLACE.tz)}`;
+  const url = `https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&min=on&i=on&c=on&M=on&${where}&start=${date}&end=${end}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(CALENDAR_TIMEOUT_MS) });
+  if (!res.ok) throw new Error(`Hebcal answered ${res.status}`);
+  const { items } = HebcalItemsSchema.parse(await res.json());
+  // don't touch / an empty 200 is not a calendar: treated as a failure so the warning is given, as in the app.
+  if (!calendarAnswerUsable(items, date, end)) throw new Error("Hebcal answered with no candle lighting in the week");
+  return items;
+}
+
+async function weatherLive(date: string, place: Place): Promise<DayWeather | null> {
   try {
     const url =
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+      `https://api.open-meteo.com/v1/forecast?latitude=${place.lat}&longitude=${place.lon}` +
       "&hourly=apparent_temperature,precipitation_probability,wind_speed_10m,uv_index,weather_code" +
       `&timezone=${encodeURIComponent(DEFAULT_PLACE.tz)}&forecast_days=3`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
@@ -83,6 +116,64 @@ async function weatherFor(date: string, lat: number, lon: number) {
     return null;
   }
 }
+
+export const LIVE_DEPS: OutfitDeps = { now: () => new Date(), hebcal: hebcalLive, weather: weatherLive };
+
+const DayTypeInput = z.enum(["weekday", "shabbat", "holiday"]);
+
+const TodayInput = z
+  .object({
+    date: z.string().date().optional(),
+    day_type: DayTypeInput.optional(),
+    lat: z.number().min(-90).max(90).optional(),
+    lon: z.number().min(-180).max(180).optional(),
+    anchor_item_id: z.string().uuid().optional(),
+  })
+  .strict()
+  .refine((v) => (v.lat === undefined) === (v.lon === undefined), "lat and lon go together");
+
+const LogInput = z
+  .object({
+    item_ids: z.array(z.string().uuid()).min(2).max(5),
+    feedback: z.enum(["worn", "skipped", "disliked"]).default("worn"),
+    date: z.string().date().optional(),
+    day_type: DayTypeInput.optional(),
+  })
+  .strict();
+
+/** The day as both tools plan it: the shared rule over the calendar, the stored occasion and the profile. */
+type ResolvedDay = { plan: DayPlan; facts: HebrewDayFacts | null; calendarError: string | null };
+
+/**
+ * Plans `date` with the shared rule. The calendar is asked only when no day type was passed; a failure or timeout is
+ * not an error of the tool: the plan falls back to the civil calendar and carries its typed warning.
+ */
+async function resolveDay(ctx: ToolContext, deps: OutfitDeps, date: string, forced: CalendarDayType | null, place: Place): Promise<ResolvedDay> {
+  const now = deps.now();
+  const calendar: Promise<{ facts: HebrewDayFacts | null; error: string | null }> = forced
+    ? Promise.resolve({ facts: null, error: null })
+    : deps.hebcal(date, place).then(
+        (items) => ({ facts: hebcalDayFacts(items, date), error: null }),
+        (error: unknown) => {
+          console.error("hebcal failed", String(error));
+          return { facts: null, error: error instanceof Error ? error.message : String(error) };
+        },
+      );
+  const [cal, occasionRows, observesShabbat] = await Promise.all([calendar, loadOccasionRows(ctx, date), loadObservesShabbat(ctx)]);
+  const occasion = occasionRows[0];
+  const plan = planDay({
+    weekday: weekdayOf(date),
+    calendar: cal.facts,
+    observesShabbat,
+    // don't touch / `hebcal` rows are the calendar's own record, not an occasion anyone chose.
+    occasion: occasion && occasion.source !== "hebcal" ? { type: occasion.type, label: occasion.label, source: occasion.source } : null,
+    dayTypeForced: forced,
+    now: clockOnDate(date, israelDate(now), israelTime(now)),
+  });
+  return { plan, facts: cal.facts, calendarError: cal.error };
+}
+
+const rulesOf = (set: RuleSet): ContextRules => (set === "yom_kippur" ? YOM_KIPPUR_RULES : DEFAULT_CONTEXT_RULES[set]);
 
 async function loadWardrobe(ctx: ToolContext): Promise<{ items: Item[]; weights: PairWeights }> {
   const [itemsRes, pairsRes] = await Promise.all([
@@ -102,13 +193,38 @@ async function loadWardrobe(ctx: ToolContext): Promise<{ items: Item[]; weights:
   return { items, weights };
 }
 
-/** Worn outfits of the last RECENT_WEARS_DAYS days (freshness penalty) and today's answered outfits (excluded). */
+const SavedRowSchema = z.object({ is_favorite: z.boolean(), outfit_items: z.array(z.object({ item_id: z.string() })) });
+
+/**
+ * The user's saved outfits as the engine learns from them (DESIGN.md "שלב 5.2" item 8), or null when they could not be
+ * read. Null and an empty list both leave the scores exactly as without the feature (withSavedPairs), so a failure
+ * here costs only the bonus and is said in the answer, never an error of the tool.
+ */
+async function loadSaved(ctx: ToolContext): Promise<SavedOutfitSignal[] | null> {
+  const { data, error } = await ctx.db.from("outfits").select("is_favorite,outfit_items(item_id)").eq("user_id", ctx.userId).not("saved_at", "is", null);
+  if (error) {
+    console.error("saved outfits read failed", error.message);
+    return null;
+  }
+  const out: SavedOutfitSignal[] = [];
+  for (const raw of data ?? []) {
+    const row = SavedRowSchema.safeParse(raw);
+    if (row.success) out.push({ itemIds: row.data.outfit_items.map((i) => i.item_id), isFavorite: row.data.is_favorite });
+  }
+  return out;
+}
+
+// The app's wear read (data/feedback.ts): the outfit's context comes along, which the date no-repeat rule reads.
+const WEAR_COLUMNS = WEAR_READ_COLUMNS.replace("outfits(", "outfits(context_type,");
+const ContextOfRow = z.object({ outfits: z.object({ context_type: z.enum(CONTEXT_TYPES) }) });
+
+/** Worn outfits of the last RECENT_WEARS_DAYS days, with their context, and today's answered outfits (excluded). */
 async function loadHistory(ctx: ToolContext, date: string) {
   const { data, error } = await ctx.db
     .from("wears")
-    .select(WEAR_READ_COLUMNS)
+    .select(WEAR_COLUMNS)
     .eq("user_id", ctx.userId)
-    .gte("worn_on", daysBefore(date, RECENT_WEARS_DAYS))
+    .gte("worn_on", addDays(date, -RECENT_WEARS_DAYS))
     .lte("worn_on", date)
     .order("worn_on", { ascending: false });
   if (error) throw new Error(error.message);
@@ -118,48 +234,64 @@ async function loadHistory(ctx: ToolContext, date: string) {
     const row = WearRowSchema.safeParse(raw);
     if (!row.success || !row.data.outfits) continue;
     const ids = row.data.outfits.outfit_items.map((i) => i.item_id);
-    if (row.data.feedback === "worn") recent.push({ date: row.data.worn_on, item_ids: ids, context_key: null });
+    const context = ContextOfRow.safeParse(raw);
+    if (row.data.feedback === "worn") {
+      recent.push({ date: row.data.worn_on, item_ids: ids, context_key: null, context_type: context.success ? context.data.outfits.context_type : undefined });
+    }
     if (row.data.worn_on === date) answeredToday.push(ids);
   }
   return { recent, answeredToday };
 }
 
 
-export async function outfitToday(args: unknown, ctx: ToolContext): Promise<ToolResult> {
-  const input = TodayInput.parse(args ?? {});
-  const date = input.date ?? israelDate();
-  const [dayType, weather, wardrobe, history, occasionRows, observesShabbat] = await Promise.all([
-    input.day_type ? Promise.resolve(input.day_type) : dayTypeOf(date),
-    weatherFor(date, input.lat ?? DEFAULT_PLACE.lat, input.lon ?? DEFAULT_PLACE.lon),
+const placeOf = (lat: number | undefined, lon: number | undefined): Place =>
+  lat !== undefined && lon !== undefined ? { lat, lon, isDefault: false } : { lat: DEFAULT_PLACE.lat, lon: DEFAULT_PLACE.lon, isDefault: true };
+
+/**
+ * outfit_today: up to eight outfit candidates for a date (default today in Israel), built by the app's engine under the
+ * app's rules, for Claude to choose from and explain.
+ *
+ * Inputs (all optional): date, day_type (overrides the calendar and any occasion), lat/lon (together), anchor_item_id.
+ * Returns: the rule set used and why, the stored occasion and whether it applies now, the calendar's facts, `warning`
+ * (typed; non-null when the Hebrew calendar could not be read and the user keeps Shabbat and holidays), the weather,
+ * how many saved outfits were counted, and the candidates.
+ * Failure modes: invalid_input (typed); a database error on the wardrobe or the wears throws and becomes a readable
+ * tool error. A failed calendar, forecast or saved-outfit read degrades the answer and says so; it never fails it.
+ */
+export async function outfitToday(args: unknown, ctx: ToolContext, deps: OutfitDeps = LIVE_DEPS): Promise<ToolResult> {
+  const parsed = TodayInput.safeParse(args ?? {});
+  if (!parsed.success) return typedFail("invalid_input", `${issues(parsed.error)}. Fix the argument and call again.`);
+  const input = parsed.data;
+  const date = input.date ?? israelDate(deps.now());
+  const place = placeOf(input.lat, input.lon);
+  const [day, weather, wardrobe, history, saved] = await Promise.all([
+    resolveDay(ctx, deps, date, input.day_type ?? null, place),
+    deps.weather(date, place),
     loadWardrobe(ctx),
     loadHistory(ctx, date),
-    loadOccasionRows(ctx, date),
-    loadObservesShabbat(ctx),
+    loadSaved(ctx),
   ]);
-  const occasion = occasionRows[0] ?? null;
-  const plan = planDay({
-    dayType,
-    dayTypeForced: input.day_type !== undefined,
-    occasion: occasion && occasion.source !== "hebcal" ? { type: occasion.type, label: occasion.label, source: occasion.source } : null,
-    observesShabbat,
-  });
-  // Rule sets come from the engine's DEFAULT_CONTEXT_RULES (holidays share the Shabbat rules, PRD section 7, as in
-  // the app); "one step dressier" is the engine's own formality adjustment, not scoring re-implemented here.
+  const { plan } = day;
   const req = adjustRequest(
     StylingRequestSchema.parse({
       today: date,
-      context: DEFAULT_CONTEXT_RULES[plan.rules],
+      context: rulesOf(plan.rules),
       weather: weather ?? FALLBACK_WEATHER,
       recent_wears: history.recent,
       anchor_item_id: input.anchor_item_id ?? null,
-      max_candidates: 8,
+      max_candidates: MAX_CANDIDATES,
     }),
-    { temp_steps: 0, formality_steps: plan.formality_steps },
+    // A holiday for someone who does not keep it starts one "dressier" step up, as the app's defaultAdjustment.
+    { temp_steps: 0, formality_steps: plan.festive ? FESTIVE_FORMALITY_STEPS : 0 },
   );
-  const same = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
+  const same = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x) => b.includes(x));
   const byId = new Map(wardrobe.items.map((i) => [i.id, i]));
-  const candidates = generateCandidates(wardrobe.items, req, wardrobe.weights)
+  // don't touch / the saved bonus goes into the weights the engine SCORES with, never into pair_weights (it would be
+  // banked as wears); an absent or empty list returns the same weights, so nothing changes without saved outfits.
+  const scoring = withSavedPairs(wardrobe.weights, saved ?? undefined);
+  const candidates = generateCandidates(wardrobe.items, req, scoring)
     .filter((c) => !history.answeredToday.some((ids) => same(ids, c.items.map((i) => i.id))))
+    .slice(0, MAX_CANDIDATES)
     .map((c) => ({
       outfit_id: c.outfit_id,
       score: Math.round(c.score * 100) / 100,
@@ -173,58 +305,63 @@ export async function outfitToday(args: unknown, ctx: ToolContext): Promise<Tool
         image_url: publicUrl(ctx, byId.get(i.id)?.cutout_path ?? null),
       })),
     }));
-  return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(
-          {
-            date,
-            day_type: plan.rules,
-            context_used: plan.reason,
-            calendar_day_type: dayType,
-            weather: weather ?? { ...FALLBACK_WEATHER, note: "forecast unavailable; mild default used" },
-            already_answered_today: history.answeredToday.length,
-            how_to_answer:
-              "Pick ONE candidate as Roy's stylist and explain in Hebrew in one or two sentences why it fits today's weather and day " +
-              "(no brand names, colours and garment words in Hebrew). The score is a strong hint, not an order. " +
-              "If he wears it, call outfit_log with its item ids.",
-            candidates,
-          },
-          null,
-          2
-        ),
-      },
-    ],
+  const noShoes = plan.rules === "yom_kippur" && candidates.length > 0 && candidates.every((c) => !c.items.some((i) => i.slot === "shoes"));
+  const answer = {
+    date,
+    rules: plan.rules,
+    day_type: plan.dayType,
+    context_used: plan.reason,
+    occasion: plan.occasion,
+    calendar: day.facts
+      ? { known: true, yomtov: day.facts.yomtov, yom_kippur: day.facts.yomKippur, havdalah_today: day.facts.havdalahToday }
+      : { known: false, ...(day.calendarError ? { error: day.calendarError.slice(0, 200) } : { note: "not asked: a day_type was passed" }) },
+    warning: plan.warning,
+    weather: weather ?? { ...FALLBACK_WEATHER, note: "forecast unavailable; mild default used" },
+    already_answered_today: history.answeredToday.length,
+    saved_outfits_counted: saved === null ? "could not be read; candidates scored without the saved-outfit bonus" : saved.length,
+    ...(noShoes ? { shoes_note: "No shoe known not to be leather (or suede) is in the wardrobe, so the Yom Kippur look comes without shoes. Say so; never suggest a leather shoe." } : {}),
+    how_to_answer:
+      (plan.warning ? "FIRST tell Roy, in Hebrew, what `warning` says. " : "") +
+      "Pick ONE candidate as Roy's stylist and explain in Hebrew in one or two sentences why it fits today's weather and day " +
+      "(no brand names, colours and garment words in Hebrew). The score is a strong hint, not an order. " +
+      "If he wears it, call outfit_log with its item ids.",
+    candidates,
   };
+  return { content: [{ type: "text", text: JSON.stringify(answer, null, 2) }] };
 }
 
-export async function outfitLog(args: unknown, ctx: ToolContext): Promise<ToolResult> {
-  const input = LogInput.parse(args);
-  const date = input.date ?? israelDate();
-  const dayType = input.day_type ?? (await dayTypeOf(date));
-  const { items, weights } = await loadWardrobe(ctx);
-  const picked = input.item_ids.map((id) => items.find((i) => i.id === id));
-  if (picked.some((i) => !i)) return { content: [{ type: "text", text: "One of the item ids is not in this wardrobe." }], isError: true };
-  const outfitItems = picked as Item[];
-  const req = StylingRequestSchema.parse({
-    today: date,
-    context: DEFAULT_CONTEXT_RULES[dayType === "weekday" ? "weekday" : dayType],
-    weather: FALLBACK_WEATHER,
-    recent_wears: [],
-    anchor_item_id: null,
-  });
-  const { score, ...breakdown } = scoreOutfit(outfitItems, req, weights);
+/**
+ * outfit_log: records an outfit as worn, skipped or disliked for a date, with the app's learning and laundry.
+ * The wear is recorded in the context the shared rule gives the date (an occasion in effect, else the day type), so the
+ * date no-repeat rule sees it as the app would. Failure modes: invalid_input and unknown_item (typed); a database
+ * error throws (and a failed later write undoes the earlier ones).
+ */
+export async function outfitLog(args: unknown, ctx: ToolContext, deps: OutfitDeps = LIVE_DEPS): Promise<ToolResult> {
+  const parsed = LogInput.safeParse(args);
+  if (!parsed.success) return typedFail("invalid_input", `${issues(parsed.error)}. Fix the argument and call again.`);
+  const input = parsed.data;
+  const date = input.date ?? israelDate(deps.now());
+  const [{ plan }, { items, weights }, saved] = await Promise.all([
+    resolveDay(ctx, deps, date, input.day_type ?? null, placeOf(undefined, undefined)),
+    loadWardrobe(ctx),
+    loadSaved(ctx),
+  ]);
+  const outfitItems = input.item_ids.flatMap((id) => items.find((i) => i.id === id) ?? []);
+  if (outfitItems.length !== input.item_ids.length) return typedFail("unknown_item", "One of the item ids is not in this wardrobe.");
+  const req = StylingRequestSchema.parse({ today: date, context: rulesOf(plan.rules), weather: FALLBACK_WEATHER, recent_wears: [], anchor_item_id: null });
+  // The stored score includes the saved bonus, as the app's; the learned updates below use the learned weights only.
+  const { score, ...breakdown } = scoreOutfit(outfitItems, req, withSavedPairs(weights, saved ?? undefined));
+  const formality_steps = plan.festive ? FESTIVE_FORMALITY_STEPS : 0;
 
   // Same three writes as the app's recordFeedback (outfits, outfit_items, wears), undone if a later one fails.
   const created = await ctx.db
     .from("outfits")
     .insert({
       user_id: ctx.userId,
-      context_type: dayType,
+      context_type: plan.contextType,
       created_for_date: date,
       score: Math.round(score * 1000) / 1000,
-      breakdown: { ...breakdown, adjustment: { temp_steps: 0, formality_steps: 0 } },
+      breakdown: { ...breakdown, adjustment: { temp_steps: 0, formality_steps } },
       source: "daily",
     })
     .select("id")
@@ -242,7 +379,7 @@ export async function outfitLog(args: unknown, ctx: ToolContext): Promise<ToolRe
   // Learning and laundry, as the app does after an answer.
   const updates = feedbackUpdates(input.item_ids, input.feedback, weights);
   if (updates.length > 0) {
-    const now = new Date().toISOString();
+    const now = deps.now().toISOString();
     await ctx.db
       .from("pair_weights")
       .upsert(updates.map((u) => ({ user_id: ctx.userId, item_a: u.a, item_b: u.b, weight: u.weight, updated_at: now })), { onConflict: "user_id,item_a,item_b" });
@@ -250,7 +387,9 @@ export async function outfitLog(args: unknown, ctx: ToolContext): Promise<ToolRe
   let laundry: string[] = [];
   if (input.feedback === "worn") {
     const { data: counts } = await ctx.db.rpc("wear_counts_since_wash", { p_item_ids: input.item_ids });
-    const map = new Map(((counts ?? []) as Array<{ item_id: string; wears: number }>).map((r) => [r.item_id, r.wears]));
+    const CountsSchema = z.array(z.object({ item_id: z.string(), wears: z.number() }));
+    const parsedCounts = CountsSchema.safeParse(counts ?? []);
+    const map = new Map((parsedCounts.success ? parsedCounts.data : []).map((r) => [r.item_id, r.wears]));
     const due = dueForLaundry(outfitItems, map);
     if (due.length > 0) {
       await ctx.db.from("items").update({ availability: "laundry" }).in("id", due.map((i) => i.id)).eq("user_id", ctx.userId);
@@ -258,6 +397,11 @@ export async function outfitLog(args: unknown, ctx: ToolContext): Promise<ToolRe
     }
   }
   return {
-    content: [{ type: "text", text: JSON.stringify({ logged: input.feedback, date, items: outfitItems.map((i) => i.name), moved_to_laundry: laundry }, null, 2) }],
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({ logged: input.feedback, date, context: plan.contextType, items: outfitItems.map((i) => i.name), moved_to_laundry: laundry }, null, 2),
+      },
+    ],
   };
 }

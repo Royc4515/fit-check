@@ -22,6 +22,7 @@ var SHABBAT_COLOR = {
   loud_patterns: ["check", "print"],
   loud_top: -0.03
 };
+var NO_REPEAT_LAST_WEARS = 3;
 var RECENCY = {
   /** Days during which a worn item is penalized. */
   item_window_days: 3,
@@ -33,7 +34,25 @@ var RECENCY = {
 var FEEDBACK = {
   worn_pair_delta: 0.05,
   disliked_pair_delta: -0.1,
-  learning_window_days: 90
+  learning_window_days: 90,
+  /**
+   * A pair of garments inside one saved outfit (DESIGN.md "שלב 5.2" item 8): two wears' worth. Saving says "this
+   * works" once, with no day behind it, so it counts for less than a favourite and is never a habit on its own.
+   */
+  saved_pair_delta: 0.1,
+  /**
+   * The same pair inside a favourite outfit, instead of `saved_pair_delta` (never both): four wears' worth, "a few
+   * wears". A whole favourite outfit adds 0.2 * 0.5 * pair_weight 0.2 = 0.02 to its score, far under one garment worn
+   * yesterday (RECENCY.item_penalty * 0.25 = 0.125), so "worn recently" still wins. Small, but candidate scores are
+   * often bunched, so between near-equal candidates it decides: a valid saved outfit is often the suggestion. It also
+   * cancels two dislikes on a pair (disliked_pair_delta -0.1), a plain save one.
+   */
+  favorite_pair_delta: 0.2,
+  /**
+   * Bound of one learned pair weight, worn and saved together: a pair never goes past it however many wears and
+   * saves it has. The DB column `pair_weights.weight` holds the worn part alone, inside the same bound.
+   */
+  max_pair_weight: 1
 };
 var ADJUST_STEP = { temp_c: 3, formality: 1 };
 var FESTIVE_FORMALITY_STEPS = 1;
@@ -133,7 +152,7 @@ var DEFAULT_CONTEXT_RULES = {
     no_repeat_with_key: false
   }
 };
-var YOM_KIPPUR_DENIED_SHOE_MATERIALS = ["leather", "suede"];
+var YOM_KIPPUR_DENIED_SHOE_MATERIALS = ["leather", "suede", "unknown"];
 var YOM_KIPPUR_RULES = {
   ...DEFAULT_CONTEXT_RULES.holiday,
   shoes: {
@@ -206,6 +225,21 @@ function hardFilter(items, req) {
     out[slot].push(item);
   }
   return out;
+}
+function fitsWeather(outfit, pool, req) {
+  const needsLayer = req.weather.temp_min_c < LAYER_THRESHOLD_C;
+  let hasLayer = false;
+  for (const item of outfit) {
+    const slot = slotOf(item);
+    if (!slot) continue;
+    if (slot === "layer") {
+      if (!needsLayer) return false;
+      hasLayer = true;
+    }
+    if (!passesWeather(item, slot, req, needsLayer)) return false;
+  }
+  if (needsLayer && !hasLayer && hardFilter([...pool], req).layer.length > 0) return false;
+  return true;
 }
 
 // packages/engine/src/scoring.ts
@@ -412,7 +446,14 @@ function selectDiverse(scored, count) {
   }
   return chosen.map((c) => c.candidate);
 }
+function noRepeatOutfits(req) {
+  if (!req.context.no_repeat_with_key) return /* @__PURE__ */ new Set();
+  return new Set(
+    req.recent_wears.filter((w) => w.context_type === req.context.type && w.date <= req.today).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0).slice(0, NO_REPEAT_LAST_WEARS).map((w) => [...w.item_ids].sort().join("+"))
+  );
+}
 function generateCandidates(items, req, weights) {
+  const blocked = noRepeatOutfits(req);
   const bySlot = hardFilter(items, req);
   let tops = preRank(bySlot.top, req, PER_SLOT_LIMIT.top);
   if (req.anchor_item_id) {
@@ -435,6 +476,7 @@ function generateCandidates(items, req, weights) {
       for (const s of shoes) {
         for (const l of layers) {
           const combo = [t, b, s, l].filter((i) => i !== null);
+          if (blocked.has(outfitId(combo))) continue;
           const f = outfitFormality(combo);
           if (f < lo - OUTFIT_FORMALITY_TOLERANCE || f > hi + OUTFIT_FORMALITY_TOLERANCE) continue;
           const { score, ...breakdown } = scoreOutfit(combo, req, weights);
@@ -530,7 +572,7 @@ function feedbackUpdates(itemIds, feedback, weights, sign = 1) {
       const a = ids[i];
       const b = ids[j];
       const old = weights.get(pairKey(a, b)) ?? 0;
-      const weight = round3(Math.max(-1, Math.min(1, old + delta)));
+      const weight = round3(Math.max(-FEEDBACK.max_pair_weight, Math.min(FEEDBACK.max_pair_weight, old + delta)));
       if (weight !== old) out.push({ a, b, weight });
     }
   }
@@ -720,6 +762,46 @@ function withTags(spec, tags, name) {
   const offered = detailsFor(garment.subcategory);
   return { ...spec, name: name.trim() || null, garment, details: spec.details.filter((id) => offered.includes(id)) };
 }
+
+// packages/engine/src/compatibility.ts
+function compatibilityScore(candidate, chosen, weights) {
+  if (chosen.length === 0) return 0.5;
+  const outfit = [...chosen, candidate];
+  const w = SCORING_WEIGHTS;
+  const total = w.color_harmony + w.formality_consistency + w.pair_weight;
+  const weighted = colorHarmony(outfit) * w.color_harmony + formalityConsistency(outfit) * w.formality_consistency + (pairScore(outfit, weights) + 1) / 2 * w.pair_weight;
+  return weighted / total;
+}
+function orderByCompatibility(candidates, chosen, weights) {
+  if (chosen.length === 0) return [...candidates];
+  return candidates.map((item, index) => ({ item, index, score: compatibilityScore(item, chosen, weights) })).sort((a, b) => b.score - a.score || a.index - b.index).map((s) => s.item);
+}
+
+// packages/engine/src/saved.ts
+var round32 = (n) => Math.round(n * 1e3) / 1e3;
+function savedPairBonus(saved) {
+  const bonus = /* @__PURE__ */ new Map();
+  for (const outfit of saved) {
+    const delta = outfit.isFavorite ? FEEDBACK.favorite_pair_delta : FEEDBACK.saved_pair_delta;
+    const ids = [...new Set(outfit.itemIds)];
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const key = pairKey(ids[i], ids[j]);
+        bonus.set(key, Math.max(bonus.get(key) ?? 0, delta));
+      }
+    }
+  }
+  return bonus;
+}
+function withSavedPairs(weights, saved) {
+  if (!saved || saved.length === 0) return weights;
+  const bonus = savedPairBonus(saved);
+  if (bonus.size === 0) return weights;
+  const out = new Map(weights);
+  const cap = FEEDBACK.max_pair_weight;
+  for (const [key, add] of bonus) out.set(key, round32(Math.max(-cap, Math.min(cap, (weights.get(key) ?? 0) + add))));
+  return out;
+}
 export {
   ADJUST_STEP,
   DEFAULT_CONTEXT_RULES,
@@ -731,6 +813,7 @@ export {
   LAYER_THRESHOLD_C,
   MMR_LAMBDA,
   NO_ADJUSTMENT,
+  NO_REPEAT_LAST_WEARS,
   OUTFIT_FORMALITY_TOLERANCE,
   PERSONAL_ADJUSTMENT,
   PER_SLOT_LIMIT,
@@ -748,20 +831,25 @@ export {
   applyPairUpdates,
   colorHarmony,
   combineAdjustments,
+  compatibilityScore,
   contextFit,
   detailToFree,
   detailsFromText,
   dueForLaundry,
   feedbackUpdates,
+  fitsWeather,
   formalityConsistency,
   generateCandidates,
   hardFilter,
   learnedAdjustment,
+  noRepeatOutfits,
+  orderByCompatibility,
   outfitFormality,
   pairKey,
   pairScore,
   passesContextRules,
   recencyPenalty,
+  savedPairBonus,
   scoreOutfit,
   setFree,
   shabbatColor,
@@ -772,5 +860,6 @@ export {
   swapOptions,
   toggleDetail,
   toggleFix,
+  withSavedPairs,
   withTags
 };
