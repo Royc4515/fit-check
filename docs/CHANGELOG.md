@@ -3,7 +3,7 @@
 ## 2026-11-25 (Sign-in cover: a generated photo)
 
 - Why: Roy wanted something "fake but good-looking" on the screen before signing in, instead of the drawn garments.
-- A flat-lay photo made in Google Flow (burgundy quarter-zip, white Oxford, navy chinos, brown loafers), bundled with the app: no network, nothing to fail. Shown at 3:4 uncropped, at most 37% of the window high, so the Google button stays on screen on a laptop.
+- A flat-lay photo made in Google Flow (burgundy quarter-zip, white Oxford, navy chinos, brown loafers), cut out of its background so the garments float on the page, bundled with the app: no network, nothing to fail. At most 37% of the window high, so the Google button stays on screen on a laptop.
 - The drawing (`StillLife`) is gone. Prompt and settings: `design/cover/2026-11-25-sign-in-cover.md`.
 - Look at: `design/screens/2026-11-25-sign-in-cover-*`.
 
