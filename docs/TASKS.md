@@ -156,6 +156,7 @@ New open minor from the recheck: when the two tabs have a different number of st
 | R5 | mcp deploy bundle resolves aws4fetch | lead | review | `scripts/bundle-mcp.sh` alias added; the bundle builds. Not deployed |
 | R6 | Server records on the day in force, as the app (Friday afternoon is Shabbat) | lead | done | Found by the independent review of PR #51. `shabbatTimes.ts` moved to `packages/schema`; `outfit_today` and `outfit_log` without a date use `phoneFreeChain` + `defaultTab`; 5 Deno tests. Hebcal asked once per call. Deployed 2026-11-25 as `mcp` version 8 (Roy approved): unauthenticated requests answer 401 with the OAuth discovery header, which answers 200 |
 | R7 | `supabase/config.toml` no longer names the old project | lead | review | `project_id = "fit-check"`; the remote project is set by `supabase link` |
+| R8 | MCP place: outfit_log takes the same lat/lon as outfit_today; points outside Israel refused | lead | review | From the reviews of PR #51 and #62. Calendar-down and city-custom gaps written into PRD 7.1 as known. 2 Deno tests. Needs a deploy after merge |
 
 ## Money rule (Roy, 2026-11-19)
 
