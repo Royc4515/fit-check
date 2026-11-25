@@ -5,6 +5,14 @@
   "buildCommand": "npx expo export --platform web",
   "outputDirectory": "dist",
   "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "fit-check-app-xi.vercel.app" }],
+      "destination": "https://fit-check-il.vercel.app/:path*",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

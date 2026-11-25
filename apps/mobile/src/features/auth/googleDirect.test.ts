@@ -5,12 +5,13 @@ function memory(): KeyValue & { data: Map<string, string> } {
   const data = new Map<string, string>();
   return { data, getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, v), removeItem: (k) => void data.delete(k) };
 }
-const PROD = "https://fit-check-app-xi.vercel.app";
+const PROD = "https://fit-check-il.vercel.app";
 
 describe("directSignInAvailable", () => {
   it("only on origins registered with Google", () => {
     expect(directSignInAvailable(PROD)).toBe(true);
     expect(directSignInAvailable(`${PROD}/`)).toBe(true);
+    expect(directSignInAvailable("https://fit-check-app-xi.vercel.app")).toBe(true);
     expect(directSignInAvailable("https://fit-check-app-git-other-royc4515s-projects.vercel.app")).toBe(false);
   });
 });

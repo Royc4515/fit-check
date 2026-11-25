@@ -1,7 +1,7 @@
 import { Platform, Share } from "react-native";
 
 /** The public web address of the app: what a link shared from the phone app must open. */
-export const APP_WEB_URL = "https://fit-check-app-xi.vercel.app";
+export const APP_WEB_URL = "https://fit-check-il.vercel.app";
 
 /** The page's own origin on web (a preview deploy shares itself); null on native. */
 const webOrigin = (): string | null => (Platform.OS === "web" && typeof window !== "undefined" ? window.location.origin : null);
