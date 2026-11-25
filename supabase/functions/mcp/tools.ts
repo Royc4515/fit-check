@@ -20,6 +20,7 @@ import { contextClear, contextGet, contextSet } from "./context.ts";
 import { outfitLog, outfitToday } from "./outfit.ts";
 import { intakeDismiss, intakePending, itemCreate, itemRecrop, itemRecut, itemRedraw } from "./photos.ts";
 import { quotaSet } from "./quota.ts";
+import { contactRequests } from "./contact.ts";
 import { REDRAW_DETAIL_IDS, REDRAW_FIX_IDS } from "@fit-check/schema/redraw-spec.ts";
 
 /**
@@ -623,6 +624,23 @@ export const TOOLS: Tool[] = [
     },
     annotations: { idempotentHint: true },
     run: quotaSet,
+  },
+  {
+    name: "contact_requests",
+    title: "Requests users sent through the contact form (owner only)",
+    description:
+      "What users sent through the app's 'contact Roy' form (kind: more_quota, problem, idea, other), newest first, with the sender's " +
+      "email; open ones only unless include_handled. mark_handled closes requests by id once Roy dealt with them. For a more_quota " +
+      "request, quota_set raises that user's allowance. Only Roy can call it.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        include_handled: { type: "boolean", default: false },
+        mark_handled: { type: "array", items: { type: "integer", minimum: 1 }, maxItems: 50 },
+      },
+      additionalProperties: false,
+    },
+    run: contactRequests,
   },
 ];
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-25 ("Contact Roy": requests stored and emailed)
+
+- Why: Roy wants a form that emails him in a set format, with a choice of what the request is about. Resend (free) approved by Roy.
+- Migration `0010_contact_requests.sql`; `contact` function: stores the request, then emails Roy through Resend (sender, email, usage this month, message; reply goes to the sender). 5 a day per user, 50 for everyone. Without RESEND_API_KEY, or when the email fails, the request is still stored.
+- `mcp` tool `contact_requests` (owner only): read open requests, close them.
+- To apply: `supabase db push` (0010), set `RESEND_API_KEY` (Roy), deploy `contact` and `mcp`.
+- Look at: `contact/handler_test.ts` (the email's format is checked there).
+
 ## 2026-11-25 (Referral bonus on the monthly allowance)
 
 - Why: Roy wants extra allowance for users who bring someone in, with a cap on referrals.
