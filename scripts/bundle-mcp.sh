@@ -10,9 +10,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 out="${1:-/tmp/mcp.bundle.js}"
+# don't touch / every bare npm import the mcp function reaches must have an alias here, matching the version in
+# supabase/functions/deno.json; a missing one fails the build ("Could not resolve", aws4fetch on 2026-11-25).
 node_modules/.bin/esbuild supabase/functions/mcp/index.ts --bundle --format=esm --platform=neutral --minify --legal-comments=none \
   --alias:@fit-check/schema=./packages/schema/src \
-  --alias:zod=npm:zod@3.23.8 --alias:@supabase/supabase-js=npm:@supabase/supabase-js@2.119.0 --alias:jose=npm:jose@5.9.6 \
+  --alias:zod=npm:zod@3.23.8 --alias:@supabase/supabase-js=npm:@supabase/supabase-js@2.119.0 --alias:jose=npm:jose@5.9.6 --alias:aws4fetch=npm:aws4fetch@1.0.20 \
   --charset=utf8 --external:npm:* --external:https://* --outfile="$out"
 
 # Guard: nothing in the bundle may change in a JSON/escape round trip. No backslash-u sequence (checked as text),
