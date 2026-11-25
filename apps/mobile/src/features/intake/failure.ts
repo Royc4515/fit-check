@@ -8,6 +8,7 @@ const FINAL_REASONS: ReadonlySet<string> = new Set([
   "preview",
   "daily_limit",
   "monthly_limit",
+  "cutout_monthly_limit",
   "too_large",
   "bad_input",
   "no_garments",

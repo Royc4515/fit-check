@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-25 (Background removal on Cloudflare Images, Modal as fallback)
+
+- Why: the Modal worker stopped on 2026-11-18 (its $1 credit ran out; it resets 2026-12-01), so new garments kept the plain crop. Roy wanted it working the same day, without a card.
+- Tested live first on Roy's photos with a temporary Worker (deleted): Cloudflare Images `segment: "foreground"` is BiRefNet, the model Modal ran; 2-4 s a cutout; on the coat the result matched Modal's. It keeps clothes hanging behind the garment (no SAM). One transient Images error in six calls passed on retry.
+- `worker/cloudflare/index.js` + `wrangler.jsonc`: the `fit-check-cutout` Worker (Images binding; segment, trim, at most 2048 px; `?op=thumb` for the 400 px thumbnail; bearer token; quota error 9422 answered as 429). Deployed and checked live.
+- `_shared/ai/cloudflare.ts` (`cutoutCloudflare`), `_shared/ai/background.ts` (`removeBackground`: Cloudflare first, Modal when Cloudflare is unset, capped or failed; every call logged to `ai_calls`, provider `cloudflare`, cost 0), `log.ts` `countModelCalls`. Cap in code: 2,400 Cloudflare cutouts a month (the free 5,000 transformations, two per cutout).
+- `intake-cutout` and the `mcp` tools use `removeBackground`; `intake-cutout` allows 80 a day (was 40, sized to Modal). New reason `cutout_monthly_limit` with he/en text, not retryable.
+- Isolation: no free replacement for SAM exists today (Gemini masks retired, none in 3.x; no segmentation model on Workers AI). A cutout with a neighbour's sleeve is fixed by the redraw on request.
+- Docs: `CLAUDE.md` (Stack, layout, Do not), `docs/PRD.md` intake step 3, `worker/README.md`, `_shared/ai/README.md`.
+- Look at: after the deploy, add a garment from a closet photo and the re-cut on an item; `ai_calls` rows with provider `cloudflare`.
+
 ## 2026-11-25 (The mcp deploy bundle builds again)
 
 - Why: `scripts/bundle-mcp.sh` failed with `Could not resolve "aws4fetch"` since the R2 change (PR #58) made `_shared/objects.ts` import it; the script aliases each npm import and had no alias for it, so the documented deploy path for the `mcp` function could not build. Found by the independent review of PR #51.
