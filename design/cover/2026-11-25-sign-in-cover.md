@@ -1,14 +1,16 @@
 # Sign-in cover photo (2026-11-25)
 
-`apps/mobile/assets/cover/sign-in-cover.jpg`, shown by `CoverPhoto` on the sign-in screen (DESIGN.md §3 "התחברות").
+`apps/mobile/assets/cover/sign-in-cover.webp`, shown by `CoverPhoto` on the sign-in screen (DESIGN.md §3 "התחברות").
 
 - Why: Roy wanted something "fake but good-looking" on the screen before signing in, instead of the drawn garments.
 - Made in Google Flow, image mode, Nano Banana Pro, 3:4 portrait (Flow offers no 4:5), 4 variations, 0 credits.
   Variation 3 of 4, chosen for the most air around every garment. 896x1200, downloaded at original size.
-- Not retouched: the background is warmer than `tile-deep` and darkens slightly at the corners; changing it would
-  change the garments too.
+- Then cut out of its background (Roy: "with an empty background, so it floats on the screen"): locally with rembg
+  2.0.88 and the `birefnet-general-lite` model (free, nothing uploaded), alpha below 24 set to 0 to drop the faint
+  vignette left at the corners, cropped to the garments plus 16px, saved as WebP quality 90: 786x970, 68 KB.
 
-To make another one, use the same prompt and settings, then replace the file (same name, 3:4).
+To make another one: the same prompt and settings, the same cut-out, then replace the file and `ASPECT` in
+`CoverPhoto.tsx`.
 
 ## Prompt
 
