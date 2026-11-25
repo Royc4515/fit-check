@@ -24,7 +24,7 @@ apps/mobile/          Expo app (also builds web)
 packages/schema/      zod schemas shared by app and Edge Functions (item tags, stylist I/O, context rules)
 packages/engine/      pure TypeScript: filters, scoring, candidate generation. No I/O. 100% unit-tested.
 supabase/migrations/  SQL, one file per change, never edited after merge
-supabase/functions/   Edge Functions: intake-separate, intake-cutout, intake-tag, style-outfit, tryon, mcp, design-preview, import-sheet; generate-daily and precheck are stubs
+supabase/functions/   Edge Functions: intake-separate, intake-cutout, intake-tag, style-outfit, tryon, usage, mcp, design-preview, import-sheet; generate-daily and precheck are stubs
 worker/               background removal: the Modal app (Python) and the Cloudflare Worker (worker/cloudflare)
 design/screens/       dated screenshots of every screen
 docs/                 the spec (PRD.md, DESIGN.md), live status (TASKS.md), CHANGELOG.md, plans and checklists
@@ -56,7 +56,7 @@ pnpm build:android    # eas build --platform android --profile preview (APK)
 - The LLM never sees the whole wardrobe. `styleOutfit` receives at most 8 candidate outfits. If you find yourself passing more, the bug is upstream in filtering.
 - All AI output is JSON validated by zod before use. A parse failure logs to `ai_calls` and falls back to the top-scored candidate without explanation.
 - Every AI call writes a row to `ai_calls` (provider, model, tokens or images, cost estimate, latency). Cost visibility is a feature.
-- Money rule (Roy, 2026-11-19): everything runs free or inside the credits his subscriptions give him each month. Nothing may bill him out of pocket. So: every paid provider has a monthly cap in code set below that provider's monthly credit (`_shared/ai/budget.ts`: Google $8, Anthropic $80; Cloudflare cutouts in `_shared/ai/cloudflare.ts`); when a cap is reached the feature says so and stops, it never falls back to another paid path; where there is a choice of provider, use the one with more unused credit (today Anthropic); a new paid call, provider or plan needs Roy's go with the monthly cost stated against the credit that covers it.
+- Money rule (Roy, 2026-11-19): everything runs free or inside the credits his subscriptions give him each month. Nothing may bill him out of pocket. So: every paid provider has a monthly cap in code set below that provider's monthly credit (`_shared/ai/budget.ts`: Google $8, Anthropic $80; Cloudflare cutouts in `_shared/ai/cloudflare.ts`); when a cap is reached the feature says so and stops, it never falls back to another paid path; every user but Roy also has a personal monthly allowance (`_shared/quota.ts`), checked before each AI call or background removal; where there is a choice of provider, use the one with more unused credit (today Anthropic); a new paid call, provider or plan needs Roy's go with the monthly cost stated against the credit that covers it.
 - Secrets only in Supabase function env and Modal secrets. The app bundle contains the Supabase anon key and nothing else.
 - i18n: no string literal in JSX. `t('today.title')`. Dates via `Intl` with the active locale; Hebrew dates from Hebcal, not computed locally.
 - RTL: logical properties only (`ms-`, `me-`, `ps-`, `pe-`, `start`, `end`). Never `ml-`/`mr-`. Directional icons come from the icon set's RTL variants.

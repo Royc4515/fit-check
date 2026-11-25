@@ -53,7 +53,7 @@ interface Harness {
   setOnFigure(fn: () => void): void;
 }
 
-function harness(opts: { spend?: number | null; outfit?: () => TryonResult; withFigure?: boolean; signFails?: boolean } = {}): Harness {
+function harness(opts: { spend?: number | null; outfit?: () => TryonResult; withFigure?: boolean; signFails?: boolean; userLimited?: boolean } = {}): Harness {
   const files = new Map<string, Uint8Array>();
   if (opts.withFigure) files.set(FIGURE_PATH, PNG);
   const uploads: Harness["uploads"] = [];
@@ -81,6 +81,7 @@ function harness(opts: { spend?: number | null; outfit?: () => TryonResult; with
     },
     store: () => store,
     monthlySpend: () => Promise.resolve(spend),
+    userAllows: () => Promise.resolve(!opts.userLimited),
     logAiCall: (_userId, entry) => {
       logs.push(entry);
       if (spend !== null) spend += entry.cost_usd ?? 0;
@@ -198,6 +199,16 @@ Deno.test("budget reached before the call: nothing generated, nothing logged", a
   const r = await call(h, { mode: "render", items: outfit });
   assert(r.status === 200 && r.body.error === "budget_reached" && r.body.budget_usd === MONTHLY_GOOGLE_BUDGET_USD, JSON.stringify(r));
   assert(h.calls.outfit === 0 && h.logs.length === 0, "no call");
+});
+
+Deno.test("a user over their own allowance: nothing generated or logged, but a stored image is still shown", async () => {
+  const h = harness({ withFigure: true, userLimited: true });
+  const r = await call(h, { mode: "render", items: outfit });
+  assert(r.status === 200 && r.body.error === "budget_reached" && r.body.month_spend_usd === null, JSON.stringify(r));
+  assert(h.calls.outfit === 0 && h.calls.figure === 0 && h.logs.length === 0, "no call");
+  h.files.set(await tryonImagePath(A, [TOP, BOTTOM, SHOES]), new Uint8Array([1]));
+  const stored = await call(h, { mode: "render", items: outfit });
+  assert(stored.body.ok === true && stored.body.cached === true, JSON.stringify(stored));
 });
 
 Deno.test("spend that cannot be read counts as spent", async () => {

@@ -6,6 +6,7 @@ import { buildRedrawPrompt, redrawPrompt, type RedrawSpec } from "@fit-check/sch
 import { detectGarments, ENHANCE_PRICE_USD, enhanceGarment } from "../_shared/ai/gemini.ts";
 import { whiteToTransparent } from "../_shared/whitebg.ts";
 import { MONTHLY_GOOGLE_BUDGET_USD, monthlyGoogleSpend } from "../_shared/ai/budget.ts";
+import { userAllows } from "../_shared/quota.ts";
 import { countAiCalls, logAiCall } from "../_shared/ai/log.ts";
 
 /**
@@ -80,6 +81,8 @@ Deno.serve(async (req) => {
 
   const used = await countAiCalls(userId, "separate", new Date(Date.now() - 24 * 3600 * 1000));
   if (used === null || used >= DAILY_DETECT_LIMIT + DAILY_ENHANCE_LIMIT) return json(429, { ok: false, reason: "daily_limit" });
+  // The user's own monthly allowance (_shared/quota.ts); the account-wide Google cap is checked per action below.
+  if (!(await userAllows(userId, "ai"))) return json(200, { ok: false, reason: "user_monthly_limit" });
 
   return input.action === "enhance"
     ? // The input schema guarantees exactly one of the two.

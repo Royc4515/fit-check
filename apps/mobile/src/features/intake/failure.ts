@@ -10,6 +10,7 @@ const FINAL_REASONS: ReadonlySet<string> = new Set([
   "monthly_limit",
   "cutout_monthly_limit",
   "ai_monthly_limit",
+  "user_monthly_limit",
   "too_large",
   "bad_input",
   "no_garments",

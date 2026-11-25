@@ -27,6 +27,7 @@ import { removeBackground } from "../_shared/ai/background.ts";
 import { ENHANCE_MODEL, enhanceGarment } from "../_shared/ai/gemini.ts";
 import { whiteToTransparent } from "../_shared/whitebg.ts";
 import { MONTHLY_GOOGLE_BUDGET_USD, monthlyGoogleSpend } from "../_shared/ai/budget.ts";
+import { userAllows } from "../_shared/quota.ts";
 import { sniffImageType } from "../_shared/media.ts";
 import { garmentsOf, type ToolContent, type ToolContext, type ToolResult } from "./tools.ts";
 
@@ -138,8 +139,12 @@ async function download(ctx: ToolContext, path: string): Promise<Uint8Array | nu
   return await garmentsOf(ctx).read(path);
 }
 
-/** Removes the background of `bytes` and stores `<stem>-cutout.png` / `<stem>-thumb.png`; null when that failed. */
+/**
+ * Removes the background of `bytes` and stores `<stem>-cutout.png` / `<stem>-thumb.png`; null when that failed or
+ * the user's monthly allowance of background removals is used up (_shared/quota.ts).
+ */
 async function cutAndStore(ctx: ToolContext, bytes: Uint8Array, stem: string, isolate: boolean) {
+  if (!(await userAllows(ctx.userId, "cutout"))) return null;
   const cut = await removeBackground(bytes, sniffImageType(bytes, "image/jpeg"), isolate, async (entry) => {
     await ctx.db.from("ai_calls").insert({ user_id: ctx.userId, ...entry });
   });
@@ -308,6 +313,7 @@ export async function itemRedraw(args: unknown, ctx: ToolContext): Promise<ToolR
   if (!crop) return fail("This garment has no original photo to redraw.");
   const spent = await monthlyGoogleSpend();
   if (spent === null || spent >= MONTHLY_GOOGLE_BUDGET_USD) return fail(`The monthly Google budget ($${MONTHLY_GOOGLE_BUDGET_USD}) is used up; redraws resume next month.`);
+  if (!(await userAllows(ctx.userId, "ai"))) return fail("This user's monthly allowance is used up; Roy can raise it.");
   const bytes = await download(ctx, crop);
   if (!bytes) return fail("The original photo is missing.");
 
