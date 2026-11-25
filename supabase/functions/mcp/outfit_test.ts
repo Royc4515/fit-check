@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { CALENDAR_UNAVAILABLE_MESSAGE, CALENDAR_UNAVAILABLE_SHABBAT_MESSAGE, type HebcalDayItem } from "@fit-check/schema/day-context.ts";
+import { CALENDAR_UNAVAILABLE_MESSAGE, CALENDAR_UNAVAILABLE_SHABBAT_MESSAGE } from "@fit-check/schema/day-context.ts";
+import type { HebcalItem } from "@fit-check/schema/shabbat-times.ts";
 import { DEFAULT_CONTEXT_RULES, type DayWeather } from "../_shared/engine.js";
 import { outfitToday, type OutfitDeps } from "./outfit.ts";
 import type { ToolContext, ToolResult } from "./tools.ts";
@@ -19,7 +20,7 @@ const OTHER = "00000000-0000-4000-8000-000000000002";
 const wardrobe = JSON.parse(await Deno.readTextFile(new URL("../../../packages/engine/__fixtures__/wardrobe.json", import.meta.url))) as Row[];
 const tishrei = JSON.parse(
   await Deno.readTextFile(new URL("../../../apps/mobile/src/data/__fixtures__/window-tishrei-5787.json", import.meta.url)),
-) as { items: HebcalDayItem[] };
+) as { items: HebcalItem[] };
 
 class FakeDb {
   tables: Record<string, Row[]> = { items: [], pair_weights: [], wears: [], contexts: [], profile: [], outfits: [] };
@@ -255,4 +256,78 @@ Deno.test("every read is filtered on the caller; bad input is a typed error", as
   assert(s.fake.requests.length >= 6 && s.fake.requests.every((q) => q.includes(`user_id=eq.${USER}`)), s.fake.requests.join("\n"));
   const bad = await outfitToday({ date: "2026-02-30", name: "x" }, s.ctx, s.deps);
   assert(bad.isError === true && JSON.parse((bad.content[0] as { text: string }).text).error.code === "invalid_input", "typed invalid_input");
+});
+
+/*
+ * The day in force (as the app's dayInForce): a call without a date or day_type is about today until three hours
+ * before today's candle lighting, or until today's outfit is worn; then about the first planned day not yet worn.
+ * Friday 2026-10-09 lights candles at 17:55 (Israel, UTC+3); Rosh Hashana 5787 runs Saturday-Sunday from Friday 09-11.
+ */
+type Dated = { date: string; today?: string; date_note?: string };
+const dated = (r: ToolResult): Dated => {
+  if (r.isError) throw new Error(`tool failed: ${(r.content[0] as { text: string }).text}`);
+  return JSON.parse((r.content[0] as { text: string }).text) as Dated;
+};
+const wornOn = (date: string): Row => ({
+  id: `w-${date}`,
+  user_id: USER,
+  worn_on: date,
+  feedback: "worn",
+  outfit_id: `o-${date}`,
+  outfits: { context_type: "weekday", breakdown: null, outfit_items: [] },
+});
+
+Deno.test("day in force: Friday noon is Friday; from three hours before candle lighting it is Shabbat", async () => {
+  const s = setup();
+  s.at("2026-10-09T09:00:00Z"); // 12:00, candles 17:55
+  const noon = dated(await outfitToday({}, s.ctx, s.deps));
+  assert(noon.date === "2026-10-09" && noon.date_note === undefined, `noon: ${JSON.stringify(noon)}`);
+  s.at("2026-10-09T12:00:00Z"); // 15:00, within three hours of 17:55
+  const afternoon = dated(await outfitToday({}, s.ctx, s.deps));
+  assert(afternoon.date === "2026-10-10" && afternoon.today === "2026-10-09" && typeof afternoon.date_note === "string", `15:00: ${JSON.stringify(afternoon)}`);
+  s.at("2026-10-09T11:50:00Z"); // 14:50, five minutes before the three hours
+  assert(dated(await outfitToday({}, s.ctx, s.deps)).date === "2026-10-09", "14:50 is still Friday");
+});
+
+Deno.test("day in force: once Friday's outfit is worn, a call at noon is about Shabbat", async () => {
+  const s = setup();
+  s.fake.tables.wears.push(wornOn("2026-10-09"));
+  s.at("2026-10-09T09:00:00Z");
+  assert(dated(await outfitToday({}, s.ctx, s.deps)).date === "2026-10-10", "Friday worn moves the day to Shabbat");
+});
+
+Deno.test("day in force: a two-day holiday moves to its second day once the first is worn", async () => {
+  const s = setup();
+  s.at("2026-09-11T13:30:00Z"); // 16:30 on Friday, candles 18:32
+  assert(dated(await outfitToday({}, s.ctx, s.deps)).date === "2026-09-12", "first planned day");
+  s.fake.tables.wears.push(wornOn("2026-09-12"));
+  assert(dated(await outfitToday({}, s.ctx, s.deps)).date === "2026-09-13", "the next one not worn");
+  s.fake.tables.wears.push(wornOn("2026-09-13"));
+  assert(dated(await outfitToday({}, s.ctx, s.deps)).date === "2026-09-12", "all worn: the first planned day");
+});
+
+Deno.test("day in force stays today: observance off, the calendar failing, or a date or day_type passed", async () => {
+  const off = setup({ observes: false });
+  off.at("2026-10-09T12:00:00Z");
+  assert(dated(await outfitToday({}, off.ctx, off.deps)).date === "2026-10-09", "observance off");
+
+  const down = setup();
+  down.calendarFails();
+  down.at("2026-10-09T12:00:00Z");
+  assert(dated(await outfitToday({}, down.ctx, down.deps)).date === "2026-10-09", "calendar down");
+
+  const given = setup();
+  given.at("2026-10-09T12:00:00Z");
+  assert(dated(await outfitToday({ date: "2026-10-09" }, given.ctx, given.deps)).date === "2026-10-09", "explicit date");
+  assert(dated(await outfitToday({ day_type: "weekday" }, given.ctx, given.deps)).date === "2026-10-09", "explicit day_type");
+});
+
+Deno.test("day in force: planning Shabbat from Friday asks Hebcal once", async () => {
+  const s = setup();
+  let calls = 0;
+  const inner = s.deps.hebcal;
+  const deps: OutfitDeps = { ...s.deps, hebcal: (d, p) => (calls++, inner(d, p)) };
+  s.at("2026-10-09T12:00:00Z");
+  assert(dated(await outfitToday({}, s.ctx, deps)).date === "2026-10-10", "Shabbat");
+  assert(calls === 1, `Hebcal asked ${calls} times`);
 });
