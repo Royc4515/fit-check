@@ -80,7 +80,7 @@ In November 2026 the garment images used **42.77 GB of cached egress** on Supaba
 | Backend | [Supabase](https://supabase.com/): Postgres 17 with RLS, Auth (Google), Storage, Edge Functions on [Deno](https://deno.com/) |
 | Images | [Cloudflare R2](https://developers.cloudflare.com/r2/) |
 | AI | Gemini (garment detection, try-on), Claude Haiku (tagging), Claude Sonnet (stylist) |
-| Cutout worker | Python on [Modal](https://modal.com/): BiRefNet via rembg, SAM 2.1, FashionCLIP |
+| Cutout worker | Python on [Modal](https://modal.com/): BiRefNet via rembg, SAM 2.1 |
 | Tooling | pnpm 10 workspaces, [Turborepo](https://turbo.build/), vitest, Deno test, ESLint, GitHub Actions |
 | Hosting | [Vercel](https://vercel.com/) (web), EAS (Android APK) |
 
@@ -103,7 +103,7 @@ flowchart LR
   R2[("Cloudflare R2<br/>garment cutouts")]
   Gemini["Gemini<br/>garment detection"]
   Anthropic["Claude Haiku / Sonnet<br/>tagging, stylist"]
-  Worker["Modal worker (Python)<br/>BiRefNet + SAM 2.1, FashionCLIP"]
+  Worker["Modal worker (Python)<br/>BiRefNet + SAM 2.1"]
 
   App --> Engine
   App --> Schema
@@ -142,7 +142,7 @@ flowchart LR
 ├── supabase/
 │   ├── functions/               Edge Functions (Deno); shared code and AI layer in _shared/
 │   └── migrations/              forward-only SQL, one file per change
-├── worker/                      Modal app (Python): /cutout and /embed
+├── worker/                      Modal app (Python): /cutout
 ├── scripts/                     wardrobe sheet import, seeding, bundling
 ├── design/screens/              dated screenshots of every screen
 └── docs/                        spec, plans, live task status, changelog
@@ -210,7 +210,7 @@ Built and in daily use: intake, wardrobe, Today with the AI stylist, saved outfi
 Not built yet or open:
 
 - The morning cron and push: [`generate-daily`](supabase/functions/generate-daily/index.ts) is a stub that returns 501.
-- FashionCLIP embeddings and similarity search: the worker endpoint exists but is not wired.
+- Image embeddings and similarity search: not built (planned on `gemini-embedding-2`, task 5.5 in [docs/TASKS.md](docs/TASKS.md)).
 - The pre-purchase check: [`precheck`](supabase/functions/precheck/index.ts) is a stub.
 - The MCP server's engine bundle trails the app's engine; it is being rebuilt with a sync test in [Royc4515/fit-check#51](https://github.com/Royc4515/fit-check/pull/51).
 - Anyone with the public key can list the legacy Supabase `cutouts` bucket; closing it needs a migration.
