@@ -384,7 +384,7 @@ export const TOOLS: Tool[] = [
       "(context_used, occasion). If the Hebrew calendar could not be read, the answer has a `warning`: tell Roy what it says before anything else. " +
       "Without date and day_type it answers for the day in force, as the app: today, or from three hours before candle lighting " +
       "(or once today's outfit is worn) the Shabbat or holiday ahead; then the answer has `date_note` and `today`, so tell Roy which day it is. " +
-      "Optional: date (yyyy-mm-dd), day_type, lat/lon for another place, anchor_item_id to build around one garment.",
+      "Optional: date (yyyy-mm-dd), day_type, lat/lon for another place in Israel (pass the same to outfit_log), anchor_item_id to build around one garment.",
     inputSchema: {
       type: "object",
       properties: {
@@ -453,7 +453,8 @@ export const TOOLS: Tool[] = [
       "Records Roy's answer to an outfit, as the app's buttons do: worn (default), skipped or disliked. Updates which garments go well " +
       "together and sends garments due for washing to the laundry. Use the item ids from outfit_today or wardrobe_search. " +
       "The wear is recorded in the same context outfit_today used for that date (an occasion in effect, else the day type). " +
-      "Without date and day_type it is recorded on the same day in force as outfit_today (\"I'm wearing it\" at 16:00 on a Friday is Shabbat's outfit).",
+      "Without date and day_type it is recorded on the same day in force as outfit_today (\"I'm wearing it\" at 16:00 on a Friday is Shabbat's outfit); " +
+      "pass the same lat/lon you gave outfit_today, if any.",
     inputSchema: {
       type: "object",
       properties: {
@@ -461,6 +462,8 @@ export const TOOLS: Tool[] = [
         feedback: { ...enumOf(["worn", "skipped", "disliked"]), default: "worn" },
         date: { type: "string", format: "date" },
         day_type: enumOf(["weekday", "shabbat", "holiday"]),
+        lat: { type: "number" },
+        lon: { type: "number" },
       },
       required: ["item_ids"],
       additionalProperties: false,
